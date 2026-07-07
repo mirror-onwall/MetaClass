@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+
+# Node
+node_modules/
+dist/
+.vite/
+
+# Environment and local databases
+.env
+.env.*
+!.env.example
+*.db
+*.sqlite3
+
+# Generated data
+data/raw/*
+data/processed/*
+data/generated/*
+data/runtime/*
+!data/**/.gitkeep
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+
