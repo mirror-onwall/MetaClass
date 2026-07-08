@@ -1,10 +1,15 @@
 [project]
-name = "eduverse-api"
+name = "metaclass-api"
 version = "0.1.0"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.115",
+  "imageio-ffmpeg>=0.6",
+  "pillow>=11.0",
   "pydantic-settings>=2.0",
+  "pymupdf>=1.25",
+  "python-multipart>=0.0.20",
+  "python-pptx>=1.0",
   "sqlalchemy>=2.0",
   "uvicorn[standard]>=0.30",
 ]
@@ -18,4 +23,3 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
-

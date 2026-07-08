@@ -1,0 +1,209 @@
+from datetime import datetime
+from enum import StrEnum
+from typing import Annotated, Literal
+
+from pydantic import Field
+
+from metaclass.core.schemas import SchemaModel, utc_now
+from metaclass.modules.assessment.schemas import Evidence, MasteryEstimate
+from metaclass.modules.content.schemas import QuizItem
+from metaclass.modules.materials.schemas import SourceRef
+
+
+class ActionType(StrEnum):
+    SHOW_PAGE = "SHOW_PAGE"
+    EXPLAIN = "EXPLAIN"
+    ASK_QUIZ = "ASK_QUIZ"
+    WAIT_STUDENT = "WAIT_STUDENT"
+    GIVE_FEEDBACK = "GIVE_FEEDBACK"
+    REMEDIATE = "REMEDIATE"
+    END = "END"
+
+
+class ShowPagePayload(SchemaModel):
+    source_ref: SourceRef
+
+
+class ExplainPayload(SchemaModel):
+    text: str = Field(min_length=1)
+    source_refs: list[SourceRef] = Field(min_length=1)
+
+
+class AskQuizPayload(SchemaModel):
+    quiz: QuizItem
+
+
+class WaitStudentPayload(SchemaModel):
+    prompt: str = Field(min_length=1)
+    expected_event: Literal["quiz_answer", "free_answer"]
+
+
+class GiveFeedbackPayload(SchemaModel):
+    quiz_action_id: str = Field(min_length=1)
+
+
+class RemediatePayload(SchemaModel):
+    text: str = Field(min_length=1)
+    source_refs: list[SourceRef] = Field(min_length=1)
+
+
+class EndPayload(SchemaModel):
+    summary: str = Field(min_length=1)
+
+
+class ShowPageAction(SchemaModel):
+    id: str
+    type: Literal["SHOW_PAGE"]
+    actor: Literal["system"]
+    payload: ShowPagePayload
+
+
+class ExplainAction(SchemaModel):
+    id: str
+    type: Literal["EXPLAIN"]
+    actor: Literal["teacher"]
+    payload: ExplainPayload
+
+
+class AskQuizAction(SchemaModel):
+    id: str
+    type: Literal["ASK_QUIZ"]
+    actor: Literal["teacher"]
+    payload: AskQuizPayload
+
+
+class WaitStudentAction(SchemaModel):
+    id: str
+    type: Literal["WAIT_STUDENT"]
+    actor: Literal["system"]
+    payload: WaitStudentPayload
+
+
+class GiveFeedbackAction(SchemaModel):
+    id: str
+    type: Literal["GIVE_FEEDBACK"]
+    actor: Literal["evaluator"]
+    payload: GiveFeedbackPayload
+
+
+class RemediateAction(SchemaModel):
+    id: str
+    type: Literal["REMEDIATE"]
+    actor: Literal["teacher"]
+    payload: RemediatePayload
+
+
+class EndAction(SchemaModel):
+    id: str
+    type: Literal["END"]
+    actor: Literal["system"]
+    payload: EndPayload
+
+
+TeachingAction = Annotated[
+    ShowPageAction
+    | ExplainAction
+    | AskQuizAction
+    | WaitStudentAction
+    | GiveFeedbackAction
+    | RemediateAction
+    | EndAction,
+    Field(discriminator="type"),
+]
+
+
+class ClassroomScene(SchemaModel):
+    id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    actions: list[TeachingAction] = Field(min_length=1)
+
+
+class ClassroomPlan(SchemaModel):
+    id: str = Field(min_length=1)
+    content_id: str = Field(min_length=1)
+    scenes: list[ClassroomScene] = Field(min_length=1)
+    version: int = Field(default=1, ge=1)
+
+
+class ActionExecutedPayload(SchemaModel):
+    action_id: str
+    action_type: ActionType
+
+
+class QuizEvaluatedPayload(SchemaModel):
+    action_id: str
+    feedback_action_id: str
+    selected_index: int = Field(ge=0)
+    correct: bool
+
+
+class UserQuestionPayload(SchemaModel):
+    question: str = Field(min_length=1)
+
+
+class TeacherAnswerPayload(SchemaModel):
+    answer: str = Field(min_length=1)
+    source_refs: list[SourceRef] = Field(default_factory=list)
+
+
+class ClassroomEventBase(SchemaModel):
+    id: str = Field(min_length=1)
+    session_id: str = Field(min_length=1)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class ActionExecutedEvent(ClassroomEventBase):
+    type: Literal["ACTION_EXECUTED"]
+    payload: ActionExecutedPayload
+
+
+class QuizEvaluatedEvent(ClassroomEventBase):
+    type: Literal["QUIZ_EVALUATED"]
+    payload: QuizEvaluatedPayload
+
+
+class UserQuestionEvent(ClassroomEventBase):
+    type: Literal["USER_QUESTION"]
+    payload: UserQuestionPayload
+
+
+class TeacherAnswerEvent(ClassroomEventBase):
+    type: Literal["TEACHER_ANSWER"]
+    payload: TeacherAnswerPayload
+
+
+ClassroomEvent = Annotated[
+    ActionExecutedEvent | QuizEvaluatedEvent | UserQuestionEvent | TeacherAnswerEvent,
+    Field(discriminator="type"),
+]
+
+
+class ClassroomSession(SchemaModel):
+    id: str = Field(min_length=1)
+    plan_id: str = Field(min_length=1)
+    status: Literal["running", "completed"] = "running"
+    scene_index: int = Field(default=0, ge=0)
+    action_index: int = Field(default=0, ge=0)
+    waiting_for: Literal["quiz_answer", "free_answer"] | None = None
+    evidence: list[Evidence] = Field(default_factory=list)
+    mastery: list[MasteryEstimate] = Field(default_factory=list)
+    events: list[ClassroomEvent] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class AnswerRequest(SchemaModel):
+    selected_index: int = Field(ge=0)
+
+
+class QuestionRequest(SchemaModel):
+    question: str = Field(min_length=1, max_length=1000)
+
+
+class ControllerResult(SchemaModel):
+    status: Literal["action", "waiting", "completed", "evaluated", "answered"]
+    action: TeachingAction | None = None
+    feedback: str | None = None
+    correct: bool | None = None
+    source_refs: list[SourceRef] = Field(default_factory=list)
+    session: ClassroomSession
