@@ -1,2 +1,0 @@
-"""EduVerse Classroom API package."""
-

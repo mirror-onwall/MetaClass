@@ -1,0 +1,32 @@
+flowchart LR
+  Browser["React Web"] --> Main["FastAPI main.py"]
+
+  subgraph Domains["Business modules"]
+    Materials["materials: PageMetadata"]
+    Content["content: PageUnderstanding + LearningContent"]
+    Classroom["classroom"]
+    Assessment["assessment"]
+    Video["video"]
+  end
+
+  Main --> Materials
+  Main --> Content
+  Main --> Classroom
+  Main --> Video
+
+  Content --> Materials
+  Classroom --> Content
+  Classroom --> Assessment
+  Video --> Content
+
+  Materials --> Providers["Provider protocols"]
+  Video --> Providers
+  Materials --> Repository["Module Repositories"]
+  Content --> Repository
+  Classroom --> Repository
+  Video --> Repository
+
+  Repository --> ORM["SQLAlchemy ORM"]
+  ORM --> SQLite[("SQLite now / PostgreSQL later")]
+  Materials --> Files["data/raw + processed"]
+  Video --> Files

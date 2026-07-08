@@ -1,10 +1,13 @@
 # Python
 __pycache__/
 *.py[cod]
+*.egg-info/
+*.tsbuildinfo
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 .venv/
+metaclass_env/
 
 # Node
 node_modules/
@@ -29,4 +32,3 @@ data/runtime/*
 .DS_Store
 .idea/
 .vscode/
-
