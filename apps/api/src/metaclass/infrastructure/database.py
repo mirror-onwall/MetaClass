@@ -70,6 +70,8 @@ class Database:
                 "updated_at": "DATETIME",
             },
             "classroom_sessions": {
+                "mode": "VARCHAR(20)",
+                "student_states": "JSON",
                 "created_at": "DATETIME",
                 "updated_at": "DATETIME",
             },
@@ -95,7 +97,24 @@ class Database:
                         connection.execute(
                             text(f"ALTER TABLE {table} ADD COLUMN {name} {sql_type}")
                         )
+                if table == "classroom_sessions":
+                    connection.execute(
+                        text(
+                            "UPDATE classroom_sessions "
+                            "SET student_states = '[]' "
+                            "WHERE student_states IS NULL"
+                        )
+                    )
+                    connection.execute(
+                        text(
+                            "UPDATE classroom_sessions "
+                            "SET mode = 'lecture' "
+                            "WHERE mode IS NULL"
+                        )
+                    )
                 for name in columns:
+                    if name in {"student_states", "mode"}:
+                        continue
                     connection.execute(
                         text(f"UPDATE {table} SET {name} = CURRENT_TIMESTAMP WHERE {name} IS NULL")
                     )

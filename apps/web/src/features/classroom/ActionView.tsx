@@ -47,11 +47,19 @@ export function ActionView({
       </div>
     );
   }
-  if (action.type === "EXPLAIN" || action.type === "REMEDIATE") {
+  if (action.type === "EXPLAIN" || action.type === "REMEDIATE" || action.type === "SUMMARIZE" || action.type === "REVIEW") {
     return (
       <div className="script-action">
-        <span>{action.type === "EXPLAIN" ? "TEACHER" : "REMEDIATE"}</span>
+        <span>{action.type.replaceAll("_", " ")}</span>
         <p>{action.payload.text}</p>
+      </div>
+    );
+  }
+  if (action.type === "PROBE") {
+    return (
+      <div className="script-action">
+        <span>PROBE</span>
+        <p>{action.payload.question}</p>
       </div>
     );
   }

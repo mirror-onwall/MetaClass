@@ -95,11 +95,26 @@ def test_complete_mvp_flow(client: TestClient) -> None:
         "EXPLAIN",
         "ASK_QUIZ",
         "GIVE_FEEDBACK",
+        "SUMMARIZE",
         "END",
     ]
 
-    session = client.post(f"/api/v1/classroom-plans/{plan.json()['id']}/sessions")
+    session = client.post(
+        f"/api/v1/classroom-plans/{plan.json()['id']}/sessions",
+        json={"mode": "interactive"},
+    )
     session_id = session.json()["id"]
+    assert session.json()["mode"] == "interactive"
+    assert len(session.json()["student_states"]) == 4
+    state = client.get(f"/api/v1/classroom-sessions/{session_id}/state")
+    assert state.status_code == 200
+    assert state.json()["current_action_type"] == "SHOW_PAGE"
+    assert [student["display_name"] for student in state.json()["students"]] == [
+        "课堂气氛调节者",
+        "深度思考者",
+        "课堂笔记员",
+        "研究型同学",
+    ]
     assert (
         client.post(f"/api/v1/classroom-sessions/{session_id}/next").json()["action"]["type"]
         == "SHOW_PAGE"
@@ -110,6 +125,15 @@ def test_complete_mvp_flow(client: TestClient) -> None:
     )
     quiz = client.post(f"/api/v1/classroom-sessions/{session_id}/next").json()
     assert quiz["action"]["type"] == "ASK_QUIZ"
+    directed = client.post(f"/api/v1/classroom-sessions/{session_id}/agent-turns/next")
+    assert directed.status_code == 200
+    assert directed.json()["decision"]["next_role"] == "student"
+    assert directed.json()["turns"][0]["role"] == "student"
+    recorded_session = client.get(f"/api/v1/classroom-sessions/{session_id}")
+    assert recorded_session.json()["events"][-1]["type"] == "AGENT_TURN"
+    assert recorded_session.json()["events"][-1]["payload"]["turn"]["agent_id"] == directed.json()[
+        "turns"
+    ][0]["agent_id"]
 
     answer = client.post(
         f"/api/v1/classroom-sessions/{session_id}/answers", json={"selected_index": 0}
@@ -122,6 +146,22 @@ def test_complete_mvp_flow(client: TestClient) -> None:
         json={"question": "How does it work?"},
     )
     assert question.json()["source_refs"][0]["page_no"] == 1
+
+    teacher_turn = client.post(
+        f"/api/v1/classroom-sessions/{session_id}/teacher-turn",
+        json={"prompt": "请追问一下这个知识点"},
+    )
+    assert teacher_turn.status_code == 200
+    assert teacher_turn.json()["role"] == "teacher"
+    assert teacher_turn.json()["speech"]
+
+    student_turns = client.post(
+        f"/api/v1/classroom-sessions/{session_id}/student-turns",
+        json={"prompt": "老师刚刚讲完，请同学们反馈"},
+    )
+    assert student_turns.status_code == 200
+    assert len(student_turns.json()) == 4
+    assert {turn["role"] for turn in student_turns.json()} == {"student"}
 
     job = client.post(f"/api/v1/learning-contents/{content_id}/videos")
     assert job.status_code == 201
@@ -179,6 +219,18 @@ def create_classroom_session(client: TestClient) -> str:
     plan = client.post(f"/api/v1/learning-contents/{content.json()['id']}/classroom-plans")
     session = client.post(f"/api/v1/classroom-plans/{plan.json()['id']}/sessions")
     return session.json()["id"]
+
+
+def test_lecture_mode_agent_turn_keeps_teacher_in_control(client: TestClient) -> None:
+    session_id = create_classroom_session(client)
+    for _ in range(3):
+        client.post(f"/api/v1/classroom-sessions/{session_id}/next")
+
+    directed = client.post(f"/api/v1/classroom-sessions/{session_id}/agent-turns/next")
+
+    assert directed.status_code == 200
+    assert directed.json()["decision"]["next_role"] == "teacher"
+    assert directed.json()["turns"][0]["role"] == "teacher"
 
 
 def test_cannot_answer_before_quiz(client: TestClient) -> None:

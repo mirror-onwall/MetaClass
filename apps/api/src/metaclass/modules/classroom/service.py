@@ -3,30 +3,26 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from metaclass.core.schemas import utc_now
-from metaclass.modules.assessment.schemas import Evidence
 from metaclass.modules.assessment.service import estimate_mastery
+from metaclass.modules.classroom.agent_schemas import AgentTurn, DirectedAgentTurn
+from metaclass.modules.classroom.agents import EvaluatorAgent, StudentRosterAgent, TeacherAgent
+from metaclass.modules.classroom.controller import ClassroomController
 from metaclass.modules.classroom.schemas import (
+    AgentTurnEvent,
+    AgentTurnPayload,
     ActionExecutedEvent,
     ActionExecutedPayload,
     ActionType,
     AskQuizAction,
-    AskQuizPayload,
     ClassroomPlan,
-    ClassroomScene,
     ClassroomSession,
+    ClassroomState,
     ControllerResult,
-    EndAction,
-    EndPayload,
-    ExplainAction,
-    ExplainPayload,
     GiveFeedbackAction,
-    GiveFeedbackPayload,
+    LearningMode,
     QuizEvaluatedEvent,
     QuizEvaluatedPayload,
-    ShowPageAction,
-    ShowPagePayload,
     TeacherAnswerEvent,
-    TeacherAnswerPayload,
     UserQuestionEvent,
     UserQuestionPayload,
 )
@@ -35,59 +31,28 @@ from metaclass.modules.content.service import ContentService
 
 
 class ClassroomService:
-    def __init__(self, repository: ClassroomRepository, contents: ContentService) -> None:
+    def __init__(
+        self,
+        repository: ClassroomRepository,
+        contents: ContentService,
+        teacher: TeacherAgent | None = None,
+        evaluator: EvaluatorAgent | None = None,
+        student_roster: StudentRosterAgent | None = None,
+        controller: ClassroomController | None = None,
+    ) -> None:
         self.repository = repository
         self.contents = contents
+        self.teacher = teacher or TeacherAgent()
+        self.evaluator = evaluator or EvaluatorAgent()
+        self.student_roster = student_roster or StudentRosterAgent()
+        self.controller = controller or ClassroomController()
 
     def create_plan(self, content_id: str) -> ClassroomPlan:
         content = self.contents.get(content_id)
-        scenes = []
-        for index, section in enumerate(content.sections, start=1):
-            prefix = f"scene_{index:03d}"
-            actions = [
-                ShowPageAction(
-                    id=f"{prefix}_show",
-                    type="SHOW_PAGE",
-                    actor="system",
-                    payload=ShowPagePayload(source_ref=section.source_refs[0]),
-                ),
-                ExplainAction(
-                    id=f"{prefix}_explain",
-                    type="EXPLAIN",
-                    actor="teacher",
-                    payload=ExplainPayload(
-                        text=f"本节学习{section.title}。{section.summary}",
-                        source_refs=section.source_refs,
-                    ),
-                ),
-            ]
-            if section.quiz_items:
-                quiz_action_id = f"{prefix}_quiz"
-                actions.extend(
-                    [
-                        AskQuizAction(
-                            id=quiz_action_id,
-                            type="ASK_QUIZ",
-                            actor="teacher",
-                            payload=AskQuizPayload(quiz=section.quiz_items[0]),
-                        ),
-                        GiveFeedbackAction(
-                            id=f"{prefix}_feedback",
-                            type="GIVE_FEEDBACK",
-                            actor="evaluator",
-                            payload=GiveFeedbackPayload(quiz_action_id=quiz_action_id),
-                        ),
-                    ]
-                )
-            actions.append(
-                EndAction(
-                    id=f"{prefix}_end",
-                    type="END",
-                    actor="system",
-                    payload=EndPayload(summary=f"本页要点：{section.summary}"),
-                )
-            )
-            scenes.append(ClassroomScene(id=prefix, title=section.title, actions=actions))
+        scenes = [
+            self.teacher.build_scene(index, section)
+            for index, section in enumerate(content.sections, start=1)
+        ]
         plan = ClassroomPlan(id=f"plan_{uuid4().hex[:12]}", content_id=content_id, scenes=scenes)
         self.repository.save_plan(plan)
         return plan
@@ -98,9 +63,18 @@ class ClassroomService:
             raise HTTPException(404, "Classroom plan not found")
         return plan
 
-    def create_session(self, plan_id: str) -> ClassroomSession:
+    def create_session(
+        self,
+        plan_id: str,
+        mode: LearningMode = LearningMode.LECTURE,
+    ) -> ClassroomSession:
         self.get_plan(plan_id)
-        session = ClassroomSession(id=f"session_{uuid4().hex[:12]}", plan_id=plan_id)
+        session = ClassroomSession(
+            id=f"session_{uuid4().hex[:12]}",
+            plan_id=plan_id,
+            mode=mode,
+            student_states=self.student_roster.create_default_states(),
+        )
         self._save_session(session)
         return session
 
@@ -109,6 +83,10 @@ class ClassroomService:
         if not session:
             raise HTTPException(404, "Classroom session not found")
         return session
+
+    def get_state(self, session_id: str) -> ClassroomState:
+        session = self.get_session(session_id)
+        return self._build_state(session)
 
     def next(self, session_id: str) -> ControllerResult:
         session = self.get_session(session_id)
@@ -157,19 +135,13 @@ class ClassroomService:
         quiz = quiz_action.payload.quiz
         if selected_index >= len(quiz.options):
             raise HTTPException(422, "Selected option does not exist")
-        correct = selected_index == quiz.correct_index
-        evidence = Evidence(
-            id=f"evidence_{uuid4().hex[:12]}",
+        evaluation = self.evaluator.evaluate_quiz(
             session_id=session.id,
-            action_id=quiz_action.id,
-            type="QUIZ",
-            knowledge_point=quiz.knowledge_point,
-            score=1.0 if correct else 0.0,
-            weight=1.0,
-            confidence=1.0,
-            note=f"selected={selected_index}, correct={quiz.correct_index}",
+            quiz_action=quiz_action,
+            selected_index=selected_index,
+            evidence_id=f"evidence_{uuid4().hex[:12]}",
         )
-        session.evidence.append(evidence)
+        session.evidence.append(evaluation.evidence)
         session.mastery = estimate_mastery(session.id, session.evidence)
         session.events.append(
             QuizEvaluatedEvent(
@@ -179,7 +151,7 @@ class ClassroomService:
                 payload=QuizEvaluatedPayload(
                     action_id=quiz_action.id,
                     feedback_action_id=feedback_action.id,
-                    correct=correct,
+                    correct=evaluation.correct,
                     selected_index=selected_index,
                 ),
             )
@@ -187,25 +159,17 @@ class ClassroomService:
         session.action_index += 1
         session.waiting_for = None
         self._save_session(session)
-        feedback = (
-            "回答正确。"
-            if correct
-            else f"回答不正确，正确答案是：{quiz.options[quiz.correct_index]}"
-        )
         return ControllerResult(
-            status="evaluated", feedback=feedback, correct=correct, session=session
+            status="evaluated",
+            feedback=evaluation.feedback,
+            correct=evaluation.correct,
+            session=session,
         )
 
     def answer_question(self, session_id: str, question: str) -> ControllerResult:
         session = self.get_session(session_id)
         plan = self.get_plan(session.plan_id)
-        scene_index = min(session.scene_index, max(len(plan.scenes) - 1, 0))
-        explain_action = next(
-            action
-            for action in plan.scenes[scene_index].actions
-            if isinstance(action, ExplainAction)
-        )
-        answer = f"根据当前材料：{explain_action.payload.text}"
+        teacher_answer = self.teacher.answer_question(plan, session, question)
         session.events.extend(
             [
                 UserQuestionEvent(
@@ -218,19 +182,72 @@ class ClassroomService:
                     id=f"event_{uuid4().hex[:12]}",
                     session_id=session.id,
                     type="TEACHER_ANSWER",
-                    payload=TeacherAnswerPayload(
-                        answer=answer, source_refs=explain_action.payload.source_refs
-                    ),
+                    payload=teacher_answer,
                 ),
             ]
         )
         self._save_session(session)
         return ControllerResult(
             status="answered",
-            feedback=answer,
-            source_refs=explain_action.payload.source_refs,
+            feedback=teacher_answer.answer,
+            source_refs=teacher_answer.source_refs,
             session=session,
         )
+
+    def generate_teacher_turn(self, session_id: str, prompt: str) -> AgentTurn:
+        state = self.get_state(session_id)
+        return self.teacher.generate_turn(state, prompt)
+
+    def generate_student_turns(self, session_id: str, prompt: str) -> list[AgentTurn]:
+        state = self.get_state(session_id)
+        return [
+            self.student_roster.generate_turn(student_state, state, prompt)
+            for student_state in state.students
+        ]
+
+    def generate_next_agent_turn(self, session_id: str) -> DirectedAgentTurn:
+        session = self.get_session(session_id)
+        state = self._build_state(session)
+        decision = self.controller.decide(state)
+        if decision.next_role == "end":
+            return DirectedAgentTurn(decision=decision, turns=[])
+        if decision.next_role == "teacher":
+            result = DirectedAgentTurn(
+                decision=decision, turns=[self.teacher.generate_turn(state, decision.prompt)]
+            )
+            self._record_agent_turns(session, result.turns)
+            return result
+        if decision.next_role == "student":
+            selected = next(
+                (
+                    student_state
+                    for student_state in state.students
+                    if student_state.id == decision.next_agent_id
+                ),
+                state.students[0] if state.students else None,
+            )
+            if not selected:
+                return DirectedAgentTurn(decision=decision, turns=[])
+            result = DirectedAgentTurn(
+                decision=decision,
+                turns=[self.student_roster.generate_turn(selected, state, decision.prompt)],
+            )
+            self._record_agent_turns(session, result.turns)
+            return result
+        result = DirectedAgentTurn(
+            decision=decision,
+            turns=[
+                AgentTurn(
+                    agent_id="evaluator",
+                    role="evaluator",
+                    speech="我会根据小测和互动证据更新掌握度判断。",
+                    actions=[],
+                    intent="evaluation_ready",
+                )
+            ],
+        )
+        self._record_agent_turns(session, result.turns)
+        return result
 
     @staticmethod
     def _normalize_cursor(session: ClassroomSession, plan: ClassroomPlan) -> None:
@@ -244,3 +261,47 @@ class ClassroomService:
     def _save_session(self, session: ClassroomSession) -> None:
         session.updated_at = utc_now()
         self.repository.save_session(session)
+
+    def _build_state(self, session: ClassroomSession) -> ClassroomState:
+        plan = self.get_plan(session.plan_id)
+        self._normalize_cursor(session, plan)
+
+        current_scene = None
+        current_action = None
+        if session.status != "completed" and session.scene_index < len(plan.scenes):
+            current_scene = plan.scenes[session.scene_index]
+            if session.action_index < len(current_scene.actions):
+                current_action = current_scene.actions[session.action_index]
+
+        return ClassroomState(
+            session_id=session.id,
+            plan_id=session.plan_id,
+            mode=session.mode,
+            status=session.status,
+            scene_index=session.scene_index,
+            action_index=session.action_index,
+            current_scene_id=current_scene.id if current_scene else None,
+            current_scene_title=current_scene.title if current_scene else None,
+            current_action_id=current_action.id if current_action else None,
+            current_action_type=ActionType(current_action.type) if current_action else None,
+            waiting_for=session.waiting_for,
+            students=session.student_states,
+            mastery=session.mastery,
+            recent_events=session.events[-10:],
+        )
+
+    def _record_agent_turns(self, session: ClassroomSession, turns: list[AgentTurn]) -> None:
+        for turn in turns:
+            session.events.append(
+                AgentTurnEvent(
+                    id=f"event_{uuid4().hex[:12]}",
+                    session_id=session.id,
+                    type="AGENT_TURN",
+                    payload=AgentTurnPayload(turn=turn),
+                )
+            )
+            for student in session.student_states:
+                if student.id == turn.agent_id:
+                    student.last_intent = turn.intent
+                    student.updated_at = utc_now()
+        self._save_session(session)

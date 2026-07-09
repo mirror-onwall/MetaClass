@@ -1,7 +1,9 @@
 import type {
   ClassroomSession,
   ControllerResult,
+  DirectedAgentTurn,
   LearningContent,
+  LearningMode,
   Material,
   PageMetadata,
   VideoJob,
@@ -47,12 +49,19 @@ export const api = {
       method: "POST",
     });
   },
-  async createSession(contentId: string) {
+  async createSession(contentId: string, mode: LearningMode) {
     const plan = await request<{ id: string }>(
       `/api/v1/learning-contents/${contentId}/classroom-plans`,
       { method: "POST" },
     );
     return request<ClassroomSession>(`/api/v1/classroom-plans/${plan.id}/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode }),
+    });
+  },
+  nextAgentTurn(sessionId: string) {
+    return request<DirectedAgentTurn>(`/api/v1/classroom-sessions/${sessionId}/agent-turns/next`, {
       method: "POST",
     });
   },

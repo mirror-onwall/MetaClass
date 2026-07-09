@@ -6,17 +6,26 @@ from pydantic import Field
 
 from metaclass.core.schemas import SchemaModel, utc_now
 from metaclass.modules.assessment.schemas import Evidence, MasteryEstimate
+from metaclass.modules.classroom.agent_schemas import AgentTurn, StudentAgentState
 from metaclass.modules.content.schemas import QuizItem
 from metaclass.modules.materials.schemas import SourceRef
+
+
+class LearningMode(StrEnum):
+    LECTURE = "lecture"
+    INTERACTIVE = "interactive"
 
 
 class ActionType(StrEnum):
     SHOW_PAGE = "SHOW_PAGE"
     EXPLAIN = "EXPLAIN"
     ASK_QUIZ = "ASK_QUIZ"
+    PROBE = "PROBE"
     WAIT_STUDENT = "WAIT_STUDENT"
     GIVE_FEEDBACK = "GIVE_FEEDBACK"
     REMEDIATE = "REMEDIATE"
+    SUMMARIZE = "SUMMARIZE"
+    REVIEW = "REVIEW"
     END = "END"
 
 
@@ -33,6 +42,12 @@ class AskQuizPayload(SchemaModel):
     quiz: QuizItem
 
 
+class ProbePayload(SchemaModel):
+    question: str = Field(min_length=1)
+    target_knowledge_point: str = Field(min_length=1)
+    source_refs: list[SourceRef] = Field(min_length=1)
+
+
 class WaitStudentPayload(SchemaModel):
     prompt: str = Field(min_length=1)
     expected_event: Literal["quiz_answer", "free_answer"]
@@ -44,6 +59,17 @@ class GiveFeedbackPayload(SchemaModel):
 
 class RemediatePayload(SchemaModel):
     text: str = Field(min_length=1)
+    source_refs: list[SourceRef] = Field(min_length=1)
+
+
+class SummarizePayload(SchemaModel):
+    text: str = Field(min_length=1)
+    source_refs: list[SourceRef] = Field(min_length=1)
+
+
+class ReviewPayload(SchemaModel):
+    text: str = Field(min_length=1)
+    knowledge_points: list[str] = Field(min_length=1)
     source_refs: list[SourceRef] = Field(min_length=1)
 
 
@@ -72,6 +98,13 @@ class AskQuizAction(SchemaModel):
     payload: AskQuizPayload
 
 
+class ProbeAction(SchemaModel):
+    id: str
+    type: Literal["PROBE"]
+    actor: Literal["teacher"]
+    payload: ProbePayload
+
+
 class WaitStudentAction(SchemaModel):
     id: str
     type: Literal["WAIT_STUDENT"]
@@ -93,6 +126,20 @@ class RemediateAction(SchemaModel):
     payload: RemediatePayload
 
 
+class SummarizeAction(SchemaModel):
+    id: str
+    type: Literal["SUMMARIZE"]
+    actor: Literal["teacher"]
+    payload: SummarizePayload
+
+
+class ReviewAction(SchemaModel):
+    id: str
+    type: Literal["REVIEW"]
+    actor: Literal["teacher"]
+    payload: ReviewPayload
+
+
 class EndAction(SchemaModel):
     id: str
     type: Literal["END"]
@@ -104,9 +151,12 @@ TeachingAction = Annotated[
     ShowPageAction
     | ExplainAction
     | AskQuizAction
+    | ProbeAction
     | WaitStudentAction
     | GiveFeedbackAction
     | RemediateAction
+    | SummarizeAction
+    | ReviewAction
     | EndAction,
     Field(discriminator="type"),
 ]
@@ -146,6 +196,10 @@ class TeacherAnswerPayload(SchemaModel):
     source_refs: list[SourceRef] = Field(default_factory=list)
 
 
+class AgentTurnPayload(SchemaModel):
+    turn: AgentTurn
+
+
 class ClassroomEventBase(SchemaModel):
     id: str = Field(min_length=1)
     session_id: str = Field(min_length=1)
@@ -172,8 +226,17 @@ class TeacherAnswerEvent(ClassroomEventBase):
     payload: TeacherAnswerPayload
 
 
+class AgentTurnEvent(ClassroomEventBase):
+    type: Literal["AGENT_TURN"]
+    payload: AgentTurnPayload
+
+
 ClassroomEvent = Annotated[
-    ActionExecutedEvent | QuizEvaluatedEvent | UserQuestionEvent | TeacherAnswerEvent,
+    ActionExecutedEvent
+    | QuizEvaluatedEvent
+    | UserQuestionEvent
+    | TeacherAnswerEvent
+    | AgentTurnEvent,
     Field(discriminator="type"),
 ]
 
@@ -181,15 +244,34 @@ ClassroomEvent = Annotated[
 class ClassroomSession(SchemaModel):
     id: str = Field(min_length=1)
     plan_id: str = Field(min_length=1)
+    mode: LearningMode = LearningMode.LECTURE
     status: Literal["running", "completed"] = "running"
     scene_index: int = Field(default=0, ge=0)
     action_index: int = Field(default=0, ge=0)
     waiting_for: Literal["quiz_answer", "free_answer"] | None = None
+    student_states: list[StudentAgentState] = Field(default_factory=list)
     evidence: list[Evidence] = Field(default_factory=list)
     mastery: list[MasteryEstimate] = Field(default_factory=list)
     events: list[ClassroomEvent] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
+
+
+class ClassroomState(SchemaModel):
+    session_id: str = Field(min_length=1)
+    plan_id: str = Field(min_length=1)
+    mode: LearningMode
+    status: Literal["running", "completed"]
+    scene_index: int = Field(ge=0)
+    action_index: int = Field(ge=0)
+    current_scene_id: str | None = None
+    current_scene_title: str | None = None
+    current_action_id: str | None = None
+    current_action_type: ActionType | None = None
+    waiting_for: Literal["quiz_answer", "free_answer"] | None = None
+    students: list[StudentAgentState] = Field(default_factory=list)
+    mastery: list[MasteryEstimate] = Field(default_factory=list)
+    recent_events: list[ClassroomEvent] = Field(default_factory=list)
 
 
 class AnswerRequest(SchemaModel):
@@ -198,6 +280,14 @@ class AnswerRequest(SchemaModel):
 
 class QuestionRequest(SchemaModel):
     question: str = Field(min_length=1, max_length=1000)
+
+
+class CreateClassroomSessionRequest(SchemaModel):
+    mode: LearningMode = LearningMode.LECTURE
+
+
+class AgentTurnRequest(SchemaModel):
+    prompt: str = Field(min_length=1, max_length=2000)
 
 
 class ControllerResult(SchemaModel):

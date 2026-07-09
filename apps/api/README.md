@@ -47,6 +47,15 @@ ruff check apps/api/src apps/api/tests
 
 默认测试不得调用真实 LLM/TTS。新增 provider 时同时提供 fake 实现，并把密钥留在环境变量中。
 
+课堂智能体默认使用 `METACLASS_LLM_PROVIDER=fake`。接真实模型时使用 OpenAI-compatible 配置：
+
+```bash
+METACLASS_LLM_PROVIDER=openai-compatible
+METACLASS_LLM_BASE_URL=https://api.openai.com/v1
+METACLASS_LLM_API_KEY=sk-...
+METACLASS_LLM_MODEL=gpt-4o-mini
+```
+
 ## 已实现的极简闭环
 
 1. `POST /api/v1/materials` 上传 PDF/PPTX。
@@ -54,7 +63,8 @@ ruff check apps/api/src apps/api/tests
 3. `POST /api/v1/materials/{id}/learning-content` 构建统一内容。
 4. `POST /api/v1/learning-contents/{id}/classroom-plans` 生成类型化课堂动作。
 5. 创建 session 后通过 `/next`、`/answers`、`/questions` 驱动规则课堂。
-6. `POST /api/v1/learning-contents/{id}/videos` 创建 VideoJob；完成后通过 `/video-jobs/{id}/result` 获取 MP4 结果。
+6. 通过 `/classroom-sessions/{id}/teacher-turn` 和 `/student-turns` 调用可替换 LLM/Fake agent，生成结构化课堂发言。
+7. `POST /api/v1/learning-contents/{id}/videos` 创建 VideoJob；完成后通过 `/video-jobs/{id}/result` 获取 MP4 结果。
 
 当前操作为同步执行，便于理解和演示；生产化时应将解析和视频生成迁移到 `jobs` worker，同时保持现有 service 接口。
 
