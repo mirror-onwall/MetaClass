@@ -6,6 +6,11 @@ from pydantic import TypeAdapter, ValidationError
 from metaclass.infrastructure.providers.fake import FakeLearningProvider
 from metaclass.modules.assessment.schemas import Evidence
 from metaclass.modules.assessment.service import estimate_mastery
+from metaclass.modules.classroom.agent_schemas import (
+    StudentAgentType,
+    get_default_student_agent_states,
+    get_default_student_agent_profiles,
+)
 from metaclass.modules.classroom.schemas import ClassroomEvent, TeachingAction
 from metaclass.modules.classroom.service import ClassroomService
 from metaclass.modules.content.schemas import (
@@ -64,6 +69,18 @@ def test_teaching_action_uses_discriminated_union() -> None:
         }
     )
     assert action.type == "SHOW_PAGE"
+    summary_action = adapter.validate_python(
+        {
+            "id": "action_003",
+            "type": "SUMMARIZE",
+            "actor": "teacher",
+            "payload": {
+                "text": "总结本页重点。",
+                "source_refs": [source_ref().model_dump()],
+            },
+        }
+    )
+    assert summary_action.type == "SUMMARIZE"
 
     with pytest.raises(ValidationError):
         adapter.validate_python(
@@ -125,6 +142,32 @@ def test_classroom_event_requires_identity_and_session() -> None:
         )
 
 
+def test_default_student_agent_profiles_include_required_classroom_roles() -> None:
+    profiles = get_default_student_agent_profiles()
+    profile_types = {profile.type for profile in profiles}
+
+    assert {
+        StudentAgentType.ATMOSPHERE_REGULATOR,
+        StudentAgentType.DEEP_THINKER,
+        StudentAgentType.NOTE_TAKER,
+        StudentAgentType.RESEARCHER,
+    }.issubset(profile_types)
+    assert len(profiles) >= 8
+    assert all(profile.behaviors for profile in profiles)
+
+
+def test_default_student_agent_states_start_with_four_classroom_roles() -> None:
+    states = get_default_student_agent_states()
+
+    assert [state.agent_type for state in states] == [
+        StudentAgentType.ATMOSPHERE_REGULATOR,
+        StudentAgentType.DEEP_THINKER,
+        StudentAgentType.NOTE_TAKER,
+        StudentAgentType.RESEARCHER,
+    ]
+    assert len({state.id for state in states}) == 4
+
+
 def test_finished_video_job_requires_result_id() -> None:
     with pytest.raises(ValidationError):
         VideoJob(id="job_001", content_id="content_001", status="finished", progress=1)
@@ -179,6 +222,7 @@ def test_plan_can_be_created_for_section_without_quiz() -> None:
     assert [action.type for action in plan.scenes[0].actions] == [
         "SHOW_PAGE",
         "EXPLAIN",
+        "SUMMARIZE",
         "END",
     ]
     repository.save_plan.assert_called_once_with(plan)

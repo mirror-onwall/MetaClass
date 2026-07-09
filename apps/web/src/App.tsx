@@ -4,7 +4,9 @@ import { api } from "./shared/api";
 import { formatBytes } from "./shared/format";
 import type {
   ClassroomSession,
+  DirectedAgentTurn,
   LearningContent,
+  LearningMode,
   Material,
   PageMetadata,
   TeachingAction,
@@ -20,6 +22,8 @@ function App() {
   const [content, setContent] = useState<LearningContent | null>(null);
   const [session, setSession] = useState<ClassroomSession | null>(null);
   const [action, setAction] = useState<TeachingAction | null>(null);
+  const [learningMode, setLearningMode] = useState<LearningMode>("lecture");
+  const [agentTurn, setAgentTurn] = useState<DirectedAgentTurn | null>(null);
   const [feedback, setFeedback] = useState("");
   const [question, setQuestion] = useState("");
   const [video, setVideo] = useState<VideoResult | null>(null);
@@ -66,6 +70,7 @@ function App() {
     setContent(null);
     setSession(null);
     setAction(null);
+    setAgentTurn(null);
     setFeedback("");
     setVideo(null);
     setError(null);
@@ -97,10 +102,11 @@ function App() {
 
   async function startClassroom() {
     if (!content) return;
-    const result = await run("正在布置课堂", () => api.createSession(content.id));
+    const result = await run("正在布置课堂", () => api.createSession(content.id, learningMode));
     if (result) {
       setSession(result);
       setAction(null);
+      setAgentTurn(null);
       setFeedback("课堂已就绪，点击“执行下一步”开始。");
     }
   }
@@ -111,7 +117,17 @@ function App() {
     if (!result) return;
     setSession(result.session);
     setAction(result.action);
+    setAgentTurn(null);
     setFeedback(result.status === "completed" ? "本次课堂已经完成。" : "");
+  }
+
+  async function nextAgentTurn() {
+    if (!session || session.mode !== "interactive") return;
+    const result = await run("LLM Controller 正在调度智能体", () => api.nextAgentTurn(session.id));
+    if (!result) return;
+    setAgentTurn(result);
+    const firstTurn = result.turns[0];
+    setFeedback(firstTurn ? firstTurn.speech : result.decision.reason);
   }
 
   async function answer(selectedIndex: number) {
@@ -119,6 +135,7 @@ function App() {
     const result = await run("Evaluator 正在评估", () => api.answer(session.id, selectedIndex));
     if (!result) return;
     setSession(result.session);
+    setAgentTurn(null);
     setFeedback(result.feedback ?? "");
     setAction(null);
   }
@@ -129,6 +146,7 @@ function App() {
     const result = await run("Teacher 正在回答", () => api.ask(session.id, question.trim()));
     if (!result) return;
     setSession(result.session);
+    setAgentTurn(null);
     setFeedback(result.feedback ?? "");
     setQuestion("");
   }
@@ -201,6 +219,26 @@ function App() {
 
           <section className="quick-actions">
             <div className="section-caption"><span>备课控制</span><small>ACTIONS</small></div>
+            <div className="mode-switch" aria-label="选择学习方式">
+              <button
+                className={learningMode === "lecture" ? "selected" : ""}
+                disabled={!!session}
+                onClick={() => setLearningMode("lecture")}
+              >
+                <span>A</span>
+                <b>连续讲解</b>
+                <small>老师按 PPT 一页页讲，不安排同学插嘴</small>
+              </button>
+              <button
+                className={learningMode === "interactive" ? "selected" : ""}
+                disabled={!!session}
+                onClick={() => setLearningMode("interactive")}
+              >
+                <span>B</span>
+                <b>互动课堂</b>
+                <small>允许 agent 同学提问、总结和插话</small>
+              </button>
+            </div>
             <button disabled={!pages.length || !!content || !!busy} onClick={buildContent}><span>01</span><b>{content ? "内容已构建" : "构建学习内容"}</b><i>↗</i></button>
             <button disabled={!content || !!session || !!busy} onClick={startClassroom}><span>02</span><b>{session ? "课堂进行中" : "创建互动课堂"}</b><i>↗</i></button>
             <button disabled={!content || !!video || !!busy} onClick={createVideo}><span>03</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
@@ -238,14 +276,35 @@ function App() {
           </div>
 
           <div className="teacher-desk">
-            <div className="desk-status"><span>TEACHER CONSOLE</span><b>{session?.status === "completed" ? "课堂已结束" : session ? "课堂进行中" : "等待课堂"}</b></div>
+            <div className="desk-status"><span>{session?.mode === "interactive" ? "AGENT CLASS" : "LECTURE MODE"}</span><b>{session?.status === "completed" ? "课堂已结束" : session ? "课堂进行中" : "等待课堂"}</b></div>
             <button className="next-button" disabled={!session || !!busy || session.waiting_for === "quiz_answer" || session.status === "completed"} onClick={nextAction}>执行下一步 <span>→</span></button>
+            {session?.mode === "interactive" && (
+              <button className="agent-button" disabled={!!busy || session.status === "completed"} onClick={nextAgentTurn}>
+                智能体下一轮 <span>✦</span>
+              </button>
+            )}
             <form onSubmit={ask}>
               <label htmlFor="student-question">学生提问</label>
               <input id="student-question" value={question} onChange={(event) => setQuestion(event.target.value)} disabled={!session} placeholder="输入关于当前内容的问题…" />
               <button disabled={!question.trim() || !session || !!busy}>发送</button>
             </form>
           </div>
+          {agentTurn && (
+            <div className="agent-turn-card">
+              <div className="agent-turn-head">
+                <span>LLM DIRECTOR</span>
+                <b>{agentTurn.decision.next_role.toUpperCase()}</b>
+              </div>
+              <p className="director-reason">{agentTurn.decision.reason}</p>
+              {agentTurn.turns.map((turn) => (
+                <article className={`agent-speech ${turn.role}`} key={`${turn.agent_id}-${turn.intent}`}>
+                  <span>{turn.role === "teacher" ? "Teacher" : turn.agent_id}</span>
+                  <p>{turn.speech}</p>
+                  {turn.actions.length > 0 && <small>{turn.actions.join(" · ")}</small>}
+                </article>
+              ))}
+            </div>
+          )}
           {feedback && <div className="teacher-response"><span>TEACHER</span><p>{feedback}</p><button onClick={() => setFeedback("")}>×</button></div>}
         </section>
 

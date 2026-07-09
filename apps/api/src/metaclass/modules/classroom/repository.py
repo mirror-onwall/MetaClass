@@ -51,10 +51,14 @@ class SqlAlchemyClassroomRepository:
                 ClassroomSessionRecord(
                     id=session_model.id,
                     plan_id=session_model.plan_id,
+                    mode=session_model.mode,
                     status=session_model.status,
                     scene_index=session_model.scene_index,
                     action_index=session_model.action_index,
                     waiting_for=session_model.waiting_for,
+                    student_states=[
+                        item.model_dump(mode="json") for item in session_model.student_states
+                    ],
                     evidence=[item.model_dump(mode="json") for item in session_model.evidence],
                     mastery=[item.model_dump(mode="json") for item in session_model.mastery],
                     events=[item.model_dump(mode="json") for item in session_model.events],
@@ -72,10 +76,12 @@ class SqlAlchemyClassroomRepository:
                 {
                     "id": record.id,
                     "plan_id": record.plan_id,
+                    "mode": record.mode or "lecture",
                     "status": record.status,
                     "scene_index": record.scene_index,
                     "action_index": record.action_index,
                     "waiting_for": record.waiting_for,
+                    "student_states": record.student_states or [],
                     "evidence": record.evidence,
                     "mastery": record.mastery,
                     "events": record.events,

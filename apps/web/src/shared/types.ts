@@ -48,6 +48,8 @@ export type LearningContent = {
   sections: LearningSection[];
 };
 
+export type LearningMode = "lecture" | "interactive";
+
 type ActionBase = { id: string; actor: "system" | "teacher" | "evaluator" };
 
 export type TeachingAction =
@@ -58,6 +60,10 @@ export type TeachingAction =
     })
   | (ActionBase & { type: "ASK_QUIZ"; payload: { quiz: QuizItem } })
   | (ActionBase & {
+      type: "PROBE";
+      payload: { question: string; target_knowledge_point: string; source_refs: SourceRef[] };
+    })
+  | (ActionBase & {
       type: "WAIT_STUDENT";
       payload: { prompt: string; expected_event: "quiz_answer" | "free_answer" };
     })
@@ -66,15 +72,44 @@ export type TeachingAction =
       type: "REMEDIATE";
       payload: { text: string; source_refs: SourceRef[] };
     })
+  | (ActionBase & {
+      type: "SUMMARIZE";
+      payload: { text: string; source_refs: SourceRef[] };
+    })
+  | (ActionBase & {
+      type: "REVIEW";
+      payload: { text: string; knowledge_points: string[]; source_refs: SourceRef[] };
+    })
   | (ActionBase & { type: "END"; payload: { summary: string } });
 
 export type Mastery = { knowledge_point: string; value: number | null; evidence_count: number };
 
 export type ClassroomSession = {
   id: string;
+  mode: LearningMode;
   status: "running" | "completed";
   waiting_for: "quiz_answer" | "free_answer" | null;
   mastery: Mastery[];
+};
+
+export type AgentTurn = {
+  agent_id: string;
+  role: "teacher" | "student" | "assistant" | "evaluator";
+  speech: string;
+  actions: string[];
+  intent: string;
+};
+
+export type ControllerDecision = {
+  next_role: "teacher" | "student" | "evaluator" | "end";
+  next_agent_id: string | null;
+  reason: string;
+  prompt: string;
+};
+
+export type DirectedAgentTurn = {
+  decision: ControllerDecision;
+  turns: AgentTurn[];
 };
 
 export type ControllerResult = {

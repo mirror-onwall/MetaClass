@@ -21,10 +21,12 @@ class ClassroomSessionRecord(Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     plan_id: Mapped[str] = mapped_column(ForeignKey("classroom_plans.id"), index=True)
+    mode: Mapped[str] = mapped_column(String(20), default="lecture")
     status: Mapped[str] = mapped_column(String(20), index=True)
     scene_index: Mapped[int] = mapped_column(Integer)
     action_index: Mapped[int] = mapped_column(Integer)
     waiting_for: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    student_states: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     mastery: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     events: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
