@@ -1,5 +1,6 @@
-import { type ChangeEvent, type CSSProperties, type DragEvent, type FormEvent, useMemo, useState } from "react";
+import { type ChangeEvent, type DragEvent, type FormEvent, useMemo, useState } from "react";
 import { ActionView } from "./features/classroom/ActionView";
+import { SlideNarrationPlayer } from "./features/video/SlideNarrationPlayer";
 import { api } from "./shared/api";
 import { formatBytes } from "./shared/format";
 import type {
@@ -215,16 +216,7 @@ function App() {
               {session ? (
                 <ActionView action={action} materialId={material?.id} onAnswer={answer} />
               ) : pages.length ? (
-                <div className="preview-wall">
-                  <div className="preview-copy">
-                    <small>COURSE MATERIAL READY</small>
-                    <h1>{content?.title ?? pages[0]?.title}</h1>
-                    <p>{content ? `${content.sections.length} 个教学章节已组织完毕，可以创建课堂。` : `${pages.length} 个页面已经解析，下一步构建统一学习内容。`}</p>
-                  </div>
-                  <div className="slide-stack">
-                    {pages.slice(0, 3).map((page, index) => <img style={{ "--index": index } as CSSProperties} key={page.id} src={api.pageImage(page.material_id, page.page_no)} alt={`第 ${page.page_no} 页`} />)}
-                  </div>
-                </div>
+                <SlideNarrationPlayer content={content} materialId={material?.id} pages={pages} />
               ) : (
                 <div className="empty-classroom">
                   <div className="room-emblem">M</div>
@@ -273,7 +265,10 @@ function App() {
           <section className={`video-status ${video ? "ready" : ""}`}>
             <span className="video-glyph">▶</span>
             <div><small>LECTURE REPLAY</small><b>{video ? "讲解视频已就绪" : "课后讲解视频"}</b><p>{video ? "MP4 与字幕已保存在本地" : "页面图片 + 测试音轨 + SRT 字幕"}</p></div>
-            {video && <a href={api.videoDownload(video.id)}>下载 MP4 ↗</a>}
+            {video && <>
+              <video controls src={api.videoDownload(video.id)} />
+              <a href={api.videoDownload(video.id)}>下载 MP4 ↗</a>
+            </>}
           </section>
         </aside>
       </main>
