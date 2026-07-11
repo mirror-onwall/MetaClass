@@ -2,6 +2,7 @@ from pathlib import Path
 from unittest.mock import Mock
 
 from metaclass.modules.content.schemas import LearningContent, LearningSection
+from metaclass.infrastructure.providers.learning import LLMLearningProvider
 from metaclass.modules.materials.schemas import SourceRef
 from metaclass.modules.materials.service import MaterialService
 from metaclass.modules.video.service import VideoService
@@ -55,3 +56,26 @@ def test_mineru_content_list_is_grouped_by_page(tmp_path: Path) -> None:
         1: "Introduction\n<table><tr><td>A</td></tr></table>",
         2: "E=mc^2",
     }
+
+
+def test_llm_learning_provider_parses_page_understanding() -> None:
+    llm = Mock()
+    llm.model = "test-model"
+    llm.complete_json.return_value = """
+    {
+      "summary": "Matrix multiplication combines rows and columns.",
+      "knowledge_points": ["matrix multiplication", "row by column"],
+      "teaching_focus": ["shape compatibility"],
+      "possible_questions": ["Why must dimensions match?"]
+    }
+    """
+
+    draft = LLMLearningProvider(llm).understand_page(
+        "Matrix Multiplication",
+        "Rows are multiplied by columns when dimensions match.",
+        1,
+    )
+
+    assert draft.summary == "Matrix multiplication combines rows and columns."
+    assert draft.knowledge_points == ["matrix multiplication", "row by column"]
+    llm.complete_json.assert_called_once()

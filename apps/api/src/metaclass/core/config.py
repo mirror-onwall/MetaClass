@@ -3,10 +3,17 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="METACLASS_", env_file=".env", extra="ignore")
+PROJECT_ROOT = Path(__file__).resolve().parents[5]
 
-    data_dir: Path = Path(__file__).resolve().parents[5] / "data"
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="METACLASS_",
+        env_file=PROJECT_ROOT / ".env",
+        extra="ignore",
+    )
+
+    data_dir: Path = PROJECT_ROOT / "data"
     database_url: str | None = None
     llm_provider: str = "fake"
     llm_base_url: str = "https://api.openai.com/v1"
