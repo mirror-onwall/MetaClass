@@ -121,6 +121,16 @@ export type ControllerResult = {
   session: ClassroomSession;
 };
 
+export type AutoClassroomStep = {
+  status: "action" | "agent_turn" | "quiz_answered" | "waiting" | "completed";
+  action: TeachingAction | null;
+  directed_turn: DirectedAgentTurn | null;
+  feedback?: string;
+  correct?: boolean;
+  source_refs: SourceRef[];
+  session: ClassroomSession;
+};
+
 export type VideoJob = {
   id: string;
   content_id: string;

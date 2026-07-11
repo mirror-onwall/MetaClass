@@ -1,4 +1,12 @@
-import { type ChangeEvent, type DragEvent, type FormEvent, useMemo, useState } from "react";
+import {
+  type ChangeEvent,
+  type DragEvent,
+  type FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ActionView } from "./features/classroom/ActionView";
 import { SlideNarrationPlayer } from "./features/video/SlideNarrationPlayer";
 import { api } from "./shared/api";
@@ -28,9 +36,11 @@ function App() {
   const [feedback, setFeedback] = useState("");
   const [question, setQuestion] = useState("");
   const [video, setVideo] = useState<VideoResult | null>(null);
+  const [autoPlaying, setAutoPlaying] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const autoStepInFlight = useRef(false);
 
   const activeStage = useMemo(() => {
     if (video) return 4;
@@ -39,6 +49,15 @@ function App() {
     if (pages.length) return 1;
     return 0;
   }, [content, pages.length, session, video]);
+
+  useEffect(() => {
+    if (!autoPlaying || !session || session.status === "completed") return;
+    const delay = action || agentTurn ? 2800 : 800;
+    const timer = window.setTimeout(() => {
+      void autoStep();
+    }, delay);
+    return () => window.clearTimeout(timer);
+  }, [autoPlaying, session, action, agentTurn]);
 
   async function run<T>(label: string, task: () => Promise<T>): Promise<T | undefined> {
     setBusy(label);
@@ -73,6 +92,7 @@ function App() {
     setAction(null);
     setAgentTurn(null);
     setFeedback("");
+    setAutoPlaying(false);
     setVideo(null);
     setError(null);
   }
@@ -108,7 +128,40 @@ function App() {
       setSession(result);
       setAction(null);
       setAgentTurn(null);
-      setFeedback("课堂已就绪，点击“执行下一步”开始。");
+      setAutoPlaying(true);
+      setFeedback("课堂已就绪，自动播放已开始。你可以随时输入问题打断。");
+    }
+  }
+
+  async function autoStep() {
+    if (!session || autoStepInFlight.current) return;
+    autoStepInFlight.current = true;
+    setError(null);
+    try {
+      const result = await api.autoStep(session.id);
+      setSession(result.session);
+      setAction((currentAction) => {
+        if (result.action) return result.action;
+        if (result.status === "waiting" && result.session.waiting_for === "quiz_answer") {
+          return currentAction;
+        }
+        return null;
+      });
+      setAgentTurn(result.directed_turn);
+      if (result.feedback) setFeedback(result.feedback);
+      if (result.status === "waiting" && result.session.waiting_for === "quiz_answer") {
+        setAutoPlaying(false);
+        setFeedback("请先完成当前小测，提交后课堂会继续。");
+      }
+      if (result.status === "completed") {
+        setAutoPlaying(false);
+        setFeedback(result.feedback ?? "本次课堂已经完成。");
+      }
+    } catch (caught) {
+      setAutoPlaying(false);
+      setError(caught instanceof Error ? caught.message : "自动课堂运行失败");
+    } finally {
+      autoStepInFlight.current = false;
     }
   }
 
@@ -137,8 +190,8 @@ function App() {
     if (!result) return;
     setSession(result.session);
     setAgentTurn(null);
+    setAutoPlaying(result.session.status !== "completed");
     setFeedback(result.feedback ?? "");
-    setAction(null);
   }
 
   async function ask(event: FormEvent) {
@@ -269,9 +322,16 @@ function App() {
 
           <div className="teacher-desk">
             <div className="desk-status"><span>{session?.mode === "interactive" ? "AGENT CLASS" : "LECTURE MODE"}</span><b>{session?.status === "completed" ? "课堂已结束" : session ? "课堂进行中" : "等待课堂"}</b></div>
-            <button className="next-button" disabled={!session || !!busy || session.waiting_for === "quiz_answer" || session.status === "completed"} onClick={nextAction}>执行下一步 <span>→</span></button>
+            <button
+              className="next-button"
+              disabled={!session || !!busy || session.status === "completed"}
+              onClick={() => setAutoPlaying((value) => !value)}
+            >
+              {autoPlaying ? "暂停自动课堂" : "开始自动课堂"} <span>{autoPlaying ? "Ⅱ" : "▶"}</span>
+            </button>
+            <button className="next-button secondary" disabled={!session || !!busy || autoPlaying || session.waiting_for === "quiz_answer" || session.status === "completed"} onClick={nextAction}>单步推进 <span>→</span></button>
             {session?.mode === "interactive" && (
-              <button className="agent-button" disabled={!!busy || session.status === "completed"} onClick={nextAgentTurn}>
+              <button className="agent-button" disabled={!!busy || autoPlaying || session.status === "completed"} onClick={nextAgentTurn}>
                 智能体下一轮 <span>✦</span>
               </button>
             )}

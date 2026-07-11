@@ -233,6 +233,48 @@ def test_lecture_mode_agent_turn_keeps_teacher_in_control(client: TestClient) ->
     assert directed.json()["turns"][0]["role"] == "teacher"
 
 
+def test_auto_classroom_waits_for_user_quiz_after_agent_turn(client: TestClient) -> None:
+    processed = client.post(
+        "/api/v1/materials/process",
+        files={"file": ("lesson.pdf", make_pdf(), "application/pdf")},
+    )
+    material_id = processed.json()["material"]["id"]
+    content = client.post(f"/api/v1/materials/{material_id}/learning-content")
+    plan = client.post(f"/api/v1/learning-contents/{content.json()['id']}/classroom-plans")
+    session = client.post(
+        f"/api/v1/classroom-plans/{plan.json()['id']}/sessions",
+        json={"mode": "interactive"},
+    )
+    session_id = session.json()["id"]
+
+    first = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+    second = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+    third = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+    fourth = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+    fifth = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+    sixth = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+    seventh = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+
+    assert first.json()["action"]["type"] == "SHOW_PAGE"
+    assert second.json()["action"]["type"] == "EXPLAIN"
+    assert third.json()["status"] == "agent_turn"
+    assert third.json()["directed_turn"]["turns"][0]["role"] == "teacher"
+    assert "PROBE" in third.json()["directed_turn"]["turns"][0]["actions"]
+    assert fourth.json()["directed_turn"]["turns"][0]["role"] == "student"
+    assert fifth.json()["directed_turn"]["turns"][0]["role"] == "teacher"
+    assert sixth.json()["action"]["type"] == "ASK_QUIZ"
+    assert seventh.json()["status"] == "waiting"
+    assert seventh.json()["session"]["waiting_for"] == "quiz_answer"
+    assert seventh.json()["session"]["mastery"] == []
+
+    answer = client.post(
+        f"/api/v1/classroom-sessions/{session_id}/answers", json={"selected_index": 0}
+    )
+    assert answer.json()["correct"] is True
+    assert answer.json()["session"]["waiting_for"] is None
+    assert answer.json()["session"]["mastery"][0]["value"] == 1.0
+
+
 def test_cannot_answer_before_quiz(client: TestClient) -> None:
     session_id = create_classroom_session(client)
 
