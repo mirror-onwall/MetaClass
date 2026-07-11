@@ -10,6 +10,7 @@ from metaclass.modules.classroom.agent_schemas import (
     StudentAgentType,
     get_default_student_agent_states,
     get_default_student_agent_profiles,
+    get_student_agent_states,
 )
 from metaclass.modules.classroom.schemas import ClassroomEvent, TeachingAction
 from metaclass.modules.classroom.service import ClassroomService
@@ -166,6 +167,18 @@ def test_default_student_agent_states_start_with_four_classroom_roles() -> None:
         StudentAgentType.RESEARCHER,
     ]
     assert len({state.id for state in states}) == 4
+
+
+def test_selected_student_agent_states_keep_the_requested_roles() -> None:
+    states = get_student_agent_states(
+        [StudentAgentType.NOTE_TAKER, StudentAgentType.RESEARCHER]
+    )
+
+    assert [state.agent_type for state in states] == [
+        StudentAgentType.NOTE_TAKER,
+        StudentAgentType.RESEARCHER,
+    ]
+    assert [state.id for state in states] == ["student_agent_001", "student_agent_002"]
 
 
 def test_finished_video_job_requires_result_id() -> None:

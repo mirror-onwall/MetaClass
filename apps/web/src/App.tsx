@@ -9,6 +9,10 @@ import {
 } from "react";
 import { ActionView } from "./features/classroom/ActionView";
 import { SlideNarrationPlayer } from "./features/video/SlideNarrationPlayer";
+import atmosphereAvatar from "./assets/agents/atmosphere-regulator.png";
+import deepThinkerAvatar from "./assets/agents/deep-thinker.png";
+import noteTakerAvatar from "./assets/agents/note-taker.png";
+import researcherAvatar from "./assets/agents/researcher.png";
 import { api } from "./shared/api";
 import { formatBytes } from "./shared/format";
 import type {
@@ -18,11 +22,46 @@ import type {
   LearningMode,
   Material,
   PageMetadata,
+  StudentAgentType,
   TeachingAction,
   VideoResult,
 } from "./shared/types";
 
 const stages = ["导入材料", "页面解析", "组织内容", "互动课堂", "讲解视频"];
+
+const studentAgentChoices: Array<{
+  type: StudentAgentType;
+  name: string;
+  description: string;
+  avatar: string;
+}> = [
+  {
+    type: "ATMOSPHERE_REGULATOR",
+    name: "课堂气氛调节者",
+    description: "活跃氛围，用类比打开话题",
+    avatar: atmosphereAvatar,
+  },
+  {
+    type: "DEEP_THINKER",
+    name: "深度思考者",
+    description: "追问原因、边界与反例",
+    avatar: deepThinkerAvatar,
+  },
+  {
+    type: "NOTE_TAKER",
+    name: "课堂笔记员",
+    description: "提炼重点，整理可复习笔记",
+    avatar: noteTakerAvatar,
+  },
+  {
+    type: "RESEARCHER",
+    name: "研究型同学",
+    description: "连接应用场景与研究方法",
+    avatar: researcherAvatar,
+  },
+];
+
+const defaultStudentAgentTypes: StudentAgentType[] = ["DEEP_THINKER", "NOTE_TAKER"];
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
@@ -32,6 +71,9 @@ function App() {
   const [session, setSession] = useState<ClassroomSession | null>(null);
   const [action, setAction] = useState<TeachingAction | null>(null);
   const [learningMode, setLearningMode] = useState<LearningMode>("lecture");
+  const [studentAgentTypes, setStudentAgentTypes] = useState<StudentAgentType[]>(
+    defaultStudentAgentTypes,
+  );
   const [agentTurn, setAgentTurn] = useState<DirectedAgentTurn | null>(null);
   const [feedback, setFeedback] = useState("");
   const [question, setQuestion] = useState("");
@@ -123,7 +165,13 @@ function App() {
 
   async function startClassroom() {
     if (!content) return;
-    const result = await run("正在布置课堂", () => api.createSession(content.id, learningMode));
+    const result = await run("正在布置课堂", () =>
+      api.createSession(
+        content.id,
+        learningMode,
+        learningMode === "interactive" ? studentAgentTypes : [],
+      ),
+    );
     if (result) {
       setSession(result);
       setAction(null);
@@ -131,6 +179,12 @@ function App() {
       setAutoPlaying(true);
       setFeedback("课堂已就绪，自动播放已开始。你可以随时输入问题打断。");
     }
+  }
+
+  function toggleStudentAgent(type: StudentAgentType) {
+    setStudentAgentTypes((current) =>
+      current.includes(type) ? current.filter((item) => item !== type) : [...current, type],
+    );
   }
 
   async function autoStep() {
@@ -293,8 +347,35 @@ function App() {
                 <small>允许 agent 同学提问、总结和插话</small>
               </button>
             </div>
+            {learningMode === "interactive" && (
+              <div className="student-agent-selector">
+                <div className="section-caption">
+                  <span>课堂同学</span>
+                  <small>SELECTED {studentAgentTypes.length} / 4</small>
+                </div>
+                <div className="student-agent-options">
+                  {studentAgentChoices.map((agent) => {
+                    const selected = studentAgentTypes.includes(agent.type);
+                    return (
+                      <button
+                        type="button"
+                        className={selected ? "selected" : ""}
+                        key={agent.type}
+                        disabled={!!session}
+                        onClick={() => toggleStudentAgent(agent.type)}
+                        aria-pressed={selected}
+                      >
+                        <img src={agent.avatar} alt="" />
+                        <span><b>{agent.name}</b><small>{agent.description}</small></span>
+                        <i>{selected ? "✓" : "+"}</i>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             <button disabled={!pages.length || !!content || !!busy} onClick={buildContent}><span>01</span><b>{content ? "内容已构建" : "构建学习内容"}</b><i>↗</i></button>
-            <button disabled={!content || !!session || !!busy} onClick={startClassroom}><span>02</span><b>{session ? "课堂进行中" : "创建互动课堂"}</b><i>↗</i></button>
+            <button disabled={!content || !!session || !!busy || (learningMode === "interactive" && !studentAgentTypes.length)} onClick={startClassroom}><span>02</span><b>{session ? "课堂进行中" : "创建互动课堂"}</b><i>↗</i></button>
             <button disabled={!content || !!video || !!busy} onClick={createVideo}><span>03</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
           </section>
         </aside>
@@ -369,6 +450,24 @@ function App() {
               <ol>{content.sections.map((section, index) => <li key={section.id}><span>{String(index + 1).padStart(2, "0")}</span><div><b>{section.title}</b><small>来源 · 第 {section.source_refs[0]?.page_no ?? "?"} 页</small></div></li>)}</ol>
             </> : <div className="rail-empty"><span>⌁</span><p>构建 LearningContent 后，这里会出现完整课表。</p></div>}
           </section>
+
+          {session?.mode === "interactive" && (
+            <section className="classroom-roster">
+              <div className="section-caption"><span>本堂同学</span><small>{session.student_states.length} AGENTS</small></div>
+              <div className="classroom-roster-list">
+                {session.student_states.map((student) => {
+                  const agent = studentAgentChoices.find((item) => item.type === student.agent_type);
+                  return (
+                    <div className="classroom-roster-item" key={student.id}>
+                      {agent && <img src={agent.avatar} alt="" />}
+                      <span><b>{student.display_name}</b><small>{agent?.description ?? "课堂学生智能体"}</small></span>
+                      <i>{student.last_intent ? "·" : "○"}</i>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
 
           <section className="mastery-panel">
             <div className="section-caption"><span>课堂观察</span><small>ESTIMATED</small></div>

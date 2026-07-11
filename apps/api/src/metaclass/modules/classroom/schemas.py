@@ -10,6 +10,7 @@ from metaclass.modules.classroom.agent_schemas import (
     AgentTurn,
     DirectedAgentTurn,
     StudentAgentState,
+    StudentAgentType,
 )
 from metaclass.modules.content.schemas import QuizItem
 from metaclass.modules.materials.schemas import SourceRef
@@ -288,6 +289,7 @@ class QuestionRequest(SchemaModel):
 
 class CreateClassroomSessionRequest(SchemaModel):
     mode: LearningMode = LearningMode.LECTURE
+    student_agent_types: list[StudentAgentType] | None = Field(default=None, max_length=4)
 
 
 class AgentTurnRequest(SchemaModel):

@@ -5,6 +5,7 @@ from metaclass.modules.classroom.agent_schemas import (
     StudentAgentType,
     get_default_student_agent_profiles,
     get_default_student_agent_states,
+    get_student_agent_states,
 )
 from metaclass.modules.classroom.agents.prompts import (
     build_student_messages,
@@ -21,6 +22,11 @@ class StudentRosterAgent:
 
     def create_default_states(self) -> list[StudentAgentState]:
         return get_default_student_agent_states()
+
+    def create_states(
+        self, selected_types: list[StudentAgentType] | None = None
+    ) -> list[StudentAgentState]:
+        return get_student_agent_states(selected_types)
 
     def generate_turn(
         self,

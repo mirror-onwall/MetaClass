@@ -7,6 +7,7 @@ import type {
   LearningMode,
   Material,
   PageMetadata,
+  StudentAgentType,
   VideoJob,
   VideoResult,
 } from "./types";
@@ -50,7 +51,11 @@ export const api = {
       method: "POST",
     });
   },
-  async createSession(contentId: string, mode: LearningMode) {
+  async createSession(
+    contentId: string,
+    mode: LearningMode,
+    studentAgentTypes?: StudentAgentType[],
+  ) {
     const plan = await request<{ id: string }>(
       `/api/v1/learning-contents/${contentId}/classroom-plans`,
       { method: "POST" },
@@ -58,7 +63,7 @@ export const api = {
     return request<ClassroomSession>(`/api/v1/classroom-plans/${plan.id}/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode }),
+      body: JSON.stringify({ mode, student_agent_types: studentAgentTypes }),
     });
   },
   nextAgentTurn(sessionId: string) {

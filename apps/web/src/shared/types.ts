@@ -50,6 +50,27 @@ export type LearningContent = {
 
 export type LearningMode = "lecture" | "interactive";
 
+export type StudentAgentType =
+  | "ATMOSPHERE_REGULATOR"
+  | "DEEP_THINKER"
+  | "NOTE_TAKER"
+  | "RESEARCHER"
+  | "FOUNDATION_WEAK"
+  | "SILENT_OBSERVER"
+  | "CONCEPT_CONFUSED"
+  | "PRACTICAL_APPLIER";
+
+export type StudentAgentState = {
+  id: string;
+  profile_id: string;
+  display_name: string;
+  agent_type: StudentAgentType;
+  energy: number;
+  pressure: number;
+  engagement: number;
+  last_intent?: string;
+};
+
 type ActionBase = { id: string; actor: "system" | "teacher" | "evaluator" };
 
 export type TeachingAction =
@@ -89,6 +110,7 @@ export type ClassroomSession = {
   mode: LearningMode;
   status: "running" | "completed";
   waiting_for: "quiz_answer" | "free_answer" | null;
+  student_states: StudentAgentState[];
   mastery: Mastery[];
 };
 
