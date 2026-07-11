@@ -3,6 +3,7 @@ from unittest.mock import Mock
 
 from metaclass.modules.content.schemas import LearningContent, LearningSection
 from metaclass.modules.materials.schemas import SourceRef
+from metaclass.modules.materials.service import MaterialService
 from metaclass.modules.video.service import VideoService
 
 
@@ -38,3 +39,19 @@ def test_video_generation_failure_is_persisted_as_failed_job(tmp_path: Path) -> 
     assert job.error == "TTS unavailable"
     assert repository.save_job.call_count == 3
     repository.save_result.assert_not_called()
+
+
+def test_mineru_content_list_is_grouped_by_page(tmp_path: Path) -> None:
+    service = MaterialService(tmp_path, Mock())
+    content_list = [
+        {"type": "text", "page_idx": 0, "text": "Introduction"},
+        {"type": "table", "page_idx": 0, "html": "<table><tr><td>A</td></tr></table>"},
+        {"type": "equation", "page_idx": 1, "latex": "E=mc^2"},
+    ]
+
+    pages = service._mineru_text_by_page(content_list)
+
+    assert pages == {
+        1: "Introduction\n<table><tr><td>A</td></tr></table>",
+        2: "E=mc^2",
+    }

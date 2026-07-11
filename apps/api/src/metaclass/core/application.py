@@ -53,7 +53,13 @@ def build_services(
         model=settings.llm_model,
         timeout_seconds=settings.llm_timeout_seconds,
     )
-    materials = MaterialService(data_dir, material_repository)
+    materials = MaterialService(
+        data_dir,
+        material_repository,
+        parser_backend=settings.material_parser,
+        mineru_command=settings.mineru_command,
+        mineru_timeout_seconds=settings.mineru_timeout_seconds,
+    )
     contents = ContentService(content_repository, materials, FakeLearningProvider())
     classrooms = ClassroomService(
         classroom_repository,
