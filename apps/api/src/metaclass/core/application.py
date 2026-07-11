@@ -57,7 +57,13 @@ def build_services(
         temperature=llm_config.temperature,
         max_tokens=llm_config.max_tokens,
     )
-    materials = MaterialService(data_dir, material_repository)
+    materials = MaterialService(
+        data_dir,
+        material_repository,
+        parser_backend=settings.material_parser,
+        mineru_command=settings.mineru_command,
+        mineru_timeout_seconds=settings.mineru_timeout_seconds,
+    )
     contents = ContentService(content_repository, materials, FakeLearningProvider())
     classrooms = ClassroomService(
         classroom_repository,

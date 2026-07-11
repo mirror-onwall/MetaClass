@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     llm_api_key: str | None = None
     llm_model: str = "gpt-4o-mini"
     llm_timeout_seconds: float = 60.0
+    material_parser: str = "auto"
+    mineru_command: str = "mineru"
+    mineru_timeout_seconds: float = 180.0
     llm_temperature: float = 0.2
     llm_max_tokens: int = 8192
     embedding_provider: str = "local"
