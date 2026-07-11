@@ -109,6 +109,22 @@ class TeacherAgent:
 
     def generate_turn(self, classroom_state: ClassroomState, topic: str) -> AgentTurn:
         if not self.llm:
+            if "学生刚刚说" in topic:
+                return AgentTurn(
+                    agent_id="teacher",
+                    role="teacher",
+                    speech="这个问题提得很好。我们可以先抓住材料里的关键点，再用当前页的例子把它落回主线。",
+                    actions=[],
+                    intent="fake_teacher_reply_to_student",
+                )
+            if "开放式短问题" in topic:
+                return AgentTurn(
+                    agent_id="teacher",
+                    role="teacher",
+                    speech="在进入小测前，我先问一个问题：你能用自己的话说说这一页最核心的关系是什么吗？",
+                    actions=["PROBE"],
+                    intent="fake_teacher_probe_before_quiz",
+                )
             return AgentTurn(
                 agent_id="teacher",
                 role="teacher",

@@ -1,5 +1,6 @@
 import type {
   ClassroomSession,
+  AutoClassroomStep,
   ControllerResult,
   DirectedAgentTurn,
   LearningContent,
@@ -67,6 +68,11 @@ export const api = {
   },
   next(sessionId: string) {
     return request<ControllerResult>(`/api/v1/classroom-sessions/${sessionId}/next`, {
+      method: "POST",
+    });
+  },
+  autoStep(sessionId: string) {
+    return request<AutoClassroomStep>(`/api/v1/classroom-sessions/${sessionId}/auto-step`, {
       method: "POST",
     });
   },

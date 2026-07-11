@@ -4,7 +4,7 @@ from fastapi import HTTPException
 
 from metaclass.core.schemas import utc_now
 from metaclass.modules.assessment.service import estimate_mastery
-from metaclass.modules.classroom.agent_schemas import AgentTurn, DirectedAgentTurn
+from metaclass.modules.classroom.agent_schemas import AgentTurn, ControllerDecision, DirectedAgentTurn
 from metaclass.modules.classroom.agents import EvaluatorAgent, StudentRosterAgent, TeacherAgent
 from metaclass.modules.classroom.controller import ClassroomController
 from metaclass.modules.classroom.schemas import (
@@ -14,6 +14,7 @@ from metaclass.modules.classroom.schemas import (
     ActionExecutedPayload,
     ActionType,
     AskQuizAction,
+    AutoClassroomStep,
     ClassroomPlan,
     ClassroomSession,
     ClassroomState,
@@ -119,6 +120,39 @@ class ClassroomService:
         self._save_session(session)
         return ControllerResult(status="action", action=action, session=session)
 
+    def auto_step(self, session_id: str) -> AutoClassroomStep:
+        """Advance one natural classroom beat.
+
+        This is intentionally one step, not an endless background loop. The web
+        client can poll it for autoplay today, and the same method can power an
+        SSE/WebSocket stream later.
+        """
+        session = self.get_session(session_id)
+        if session.status == "completed":
+            return AutoClassroomStep(status="completed", session=session)
+
+        if session.waiting_for:
+            return AutoClassroomStep(
+                status="waiting",
+                feedback="等待用户完成当前小测。",
+                session=session,
+            )
+
+        if session.mode == LearningMode.INTERACTIVE:
+            directed_step = self._maybe_generate_auto_dialog_turn(session)
+            if directed_step:
+                return directed_step
+
+        result = self.next(session.id)
+        return AutoClassroomStep(
+            status=result.status if result.status != "evaluated" else "quiz_answered",
+            action=result.action,
+            feedback=result.feedback,
+            correct=result.correct,
+            source_refs=result.source_refs,
+            session=result.session,
+        )
+
     def answer(self, session_id: str, selected_index: int) -> ControllerResult:
         session = self.get_session(session_id)
         if session.waiting_for != "quiz_answer":
@@ -207,8 +241,13 @@ class ClassroomService:
 
     def generate_next_agent_turn(self, session_id: str) -> DirectedAgentTurn:
         session = self.get_session(session_id)
+        return self._generate_next_agent_turn_for_session(session)
+
+    def _generate_next_agent_turn_for_session(
+        self, session: ClassroomSession, decision=None
+    ) -> DirectedAgentTurn:
         state = self._build_state(session)
-        decision = self.controller.decide(state)
+        decision = decision or self.controller.decide(state)
         if decision.next_role == "end":
             return DirectedAgentTurn(decision=decision, turns=[])
         if decision.next_role == "teacher":
@@ -248,6 +287,140 @@ class ClassroomService:
         )
         self._record_agent_turns(session, result.turns)
         return result
+
+    def _maybe_generate_auto_dialog_turn(
+        self, session: ClassroomSession
+    ) -> AutoClassroomStep | None:
+        follow_up = self._continue_pending_dialog(session)
+        if follow_up:
+            return follow_up
+
+        if session.events and session.events[-1].type == "AGENT_TURN":
+            return None
+
+        state = self._build_state(session)
+        if state.current_action_type == ActionType.ASK_QUIZ:
+            teacher_turn = self.teacher.generate_turn(
+                state,
+                (
+                    "正式小测开始前，先向一位同学提出一个开放式短问题，"
+                    "帮助大家说出自己的理解。不要直接给出小测答案。"
+                ),
+            )
+            teacher_turn.actions = ["PROBE"]
+            teacher_turn.intent = "teacher_probe_before_quiz"
+            directed = DirectedAgentTurn(
+                decision=ControllerDecision(
+                    next_role="teacher",
+                    next_agent_id="teacher",
+                    reason="进入正式小测前，老师先发起一个开放提问。",
+                    prompt="请老师先提出一个开放式理解检查问题。",
+                ),
+                turns=[teacher_turn],
+            )
+            self._record_agent_turns(session, directed.turns)
+            return AutoClassroomStep(
+                status="agent_turn",
+                directed_turn=directed,
+                feedback=teacher_turn.speech,
+                session=self.get_session(session.id),
+            )
+
+        state = self._build_state(session)
+        decision = self.controller.decide(state)
+        if decision.next_role == "end":
+            session.status = "completed"
+            self._save_session(session)
+            return AutoClassroomStep(
+                status="completed",
+                directed_turn=DirectedAgentTurn(decision=decision, turns=[]),
+                session=session,
+            )
+        if decision.next_role not in {"student", "evaluator"}:
+            return None
+
+        directed = self._generate_next_agent_turn_for_session(session, decision)
+        return AutoClassroomStep(
+            status="agent_turn",
+            directed_turn=directed,
+            feedback=directed.turns[0].speech if directed.turns else decision.reason,
+            session=self.get_session(session.id),
+        )
+
+    def _continue_pending_dialog(self, session: ClassroomSession) -> AutoClassroomStep | None:
+        last_turn = self._last_agent_turn(session)
+        if not last_turn:
+            return None
+
+        state = self._build_state(session)
+        if last_turn.role == "teacher" and "PROBE" in last_turn.actions:
+            student = self._select_dialog_student(state)
+            if not student:
+                return None
+            student_turn = self.student_roster.generate_turn(
+                student,
+                state,
+                f"老师刚刚问：{last_turn.speech}。请你像课堂学生一样简短回答，可以有一点不确定。",
+            )
+            student_turn.intent = "student_answer_teacher_probe"
+            directed = DirectedAgentTurn(
+                decision=ControllerDecision(
+                    next_role="student",
+                    next_agent_id=student.id,
+                    reason="老师发起了开放提问，需要学生智能体先回应。",
+                    prompt="请学生回答老师的开放问题。",
+                ),
+                turns=[student_turn],
+            )
+            self._record_agent_turns(session, directed.turns)
+            return AutoClassroomStep(
+                status="agent_turn",
+                directed_turn=directed,
+                feedback=student_turn.speech,
+                session=self.get_session(session.id),
+            )
+
+        if last_turn.role == "student":
+            teacher_turn = self.teacher.generate_turn(
+                state,
+                (
+                    f"学生刚刚说：{last_turn.speech}。请老师先自然回应这位学生，"
+                    "如果是问题就回答，如果是回答就做简短反馈，然后把课堂拉回主线。"
+                ),
+            )
+            teacher_turn.actions = []
+            teacher_turn.intent = "teacher_reply_to_student"
+            directed = DirectedAgentTurn(
+                decision=ControllerDecision(
+                    next_role="teacher",
+                    next_agent_id="teacher",
+                    reason="学生刚刚发言，老师需要回应后再继续课程。",
+                    prompt="请老师回应学生发言并回到主线。",
+                ),
+                turns=[teacher_turn],
+            )
+            self._record_agent_turns(session, directed.turns)
+            return AutoClassroomStep(
+                status="agent_turn",
+                directed_turn=directed,
+                feedback=teacher_turn.speech,
+                session=self.get_session(session.id),
+            )
+
+        return None
+
+    @staticmethod
+    def _last_agent_turn(session: ClassroomSession) -> AgentTurn | None:
+        if not session.events or session.events[-1].type != "AGENT_TURN":
+            return None
+        return session.events[-1].payload.turn
+
+    @staticmethod
+    def _select_dialog_student(state: ClassroomState):
+        return next(
+            (student for student in state.students if student.id == "student_agent_002"),
+            state.students[0] if state.students else None,
+        )
 
     @staticmethod
     def _normalize_cursor(session: ClassroomSession, plan: ClassroomPlan) -> None:

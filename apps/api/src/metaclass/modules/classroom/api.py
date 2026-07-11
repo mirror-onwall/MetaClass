@@ -4,6 +4,7 @@ from metaclass.modules.classroom.agent_schemas import AgentTurn, DirectedAgentTu
 from metaclass.modules.classroom.schemas import (
     AgentTurnRequest,
     AnswerRequest,
+    AutoClassroomStep,
     ClassroomPlan,
     ClassroomSession,
     ClassroomState,
@@ -56,6 +57,13 @@ def create_router(classrooms: ClassroomService) -> APIRouter:
     )
     async def next_action(session_id: str) -> ControllerResult:
         return classrooms.next(session_id)
+
+    @router.post(
+        "/classroom-sessions/{session_id}/auto-step",
+        response_model=AutoClassroomStep,
+    )
+    async def auto_step(session_id: str) -> AutoClassroomStep:
+        return classrooms.auto_step(session_id)
 
     @router.post(
         "/classroom-sessions/{session_id}/answers",

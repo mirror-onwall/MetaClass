@@ -6,7 +6,11 @@ from pydantic import Field
 
 from metaclass.core.schemas import SchemaModel, utc_now
 from metaclass.modules.assessment.schemas import Evidence, MasteryEstimate
-from metaclass.modules.classroom.agent_schemas import AgentTurn, StudentAgentState
+from metaclass.modules.classroom.agent_schemas import (
+    AgentTurn,
+    DirectedAgentTurn,
+    StudentAgentState,
+)
 from metaclass.modules.content.schemas import QuizItem
 from metaclass.modules.materials.schemas import SourceRef
 
@@ -293,6 +297,22 @@ class AgentTurnRequest(SchemaModel):
 class ControllerResult(SchemaModel):
     status: Literal["action", "waiting", "completed", "evaluated", "answered"]
     action: TeachingAction | None = None
+    feedback: str | None = None
+    correct: bool | None = None
+    source_refs: list[SourceRef] = Field(default_factory=list)
+    session: ClassroomSession
+
+
+class AutoClassroomStep(SchemaModel):
+    status: Literal[
+        "action",
+        "agent_turn",
+        "quiz_answered",
+        "waiting",
+        "completed",
+    ]
+    action: TeachingAction | None = None
+    directed_turn: DirectedAgentTurn | None = None
     feedback: str | None = None
     correct: bool | None = None
     source_refs: list[SourceRef] = Field(default_factory=list)
