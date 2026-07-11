@@ -120,19 +120,25 @@ class OpenAICompatibleLLMProvider:
         api_key: str,
         model: str,
         timeout_seconds: float = 60.0,
+        default_temperature: float = 0.2,
+        max_tokens: int | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
         self.timeout_seconds = timeout_seconds
+        self.default_temperature = default_temperature
+        self.max_tokens = max_tokens
 
     def complete_json(self, messages: list[LLMMessage], *, temperature: float = 0.2) -> str:
         payload = {
             "model": self.model,
             "messages": [message.__dict__ for message in messages],
-            "temperature": temperature,
+            "temperature": temperature if temperature is not None else self.default_temperature,
             "response_format": {"type": "json_object"},
         }
+        if self.max_tokens:
+            payload["max_tokens"] = self.max_tokens
         req = request.Request(
             f"{self.base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
@@ -164,6 +170,8 @@ def build_llm_provider(
     api_key: str | None,
     model: str,
     timeout_seconds: float,
+    temperature: float = 0.2,
+    max_tokens: int | None = None,
 ) -> LLMProvider:
     normalized = provider.strip().lower()
     if normalized in {"", "fake", "none"}:
@@ -178,5 +186,7 @@ def build_llm_provider(
             api_key=api_key,
             model=model,
             timeout_seconds=timeout_seconds,
+            default_temperature=temperature,
+            max_tokens=max_tokens,
         )
     raise RuntimeError(f"Unsupported METACLASS_LLM_PROVIDER: {provider}")
