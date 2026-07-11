@@ -31,6 +31,7 @@ def build_services(
     database_url: str | None = None,
     *,
     create_schema: bool = True,
+    force_fake_llm: bool = False,
 ) -> ApplicationServices:
     """Compose the modular monolith in one explicit place."""
     database = (
@@ -48,7 +49,7 @@ def build_services(
     video_repository = SqlAlchemyVideoRepository(database)
     llm_config = get_llm_runtime_config()
     llm = build_llm_provider(
-        provider=llm_config.provider,
+        provider="fake" if force_fake_llm else llm_config.provider,
         base_url=llm_config.base_url,
         api_key=llm_config.api_key,
         model=llm_config.model,

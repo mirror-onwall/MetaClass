@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+import ssl
 from dataclasses import dataclass
 from typing import Literal, Protocol
 from urllib import error, request
+
+import certifi
 
 
 LLMRole = Literal["system", "user", "assistant"]
@@ -129,6 +132,7 @@ class OpenAICompatibleLLMProvider:
         self.timeout_seconds = timeout_seconds
         self.default_temperature = default_temperature
         self.max_tokens = max_tokens
+        self.ssl_context = ssl.create_default_context(cafile=certifi.where())
 
     def complete_json(self, messages: list[LLMMessage], *, temperature: float = 0.2) -> str:
         payload = {
@@ -149,7 +153,9 @@ class OpenAICompatibleLLMProvider:
             method="POST",
         )
         try:
-            with request.urlopen(req, timeout=self.timeout_seconds) as response:
+            with request.urlopen(
+                req, timeout=self.timeout_seconds, context=self.ssl_context
+            ) as response:
                 body = json.loads(response.read().decode("utf-8"))
         except error.HTTPError as exc:
             detail = exc.read().decode("utf-8", errors="replace")
