@@ -4,7 +4,12 @@ from fastapi import HTTPException
 
 from metaclass.core.schemas import utc_now
 from metaclass.modules.assessment.service import estimate_mastery
-from metaclass.modules.classroom.agent_schemas import AgentTurn, ControllerDecision, DirectedAgentTurn
+from metaclass.modules.classroom.agent_schemas import (
+    AgentTurn,
+    ControllerDecision,
+    DirectedAgentTurn,
+    StudentAgentType,
+)
 from metaclass.modules.classroom.agents import EvaluatorAgent, StudentRosterAgent, TeacherAgent
 from metaclass.modules.classroom.controller import ClassroomController
 from metaclass.modules.classroom.schemas import (
@@ -68,13 +73,14 @@ class ClassroomService:
         self,
         plan_id: str,
         mode: LearningMode = LearningMode.LECTURE,
+        student_agent_types: list[StudentAgentType] | None = None,
     ) -> ClassroomSession:
         self.get_plan(plan_id)
         session = ClassroomSession(
             id=f"session_{uuid4().hex[:12]}",
             plan_id=plan_id,
             mode=mode,
-            student_states=self.student_roster.create_default_states(),
+            student_states=self.student_roster.create_states(student_agent_types),
         )
         self._save_session(session)
         return session

@@ -41,7 +41,8 @@ def create_router(classrooms: ClassroomService) -> APIRouter:
         request: CreateClassroomSessionRequest | None = None,
     ) -> ClassroomSession:
         mode = request.mode if request else LearningMode.LECTURE
-        return classrooms.create_session(plan_id, mode)
+        student_agent_types = request.student_agent_types if request else None
+        return classrooms.create_session(plan_id, mode, student_agent_types)
 
     @router.get("/classroom-sessions/{session_id}", response_model=ClassroomSession)
     async def get_session(session_id: str) -> ClassroomSession:

@@ -10,8 +10,13 @@ from metaclass.modules.classroom.agent_schemas import (
     StudentAgentType,
     get_default_student_agent_states,
     get_default_student_agent_profiles,
+    get_student_agent_states,
 )
-from metaclass.modules.classroom.schemas import ClassroomEvent, TeachingAction
+from metaclass.modules.classroom.schemas import (
+    ClassroomEvent,
+    CreateClassroomSessionRequest,
+    TeachingAction,
+)
 from metaclass.modules.classroom.service import ClassroomService
 from metaclass.modules.content.schemas import (
     LearningContent,
@@ -166,6 +171,47 @@ def test_default_student_agent_states_start_with_four_classroom_roles() -> None:
         StudentAgentType.RESEARCHER,
     ]
     assert len({state.id for state in states}) == 4
+
+
+def test_selected_student_agent_states_keep_the_requested_roles() -> None:
+    states = get_student_agent_states(
+        [StudentAgentType.NOTE_TAKER, StudentAgentType.RESEARCHER]
+    )
+
+    assert [state.agent_type for state in states] == [
+        StudentAgentType.NOTE_TAKER,
+        StudentAgentType.RESEARCHER,
+    ]
+    assert [state.id for state in states] == ["student_agent_001", "student_agent_002"]
+
+
+def test_empty_student_selection_uses_the_default_four_roles() -> None:
+    states = get_student_agent_states([])
+
+    assert [state.agent_type for state in states] == [
+        StudentAgentType.ATMOSPHERE_REGULATOR,
+        StudentAgentType.DEEP_THINKER,
+        StudentAgentType.NOTE_TAKER,
+        StudentAgentType.RESEARCHER,
+    ]
+
+
+def test_session_request_uses_yj_agent_values_and_accepts_legacy_values() -> None:
+    request = CreateClassroomSessionRequest(
+        student_agent_types=["deep_thinker", "NOTE_TAKER"]
+    )
+
+    assert request.student_agent_types == [
+        StudentAgentType.DEEP_THINKER,
+        StudentAgentType.NOTE_TAKER,
+    ]
+
+
+def test_session_request_limits_student_selection_to_eight_agents() -> None:
+    with pytest.raises(ValidationError):
+        CreateClassroomSessionRequest(
+            student_agent_types=[StudentAgentType.DEEP_THINKER] * 9
+        )
 
 
 def test_finished_video_job_requires_result_id() -> None:

@@ -2,20 +2,20 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from metaclass.core.schemas import SchemaModel, utc_now
 
 
 class StudentAgentType(StrEnum):
-    ATMOSPHERE_REGULATOR = "ATMOSPHERE_REGULATOR"
-    DEEP_THINKER = "DEEP_THINKER"
-    NOTE_TAKER = "NOTE_TAKER"
-    RESEARCHER = "RESEARCHER"
-    FOUNDATION_WEAK = "FOUNDATION_WEAK"
-    SILENT_OBSERVER = "SILENT_OBSERVER"
-    CONCEPT_CONFUSED = "CONCEPT_CONFUSED"
-    PRACTICAL_APPLIER = "PRACTICAL_APPLIER"
+    ATMOSPHERE_REGULATOR = "classroom_atmosphere_regulator"
+    DEEP_THINKER = "deep_thinker"
+    NOTE_TAKER = "note_taker"
+    RESEARCHER = "researcher"
+    FOUNDATION_WEAK = "foundation_weak"
+    SILENT_OBSERVER = "silent_observer"
+    CONCEPT_CONFUSED = "concept_confused"
+    PRACTICAL_APPLIER = "practical_applier"
 
 
 class StudentAgentProfile(SchemaModel):
@@ -41,6 +41,13 @@ class StudentAgentState(SchemaModel):
     engagement: float = Field(default=0.7, ge=0, le=1)
     last_intent: str | None = None
     updated_at: datetime = Field(default_factory=utc_now)
+
+    @field_validator("agent_type", mode="before")
+    @classmethod
+    def normalize_legacy_agent_type(cls, value: object) -> object:
+        if isinstance(value, str) and value in StudentAgentType.__members__:
+            return StudentAgentType.__members__[value].value
+        return value
 
 
 class AgentTurn(SchemaModel):
@@ -169,11 +176,28 @@ def get_default_student_agent_profiles() -> list[StudentAgentProfile]:
 
 def get_default_student_agent_states() -> list[StudentAgentState]:
     """Create the default four classroom agents used when a session starts."""
+
+    return get_student_agent_states()
+
+
+def get_student_agent_states(
+    selected_types: list[StudentAgentType] | None = None,
+) -> list[StudentAgentState]:
+    """Create the requested classroom roster while preserving selection order."""
+
+    if not selected_types:
+        selected_types = [profile.type for profile in DEFAULT_STUDENT_AGENT_PROFILES[:4]]
+    profiles_by_type = {profile.type: profile for profile in DEFAULT_STUDENT_AGENT_PROFILES}
     states = []
-    for index, profile in enumerate(DEFAULT_STUDENT_AGENT_PROFILES[:4], start=1):
+    seen_types: set[StudentAgentType] = set()
+    for selected_type in selected_types:
+        if selected_type in seen_types:
+            continue
+        seen_types.add(selected_type)
+        profile = profiles_by_type[selected_type]
         states.append(
             StudentAgentState(
-                id=f"student_agent_{index:03d}",
+                id=f"student_agent_{len(states) + 1:03d}",
                 profile_id=profile.id,
                 display_name=profile.display_name,
                 agent_type=profile.type,
