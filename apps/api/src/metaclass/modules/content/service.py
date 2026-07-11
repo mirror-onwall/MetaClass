@@ -51,7 +51,7 @@ class ContentService:
                     source_refs=page.source_refs,
                     provider=self.provider.name,
                     model=self.provider.model,
-                    prompt_version="v1",
+                    prompt_version=getattr(self.provider, "prompt_version", "v1"),
                 )
             )
         self.repository.save_understandings(understandings)

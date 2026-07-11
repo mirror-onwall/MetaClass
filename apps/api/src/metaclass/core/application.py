@@ -1,9 +1,14 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from metaclass.core.config import settings
 from metaclass.core.llm_config import get_llm_runtime_config
 from metaclass.infrastructure.database import Database
-from metaclass.infrastructure.providers import build_llm_provider
+from metaclass.infrastructure.providers import (
+    FakeLLMProvider,
+    LLMLearningProvider,
+    build_llm_provider,
+)
 from metaclass.infrastructure.providers.fake import FakeLearningProvider, FakeTTSProvider
 from metaclass.modules.classroom.agents import EvaluatorAgent, StudentRosterAgent, TeacherAgent
 from metaclass.modules.classroom.controller import ClassroomController
@@ -64,7 +69,10 @@ def build_services(
         mineru_command=settings.mineru_command,
         mineru_timeout_seconds=settings.mineru_timeout_seconds,
     )
-    contents = ContentService(content_repository, materials, FakeLearningProvider())
+    learning_provider = (
+        FakeLearningProvider() if isinstance(llm, FakeLLMProvider) else LLMLearningProvider(llm)
+    )
+    contents = ContentService(content_repository, materials, learning_provider)
     classrooms = ClassroomService(
         classroom_repository,
         contents,
