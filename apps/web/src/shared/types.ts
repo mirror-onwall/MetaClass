@@ -51,14 +51,14 @@ export type LearningContent = {
 export type LearningMode = "lecture" | "interactive";
 
 export type StudentAgentType =
-  | "ATMOSPHERE_REGULATOR"
-  | "DEEP_THINKER"
-  | "NOTE_TAKER"
-  | "RESEARCHER"
-  | "FOUNDATION_WEAK"
-  | "SILENT_OBSERVER"
-  | "CONCEPT_CONFUSED"
-  | "PRACTICAL_APPLIER";
+  | "classroom_atmosphere_regulator"
+  | "deep_thinker"
+  | "note_taker"
+  | "researcher"
+  | "foundation_weak"
+  | "silent_observer"
+  | "concept_confused"
+  | "practical_applier";
 
 export type StudentAgentState = {
   id: string;

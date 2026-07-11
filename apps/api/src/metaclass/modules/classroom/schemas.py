@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Annotated, Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from metaclass.core.schemas import SchemaModel, utc_now
 from metaclass.modules.assessment.schemas import Evidence, MasteryEstimate
@@ -289,7 +289,19 @@ class QuestionRequest(SchemaModel):
 
 class CreateClassroomSessionRequest(SchemaModel):
     mode: LearningMode = LearningMode.LECTURE
-    student_agent_types: list[StudentAgentType] | None = Field(default=None, max_length=4)
+    student_agent_types: list[StudentAgentType] | None = Field(default=None, max_length=8)
+
+    @field_validator("student_agent_types", mode="before")
+    @classmethod
+    def normalize_legacy_student_agent_types(cls, value: object) -> object:
+        if not isinstance(value, list):
+            return value
+        return [
+            StudentAgentType.__members__[item].value
+            if isinstance(item, str) and item in StudentAgentType.__members__
+            else item
+            for item in value
+        ]
 
 
 class AgentTurnRequest(SchemaModel):

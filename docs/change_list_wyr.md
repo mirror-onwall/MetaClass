@@ -33,12 +33,21 @@
 
 ## 变更记录
 
+### 2026-07-11 - 对齐 yj 的学生智能体选择契约
+
+- 修改文件：`apps/api/src/metaclass/modules/classroom/agent_schemas.py`、`apps/api/src/metaclass/modules/classroom/schemas.py`、`apps/web/src/App.tsx`、`apps/web/src/shared/types.ts`、`apps/api/tests/test_schemas.py`。
+- `student_agent_types` 的公开枚举值统一为小写 snake_case：`classroom_atmosphere_regulator`、`deep_thinker`、`note_taker`、`researcher`、`foundation_weak`、`silent_observer`、`concept_confused`、`practical_applier`。
+- 默认行为：不传或传空数组 `[]` 时，后端均初始化前四位默认学生；显式选择时最多支持八位学生。
+- 兼容性：后端仍接受旧客户端传来的全大写值，并可读取旧 session 中保存的全大写角色值；新接口与 yj 文档保持一致。
+- 前端：互动模式默认选中四位默认学生，并提供八张可选角色卡片；空选后创建课堂时由后端回退为默认四位。
+- 验证：`apps/api/tests/test_schemas.py` 与 `apps/api/tests/test_mvp_flow.py` 共 25 项通过；`apps/web` 的 `npm run build` 通过。
+
 ### 2026-07-11 - 互动课堂学生智能体选择
 
-- 新增开课前的学生智能体多选配置，仅在 `interactive` 模式显示；默认选择“深度思考者”和“课堂笔记员”，最多四位。
+- 初版新增开课前的学生智能体多选配置，仅在 `interactive` 模式显示；初版默认选择“深度思考者”和“课堂笔记员”，最多四位，后续已按上方记录调整。
 - 前端将选择结果通过创建 session 请求的 `student_agent_types` 字段发送；课堂创建后右侧显示本堂已启用学生。
 - 后端 `CreateClassroomSessionRequest`、课堂 API 与 `ClassroomService.create_session` 支持可选角色列表，并只初始化选择的学生状态。
-- 兼容性：旧客户端不传 `student_agent_types` 时，仍创建原来的四位默认学生；传空列表时不创建学生。
+- 历史说明：此版本之后，空列表的行为已调整为回退四位默认学生，详见上方对齐记录。
 - 新增四张纸张拼贴风头像资源，位于 `apps/web/src/assets/agents/`。
 
 ### 2026-07-11 - 合入 `main` 的课堂自动对话

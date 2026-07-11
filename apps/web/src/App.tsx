@@ -10,9 +10,13 @@ import {
 import { ActionView } from "./features/classroom/ActionView";
 import { SlideNarrationPlayer } from "./features/video/SlideNarrationPlayer";
 import atmosphereAvatar from "./assets/agents/atmosphere-regulator.png";
+import conceptConfusedAvatar from "./assets/agents/concept-confused.png";
 import deepThinkerAvatar from "./assets/agents/deep-thinker.png";
+import foundationWeakAvatar from "./assets/agents/foundation-weak.png";
 import noteTakerAvatar from "./assets/agents/note-taker.png";
+import practicalApplierAvatar from "./assets/agents/practical-applier.png";
 import researcherAvatar from "./assets/agents/researcher.png";
+import silentObserverAvatar from "./assets/agents/silent-observer.png";
 import { api } from "./shared/api";
 import { formatBytes } from "./shared/format";
 import type {
@@ -36,32 +40,61 @@ const studentAgentChoices: Array<{
   avatar: string;
 }> = [
   {
-    type: "ATMOSPHERE_REGULATOR",
+    type: "classroom_atmosphere_regulator",
     name: "课堂气氛调节者",
     description: "活跃氛围，用类比打开话题",
     avatar: atmosphereAvatar,
   },
   {
-    type: "DEEP_THINKER",
+    type: "deep_thinker",
     name: "深度思考者",
     description: "追问原因、边界与反例",
     avatar: deepThinkerAvatar,
   },
   {
-    type: "NOTE_TAKER",
+    type: "note_taker",
     name: "课堂笔记员",
     description: "提炼重点，整理可复习笔记",
     avatar: noteTakerAvatar,
   },
   {
-    type: "RESEARCHER",
+    type: "researcher",
     name: "研究型同学",
     description: "连接应用场景与研究方法",
     avatar: researcherAvatar,
   },
+  {
+    type: "foundation_weak",
+    name: "基础薄弱型同学",
+    description: "提出基础问题，帮助发现学习门槛",
+    avatar: foundationWeakAvatar,
+  },
+  {
+    type: "silent_observer",
+    name: "沉默观察型同学",
+    description: "低频发言，在关键处表达困惑",
+    avatar: silentObserverAvatar,
+  },
+  {
+    type: "concept_confused",
+    name: "概念混淆型同学",
+    description: "暴露典型误解，触发辨析讲解",
+    avatar: conceptConfusedAvatar,
+  },
+  {
+    type: "practical_applier",
+    name: "实践应用型同学",
+    description: "关注怎么用、在哪里用",
+    avatar: practicalApplierAvatar,
+  },
 ];
 
-const defaultStudentAgentTypes: StudentAgentType[] = ["DEEP_THINKER", "NOTE_TAKER"];
+const defaultStudentAgentTypes: StudentAgentType[] = [
+  "classroom_atmosphere_regulator",
+  "deep_thinker",
+  "note_taker",
+  "researcher",
+];
 
 function App() {
   const [file, setFile] = useState<File | null>(null);
@@ -351,7 +384,7 @@ function App() {
               <div className="student-agent-selector">
                 <div className="section-caption">
                   <span>课堂同学</span>
-                  <small>SELECTED {studentAgentTypes.length} / 4</small>
+                  <small>SELECTED {studentAgentTypes.length} / 8</small>
                 </div>
                 <div className="student-agent-options">
                   {studentAgentChoices.map((agent) => {
@@ -375,7 +408,7 @@ function App() {
               </div>
             )}
             <button disabled={!pages.length || !!content || !!busy} onClick={buildContent}><span>01</span><b>{content ? "内容已构建" : "构建学习内容"}</b><i>↗</i></button>
-            <button disabled={!content || !!session || !!busy || (learningMode === "interactive" && !studentAgentTypes.length)} onClick={startClassroom}><span>02</span><b>{session ? "课堂进行中" : "创建互动课堂"}</b><i>↗</i></button>
+            <button disabled={!content || !!session || !!busy} onClick={startClassroom}><span>02</span><b>{session ? "课堂进行中" : "创建互动课堂"}</b><i>↗</i></button>
             <button disabled={!content || !!video || !!busy} onClick={createVideo}><span>03</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
           </section>
         </aside>
