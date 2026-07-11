@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from metaclass.core.config import settings
+from metaclass.core.llm_config import get_llm_runtime_config
 from metaclass.infrastructure.database import Database
 from metaclass.infrastructure.providers import build_llm_provider
 from metaclass.infrastructure.providers.fake import FakeLearningProvider, FakeTTSProvider
@@ -31,6 +31,7 @@ def build_services(
     database_url: str | None = None,
     *,
     create_schema: bool = True,
+    force_fake_llm: bool = False,
 ) -> ApplicationServices:
     """Compose the modular monolith in one explicit place."""
     database = (
@@ -46,12 +47,15 @@ def build_services(
     content_repository = SqlAlchemyContentRepository(database)
     classroom_repository = SqlAlchemyClassroomRepository(database)
     video_repository = SqlAlchemyVideoRepository(database)
+    llm_config = get_llm_runtime_config()
     llm = build_llm_provider(
-        provider=settings.llm_provider,
-        base_url=settings.llm_base_url,
-        api_key=settings.llm_api_key,
-        model=settings.llm_model,
-        timeout_seconds=settings.llm_timeout_seconds,
+        provider="fake" if force_fake_llm else llm_config.provider,
+        base_url=llm_config.base_url,
+        api_key=llm_config.api_key,
+        model=llm_config.model,
+        timeout_seconds=llm_config.timeout_seconds,
+        temperature=llm_config.temperature,
+        max_tokens=llm_config.max_tokens,
     )
     materials = MaterialService(
         data_dir,

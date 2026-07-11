@@ -55,6 +55,36 @@ setAction((currentAction) => {
 
 这让连续课堂和互动课堂在小测后的过渡都更稳定。
 
+### LLM 配置入口
+
+新增后端集中配置文件：
+
+```text
+apps/api/src/metaclass/core/llm_config.py
+```
+
+用途：
+
+- `VLLM_CONFIG`：配置 OpenAI-compatible LLM，例如智增增、阿里云百炼中转站等。
+- `EMBEDDING_CONFIG`：预留 embedding 模型配置，目前检索链路暂未接入。
+- `GENERATION_CONFIG`：配置生成参数，例如 `temperature` 和 `max_tokens`。
+
+后端应用装配点 `apps/api/src/metaclass/core/application.py` 已改为通过：
+
+```python
+get_llm_runtime_config()
+```
+
+统一读取 LLM 配置，再构造 `build_llm_provider(...)`。
+
+配置方式：
+
+- 可以直接改 `llm_config.py`。
+- 也可以用项目根目录 `.env` 覆盖。
+- 默认 `provider=auto`：没有 API key 时使用 fake，有 API key 时使用 OpenAI-compatible。
+
+`.env.example` 已同步更新相关说明。
+
 ### 自动课堂不是后台长任务
 
 当前自动课堂仍然是“前端定时调用后端单步接口”的实现：

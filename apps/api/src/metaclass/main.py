@@ -17,6 +17,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     services = build_services(
         data_dir or settings.data_dir,
         database_url=None if data_dir is not None else settings.resolved_database_url(),
+        force_fake_llm=data_dir is not None,
     )
 
     @asynccontextmanager
