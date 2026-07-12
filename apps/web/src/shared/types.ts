@@ -170,3 +170,44 @@ export type VideoResult = {
   subtitles_path?: string;
   duration_seconds: number;
 };
+
+export type PresentationPlan = {
+  id: string;
+  content_id: string;
+  title: string;
+  slides: Array<{
+    id: string;
+    order: number;
+    source_section_ids: string[];
+    title: string;
+    key_points: string[];
+    speaker_script: string;
+    suggested_visual: string;
+  }>;
+};
+
+export type PPTGenerationJob = {
+  id: string;
+  presentation_plan_id: string;
+  status: "queued" | "running" | "waiting_for_skill" | "finished" | "failed";
+  progress: number;
+  artifact_id?: string;
+  error?: string;
+};
+
+export type PPTSlideImage = {
+  slide_id: string;
+  slide_no: number;
+  image_path: string;
+  width: number;
+  height: number;
+};
+
+export type PPTArtifact = {
+  id: string;
+  job_id: string;
+  presentation_plan_id: string;
+  pptx_path?: string;
+  skill_request_path: string;
+  slide_images: PPTSlideImage[];
+};

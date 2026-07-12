@@ -26,6 +26,7 @@ import type {
   LearningMode,
   Material,
   PageMetadata,
+  PPTArtifact,
   StudentAgentType,
   TeachingAction,
   VideoResult,
@@ -101,8 +102,15 @@ function App() {
   const [material, setMaterial] = useState<Material | null>(null);
   const [pages, setPages] = useState<PageMetadata[]>([]);
   const [content, setContent] = useState<LearningContent | null>(null);
+  const [presentationArtifact, setPresentationArtifact] = useState<PPTArtifact | null>(null);
+  const [presentationSlideImages, setPresentationSlideImages] = useState<Record<number, string>>({});
   const [session, setSession] = useState<ClassroomSession | null>(null);
   const [action, setAction] = useState<TeachingAction | null>(null);
+  const [currentSlide, setCurrentSlide] = useState<{
+    src: string;
+    pageNo: number;
+    generated: boolean;
+  } | null>(null);
   const [learningMode, setLearningMode] = useState<LearningMode>("lecture");
   const [studentAgentTypes, setStudentAgentTypes] = useState<StudentAgentType[]>(
     defaultStudentAgentTypes,
@@ -134,6 +142,18 @@ function App() {
     return () => window.clearTimeout(timer);
   }, [autoPlaying, session, action, agentTurn]);
 
+  useEffect(() => {
+    if (!action || action.type !== "SHOW_PAGE") return;
+    const pageNo = action.payload.source_ref.page_no;
+    const generatedImage = presentationSlideImages[pageNo];
+    const fallbackImage = material ? api.pageImage(material.id, pageNo) : "";
+    setCurrentSlide({
+      src: generatedImage ?? fallbackImage,
+      pageNo,
+      generated: Boolean(generatedImage),
+    });
+  }, [action, material, presentationSlideImages]);
+
   async function run<T>(label: string, task: () => Promise<T>): Promise<T | undefined> {
     setBusy(label);
     setError(null);
@@ -163,8 +183,11 @@ function App() {
     setMaterial(null);
     setPages([]);
     setContent(null);
+    setPresentationArtifact(null);
+    setPresentationSlideImages({});
     setSession(null);
     setAction(null);
+    setCurrentSlide(null);
     setAgentTurn(null);
     setFeedback("");
     setAutoPlaying(false);
@@ -198,19 +221,29 @@ function App() {
 
   async function startClassroom() {
     if (!content) return;
-    const result = await run("正在布置课堂", () =>
-      api.createSession(
+    const result = await run("正在生成 PPT 并布置课堂", async () => {
+      const artifact = await api.createPresentationDeck(content.id);
+      const slideImages = Object.fromEntries(
+        artifact.slide_images.map((slide) => [
+          slide.slide_no,
+          api.pptSlideImage(artifact.id, slide.slide_no),
+        ]),
+      );
+      const classroomSession = await api.createSession(
         content.id,
         learningMode,
         learningMode === "interactive" ? studentAgentTypes : [],
-      ),
-    );
+      );
+      return { artifact, classroomSession, slideImages };
+    });
     if (result) {
-      setSession(result);
+      setPresentationArtifact(result.artifact);
+      setPresentationSlideImages(result.slideImages);
+      setSession(result.classroomSession);
       setAction(null);
       setAgentTurn(null);
       setAutoPlaying(true);
-      setFeedback("课堂已就绪，自动播放已开始。你可以随时输入问题打断。");
+      setFeedback("PPT 已生成，课堂已就绪，自动播放已开始。你可以随时输入问题打断。");
     }
   }
 
@@ -272,10 +305,11 @@ function App() {
   }
 
   async function answer(selectedIndex: number) {
-    if (!session) return;
+    if (!session || busy || session.waiting_for !== "quiz_answer") return;
     const result = await run("Evaluator 正在评估", () => api.answer(session.id, selectedIndex));
     if (!result) return;
     setSession(result.session);
+    setAction(null);
     setAgentTurn(null);
     setAutoPlaying(result.session.status !== "completed");
     setFeedback(result.feedback ?? "");
@@ -419,7 +453,14 @@ function App() {
             <div className="board-meta"><span><i /> {session ? "SESSION LIVE" : "CLASSROOM STANDBY"}</span><b>{actionLabel}</b><small>{session?.id ?? "等待创建课堂"}</small></div>
             <div className="projection-screen">
               {session ? (
-                <ActionView action={action} materialId={material?.id} onAnswer={answer} />
+                <ActionView
+                  action={action}
+                  answerDisabled={!!busy || session.waiting_for !== "quiz_answer"}
+                  materialId={material?.id}
+                  presentationSlideImages={presentationSlideImages}
+                  currentSlide={currentSlide}
+                  onAnswer={answer}
+                />
               ) : pages.length ? (
                 <SlideNarrationPlayer content={content} materialId={material?.id} pages={pages} />
               ) : (
@@ -521,6 +562,17 @@ function App() {
               <a href={api.videoDownload(video.id)}>下载 MP4 ↗</a>
             </>}
           </section>
+          {presentationArtifact && (
+            <section className="video-status ready">
+              <span className="video-glyph">▣</span>
+              <div>
+                <small>PRESENTATION</small>
+                <b>生成 PPT 已就绪</b>
+                <p>{presentationArtifact.slide_images.length} 页已渲染为课堂图片</p>
+              </div>
+              <a href={api.pptDownload(presentationArtifact.id)}>下载 PPTX ↗</a>
+            </section>
+          )}
         </aside>
       </main>
 

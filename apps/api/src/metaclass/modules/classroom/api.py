@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 
 from metaclass.modules.classroom.agent_schemas import AgentTurn, DirectedAgentTurn
 from metaclass.modules.classroom.schemas import (
@@ -6,6 +6,7 @@ from metaclass.modules.classroom.schemas import (
     AnswerRequest,
     AutoClassroomStep,
     ClassroomPlan,
+    ClassroomPlanJob,
     ClassroomSession,
     ClassroomState,
     ControllerResult,
@@ -26,6 +27,22 @@ def create_router(classrooms: ClassroomService) -> APIRouter:
     )
     async def create_plan(content_id: str) -> ClassroomPlan:
         return classrooms.create_plan(content_id)
+
+    @router.post(
+        "/learning-contents/{content_id}/classroom-plan-jobs",
+        response_model=ClassroomPlanJob,
+        status_code=202,
+    )
+    async def create_plan_job(
+        content_id: str, background_tasks: BackgroundTasks
+    ) -> ClassroomPlanJob:
+        job = classrooms.create_plan_job(content_id)
+        background_tasks.add_task(classrooms.run_plan_job, job.id)
+        return job
+
+    @router.get("/classroom-plan-jobs/{job_id}", response_model=ClassroomPlanJob)
+    async def get_plan_job(job_id: str) -> ClassroomPlanJob:
+        return classrooms.get_plan_job(job_id)
 
     @router.get("/classroom-plans/{plan_id}", response_model=ClassroomPlan)
     async def get_plan(plan_id: str) -> ClassroomPlan:

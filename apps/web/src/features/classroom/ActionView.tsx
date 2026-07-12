@@ -4,13 +4,29 @@ import type { TeachingAction } from "../../shared/types";
 export function ActionView({
   action,
   materialId,
+  presentationSlideImages = {},
+  currentSlide,
   onAnswer,
+  answerDisabled = false,
 }: {
   action: TeachingAction | null;
   materialId?: string;
+  presentationSlideImages?: Record<number, string>;
+  currentSlide?: { src: string; pageNo: number; generated: boolean } | null;
   onAnswer: (index: number) => void;
+  answerDisabled?: boolean;
 }) {
+  function renderSlide(slide: { src: string; pageNo: number; generated: boolean }) {
+    return (
+      <div className="slide-action">
+        <img src={slide.src} alt={`PPT 第 ${slide.pageNo} 页`} />
+        <span>{slide.generated ? "正在展示生成 PPT" : "正在展示原始页面"} · 第 {slide.pageNo} 页</span>
+      </div>
+    );
+  }
+
   if (!action) {
+    if (currentSlide) return renderSlide(currentSlide);
     return (
       <div className="action-placeholder">
         <span>READY</span>
@@ -20,15 +36,9 @@ export function ActionView({
   }
   if (action.type === "SHOW_PAGE") {
     const source = action.payload.source_ref;
-    return (
-      <div className="slide-action">
-        <img
-          src={materialId ? api.pageImage(materialId, source.page_no) : ""}
-          alt={`课件第 ${source.page_no} 页`}
-        />
-        <span>正在展示 · 第 {source.page_no} 页</span>
-      </div>
-    );
+    const generatedImage = presentationSlideImages[source.page_no];
+    const imageSrc = generatedImage ?? (materialId ? api.pageImage(materialId, source.page_no) : "");
+    return renderSlide({ src: imageSrc, pageNo: source.page_no, generated: Boolean(generatedImage) });
   }
   if (action.type === "ASK_QUIZ") {
     const quiz = action.payload.quiz;
@@ -38,7 +48,7 @@ export function ActionView({
         <h3>{quiz.question}</h3>
         <div>
           {quiz.options.map((option, index) => (
-            <button onClick={() => onAnswer(index)} key={option}>
+            <button disabled={answerDisabled} onClick={() => onAnswer(index)} key={option}>
               <span>{String.fromCharCode(65 + index)}</span>
               {option}
             </button>
@@ -47,33 +57,10 @@ export function ActionView({
       </div>
     );
   }
-  if (action.type === "EXPLAIN" || action.type === "REMEDIATE" || action.type === "SUMMARIZE" || action.type === "REVIEW") {
-    return (
-      <div className="script-action">
-        <span>{action.type.replaceAll("_", " ")}</span>
-        <p>{action.payload.text}</p>
-      </div>
-    );
-  }
-  if (action.type === "PROBE") {
-    return (
-      <div className="script-action">
-        <span>PROBE</span>
-        <p>{action.payload.question}</p>
-      </div>
-    );
-  }
-  if (action.type === "END") {
-    return (
-      <div className="script-action">
-        <span>SECTION END</span>
-        <p>{action.payload.summary}</p>
-      </div>
-    );
-  }
+  if (currentSlide) return renderSlide(currentSlide);
   return (
     <div className="action-placeholder">
-      <p>Evaluator 正在处理回答。</p>
+      <p>正在等待下一页 PPT。</p>
     </div>
   );
 }

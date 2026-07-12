@@ -75,6 +75,9 @@ class Database:
                 "created_at": "DATETIME",
                 "updated_at": "DATETIME",
             },
+            "ppt_artifacts": {
+                "slide_images": "JSON",
+            },
         }
         unique_indexes = {
             "page_metadata": (
@@ -112,8 +115,16 @@ class Database:
                             "WHERE mode IS NULL"
                         )
                     )
+                if table == "ppt_artifacts":
+                    connection.execute(
+                        text(
+                            "UPDATE ppt_artifacts "
+                            "SET slide_images = '[]' "
+                            "WHERE slide_images IS NULL"
+                        )
+                    )
                 for name in columns:
-                    if name in {"student_states", "mode"}:
+                    if name in {"student_states", "mode", "slide_images"}:
                         continue
                     connection.execute(
                         text(f"UPDATE {table} SET {name} = CURRENT_TIMESTAMP WHERE {name} IS NULL")

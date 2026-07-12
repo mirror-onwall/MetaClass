@@ -12,6 +12,7 @@ from metaclass.modules.classroom.agent_schemas import (
 )
 from metaclass.modules.classroom.agents import EvaluatorAgent, StudentRosterAgent, TeacherAgent
 from metaclass.modules.classroom.controller import ClassroomController
+from metaclass.modules.classroom.planner import ClassroomPlanGenerator
 from metaclass.modules.classroom.schemas import (
     AgentTurnEvent,
     AgentTurnPayload,
@@ -21,6 +22,7 @@ from metaclass.modules.classroom.schemas import (
     AskQuizAction,
     AutoClassroomStep,
     ClassroomPlan,
+    ClassroomPlanJob,
     ClassroomSession,
     ClassroomState,
     ControllerResult,
@@ -45,6 +47,7 @@ class ClassroomService:
         evaluator: EvaluatorAgent | None = None,
         student_roster: StudentRosterAgent | None = None,
         controller: ClassroomController | None = None,
+        planner: ClassroomPlanGenerator | None = None,
     ) -> None:
         self.repository = repository
         self.contents = contents
@@ -52,16 +55,64 @@ class ClassroomService:
         self.evaluator = evaluator or EvaluatorAgent()
         self.student_roster = student_roster or StudentRosterAgent()
         self.controller = controller or ClassroomController()
+        self.planner = planner or ClassroomPlanGenerator(fallback_teacher=self.teacher)
 
     def create_plan(self, content_id: str) -> ClassroomPlan:
         content = self.contents.get(content_id)
-        scenes = [
-            self.teacher.build_scene(index, section)
-            for index, section in enumerate(content.sections, start=1)
-        ]
-        plan = ClassroomPlan(id=f"plan_{uuid4().hex[:12]}", content_id=content_id, scenes=scenes)
+        plan = self.planner.generate(content)
         self.repository.save_plan(plan)
         return plan
+
+    def create_plan_job(self, content_id: str) -> ClassroomPlanJob:
+        self.contents.get(content_id)
+        job = ClassroomPlanJob(
+            id=f"plan_job_{uuid4().hex[:12]}",
+            content_id=content_id,
+            status="queued",
+            step="queued",
+            progress=0,
+            message="Classroom plan generation queued",
+        )
+        self._save_plan_job(job)
+        return job
+
+    def get_plan_job(self, job_id: str) -> ClassroomPlanJob:
+        job = self.repository.get_plan_job(job_id)
+        if not job:
+            raise HTTPException(404, "Classroom plan job not found")
+        return job
+
+    def run_plan_job(self, job_id: str) -> None:
+        job = self.get_plan_job(job_id)
+        try:
+            job.status = "running"
+            job.step = "planning"
+            job.progress = 20
+            job.message = "Generating classroom plan"
+            self._save_plan_job(job)
+
+            plan = self.create_plan(job.content_id)
+
+            job.status = "running"
+            job.step = "persisting"
+            job.progress = 90
+            job.message = "Persisting classroom plan"
+            job.plan_id = plan.id
+            self._save_plan_job(job)
+
+            job.status = "succeeded"
+            job.step = "completed"
+            job.progress = 100
+            job.message = "Classroom plan generation completed"
+            job.plan_id = plan.id
+            self._save_plan_job(job)
+        except Exception as exc:
+            job.status = "failed"
+            job.step = "failed"
+            job.progress = 100
+            job.message = "Classroom plan generation failed"
+            job.error = str(exc)
+            self._save_plan_job(job)
 
     def get_plan(self, plan_id: str) -> ClassroomPlan:
         plan = self.repository.get_plan(plan_id)
@@ -304,8 +355,27 @@ class ClassroomService:
         if session.events and session.events[-1].type == "AGENT_TURN":
             return None
 
+        after_explain = self._maybe_start_dialog_after_explain(session)
+        if after_explain:
+            return after_explain
+
         state = self._build_state(session)
+        if state.current_action_type in {
+            ActionType.SHOW_PAGE,
+            ActionType.EXPLAIN,
+            ActionType.PROBE,
+            ActionType.REVIEW,
+            ActionType.REMEDIATE,
+            ActionType.END,
+        }:
+            return None
         if state.current_action_type == ActionType.ASK_QUIZ:
+            if (
+                session.events
+                and session.events[-1].type == "ACTION_EXECUTED"
+                and session.events[-1].payload.action_type == ActionType.PROBE
+            ):
+                return None
             teacher_turn = self.teacher.generate_turn(
                 state,
                 (
@@ -415,6 +485,44 @@ class ClassroomService:
 
         return None
 
+    def _maybe_start_dialog_after_explain(
+        self, session: ClassroomSession
+    ) -> AutoClassroomStep | None:
+        if not session.events or session.events[-1].type != "ACTION_EXECUTED":
+            return None
+        if session.events[-1].payload.action_type != ActionType.EXPLAIN:
+            return None
+
+        state = self._build_state(session)
+        student = self._select_dialog_student(state)
+        if not student:
+            return None
+        student_turn = self.student_roster.generate_turn(
+            student,
+            state,
+            (
+                "老师刚讲完当前 PPT 页。请你像课堂学生一样自然插一句："
+                "可以提一个短问题、说一个困惑，或用一句话复述重点。不要替用户回答正式小测。"
+            ),
+        )
+        student_turn.intent = "student_comment_after_explain"
+        directed = DirectedAgentTurn(
+            decision=ControllerDecision(
+                next_role="student",
+                next_agent_id=student.id,
+                reason="互动课堂中，老师讲完当前页后安排学生智能体自然插话。",
+                prompt="请学生围绕刚讲完的 PPT 页做一次短互动。",
+            ),
+            turns=[student_turn],
+        )
+        self._record_agent_turns(session, directed.turns)
+        return AutoClassroomStep(
+            status="agent_turn",
+            directed_turn=directed,
+            feedback=student_turn.speech,
+            session=self.get_session(session.id),
+        )
+
     @staticmethod
     def _last_agent_turn(session: ClassroomSession) -> AgentTurn | None:
         if not session.events or session.events[-1].type != "AGENT_TURN":
@@ -440,6 +548,10 @@ class ClassroomService:
     def _save_session(self, session: ClassroomSession) -> None:
         session.updated_at = utc_now()
         self.repository.save_session(session)
+
+    def _save_plan_job(self, job: ClassroomPlanJob) -> None:
+        job.updated_at = utc_now()
+        self.repository.save_plan_job(job)
 
     def _build_state(self, session: ClassroomSession) -> ClassroomState:
         plan = self.get_plan(session.plan_id)
