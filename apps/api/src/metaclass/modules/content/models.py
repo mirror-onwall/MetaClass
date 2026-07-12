@@ -18,6 +18,7 @@ class PageUnderstandingRecord(Base):
     knowledge_points: Mapped[list[str]] = mapped_column(JSON)
     teaching_focus: Mapped[list[str]] = mapped_column(JSON)
     possible_questions: Mapped[list[str]] = mapped_column(JSON)
+    quiz_items: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     source_refs: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     provider: Mapped[str] = mapped_column(String(100))
     model: Mapped[str | None] = mapped_column(String(200), nullable=True)

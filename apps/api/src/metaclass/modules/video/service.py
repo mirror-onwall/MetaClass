@@ -9,7 +9,7 @@ from metaclass.core.schemas import utc_now
 from metaclass.infrastructure.providers.base import TTSProvider
 from metaclass.modules.content.service import ContentService
 from metaclass.modules.video.repository import VideoRepository
-from metaclass.modules.video.schemas import VideoJob, VideoResult
+from metaclass.modules.video.schemas import TTSArtifact, TTSArtifactRequest, VideoJob, VideoResult
 
 
 def srt_timestamp(seconds: float) -> str:
@@ -72,6 +72,32 @@ class VideoService:
         if not result:
             raise HTTPException(409, "Video result is not available")
         return result
+
+    def create_tts_artifact(self, request: TTSArtifactRequest) -> TTSArtifact:
+        artifact_id = f"tts_artifact_{uuid4().hex[:12]}"
+        directory = self.data_dir / "generated" / "tts" / artifact_id
+        audio_path = directory / "audio.wav"
+        duration = self.tts.synthesize(request.text, audio_path)
+        duration_ms = round(duration * 1000)
+        artifact = TTSArtifact(
+            id=artifact_id,
+            text=request.text,
+            scope=request.scope,
+            ref_id=request.ref_id,
+            voice=request.voice,
+            audio_path=str(audio_path),
+            audio_url=f"/api/v1/tts-artifacts/{artifact_id}/audio",
+            duration_ms=duration_ms,
+            duration_seconds=duration,
+        )
+        self.repository.save_tts_artifact(artifact)
+        return artifact
+
+    def get_tts_artifact(self, artifact_id: str) -> TTSArtifact:
+        artifact = self.repository.get_tts_artifact(artifact_id)
+        if not artifact:
+            raise HTTPException(404, "TTS artifact not found")
+        return artifact
 
     def _generate(self, job: VideoJob) -> VideoResult:
         content = self.contents.get(job.content_id)

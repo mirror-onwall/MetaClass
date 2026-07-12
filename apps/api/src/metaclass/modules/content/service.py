@@ -70,18 +70,6 @@ class ContentService:
         sections = []
         for understanding in understandings:
             page = pages[understanding.page_id]
-            point = (
-                understanding.knowledge_points[0] if understanding.knowledge_points else page.title
-            )
-            quiz = QuizItem(
-                id=f"quiz_{page.page_no:03d}",
-                question="本页主要讲解的内容是？",
-                options=[point, "以上内容均未出现"],
-                correct_index=0,
-                explanation=f"本页的核心知识点是：{point}",
-                knowledge_point=point,
-                source_refs=understanding.source_refs,
-            )
             sections.append(
                 LearningSection(
                     id=f"section_{page.page_no:03d}",
@@ -89,7 +77,7 @@ class ContentService:
                     summary=understanding.summary,
                     knowledge_points=understanding.knowledge_points,
                     source_refs=understanding.source_refs,
-                    quiz_items=[quiz],
+                    quiz_items=self._build_quiz_items(understanding, page.title),
                 )
             )
 
@@ -113,3 +101,38 @@ class ContentService:
         if not content:
             raise HTTPException(404, "Learning content not found")
         return content
+
+    @staticmethod
+    def _build_quiz_items(understanding: PageUnderstanding, page_title: str) -> list[QuizItem]:
+        if understanding.quiz_items:
+            return [
+                QuizItem(
+                    id=f"quiz_{understanding.page_no:03d}_{index:02d}",
+                    question=draft.question,
+                    options=draft.options,
+                    correct_index=draft.correct_index,
+                    explanation=draft.explanation,
+                    knowledge_point=draft.knowledge_point,
+                    source_refs=understanding.source_refs,
+                )
+                for index, draft in enumerate(understanding.quiz_items, start=1)
+            ]
+
+        point = understanding.knowledge_points[0] if understanding.knowledge_points else page_title
+        if not point:
+            return []
+        return [
+            QuizItem(
+                id=f"quiz_{understanding.page_no:03d}_01",
+                question=f"下面哪一项最能说明你理解了“{point}”？",
+                options=[
+                    f"能说出{point}的含义、条件或例子",
+                    "只记住它在材料中出现过",
+                    "把它和其他概念混在一起使用",
+                ],
+                correct_index=0,
+                explanation=f"理解{point}需要能解释它如何成立或如何使用。",
+                knowledge_point=point,
+                source_refs=understanding.source_refs,
+            )
+        ]

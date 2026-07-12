@@ -75,13 +75,13 @@ DEFAULT_STUDENT_AGENT_PROFILES: tuple[StudentAgentProfile, ...] = (
         id="student_profile_atmosphere_regulator",
         type=StudentAgentType.ATMOSPHERE_REGULATOR,
         display_name="课堂气氛调节者",
-        core_role="活跃氛围、降低压力",
-        behaviors=["轻松提问", "生活化类比", "鼓励同伴表达"],
-        learning_goal="把抽象知识转成轻松、可讨论的课堂话题。",
+        core_role="活跃氛围、降低压力、模拟真实课堂注意力波动",
+        behaviors=["轻松提问", "生活化类比", "短吐槽", "请求休息", "鼓励同伴表达"],
+        learning_goal="把抽象知识转成轻松、可讨论的课堂话题，同时让课堂更像真实现场。",
         question_probability=0.75,
         answer_probability=0.7,
         mistake_probability=0.25,
-        response_style="语气轻松，喜欢用生活例子打开话题。",
+        response_style="语气轻松，偶尔调皮，可以说无聊、想上厕所或突然听懂了，但会很快回到课堂。",
     ),
     StudentAgentProfile(
         id="student_profile_deep_thinker",
@@ -185,7 +185,7 @@ def get_student_agent_states(
 ) -> list[StudentAgentState]:
     """Create the requested classroom roster while preserving selection order."""
 
-    if not selected_types:
+    if selected_types is None:
         selected_types = [profile.type for profile in DEFAULT_STUDENT_AGENT_PROFILES[:4]]
     profiles_by_type = {profile.type: profile for profile in DEFAULT_STUDENT_AGENT_PROFILES}
     states = []

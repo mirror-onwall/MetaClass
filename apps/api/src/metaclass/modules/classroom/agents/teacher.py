@@ -1,8 +1,10 @@
 from metaclass.infrastructure.providers.llm import LLMProvider
 from metaclass.modules.classroom.agent_schemas import AgentTurn
 from metaclass.modules.classroom.agents.prompts import (
+    build_teacher_answer_messages,
     build_teacher_messages,
     parse_agent_turn_json,
+    parse_teacher_answer_json,
 )
 from metaclass.modules.classroom.schemas import (
     AskQuizAction,
@@ -84,6 +86,7 @@ class TeacherAgent:
         plan: ClassroomPlan,
         session: ClassroomSession,
         question: str,
+        classroom_state: ClassroomState | None = None,
     ) -> TeacherAnswerPayload:
         scene_index = min(session.scene_index, max(len(plan.scenes) - 1, 0))
         explain_action = next(
@@ -91,14 +94,43 @@ class TeacherAgent:
             for action in plan.scenes[scene_index].actions
             if isinstance(action, ExplainAction)
         )
+        if self.llm and classroom_state:
+            try:
+                raw = self.llm.complete_json(
+                    build_teacher_answer_messages(
+                        classroom_state=classroom_state,
+                        question=question,
+                        current_explanation=explain_action.payload.text,
+                    ),
+                    temperature=0.2,
+                )
+                answer = parse_teacher_answer_json(raw)
+                return TeacherAnswerPayload(
+                    answer=answer,
+                    source_refs=explain_action.payload.source_refs,
+                )
+            except RuntimeError:
+                pass
+
         return TeacherAnswerPayload(
-            answer=f"根据当前材料：{explain_action.payload.text}",
+            answer=(
+                f"你问的是“{question}”。结合当前材料，这里可以这样理解："
+                f"{explain_action.payload.text}"
+            ),
             source_refs=explain_action.payload.source_refs,
         )
 
     def generate_turn(self, classroom_state: ClassroomState, topic: str) -> AgentTurn:
         if not self.llm:
             if "学生刚刚说" in topic:
+                if any(keyword in topic for keyword in ["走神", "无聊", "上厕所"]):
+                    return AgentTurn(
+                        agent_id="teacher",
+                        role="teacher",
+                        speech="可以，真实课堂也会累。我们先用一句话把当前页抓住：看条件、看关系，再继续往下。",
+                        actions=[],
+                        intent="fake_teacher_handles_attention_drift",
+                    )
                 return AgentTurn(
                     agent_id="teacher",
                     role="teacher",

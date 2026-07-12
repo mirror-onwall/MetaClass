@@ -3,17 +3,29 @@ from typing import Protocol
 
 from metaclass.infrastructure.database import Database
 from metaclass.modules.classroom.models import (
+    ClassroomPlanGenerationMetaRecord,
     ClassroomPlanJobRecord,
     ClassroomPlanRecord,
     ClassroomSessionRecord,
 )
-from metaclass.modules.classroom.schemas import ClassroomPlan, ClassroomPlanJob, ClassroomSession
+from metaclass.modules.classroom.schemas import (
+    ClassroomPlan,
+    ClassroomPlanGenerationMeta,
+    ClassroomPlanJob,
+    ClassroomSession,
+)
 
 
 class ClassroomRepository(Protocol):
     def save_plan(self, plan: ClassroomPlan) -> None: ...
 
     def get_plan(self, plan_id: str) -> ClassroomPlan | None: ...
+
+    def save_plan_generation_meta(self, meta: ClassroomPlanGenerationMeta) -> None: ...
+
+    def get_plan_generation_meta(
+        self, plan_id: str
+    ) -> ClassroomPlanGenerationMeta | None: ...
 
     def save_plan_job(self, job: ClassroomPlanJob) -> None: ...
 
@@ -51,6 +63,45 @@ class SqlAlchemyClassroomRepository:
                     "scenes": record.scenes,
                     "version": record.version,
                 }
+            )
+
+    def save_plan_generation_meta(self, meta: ClassroomPlanGenerationMeta) -> None:
+        with self.database.session() as session:
+            session.merge(
+                ClassroomPlanGenerationMetaRecord(
+                    plan_id=meta.plan_id,
+                    content_id=meta.content_id,
+                    source=meta.source,
+                    provider=meta.provider,
+                    model=meta.model,
+                    fallback_reason=meta.fallback_reason,
+                    raw_response=meta.raw_response,
+                    parsed_blueprint=meta.parsed_blueprint,
+                    created_at=meta.created_at,
+                )
+            )
+
+    def get_plan_generation_meta(
+        self, plan_id: str
+    ) -> ClassroomPlanGenerationMeta | None:
+        with self.database.session() as session:
+            record = session.get(ClassroomPlanGenerationMetaRecord, plan_id)
+            if not record:
+                return None
+            return ClassroomPlanGenerationMeta(
+                plan_id=record.plan_id,
+                content_id=record.content_id,
+                source=record.source,
+                provider=record.provider,
+                model=record.model,
+                fallback_reason=record.fallback_reason,
+                raw_response=record.raw_response,
+                parsed_blueprint=record.parsed_blueprint,
+                created_at=(
+                    record.created_at.replace(tzinfo=timezone.utc)
+                    if record.created_at.tzinfo is None
+                    else record.created_at
+                ),
             )
 
     def save_plan_job(self, job: ClassroomPlanJob) -> None:

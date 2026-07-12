@@ -11,6 +11,7 @@ from metaclass.modules.classroom.agents import TeacherAgent
 from metaclass.modules.classroom.schemas import (
     AskQuizAction,
     ClassroomPlan,
+    ClassroomPlanGenerationMeta,
     ClassroomScene,
     ExplainAction,
     GiveFeedbackAction,
@@ -52,18 +53,66 @@ class ClassroomPlanGenerator:
         self.fallback_teacher = fallback_teacher or TeacherAgent()
 
     def generate(self, content: LearningContent) -> ClassroomPlan:
+        plan, _ = self.generate_with_meta(content)
+        return plan
+
+    def generate_with_meta(
+        self, content: LearningContent
+    ) -> tuple[ClassroomPlan, ClassroomPlanGenerationMeta]:
         fallback = self._fallback_plan(content)
         if not self.llm:
-            return fallback
+            return fallback, self._meta(
+                fallback,
+                source="fallback",
+                fallback_reason="No LLM provider configured",
+            )
         try:
             raw = self.llm.complete_json(self._build_messages(content), temperature=0.2)
             payload = json.loads(raw)
             blueprint = ClassroomPlanBlueprint.model_validate(payload)
             plan = self._hydrate_blueprint(content, blueprint)
             self._validate_runtime_sequence(plan)
-            return plan
-        except (TimeoutError, json.JSONDecodeError, ValidationError, RuntimeError, ValueError):
-            return fallback
+            return plan, self._meta(
+                plan,
+                source="llm",
+                raw_response=raw,
+                parsed_blueprint=blueprint.model_dump(mode="json"),
+            )
+        except (
+            TimeoutError,
+            json.JSONDecodeError,
+            ValidationError,
+            RuntimeError,
+            ValueError,
+        ) as exc:
+            return fallback, self._meta(
+                fallback,
+                source="fallback",
+                fallback_reason=str(exc),
+                raw_response=locals().get("raw"),
+            )
+
+    def _meta(
+        self,
+        plan: ClassroomPlan,
+        *,
+        source: str,
+        fallback_reason: str | None = None,
+        raw_response: str | None = None,
+        parsed_blueprint: dict | None = None,
+    ) -> ClassroomPlanGenerationMeta:
+        provider = getattr(self.llm, "name", None) or "none"
+        model = getattr(self.llm, "model", None)
+        return ClassroomPlanGenerationMeta(
+            plan_id=plan.id,
+            content_id=plan.content_id,
+            source=source,
+            provider=provider,
+            model=model,
+            fallback_reason=fallback_reason,
+            raw_response=raw_response,
+            parsed_blueprint=parsed_blueprint,
+        )
 
     def _fallback_plan(self, content: LearningContent) -> ClassroomPlan:
         return ClassroomPlan(
@@ -162,12 +211,25 @@ class ClassroomPlanGenerator:
   ]
 }
 
+# 规划思路
+你不是把每页机械翻译成固定动作，而是在设计一节自然的课堂。
+先判断每个 section 在整节课中的作用：
+- 封面、目录、过渡页：通常只展示和轻讲，不安排小测。
+- 新概念/关键机制页：适合讲解后安排开放追问。
+- 容易误解、概念相近、步骤复杂的页：适合安排正式小测。
+- 案例/结果/对比页：适合让学生 agent 提问“为什么这样”或“换个场景还成立吗”。
+- 阶段收束页：适合 review，而不是再塞新问题。
+
 # 规划原则
 - 每个输入 section 都应该返回一个 scene 蓝图。
+- include_probe 表示“这里值得自然师生互动”，不是常规打断；只有当问题能帮助理解、暴露误区或连接例子时才打开。
+- probe_question 必须具体指向本 section 的内容，不要写泛泛的“你理解了吗”。
 - 如果 section 没有 quiz，include_quiz 必须是 false。
+- 如果 section 有 quiz，也不代表必须出题；一节课只在关键概念、易错点、阶段收束处安排少量正式小测。
+- 多页内容时不要每页都 include_quiz=true，通常每 2-4 个 section 最多安排 1 次；短课可以 0-2 次。
 - 正式小测只给真实用户做；学生 agent 不会替用户答题。
-- include_probe 不要每页都 true，只在适合课堂讨论或关键概念检查时打开。
 - include_review 只在阶段性总结、目录页、收束页或知识点密集页打开。
+- teaching_note 写“老师如何组织这一页”的简短建议，例如先讲例子、先比较两概念、或快速略过。
 - 不要输出 source_refs、quiz_items 或完整 action；后端会根据蓝图组装可运行 ClassroomPlan。
 """
         compact_sections = []
@@ -178,6 +240,9 @@ class ClassroomPlanGenerator:
                     "title": section.title,
                     "summary": section.summary[:500],
                     "knowledge_points": section.knowledge_points[:8],
+                    "quiz_knowledge_points": [
+                        quiz.knowledge_point for quiz in section.quiz_items[:3]
+                    ],
                     "has_quiz": bool(section.quiz_items),
                     "quiz_questions": [
                         quiz.question[:160] for quiz in section.quiz_items[:2]

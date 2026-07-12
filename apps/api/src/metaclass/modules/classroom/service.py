@@ -22,6 +22,7 @@ from metaclass.modules.classroom.schemas import (
     AskQuizAction,
     AutoClassroomStep,
     ClassroomPlan,
+    ClassroomPlanGenerationMeta,
     ClassroomPlanJob,
     ClassroomSession,
     ClassroomState,
@@ -59,8 +60,9 @@ class ClassroomService:
 
     def create_plan(self, content_id: str) -> ClassroomPlan:
         content = self.contents.get(content_id)
-        plan = self.planner.generate(content)
+        plan, meta = self.planner.generate_with_meta(content)
         self.repository.save_plan(plan)
+        self.repository.save_plan_generation_meta(meta)
         return plan
 
     def create_plan_job(self, content_id: str) -> ClassroomPlanJob:
@@ -119,6 +121,13 @@ class ClassroomService:
         if not plan:
             raise HTTPException(404, "Classroom plan not found")
         return plan
+
+    def get_plan_generation_meta(self, plan_id: str) -> ClassroomPlanGenerationMeta:
+        self.get_plan(plan_id)
+        meta = self.repository.get_plan_generation_meta(plan_id)
+        if not meta:
+            raise HTTPException(404, "Classroom plan generation meta not found")
+        return meta
 
     def create_session(
         self,
@@ -260,7 +269,8 @@ class ClassroomService:
     def answer_question(self, session_id: str, question: str) -> ControllerResult:
         session = self.get_session(session_id)
         plan = self.get_plan(session.plan_id)
-        teacher_answer = self.teacher.answer_question(plan, session, question)
+        state = self._build_state(session)
+        teacher_answer = self.teacher.answer_question(plan, session, question, state)
         session.events.extend(
             [
                 UserQuestionEvent(
@@ -355,9 +365,9 @@ class ClassroomService:
         if session.events and session.events[-1].type == "AGENT_TURN":
             return None
 
-        after_explain = self._maybe_start_dialog_after_explain(session)
-        if after_explain:
-            return after_explain
+        planned_probe_follow_up = self._continue_after_planned_probe(session)
+        if planned_probe_follow_up:
+            return planned_probe_follow_up
 
         state = self._build_state(session)
         if state.current_action_type in {
@@ -369,38 +379,6 @@ class ClassroomService:
             ActionType.END,
         }:
             return None
-        if state.current_action_type == ActionType.ASK_QUIZ:
-            if (
-                session.events
-                and session.events[-1].type == "ACTION_EXECUTED"
-                and session.events[-1].payload.action_type == ActionType.PROBE
-            ):
-                return None
-            teacher_turn = self.teacher.generate_turn(
-                state,
-                (
-                    "正式小测开始前，先向一位同学提出一个开放式短问题，"
-                    "帮助大家说出自己的理解。不要直接给出小测答案。"
-                ),
-            )
-            teacher_turn.actions = ["PROBE"]
-            teacher_turn.intent = "teacher_probe_before_quiz"
-            directed = DirectedAgentTurn(
-                decision=ControllerDecision(
-                    next_role="teacher",
-                    next_agent_id="teacher",
-                    reason="进入正式小测前，老师先发起一个开放提问。",
-                    prompt="请老师先提出一个开放式理解检查问题。",
-                ),
-                turns=[teacher_turn],
-            )
-            self._record_agent_turns(session, directed.turns)
-            return AutoClassroomStep(
-                status="agent_turn",
-                directed_turn=directed,
-                feedback=teacher_turn.speech,
-                session=self.get_session(session.id),
-            )
 
         state = self._build_state(session)
         decision = self.controller.decide(state)
@@ -485,12 +463,12 @@ class ClassroomService:
 
         return None
 
-    def _maybe_start_dialog_after_explain(
+    def _continue_after_planned_probe(
         self, session: ClassroomSession
     ) -> AutoClassroomStep | None:
         if not session.events or session.events[-1].type != "ACTION_EXECUTED":
             return None
-        if session.events[-1].payload.action_type != ActionType.EXPLAIN:
+        if session.events[-1].payload.action_type != ActionType.PROBE:
             return None
 
         state = self._build_state(session)
@@ -501,17 +479,17 @@ class ClassroomService:
             student,
             state,
             (
-                "老师刚讲完当前 PPT 页。请你像课堂学生一样自然插一句："
-                "可以提一个短问题、说一个困惑，或用一句话复述重点。不要替用户回答正式小测。"
+                "老师刚刚抛出了一个计划内开放问题。请你像课堂学生一样自然回应："
+                "可以说出自己的理解、提出困惑，或给一个很短的例子。不要替用户回答正式小测。"
             ),
         )
-        student_turn.intent = "student_comment_after_explain"
+        student_turn.intent = "student_answer_planned_probe"
         directed = DirectedAgentTurn(
             decision=ControllerDecision(
                 next_role="student",
                 next_agent_id=student.id,
-                reason="互动课堂中，老师讲完当前页后安排学生智能体自然插话。",
-                prompt="请学生围绕刚讲完的 PPT 页做一次短互动。",
+                reason="课堂计划安排了开放互动点，学生智能体需要回应老师追问。",
+                prompt="请学生回应老师的计划内开放问题。",
             ),
             turns=[student_turn],
         )
@@ -531,10 +509,24 @@ class ClassroomService:
 
     @staticmethod
     def _select_dialog_student(state: ClassroomState):
-        return next(
-            (student for student in state.students if student.id == "student_agent_002"),
-            state.students[0] if state.students else None,
-        )
+        preferred_types = [
+            StudentAgentType.DEEP_THINKER,
+            StudentAgentType.CONCEPT_CONFUSED,
+            StudentAgentType.FOUNDATION_WEAK,
+            StudentAgentType.RESEARCHER,
+            StudentAgentType.PRACTICAL_APPLIER,
+            StudentAgentType.ATMOSPHERE_REGULATOR,
+            StudentAgentType.NOTE_TAKER,
+            StudentAgentType.SILENT_OBSERVER,
+        ]
+        for preferred_type in preferred_types:
+            selected = next(
+                (student for student in state.students if student.agent_type == preferred_type),
+                None,
+            )
+            if selected:
+                return selected
+        return state.students[0] if state.students else None
 
     @staticmethod
     def _normalize_cursor(session: ClassroomSession, plan: ClassroomPlan) -> None:

@@ -3,7 +3,7 @@ import struct
 import wave
 from pathlib import Path
 
-from metaclass.modules.content.schemas import PageUnderstandingDraft
+from metaclass.modules.content.schemas import PageUnderstandingDraft, QuizItemDraft
 
 
 class FakeLearningProvider:
@@ -26,6 +26,19 @@ class FakeLearningProvider:
             knowledge_points=knowledge_points,
             teaching_focus=knowledge_points[:2],
             possible_questions=[f"{knowledge_points[0]}是什么意思？"],
+            quiz_items=[
+                QuizItemDraft(
+                    question=f"下面哪一项最能帮助判断是否理解了“{knowledge_points[0]}”？",
+                    options=[
+                        f"能说明{knowledge_points[0]}的适用条件或例子",
+                        "只记住它在第几页出现",
+                        "把所有术语都背下来但不区分含义",
+                    ],
+                    correct_index=0,
+                    explanation=f"理解{knowledge_points[0]}不只是识别词语，还要知道它如何使用。",
+                    knowledge_point=knowledge_points[0],
+                )
+            ],
         )
 
 

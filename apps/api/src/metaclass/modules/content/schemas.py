@@ -11,6 +11,21 @@ class PageUnderstandingDraft(SchemaModel):
     knowledge_points: list[str] = Field(default_factory=list)
     teaching_focus: list[str] = Field(default_factory=list)
     possible_questions: list[str] = Field(default_factory=list)
+    quiz_items: list["QuizItemDraft"] = Field(default_factory=list)
+
+
+class QuizItemDraft(SchemaModel):
+    question: str = Field(min_length=1)
+    options: list[str] = Field(min_length=2)
+    correct_index: int = Field(ge=0)
+    explanation: str = Field(min_length=1)
+    knowledge_point: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def correct_index_must_exist(self) -> "QuizItemDraft":
+        if self.correct_index >= len(self.options):
+            raise ValueError("correct_index must point to an existing option")
+        return self
 
 
 class PageUnderstanding(SchemaModel):
@@ -22,6 +37,7 @@ class PageUnderstanding(SchemaModel):
     knowledge_points: list[str] = Field(default_factory=list)
     teaching_focus: list[str] = Field(default_factory=list)
     possible_questions: list[str] = Field(default_factory=list)
+    quiz_items: list[QuizItemDraft] = Field(default_factory=list)
     source_refs: list[SourceRef] = Field(min_length=1)
     provider: str = Field(min_length=1)
     model: str | None = None
