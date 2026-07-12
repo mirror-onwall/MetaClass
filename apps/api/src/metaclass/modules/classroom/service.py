@@ -519,14 +519,37 @@ class ClassroomService:
             StudentAgentType.NOTE_TAKER,
             StudentAgentType.SILENT_OBSERVER,
         ]
+        recent_student_ids = ClassroomService._recent_student_speaker_ids(state)
+        candidates = [student for student in state.students if student.id not in recent_student_ids]
+        if not candidates:
+            candidates = state.students
+
+        fresh_candidates = [student for student in candidates if not student.last_intent]
+        if fresh_candidates:
+            candidates = fresh_candidates
+
         for preferred_type in preferred_types:
             selected = next(
-                (student for student in state.students if student.agent_type == preferred_type),
+                (student for student in candidates if student.agent_type == preferred_type),
                 None,
             )
             if selected:
                 return selected
-        return state.students[0] if state.students else None
+        return candidates[0] if candidates else None
+
+    @staticmethod
+    def _recent_student_speaker_ids(state: ClassroomState, limit: int = 1) -> set[str]:
+        recent_ids: list[str] = []
+        for event in reversed(state.recent_events):
+            if event.type != "AGENT_TURN":
+                continue
+            turn = event.payload.turn
+            if turn.role != "student":
+                continue
+            recent_ids.append(turn.agent_id)
+            if len(recent_ids) >= limit:
+                break
+        return set(recent_ids)
 
     @staticmethod
     def _normalize_cursor(session: ClassroomSession, plan: ClassroomPlan) -> None:

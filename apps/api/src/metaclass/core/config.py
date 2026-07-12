@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     mineru_timeout_seconds: float = 180.0
     llm_temperature: float = 0.2
     llm_max_tokens: int = 8192
+    vision_enabled: bool = False
+    vision_provider: str | None = None
+    vision_base_url: str | None = None
+    vision_api_key: str | None = None
+    vision_model: str | None = None
+    vision_timeout_seconds: float | None = None
     embedding_provider: str = "local"
     embedding_model_path: str = ""
     embedding_base_url: str =  "https://api.openai.com/v1"

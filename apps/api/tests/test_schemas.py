@@ -8,6 +8,7 @@ from metaclass.infrastructure.providers.llm import FakeLLMProvider
 from metaclass.modules.assessment.schemas import Evidence
 from metaclass.modules.assessment.service import estimate_mastery
 from metaclass.modules.classroom.agent_schemas import (
+    AgentTurn,
     StudentAgentType,
     get_default_student_agent_states,
     get_default_student_agent_profiles,
@@ -19,6 +20,8 @@ from metaclass.modules.classroom.schemas import (
     ActionExecutedEvent,
     ActionExecutedPayload,
     ActionType,
+    AgentTurnEvent,
+    AgentTurnPayload,
     AskQuizAction,
     ClassroomEvent,
     ClassroomPlan,
@@ -494,6 +497,69 @@ def test_auto_step_starts_student_dialog_after_planned_probe_in_interactive_mode
     assert result.directed_turn.decision.next_role == "student"
     assert result.directed_turn.turns[0].role == "student"
     assert result.directed_turn.turns[0].intent == "student_answer_planned_probe"
+
+
+def test_planned_probe_dialog_skips_recent_student_speaker() -> None:
+    section = LearningSection(
+        id="section_001",
+        title="第一页",
+        summary="老师追问后应轮换学生，避免同一个学生连续发言。",
+        source_refs=[source_ref()],
+    )
+    plan = ClassroomPlanGenerator(FakeLLMProvider()).generate(
+        LearningContent(
+            id="content_001",
+            material_id="mat_001",
+            title="测试内容",
+            sections=[section],
+        )
+    )
+    probe_index = next(
+        index for index, action in enumerate(plan.scenes[0].actions) if action.type == "PROBE"
+    )
+    students = get_student_agent_states([StudentAgentType.DEEP_THINKER, StudentAgentType.RESEARCHER])
+    students[0].last_intent = "student_answer_planned_probe"
+    session = ClassroomSession(
+        id="session_001",
+        plan_id=plan.id,
+        mode="interactive",
+        action_index=probe_index + 1,
+        student_states=students,
+        events=[
+            AgentTurnEvent(
+                id="event_000",
+                session_id="session_001",
+                type="AGENT_TURN",
+                payload=AgentTurnPayload(
+                    turn=AgentTurn(
+                        agent_id=students[0].id,
+                        role="student",
+                        speech="我先说一下自己的理解。",
+                        intent="student_answer_planned_probe",
+                    )
+                ),
+            ),
+            ActionExecutedEvent(
+                id="event_001",
+                session_id="session_001",
+                type="ACTION_EXECUTED",
+                payload=ActionExecutedPayload(
+                    action_id="scene_001_probe",
+                    action_type=ActionType.PROBE,
+                ),
+            ),
+        ],
+    )
+    repository = Mock()
+    repository.get_session.return_value = session
+    repository.get_plan.return_value = plan
+
+    result = ClassroomService(repository, Mock()).auto_step(session.id)
+
+    assert result.status == "agent_turn"
+    assert result.directed_turn is not None
+    assert result.directed_turn.decision.next_agent_id == students[1].id
+    assert result.directed_turn.turns[0].agent_id == students[1].id
 
 
 def test_auto_step_continues_planned_probe_dialog_before_quiz() -> None:

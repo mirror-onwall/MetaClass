@@ -2,6 +2,7 @@ from metaclass.infrastructure.providers.fake import FakeLearningProvider, FakeTT
 from metaclass.infrastructure.providers.learning import LLMLearningProvider
 from metaclass.infrastructure.providers.llm import (
     FakeLLMProvider,
+    GeminiVisionProvider,
     LLMMessage,
     LLMProvider,
     OpenAICompatibleLLMProvider,
@@ -12,6 +13,7 @@ __all__ = [
     "FakeLLMProvider",
     "FakeLearningProvider",
     "FakeTTSProvider",
+    "GeminiVisionProvider",
     "LLMLearningProvider",
     "LLMMessage",
     "LLMProvider",
