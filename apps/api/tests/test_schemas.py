@@ -4,6 +4,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from metaclass.infrastructure.providers.fake import FakeLearningProvider
+from metaclass.infrastructure.providers.llm import FakeLLMProvider
 from metaclass.modules.assessment.schemas import Evidence
 from metaclass.modules.assessment.service import estimate_mastery
 from metaclass.modules.classroom.agent_schemas import (
@@ -12,9 +13,18 @@ from metaclass.modules.classroom.agent_schemas import (
     get_default_student_agent_profiles,
     get_student_agent_states,
 )
+from metaclass.modules.classroom.agents import TeacherAgent
+from metaclass.modules.classroom.planner import ClassroomPlanGenerator
 from metaclass.modules.classroom.schemas import (
+    ActionExecutedEvent,
+    ActionExecutedPayload,
+    ActionType,
+    AskQuizAction,
     ClassroomEvent,
+    ClassroomPlan,
+    ClassroomSession,
     CreateClassroomSessionRequest,
+    GiveFeedbackAction,
     TeachingAction,
 )
 from metaclass.modules.classroom.service import ClassroomService
@@ -25,6 +35,8 @@ from metaclass.modules.content.schemas import (
     QuizItem,
 )
 from metaclass.modules.materials.schemas import PageMetadata, SourceRef
+from metaclass.modules.presentation.planner import PresentationPlanGenerator
+from metaclass.modules.presentation.schemas import PPTGenerationJob, PresentationPlan
 from metaclass.modules.video.schemas import VideoJob
 
 
@@ -228,6 +240,50 @@ def test_finished_video_job_requires_result_id() -> None:
     assert job.result_id == "result_001"
 
 
+def test_finished_ppt_job_requires_artifact_id() -> None:
+    with pytest.raises(ValidationError):
+        PPTGenerationJob(
+            id="ppt_job_001",
+            presentation_plan_id="presentation_plan_001",
+            status="finished",
+            progress=1,
+        )
+
+    job = PPTGenerationJob(
+        id="ppt_job_001",
+        presentation_plan_id="presentation_plan_001",
+        status="finished",
+        progress=1,
+        artifact_id="ppt_artifact_001",
+    )
+    assert job.artifact_id == "ppt_artifact_001"
+
+
+def test_presentation_plan_generator_uses_learning_content_sections() -> None:
+    content = LearningContent(
+        id="content_001",
+        material_id="mat_001",
+        title="演示内容",
+        sections=[
+            LearningSection(
+                id="section_001",
+                title="概念介绍",
+                summary="介绍核心概念。",
+                knowledge_points=["核心概念"],
+                source_refs=[source_ref()],
+            )
+        ],
+    )
+
+    plan = PresentationPlanGenerator(FakeLLMProvider()).generate(content)
+
+    assert isinstance(plan, PresentationPlan)
+    assert plan.content_id == content.id
+    assert plan.slides[0].source_section_ids == ["section_001"]
+    assert plan.slides[0].speaker_script
+    assert plan.slides[0].suggested_visual
+
+
 def test_mastery_estimate_keeps_session_identity() -> None:
     evidence = Evidence(
         id="evidence_001",
@@ -268,10 +324,226 @@ def test_plan_can_be_created_for_section_without_quiz() -> None:
     assert [action.type for action in plan.scenes[0].actions] == [
         "SHOW_PAGE",
         "EXPLAIN",
-        "SUMMARIZE",
         "END",
     ]
     repository.save_plan.assert_called_once_with(plan)
+
+
+def test_llm_classroom_plan_generator_validates_quiz_feedback_sequence() -> None:
+    content = LearningContent(
+        id="content_001",
+        material_id="mat_001",
+        title="小测内容",
+        sections=[
+            LearningSection(
+                id="section_001",
+                title="概念介绍",
+                summary="先讲解，再测验。",
+                source_refs=[source_ref()],
+                quiz_items=[
+                    QuizItem(
+                        id="quiz_001",
+                        question="哪个说法正确？",
+                        options=["正确说法", "错误说法"],
+                        correct_index=0,
+                        explanation="第一个选项符合材料。",
+                        knowledge_point="概念",
+                        source_refs=[source_ref()],
+                    )
+                ],
+            )
+        ],
+    )
+
+    plan = ClassroomPlanGenerator(FakeLLMProvider()).generate(content)
+    actions = plan.scenes[0].actions
+    quiz_index = next(index for index, action in enumerate(actions) if action.type == "ASK_QUIZ")
+
+    assert plan.content_id == content.id
+    assert isinstance(actions[quiz_index], AskQuizAction)
+    assert isinstance(actions[quiz_index + 1], GiveFeedbackAction)
+    assert actions[quiz_index + 1].payload.quiz_action_id == actions[quiz_index].id
+
+
+def test_auto_step_treats_intermediate_end_as_scene_boundary() -> None:
+    sections = [
+        LearningSection(
+            id="section_001",
+            title="第一页",
+            summary="第一页结束后还要继续。",
+            source_refs=[source_ref()],
+        ),
+        LearningSection(
+            id="section_002",
+            title="第二页",
+            summary="第二页内容。",
+            source_refs=[source_ref()],
+        ),
+    ]
+    teacher = TeacherAgent()
+    plan = ClassroomPlan(
+        id="plan_001",
+        content_id="content_001",
+        scenes=[
+            teacher.build_scene(index, section)
+            for index, section in enumerate(sections, start=1)
+        ],
+    )
+    session = ClassroomSession(
+        id="session_001",
+        plan_id=plan.id,
+        mode="interactive",
+        scene_index=0,
+        action_index=len(plan.scenes[0].actions) - 1,
+    )
+    repository = Mock()
+    repository.get_session.return_value = session
+    repository.get_plan.return_value = plan
+    controller = Mock()
+    controller.decide.side_effect = AssertionError("controller should not end on scene END")
+
+    result = ClassroomService(repository, Mock(), controller=controller).auto_step(session.id)
+
+    assert result.status == "action"
+    assert result.action is not None
+    assert result.action.type == "END"
+    assert result.session.status == "running"
+    controller.decide.assert_not_called()
+
+
+def test_auto_step_executes_show_page_without_llm_controller() -> None:
+    section = LearningSection(
+        id="section_001",
+        title="第一页",
+        summary="先展示页面。",
+        source_refs=[source_ref()],
+    )
+    teacher = TeacherAgent()
+    plan = ClassroomPlan(
+        id="plan_001",
+        content_id="content_001",
+        scenes=[teacher.build_scene(1, section)],
+    )
+    session = ClassroomSession(
+        id="session_001",
+        plan_id=plan.id,
+        mode="interactive",
+    )
+    repository = Mock()
+    repository.get_session.return_value = session
+    repository.get_plan.return_value = plan
+    controller = Mock()
+    controller.decide.side_effect = AssertionError("SHOW_PAGE should not call controller")
+
+    result = ClassroomService(repository, Mock(), controller=controller).auto_step(session.id)
+
+    assert result.status == "action"
+    assert result.action is not None
+    assert result.action.type == "SHOW_PAGE"
+    controller.decide.assert_not_called()
+
+
+def test_auto_step_starts_student_dialog_after_explain_in_interactive_mode() -> None:
+    section = LearningSection(
+        id="section_001",
+        title="第一页",
+        summary="老师讲完后应有学生互动。",
+        source_refs=[source_ref()],
+    )
+    teacher = TeacherAgent()
+    plan = ClassroomPlan(
+        id="plan_001",
+        content_id="content_001",
+        scenes=[teacher.build_scene(1, section)],
+    )
+    session = ClassroomSession(
+        id="session_001",
+        plan_id=plan.id,
+        mode="interactive",
+        action_index=2,
+        student_states=get_default_student_agent_states(),
+        events=[
+            ActionExecutedEvent(
+                id="event_001",
+                session_id="session_001",
+                type="ACTION_EXECUTED",
+                payload=ActionExecutedPayload(
+                    action_id="scene_001_explain",
+                    action_type=ActionType.EXPLAIN,
+                ),
+            )
+        ],
+    )
+    repository = Mock()
+    repository.get_session.return_value = session
+    repository.get_plan.return_value = plan
+
+    result = ClassroomService(repository, Mock()).auto_step(session.id)
+
+    assert result.status == "agent_turn"
+    assert result.directed_turn is not None
+    assert result.directed_turn.decision.next_role == "student"
+    assert result.directed_turn.turns[0].role == "student"
+    assert result.directed_turn.turns[0].intent == "student_comment_after_explain"
+
+
+def test_auto_step_does_not_add_extra_probe_before_quiz_after_planned_probe() -> None:
+    section = LearningSection(
+        id="section_001",
+        title="第一页",
+        summary="先提问，再小测。",
+        source_refs=[source_ref()],
+        quiz_items=[
+            QuizItem(
+                id="quiz_001",
+                question="哪个说法正确？",
+                options=["正确说法", "错误说法"],
+                correct_index=0,
+                explanation="第一个选项符合材料。",
+                knowledge_point="概念",
+                source_refs=[source_ref()],
+            )
+        ],
+    )
+    plan = ClassroomPlanGenerator(FakeLLMProvider()).generate(
+        LearningContent(
+            id="content_001",
+            material_id="mat_001",
+            title="测试内容",
+            sections=[section],
+        )
+    )
+    quiz_index = next(
+        index for index, action in enumerate(plan.scenes[0].actions) if action.type == "ASK_QUIZ"
+    )
+    session = ClassroomSession(
+        id="session_001",
+        plan_id=plan.id,
+        mode="interactive",
+        action_index=quiz_index,
+        events=[
+            ActionExecutedEvent(
+                id="event_001",
+                session_id="session_001",
+                type="ACTION_EXECUTED",
+                payload=ActionExecutedPayload(
+                    action_id="scene_001_probe",
+                    action_type=ActionType.PROBE,
+                ),
+            )
+        ],
+    )
+    repository = Mock()
+    repository.get_session.return_value = session
+    repository.get_plan.return_value = plan
+    teacher = Mock(wraps=TeacherAgent())
+
+    result = ClassroomService(repository, Mock(), teacher=teacher).auto_step(session.id)
+
+    assert result.status == "action"
+    assert result.action is not None
+    assert result.action.type == "ASK_QUIZ"
+    teacher.generate_turn.assert_not_called()
 
 
 def test_fake_provider_extracts_short_chinese_points() -> None:

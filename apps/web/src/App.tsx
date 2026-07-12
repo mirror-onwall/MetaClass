@@ -17,6 +17,7 @@ import noteTakerAvatar from "./assets/agents/note-taker.png";
 import practicalApplierAvatar from "./assets/agents/practical-applier.png";
 import researcherAvatar from "./assets/agents/researcher.png";
 import silentObserverAvatar from "./assets/agents/silent-observer.png";
+import teacherQianqianAvatar from "./assets/agents/teacher-qianqian.png";
 import { api } from "./shared/api";
 import { formatBytes } from "./shared/format";
 import type {
@@ -26,6 +27,7 @@ import type {
   LearningMode,
   Material,
   PageMetadata,
+  PPTArtifact,
   StudentAgentType,
   TeachingAction,
   VideoResult,
@@ -37,54 +39,81 @@ const studentAgentChoices: Array<{
   type: StudentAgentType;
   name: string;
   description: string;
+  studentName: string;
+  gender: string;
+  profile: string;
   avatar: string;
 }> = [
   {
     type: "classroom_atmosphere_regulator",
     name: "课堂气氛调节者",
     description: "活跃氛围，用类比打开话题",
+    studentName: "凡凡",
+    gender: "男",
+    profile: "善于把抽象概念换成生活里的小例子，也会鼓励不敢发言的同学加入讨论。",
     avatar: atmosphereAvatar,
   },
   {
     type: "deep_thinker",
     name: "深度思考者",
     description: "追问原因、边界与反例",
+    studentName: "浩浩",
+    gender: "男",
+    profile: "习惯从前提、条件和反例出发追问，喜欢把一个结论推到更深的边界处。",
     avatar: deepThinkerAvatar,
   },
   {
     type: "note_taker",
     name: "课堂笔记员",
     description: "提炼重点，整理可复习笔记",
+    studentName: "婧婧",
+    gender: "女",
+    profile: "会把讲解整理为定义、例子和易错点三类笔记，擅长在阶段结束时复述重点。",
     avatar: noteTakerAvatar,
   },
   {
     type: "researcher",
     name: "研究型同学",
     description: "连接应用场景与研究方法",
+    studentName: "涵涵",
+    gender: "女",
+    profile: "对研究问题和方法格外敏感，常会把当前知识点连接到实验设计和真实研究场景。",
     avatar: researcherAvatar,
   },
   {
     type: "foundation_weak",
     name: "基础薄弱型同学",
     description: "提出基础问题，帮助发现学习门槛",
+    studentName: "琪琪",
+    gender: "男",
+    profile: "愿意直接说出没听懂的地方，容易卡在前置概念，需要清晰的分步解释和小例子。",
     avatar: foundationWeakAvatar,
   },
   {
     type: "silent_observer",
     name: "沉默观察型同学",
     description: "低频发言，在关键处表达困惑",
+    studentName: "跳跳",
+    gender: "女",
+    profile: "平时安静地观察课堂节奏，通常在被邀请或出现关键困惑时，给出简短但真实的反馈。",
     avatar: silentObserverAvatar,
   },
   {
     type: "concept_confused",
     name: "概念混淆型同学",
     description: "暴露典型误解，触发辨析讲解",
+    studentName: "昊昊",
+    gender: "男",
+    profile: "容易把相近概念放在一起理解，但正好能暴露典型误解，推动老师进行对比辨析。",
     avatar: conceptConfusedAvatar,
   },
   {
     type: "practical_applier",
     name: "实践应用型同学",
     description: "关注怎么用、在哪里用",
+    studentName: "包包",
+    gender: "女",
+    profile: "最关心知识怎样落到真实任务里，会追问具体做法、使用条件和可操作的步骤。",
     avatar: practicalApplierAvatar,
   },
 ];
@@ -101,12 +130,20 @@ function App() {
   const [material, setMaterial] = useState<Material | null>(null);
   const [pages, setPages] = useState<PageMetadata[]>([]);
   const [content, setContent] = useState<LearningContent | null>(null);
+  const [presentationArtifact, setPresentationArtifact] = useState<PPTArtifact | null>(null);
+  const [presentationSlideImages, setPresentationSlideImages] = useState<Record<number, string>>({});
   const [session, setSession] = useState<ClassroomSession | null>(null);
   const [action, setAction] = useState<TeachingAction | null>(null);
+  const [currentSlide, setCurrentSlide] = useState<{
+    src: string;
+    pageNo: number;
+    generated: boolean;
+  } | null>(null);
   const [learningMode, setLearningMode] = useState<LearningMode>("lecture");
   const [studentAgentTypes, setStudentAgentTypes] = useState<StudentAgentType[]>(
     defaultStudentAgentTypes,
   );
+  const [hoveredStudentAgentType, setHoveredStudentAgentType] = useState<StudentAgentType | null>(null);
   const [agentTurn, setAgentTurn] = useState<DirectedAgentTurn | null>(null);
   const [feedback, setFeedback] = useState("");
   const [question, setQuestion] = useState("");
@@ -124,6 +161,31 @@ function App() {
     if (pages.length) return 1;
     return 0;
   }, [content, pages.length, session, video]);
+  const hoveredStudentAgent = studentAgentChoices.find(
+    (agent) => agent.type === hoveredStudentAgentType,
+  );
+  function displayAgentName(agentId: string, role: DirectedAgentTurn["turns"][number]["role"]) {
+    if (role === "teacher") return "芊芊老师";
+    const studentState = session?.student_states.find((student) => student.id === agentId);
+    const studentAgent = studentAgentChoices.find(
+      (agent) => agent.type === studentState?.agent_type,
+    );
+    return studentAgent ? `${studentAgent.studentName} · ${studentAgent.name}` : agentId;
+  }
+  const captionTurn = feedback
+    ? agentTurn?.turns.find((turn) => turn.speech === feedback)
+    : undefined;
+  const captionText = feedback;
+  const captionSpeaker = captionTurn
+    ? displayAgentName(captionTurn.agent_id, captionTurn.role)
+    : "芊芊老师";
+  const captionStudentState = captionTurn?.role === "student"
+    ? session?.student_states.find((student) => student.id === captionTurn.agent_id)
+    : undefined;
+  const captionStudentAgent = studentAgentChoices.find(
+    (agent) => agent.type === captionStudentState?.agent_type,
+  );
+  const captionAvatar = captionStudentAgent?.avatar ?? teacherQianqianAvatar;
 
   useEffect(() => {
     if (!autoPlaying || !session || session.status === "completed") return;
@@ -133,6 +195,24 @@ function App() {
     }, delay);
     return () => window.clearTimeout(timer);
   }, [autoPlaying, session, action, agentTurn]);
+
+  useEffect(() => {
+    if (!feedback) return;
+    const timer = window.setTimeout(() => setFeedback(""), 5800);
+    return () => window.clearTimeout(timer);
+  }, [feedback]);
+
+  useEffect(() => {
+    if (!action || action.type !== "SHOW_PAGE") return;
+    const pageNo = action.payload.source_ref.page_no;
+    const generatedImage = presentationSlideImages[pageNo];
+    const fallbackImage = material ? api.pageImage(material.id, pageNo) : "";
+    setCurrentSlide({
+      src: generatedImage ?? fallbackImage,
+      pageNo,
+      generated: Boolean(generatedImage),
+    });
+  }, [action, material, presentationSlideImages]);
 
   async function run<T>(label: string, task: () => Promise<T>): Promise<T | undefined> {
     setBusy(label);
@@ -163,8 +243,11 @@ function App() {
     setMaterial(null);
     setPages([]);
     setContent(null);
+    setPresentationArtifact(null);
+    setPresentationSlideImages({});
     setSession(null);
     setAction(null);
+    setCurrentSlide(null);
     setAgentTurn(null);
     setFeedback("");
     setAutoPlaying(false);
@@ -198,19 +281,29 @@ function App() {
 
   async function startClassroom() {
     if (!content) return;
-    const result = await run("正在布置课堂", () =>
-      api.createSession(
+    const result = await run("正在生成 PPT 并布置课堂", async () => {
+      const artifact = await api.createPresentationDeck(content.id);
+      const slideImages = Object.fromEntries(
+        artifact.slide_images.map((slide) => [
+          slide.slide_no,
+          api.pptSlideImage(artifact.id, slide.slide_no),
+        ]),
+      );
+      const classroomSession = await api.createSession(
         content.id,
         learningMode,
         learningMode === "interactive" ? studentAgentTypes : [],
-      ),
-    );
+      );
+      return { artifact, classroomSession, slideImages };
+    });
     if (result) {
-      setSession(result);
+      setPresentationArtifact(result.artifact);
+      setPresentationSlideImages(result.slideImages);
+      setSession(result.classroomSession);
       setAction(null);
       setAgentTurn(null);
       setAutoPlaying(true);
-      setFeedback("课堂已就绪，自动播放已开始。你可以随时输入问题打断。");
+      setFeedback("PPT 已生成，课堂已就绪，自动播放已开始。你可以随时输入问题打断。");
     }
   }
 
@@ -272,10 +365,11 @@ function App() {
   }
 
   async function answer(selectedIndex: number) {
-    if (!session) return;
+    if (!session || busy || session.waiting_for !== "quiz_answer") return;
     const result = await run("Evaluator 正在评估", () => api.answer(session.id, selectedIndex));
     if (!result) return;
     setSession(result.session);
+    setAction(null);
     setAgentTurn(null);
     setAutoPlaying(result.session.status !== "completed");
     setFeedback(result.feedback ?? "");
@@ -314,25 +408,23 @@ function App() {
           <span><b>MetaClass</b><small>AI CLASSROOM STUDIO</small></span>
         </a>
         <div className="room-title">
-          <span>ROOM 01</span>
-          <b>{content?.title ?? "新课堂准备室"}</b>
+          <div className="room-title-copy">
+            <span>ROOM 01</span>
+            <b title={content?.title ?? "新课堂准备室"}>{content?.title ?? "新课堂准备室"}</b>
+          </div>
+          <div className="course-progress" aria-label={`课程进度：${activeStage + 1}/${stages.length}，${stages[activeStage]}`}>
+            <span>{String(activeStage + 1).padStart(2, "0")} / {String(stages.length).padStart(2, "0")}</span>
+            <b>{stages[activeStage]}</b>
+            <ol aria-hidden="true">
+              {stages.map((stage, index) => <li className={index <= activeStage ? "done" : ""} key={stage} />)}
+            </ol>
+          </div>
         </div>
         <div className="system-live"><i /> LOCAL SYSTEM ONLINE</div>
       </header>
 
       <main id="top" className="classroom-layout">
         <aside className="left-console">
-          <div className="console-label">LESSON SETUP</div>
-          <nav className="lesson-steps" aria-label="课堂生成进度">
-            {stages.map((stage, index) => (
-              <div className={`${index === activeStage ? "active" : ""} ${index < activeStage ? "done" : ""}`} key={stage}>
-                <span>{index < activeStage ? "✓" : String(index + 1).padStart(2, "0")}</span>
-                <b>{stage}</b>
-                <i />
-              </div>
-            ))}
-          </nav>
-
           <section className="material-dock">
             <div className="section-caption"><span>课程材料</span><small>PDF / PPTX</small></div>
             <label
@@ -381,7 +473,10 @@ function App() {
               </button>
             </div>
             {learningMode === "interactive" && (
-              <div className="student-agent-selector">
+              <div
+                className="student-agent-selector"
+                onMouseLeave={() => setHoveredStudentAgentType(null)}
+              >
                 <div className="section-caption">
                   <span>课堂同学</span>
                   <small>SELECTED {studentAgentTypes.length} / 8</small>
@@ -396,15 +491,32 @@ function App() {
                         key={agent.type}
                         disabled={!!session}
                         onClick={() => toggleStudentAgent(agent.type)}
+                        onMouseEnter={() => setHoveredStudentAgentType(agent.type)}
+                        onFocus={() => setHoveredStudentAgentType(agent.type)}
+                        onBlur={() => setHoveredStudentAgentType(null)}
                         aria-pressed={selected}
                       >
-                        <img src={agent.avatar} alt="" />
+                        <span className="student-agent-avatar"><img src={agent.avatar} alt="" /></span>
                         <span><b>{agent.name}</b><small>{agent.description}</small></span>
                         <i>{selected ? "✓" : "+"}</i>
                       </button>
                     );
                   })}
                 </div>
+                {hoveredStudentAgent && (
+                  <aside className="student-agent-profile" aria-live="polite">
+                    <div className="student-agent-profile-head">
+                      <span>同学档案</span>
+                      <small>{hoveredStudentAgent.gender}</small>
+                    </div>
+                    <img src={hoveredStudentAgent.avatar} alt={`${hoveredStudentAgent.studentName}的头像`} />
+                    <div>
+                      <b>{hoveredStudentAgent.studentName}</b>
+                      <small>{hoveredStudentAgent.name}</small>
+                    </div>
+                    <p>{hoveredStudentAgent.profile}</p>
+                  </aside>
+                )}
               </div>
             )}
             <button disabled={!pages.length || !!content || !!busy} onClick={buildContent}><span>01</span><b>{content ? "内容已构建" : "构建学习内容"}</b><i>↗</i></button>
@@ -417,19 +529,39 @@ function App() {
           <div className="studio-ceiling"><i /><i /><i /><span>METACLASS · SMART TEACHING WALL</span><i /><i /><i /></div>
           <div className="blackboard">
             <div className="board-meta"><span><i /> {session ? "SESSION LIVE" : "CLASSROOM STANDBY"}</span><b>{actionLabel}</b><small>{session?.id ?? "等待创建课堂"}</small></div>
-            <div className="projection-screen">
-              {session ? (
-                <ActionView action={action} materialId={material?.id} onAnswer={answer} />
-              ) : pages.length ? (
-                <SlideNarrationPlayer content={content} materialId={material?.id} pages={pages} />
-              ) : (
-                <div className="empty-classroom">
-                  <div className="room-emblem">M</div>
-                  <small>READ · PLAN · RUN</small>
-                  <h1>让课件走上讲台，<br />变成一堂真正的课。</h1>
-                  <p>从左侧导入 PDF 或 PPTX，页面、讲解、小测与来源引用都会在这里展开。</p>
-                </div>
+            <div className={`board-stage ${captionText ? "speaking" : ""}`}>
+              <div className="projection-screen">
+                {session ? (
+                  <ActionView
+                    action={action}
+                    answerDisabled={!!busy || session.waiting_for !== "quiz_answer"}
+                    materialId={material?.id}
+                    presentationSlideImages={presentationSlideImages}
+                    currentSlide={currentSlide}
+                    onAnswer={answer}
+                  />
+                ) : pages.length ? (
+                  <SlideNarrationPlayer content={content} materialId={material?.id} pages={pages} />
+                ) : (
+                  <div className="empty-classroom">
+                    <div className="room-emblem">M</div>
+                    <small>READ · PLAN · RUN</small>
+                    <h1>让课件走上讲台，<br />变成一堂真正的课。</h1>
+                    <p>从左侧导入 PDF 或 PPTX，页面、讲解、小测与来源引用都会在这里展开。</p>
+                  </div>
+                )}
+              </div>
+              {captionText && (
+                <aside className="live-speaker" aria-live="polite">
+                  <div className="live-speaker-avatar"><img src={captionAvatar} alt="" /></div>
+                  <div className="speech-bubble">
+                    <span>{captionSpeaker}</span>
+                    <p>{captionText}</p>
+                    <button onClick={() => setFeedback("")} aria-label="关闭发言气泡">×</button>
+                  </div>
+                </aside>
               )}
+              {!captionText && <div className="live-speaker-slot" aria-hidden="true" />}
             </div>
             <div className="board-tray"><span /><span /><i>MC</i><span /><span /></div>
           </div>
@@ -455,23 +587,6 @@ function App() {
               <button disabled={!question.trim() || !session || !!busy}>发送</button>
             </form>
           </div>
-          {agentTurn && (
-            <div className="agent-turn-card">
-              <div className="agent-turn-head">
-                <span>LLM DIRECTOR</span>
-                <b>{agentTurn.decision.next_role.toUpperCase()}</b>
-              </div>
-              <p className="director-reason">{agentTurn.decision.reason}</p>
-              {agentTurn.turns.map((turn) => (
-                <article className={`agent-speech ${turn.role}`} key={`${turn.agent_id}-${turn.intent}`}>
-                  <span>{turn.role === "teacher" ? "Teacher" : turn.agent_id}</span>
-                  <p>{turn.speech}</p>
-                  {turn.actions.length > 0 && <small>{turn.actions.join(" · ")}</small>}
-                </article>
-              ))}
-            </div>
-          )}
-          {feedback && <div className="teacher-response"><span>TEACHER</span><p>{feedback}</p><button onClick={() => setFeedback("")}>×</button></div>}
         </section>
 
         <aside className="right-board">
@@ -521,6 +636,17 @@ function App() {
               <a href={api.videoDownload(video.id)}>下载 MP4 ↗</a>
             </>}
           </section>
+          {presentationArtifact && (
+            <section className="video-status ready">
+              <span className="video-glyph">▣</span>
+              <div>
+                <small>PRESENTATION</small>
+                <b>生成 PPT 已就绪</b>
+                <p>{presentationArtifact.slide_images.length} 页已渲染为课堂图片</p>
+              </div>
+              <a href={api.pptDownload(presentationArtifact.id)}>下载 PPTX ↗</a>
+            </section>
+          )}
         </aside>
       </main>
 

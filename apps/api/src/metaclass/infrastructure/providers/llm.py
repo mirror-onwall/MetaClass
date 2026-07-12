@@ -37,6 +37,55 @@ class FakeLLMProvider:
     def complete_json(self, messages: list[LLMMessage], *, temperature: float = 0.2) -> str:
         system_text = messages[0].content if messages else ""
         user_text = messages[-1].content if messages else ""
+        if "MetaClass 的 ClassroomPlan planner" in system_text:
+            request_payload = json.loads(user_text)
+            scenes = [
+                {
+                    "section_id": section["id"],
+                    "include_probe": index % 3 == 0,
+                    "probe_question": f"你能用自己的话解释{section['title']}的核心意思吗？"
+                    if index % 3 == 0
+                    else None,
+                    "include_quiz": bool(section.get("has_quiz")),
+                    "include_review": index % 5 == 0,
+                    "teaching_note": f"围绕{section['title']}做一个阶段性回顾。"
+                    if index % 5 == 0
+                    else None,
+                }
+                for index, section in enumerate(request_payload["sections"], start=1)
+            ]
+            return json.dumps(
+                {
+                    "scenes": scenes,
+                },
+                ensure_ascii=False,
+            )
+        if "MetaClass 的 PresentationPlan planner" in system_text:
+            request_payload = json.loads(user_text)
+            slides = [
+                {
+                    "source_section_ids": [section["id"]],
+                    "title": section["title"],
+                    "key_points": section.get("knowledge_points") or [section["title"]],
+                    "speaker_script": (
+                        f"这一页我们讲{section['title']}。"
+                        f"{section.get('summary', '')} "
+                        "讲解时可以先给出直观解释，再补充一个例子帮助理解。"
+                    ),
+                    "suggested_visual": (
+                        "Use the source page image with a highlighted callout for "
+                        f"{section['title']}."
+                    ),
+                }
+                for section in request_payload["sections"]
+            ]
+            return json.dumps(
+                {
+                    "title": request_payload["title"],
+                    "slides": slides,
+                },
+                ensure_ascii=False,
+            )
         if "MetaClass 课堂调度器" in system_text:
             if '"mode": "lecture"' in user_text:
                 return json.dumps(

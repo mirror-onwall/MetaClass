@@ -33,6 +33,48 @@
 
 ## 变更记录
 
+### 2026-07-12 - 黑板右侧发言席
+
+- 新增 `apps/web/src/assets/agents/teacher-qianqian.png`，作为芊芊老师的纸雕头像。
+- 修改 `apps/web/src/App.tsx` 与 `apps/web/src/styles.css`：黑板扩宽，并在有实时发言时展示“左侧 PPT + 右侧头像与气泡”的课堂发言席。
+- 气泡根据当前发言者显示芊芊老师或对应学生头像与姓名；发言约 5.8 秒后自动收起，也支持手动关闭。右侧发言席的版位始终预留，确保 PPT 在发言前后保持同一尺寸。
+- 移动端将发言席切换为 PPT 下方的紧凑横向头像与气泡布局。
+
+### 2026-07-12 - 黑板顶部实时字幕
+
+- 修改 `apps/web/src/App.tsx` 与 `apps/web/src/styles.css`：将原本位于黑板下方的智能体发言和教师反馈，合并为黑板内部、PPT 上方的实时讲台字幕带。
+- 字幕带显示实际发言者名称，且位于投影页面外部，不会遮挡 PPT 内容；保留关闭按钮。
+- 移除面向学生的 LLM 调度详情卡，避免课堂时将注意力拉到 PPT 下方。
+
+### 2026-07-12 - 智能体发言显示角色姓名
+
+- 修改 `apps/web/src/App.tsx`：课堂智能体发言不再显示内部 ID（如 `student_agent_002`）。
+- 学生发言会根据当前 session 映射为“姓名 · 角色”，例如“浩浩 · 深度思考者”；教师统一显示为“芊芊老师”。
+- 映射信息缺失时回退显示原始 ID，避免影响课堂发言的正常展示。
+
+### 2026-07-12 - 学生头像性别表现修正
+
+- 重绘 `apps/web/src/assets/agents/atmosphere-regulator.png`、`researcher.png`、`foundation-weak.png`、`practical-applier.png`、`silent-observer.png`。
+- 凡凡、琪琪调整为男生；涵涵、包包、跳跳调整为女生；继续沿用纸雕便签、图钉和米白纸张的既有视觉风格。
+- 教师智能体的前端发言和反馈展示名统一为“芊芊老师”；保留内部 `teacher` 标识，避免影响既有 API 兼容性。
+
+### 2026-07-12 - 学生智能体悬浮档案
+
+- 修改 `apps/web/src/App.tsx` 与 `apps/web/src/styles.css`：课堂同学选择卡在鼠标悬浮或键盘聚焦时，显示放大头像和同学档案。
+- 档案包含姓名、性别、角色和课堂表现；悬浮预览不改变原有点击卡片选中/取消选中学生的行为。
+- 角色名称：凡凡、浩浩、婧婧、涵涵、琪琪、跳跳、昊昊、包包。
+
+### 2026-07-12 - 顶部课程进度刻度
+
+- 修改 `apps/web/src/App.tsx` 与 `apps/web/src/styles.css`：移除左栏课程流程模块，左栏从课程材料和备课操作开始。
+- 将流程收纳进顶部标题栏，使用中文当前阶段、`01 / 05` 计数和五段细刻度静态呈现，不再具备菜单或卡片的视觉暗示。
+- 移动端保留简洁标题栏，避免压缩主要操作区域。
+
+### 2026-07-11 - 根目录 LLM 环境配置
+
+- 新增项目根目录 `.env`，配置 Qwen OpenAI-compatible LLM 与 embedding 参数；该文件已由 `.gitignore` 忽略，不能提交或推送。
+- `apps/api/src/metaclass/core/config.py` 现在始终从项目根目录读取 `.env`，因此按 `cd apps/api` 的日常启动方式运行时也会加载同一份配置。
+
 ### 2026-07-11 - 对齐 yj 的学生智能体选择契约
 
 - 修改文件：`apps/api/src/metaclass/modules/classroom/agent_schemas.py`、`apps/api/src/metaclass/modules/classroom/schemas.py`、`apps/web/src/App.tsx`、`apps/web/src/shared/types.ts`、`apps/api/tests/test_schemas.py`。
