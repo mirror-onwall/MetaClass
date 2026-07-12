@@ -7,6 +7,8 @@ import type {
   LearningMode,
   Material,
   PageMetadata,
+  PPTArtifact,
+  PresentationPlan,
   StudentAgentType,
   VideoJob,
   VideoResult,
@@ -66,6 +68,21 @@ export const api = {
       body: JSON.stringify({ mode, student_agent_types: studentAgentTypes }),
     });
   },
+  async createPresentationDeck(contentId: string) {
+    const plan = await request<PresentationPlan>(
+      `/api/v1/learning-contents/${contentId}/presentation-plans`,
+      { method: "POST" },
+    );
+    const job = await request<{ id: string; status: string; artifact_id?: string; error?: string }>(
+      `/api/v1/presentation-plans/${plan.id}/ppt-jobs`,
+      { method: "POST" },
+    );
+    if (job.status === "failed") throw new Error(job.error ?? "PPT 生成失败");
+    if (job.status !== "finished" || !job.artifact_id) {
+      throw new Error("PPT 生成任务尚未完成");
+    }
+    return request<PPTArtifact>(`/api/v1/ppt-jobs/${job.id}/artifact`);
+  },
   nextAgentTurn(sessionId: string) {
     return request<DirectedAgentTurn>(`/api/v1/classroom-sessions/${sessionId}/agent-turns/next`, {
       method: "POST",
@@ -107,6 +124,12 @@ export const api = {
   },
   pageImage(materialId: string, pageNumber: number) {
     return `${API_BASE}/api/v1/materials/${materialId}/pages/${pageNumber}/image`;
+  },
+  pptSlideImage(artifactId: string, slideNumber: number) {
+    return `${API_BASE}/api/v1/ppt-artifacts/${artifactId}/slides/${slideNumber}/image`;
+  },
+  pptDownload(artifactId: string) {
+    return `${API_BASE}/api/v1/ppt-artifacts/${artifactId}/download`;
   },
   videoDownload(resultId: string) {
     return `${API_BASE}/api/v1/videos/${resultId}/download`;

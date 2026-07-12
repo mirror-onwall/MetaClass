@@ -12,12 +12,16 @@ from metaclass.infrastructure.providers import (
 from metaclass.infrastructure.providers.fake import FakeLearningProvider, FakeTTSProvider
 from metaclass.modules.classroom.agents import EvaluatorAgent, StudentRosterAgent, TeacherAgent
 from metaclass.modules.classroom.controller import ClassroomController
+from metaclass.modules.classroom.planner import ClassroomPlanGenerator
 from metaclass.modules.classroom.repository import SqlAlchemyClassroomRepository
 from metaclass.modules.classroom.service import ClassroomService
 from metaclass.modules.content.repository import SqlAlchemyContentRepository
 from metaclass.modules.content.service import ContentService
 from metaclass.modules.materials.repository import SqlAlchemyMaterialRepository
 from metaclass.modules.materials.service import MaterialService
+from metaclass.modules.presentation.planner import PresentationPlanGenerator
+from metaclass.modules.presentation.repository import SqlAlchemyPresentationRepository
+from metaclass.modules.presentation.service import PresentationService
 from metaclass.modules.video.repository import SqlAlchemyVideoRepository
 from metaclass.modules.video.service import VideoService
 
@@ -27,6 +31,7 @@ class ApplicationServices:
     database: Database
     materials: MaterialService
     contents: ContentService
+    presentations: PresentationService
     classrooms: ClassroomService
     videos: VideoService
 
@@ -50,6 +55,7 @@ def build_services(
 
     material_repository = SqlAlchemyMaterialRepository(database)
     content_repository = SqlAlchemyContentRepository(database)
+    presentation_repository = SqlAlchemyPresentationRepository(database)
     classroom_repository = SqlAlchemyClassroomRepository(database)
     video_repository = SqlAlchemyVideoRepository(database)
     llm_config = get_llm_runtime_config()
@@ -73,6 +79,12 @@ def build_services(
         FakeLearningProvider() if isinstance(llm, FakeLLMProvider) else LLMLearningProvider(llm)
     )
     contents = ContentService(content_repository, materials, learning_provider)
+    presentations = PresentationService(
+        data_dir,
+        presentation_repository,
+        contents,
+        planner=PresentationPlanGenerator(llm),
+    )
     classrooms = ClassroomService(
         classroom_repository,
         contents,
@@ -80,6 +92,7 @@ def build_services(
         evaluator=EvaluatorAgent(),
         student_roster=StudentRosterAgent(llm),
         controller=ClassroomController(llm),
+        planner=ClassroomPlanGenerator(llm, fallback_teacher=TeacherAgent()),
     )
     videos = VideoService(data_dir, video_repository, contents, FakeTTSProvider())
-    return ApplicationServices(database, materials, contents, classrooms, videos)
+    return ApplicationServices(database, materials, contents, presentations, classrooms, videos)

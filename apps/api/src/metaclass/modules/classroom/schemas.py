@@ -180,6 +180,19 @@ class ClassroomPlan(SchemaModel):
     version: int = Field(default=1, ge=1)
 
 
+class ClassroomPlanJob(SchemaModel):
+    id: str = Field(min_length=1)
+    content_id: str = Field(min_length=1)
+    status: Literal["queued", "running", "succeeded", "failed"] = "queued"
+    step: Literal["queued", "planning", "persisting", "completed", "failed"] = "queued"
+    progress: int = Field(default=0, ge=0, le=100)
+    message: str = Field(min_length=1)
+    plan_id: str | None = None
+    error: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
 class ActionExecutedPayload(SchemaModel):
     action_id: str
     action_type: ActionType

@@ -6,6 +6,263 @@
 
 以下是对当前修改记录的补充，主要补上之前容易被忽略、但后续联调时很重要的细节。
 
+### 新增：A/B 边界和 OpenMAIC-style 异步课堂计划任务
+
+现在 A 同学的链路只负责到 `LearningContent`，这个边界是合理的：
+
+```text
+A: PPT/PDF -> PageMetadata -> PageUnderstanding -> LearningContent
+B: LearningContent -> ClassroomPlan -> ClassroomSession/Event -> Teacher/Student Agents
+```
+
+B 侧已经补了一个参考 OpenMAIC 的异步计划生成入口。旧同步接口仍然保留，前端当前不需要被迫改调用方式。
+
+新增后端表：
+
+```text
+classroom_plan_jobs
+```
+
+新增接口：
+
+```http
+POST /api/v1/learning-contents/{content_id}/classroom-plan-jobs
+GET  /api/v1/classroom-plan-jobs/{job_id}
+```
+
+`POST` 会返回 202 和 `ClassroomPlanJob`：
+
+```json
+{
+  "id": "plan_job_xxx",
+  "content_id": "content_xxx",
+  "status": "queued",
+  "step": "queued",
+  "progress": 0,
+  "message": "课堂计划生成任务已创建",
+  "plan_id": null,
+  "error": null
+}
+```
+
+`GET` 用于轮询任务状态：
+
+```text
+queued -> running/planning -> running/persisting -> succeeded/completed
+```
+
+如果成功，`plan_id` 会指向生成好的 `ClassroomPlan`；如果失败，`error` 会给出错误信息。这个设计的意义是：以后真实 LLM 生成课堂计划耗时较长时，前端可以像 OpenMAIC 那样创建任务并轮询进度，而不是一直卡在一个同步请求里。
+
+兼容性说明：
+
+- 原来的同步接口 `POST /api/v1/learning-contents/{content_id}/classroom-plans` 没有删除。
+- 当前前端如果继续用旧接口，仍然可以跑通。
+- 后续如果要优化体验，可以改成先调 `classroom-plan-jobs`，轮询成功后再用 `plan_id` 创建课堂 session。
+
+### 新增：Presentation 模块，承接 PPT 生成和每页讲稿
+
+新增独立后端模块：
+
+```text
+apps/api/src/metaclass/modules/presentation/
+```
+
+这个模块不塞进 `classroom`，而是作为 `LearningContent` 后面的独立中间层：
+
+```text
+LearningContent
+  -> PresentationPlan
+      -> slides[]
+      -> slide_id
+      -> source_section_ids
+      -> title
+      -> key_points
+      -> speaker_script
+      -> suggested_visual
+  -> PPT skill 生成真实 pptx
+
+PresentationPlan
+  -> 后续可被 ClassroomPlan 引用
+```
+
+当前已经实现：
+
+- `PresentationPlanGenerator`：调用 LLM 根据 `LearningContent` 生成每页 PPT 规划和每页讲稿。
+- `PPTSkillAdapter`：预留未来调用 PPT skill 的入口。
+- `presentation_plans` 表：保存中间层 `PresentationPlan`。
+- `ppt_generation_jobs` 表：记录 PPT 生成任务。
+- `ppt_artifacts` 表：记录 PPT 生成产物或 skill 请求文件。
+
+新增接口：
+
+```http
+POST /api/v1/learning-contents/{content_id}/presentation-plans
+GET  /api/v1/learning-contents/{content_id}/presentation-plan
+GET  /api/v1/presentation-plans/{plan_id}
+POST /api/v1/presentation-plans/{plan_id}/ppt-jobs
+GET  /api/v1/ppt-jobs/{job_id}
+GET  /api/v1/ppt-jobs/{job_id}/artifact
+GET  /api/v1/ppt-artifacts/{artifact_id}
+GET  /api/v1/ppt-artifacts/{artifact_id}/skill-request
+GET  /api/v1/ppt-artifacts/{artifact_id}/download
+```
+
+当前 PPT job 的行为：
+
+```text
+PresentationPlan
+  -> PPTSkillAdapter.prepare_request()
+  -> data/generated/presentations/{job_id}/deck.pptx
+  -> data/generated/presentations/{job_id}/slides/slide_001.png
+  -> data/generated/presentations/{job_id}/slides/slide_002.png
+  -> data/generated/presentations/{job_id}/speaker_scripts.json
+  -> data/generated/presentations/{job_id}/skill_request.json
+  -> job.status = finished
+```
+
+也就是说，现在已经能用项目现有 `python-pptx` 生成一版基础真实 `.pptx`，同时把 PPT 每页渲染成课堂可展示的 PNG 图片，并保留结构化 `skill_request.json`。之后等更高级的 PPT skill 放进来，只需要替换：
+
+```text
+apps/api/src/metaclass/modules/presentation/skill_adapter.py
+```
+
+里的 `prepare_request()`，让它调用更强的 skill 渲染器即可。
+
+PPT 页图片渲染技术路线：
+
+```text
+python-pptx 生成 deck.pptx
+  -> 优先调用 soffice/LibreOffice 转成 PDF
+  -> 使用 PyMuPDF(fitz) 把 PDF 每页渲染为 PNG
+  -> 如果本机没有 soffice，则用 Pillow 生成基础预览占位图
+```
+
+新增/更新接口：
+
+```http
+GET /api/v1/ppt-artifacts/{artifact_id}/slides
+GET /api/v1/ppt-artifacts/{artifact_id}/slides/{slide_no}/image
+```
+
+前端播放课堂时的显示规则：
+
+```text
+SHOW_PAGE
+  -> 优先使用 /ppt-artifacts/{artifact_id}/slides/{page_no}/image
+  -> 如果没有生成 PPT slide image，回退到原来的 /materials/{material_id}/pages/{page_no}/image
+EXPLAIN / PROBE / REVIEW / REMEDIATE / END / agent 发言
+  -> 不再把主屏切换成文字卡片
+  -> 保留上一页 PPT 投影画面
+ASK_QUIZ
+  -> 仍然显示正式小测题，等待真实用户作答
+```
+
+当前短期对齐策略：
+
+- `PresentationPlanGenerator` 先尽量保持“一个 LearningSection 对应一页生成 PPT”。
+- 前端暂时用 `source_ref.page_no -> slide_no` 做映射。
+- 后续如果允许 PPT 页合并/拆分，需要把 `SHOW_PAGE` 的 payload 扩展为直接携带 `slide_id` 或 `artifact_id + slide_no`。
+- 默认课堂计划不再每页固定插入 `SUMMARIZE` / “本页小结”，让 PPT 按正常页序推进；`SUMMARIZE` 这个 ActionType 仍保留，后续可由 LLM controller 在确实需要阶段总结时触发。
+
+### 试用后修复：PPT 中文乱码和互动消失
+
+试用发现两个问题：
+
+1. 如果本机 `soffice` 转 PDF 不可用，后端会走 Pillow fallback 生成 slide 图片；之前 fallback 使用 `ImageFont.load_default()`，不支持中文，导致生成 PPT 图片中文字乱码。
+2. 去掉每页固定 `SUMMARIZE` 后，原来依赖 `SUMMARIZE` 触发的学生总结/插话入口也一起消失，互动课堂看起来没有 agent 对话。
+
+已修复：
+
+- `PPTSkillAdapter` 生成 PPT 时给文字指定 `PingFang SC`。
+- fallback PNG 渲染会依次尝试系统中文字体：
+
+```text
+/System/Library/Fonts/PingFang.ttc
+/System/Library/Fonts/STHeiti Medium.ttc
+/System/Library/Fonts/Supplemental/Arial Unicode.ttf
+/System/Library/Fonts/Supplemental/Songti.ttc
+```
+
+- 互动课堂现在在每页 `EXPLAIN` 执行后自动触发一轮自然互动：
+
+```text
+SHOW_PAGE
+  -> EXPLAIN
+  -> student agent 自然插话/提问/复述
+  -> teacher agent 简短回应并拉回主线
+  -> ASK_QUIZ 或 END
+```
+
+这个互动不会替用户回答正式小测，也不会把主屏 PPT 页面切走。
+
+和 classroom 的关系：
+
+- 当前没有强行改 `ClassroomPlan` 输入，所以不会影响现有前端课堂流程。
+- 后续更理想的结构是让 `ClassroomPlan` 从 `PresentationPlan` 生成，这样 `SHOW_PAGE` 可以稳定指向某一页 PPT，`EXPLAIN` 可以直接用这一页的 `speaker_script`。
+- 目前先保留 `LearningContent -> ClassroomPlan` 的旧链路，避免前端联调被打断。
+
+### 新增：LLM ClassroomPlan 生成组件
+
+新增后端组件：
+
+```text
+apps/api/src/metaclass/modules/classroom/planner.py
+```
+
+核心类：
+
+```python
+ClassroomPlanGenerator
+```
+
+用途：
+
+- 根据 `LearningContent` 生成可运行的 `ClassroomPlan`。
+- 优先调用 LLM 输出轻量课堂规划蓝图，而不是让 LLM 直接吐完整 `ClassroomPlan`。
+- 后端根据蓝图和原始 `LearningContent` 组装完整 `ClassroomPlan` / `TeachingAction`。
+- 使用 Pydantic 校验 LLM 蓝图和最终 `ClassroomPlan` 契约。
+- 额外校验运行时关键约束：`ASK_QUIZ` 后必须紧跟 `GIVE_FEEDBACK`，且 `quiz_action_id` 必须指向前一个小测动作。
+- 如果 LLM 输出非法、解析失败或结构不满足课堂运行要求，自动回退到原来的规则模板生成，避免课堂创建失败。
+
+当前外部 API 不变：
+
+```http
+POST /api/v1/learning-contents/{content_id}/classroom-plans
+```
+
+也就是说前端暂时不需要改调用方式。变化发生在后端内部：
+
+```text
+LearningContent
+  -> ClassroomPlanGenerator
+  -> LLM 生成轻量 blueprint
+  -> 后端 hydrate 成 ClassroomPlan
+  -> Pydantic / runtime 校验
+  -> 保存 ClassroomPlan
+```
+
+修复记录：
+
+- 早期版本让 LLM 直接生成完整 `ClassroomPlan`，需要复制大量 `source_refs` 和 quiz payload，真实 API 容易超时并导致 `/classroom-plans` 返回 500。
+- 现在改为“LLM 只决定课堂结构，后端负责填充契约字段”，减少 token 和输出长度。
+- `TimeoutError` 会触发回退，不再让课堂创建接口直接 500。
+- 自动课堂中 `SHOW_PAGE`、`EXPLAIN`、`PROBE`、`REVIEW`、`REMEDIATE`、`END` 等普通计划动作不再先询问 LLM controller，避免每个动作都卡一次模型请求。
+- 如果 plan 已经安排了 `PROBE`，下一步到 `ASK_QUIZ` 时不会再额外生成一次老师开放提问，避免重复提问和小测前卡顿。
+
+需要和 PDF/PPT 解析同学对齐的接口重点：
+
+- `LearningContent.sections[].title`：LLM planner 会用它作为 scene 标题。
+- `LearningContent.sections[].summary`：LLM planner 会用它生成讲解、总结、回顾等动作。
+- `LearningContent.sections[].knowledge_points`：后续可用于决定是否插入 `PROBE` / `REVIEW` / `REMEDIATE`。
+- `LearningContent.sections[].source_refs`：必须稳定、完整，planner 不允许捏造 source ref；`SHOW_PAGE` 和讲解动作都依赖它。
+- `LearningContent.sections[].quiz_items`：正式小测只能从这里选择，不由 planner 临时编造。
+
+联调建议：
+
+- PDF/PPT 解析链路要保证每个 section 至少有一个 `source_ref`。
+- 如果希望课堂自动生成更好的小测，需要上游在 `quiz_items` 中提供题目、选项、正确答案、解释和知识点。
+- 如果某页不适合出题，可以让 `quiz_items=[]`，planner 会跳过正式小测。
+
 ### 试用后修复：小测等待时保留题目
 
 试用时发现一个前端状态问题：

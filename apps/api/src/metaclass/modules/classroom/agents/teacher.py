@@ -19,8 +19,6 @@ from metaclass.modules.classroom.schemas import (
     GiveFeedbackPayload,
     ShowPageAction,
     ShowPagePayload,
-    SummarizeAction,
-    SummarizePayload,
     TeacherAnswerPayload,
 )
 from metaclass.modules.content.schemas import LearningSection
@@ -71,15 +69,6 @@ class TeacherAgent:
             )
         actions.extend(
             [
-                SummarizeAction(
-                    id=f"{prefix}_summarize",
-                    type="SUMMARIZE",
-                    actor="teacher",
-                    payload=SummarizePayload(
-                        text=f"本页小结：{section.summary}",
-                        source_refs=section.source_refs,
-                    ),
-                ),
                 EndAction(
                     id=f"{prefix}_end",
                     type="END",

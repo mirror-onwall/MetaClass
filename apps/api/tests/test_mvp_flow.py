@@ -95,7 +95,6 @@ def test_complete_mvp_flow(client: TestClient) -> None:
         "EXPLAIN",
         "ASK_QUIZ",
         "GIVE_FEEDBACK",
-        "SUMMARIZE",
         "END",
     ]
 
@@ -173,6 +172,81 @@ def test_complete_mvp_flow(client: TestClient) -> None:
     assert Path(result.json()["video_path"]).stat().st_size > 0
     assert Path(result.json()["subtitles_path"]).read_text(encoding="utf-8")
     assert result.json()["duration_seconds"] > 0
+
+
+def test_classroom_plan_job_generates_plan_without_replacing_sync_api(client: TestClient) -> None:
+    processed = client.post(
+        "/api/v1/materials/process",
+        files={"file": ("lesson.pdf", make_pdf(), "application/pdf")},
+    )
+    material_id = processed.json()["material"]["id"]
+    content = client.post(f"/api/v1/materials/{material_id}/learning-content")
+    content_id = content.json()["id"]
+
+    created = client.post(f"/api/v1/learning-contents/{content_id}/classroom-plan-jobs")
+
+    assert created.status_code == 202
+    job_id = created.json()["id"]
+    assert created.json()["status"] in {"queued", "succeeded"}
+
+    job = client.get(f"/api/v1/classroom-plan-jobs/{job_id}")
+    assert job.status_code == 200
+    assert job.json()["status"] == "succeeded"
+    assert job.json()["progress"] == 100
+    assert job.json()["plan_id"]
+
+    plan = client.get(f"/api/v1/classroom-plans/{job.json()['plan_id']}")
+    assert plan.status_code == 200
+    assert plan.json()["content_id"] == content_id
+    assert plan.json()["scenes"]
+
+
+def test_presentation_plan_and_ppt_skill_request_flow(client: TestClient) -> None:
+    processed = client.post(
+        "/api/v1/materials/process",
+        files={"file": ("lesson.pdf", make_pdf(), "application/pdf")},
+    )
+    material_id = processed.json()["material"]["id"]
+    content = client.post(f"/api/v1/materials/{material_id}/learning-content")
+    content_id = content.json()["id"]
+
+    plan = client.post(f"/api/v1/learning-contents/{content_id}/presentation-plans")
+
+    assert plan.status_code == 201
+    assert plan.json()["content_id"] == content_id
+    assert plan.json()["slides"][0]["source_section_ids"]
+    assert plan.json()["slides"][0]["speaker_script"]
+
+    latest = client.get(f"/api/v1/learning-contents/{content_id}/presentation-plan")
+    assert latest.status_code == 200
+    assert latest.json()["id"] == plan.json()["id"]
+
+    job = client.post(f"/api/v1/presentation-plans/{plan.json()['id']}/ppt-jobs")
+    assert job.status_code == 201
+    assert job.json()["status"] == "finished"
+    assert job.json()["artifact_id"]
+
+    artifact = client.get(f"/api/v1/ppt-jobs/{job.json()['id']}/artifact")
+    assert artifact.status_code == 200
+    assert artifact.json()["pptx_path"]
+    assert Path(artifact.json()["pptx_path"]).exists()
+    assert artifact.json()["slide_images"]
+    assert Path(artifact.json()["slide_images"][0]["image_path"]).exists()
+    skill_request_path = Path(artifact.json()["skill_request_path"])
+    assert skill_request_path.exists()
+    assert "presentation_plan" in skill_request_path.read_text(encoding="utf-8")
+
+    download = client.get(f"/api/v1/ppt-artifacts/{artifact.json()['id']}/download")
+    assert download.status_code == 200
+    assert download.content[:2] == b"PK"
+
+    slides = client.get(f"/api/v1/ppt-artifacts/{artifact.json()['id']}/slides")
+    assert slides.status_code == 200
+    assert slides.json()[0]["slide_no"] == 1
+
+    slide_image = client.get(f"/api/v1/ppt-artifacts/{artifact.json()['id']}/slides/1/image")
+    assert slide_image.status_code == 200
+    assert slide_image.content[:8] == b"\x89PNG\r\n\x1a\n"
 
 
 def test_rejects_unsupported_file_type(client: TestClient) -> None:
@@ -253,19 +327,16 @@ def test_auto_classroom_waits_for_user_quiz_after_agent_turn(client: TestClient)
     fourth = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
     fifth = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
     sixth = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
-    seventh = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
 
     assert first.json()["action"]["type"] == "SHOW_PAGE"
     assert second.json()["action"]["type"] == "EXPLAIN"
     assert third.json()["status"] == "agent_turn"
-    assert third.json()["directed_turn"]["turns"][0]["role"] == "teacher"
-    assert "PROBE" in third.json()["directed_turn"]["turns"][0]["actions"]
-    assert fourth.json()["directed_turn"]["turns"][0]["role"] == "student"
-    assert fifth.json()["directed_turn"]["turns"][0]["role"] == "teacher"
-    assert sixth.json()["action"]["type"] == "ASK_QUIZ"
-    assert seventh.json()["status"] == "waiting"
-    assert seventh.json()["session"]["waiting_for"] == "quiz_answer"
-    assert seventh.json()["session"]["mastery"] == []
+    assert third.json()["directed_turn"]["turns"][0]["role"] == "student"
+    assert fourth.json()["directed_turn"]["turns"][0]["role"] == "teacher"
+    assert fifth.json()["action"]["type"] == "ASK_QUIZ"
+    assert sixth.json()["status"] == "waiting"
+    assert sixth.json()["session"]["waiting_for"] == "quiz_answer"
+    assert sixth.json()["session"]["mastery"] == []
 
     answer = client.post(
         f"/api/v1/classroom-sessions/{session_id}/answers", json={"selected_index": 0}

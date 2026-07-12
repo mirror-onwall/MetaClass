@@ -16,6 +16,21 @@ class ClassroomPlanRecord(Base):
     version: Mapped[int] = mapped_column(Integer)
 
 
+class ClassroomPlanJobRecord(Base):
+    __tablename__ = "classroom_plan_jobs"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    content_id: Mapped[str] = mapped_column(ForeignKey("learning_contents.id"), index=True)
+    status: Mapped[str] = mapped_column(String(20), index=True)
+    step: Mapped[str] = mapped_column(String(40))
+    progress: Mapped[int] = mapped_column(Integer)
+    message: Mapped[str] = mapped_column(String(500))
+    plan_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    error: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class ClassroomSessionRecord(Base):
     __tablename__ = "classroom_sessions"
 
