@@ -69,8 +69,25 @@ def build_services(
         mineru_command=settings.mineru_command,
         mineru_timeout_seconds=settings.mineru_timeout_seconds,
     )
+    vision_llm = None
+    if settings.vision_enabled and not isinstance(llm, FakeLLMProvider):
+        vision_llm = build_llm_provider(
+            provider=settings.vision_provider or llm_config.provider,
+            base_url=settings.vision_base_url or llm_config.base_url,
+            api_key=settings.vision_api_key or llm_config.api_key,
+            model=settings.vision_model or llm_config.model,
+            timeout_seconds=settings.vision_timeout_seconds or llm_config.timeout_seconds,
+            temperature=llm_config.temperature,
+            max_tokens=llm_config.max_tokens,
+        )
     learning_provider = (
-        FakeLearningProvider() if isinstance(llm, FakeLLMProvider) else LLMLearningProvider(llm)
+        FakeLearningProvider()
+        if isinstance(llm, FakeLLMProvider)
+        else LLMLearningProvider(
+            llm,
+            vision_llm=vision_llm,
+            vision_enabled=settings.vision_enabled,
+        )
     )
     contents = ContentService(content_repository, materials, learning_provider)
     classrooms = ClassroomService(

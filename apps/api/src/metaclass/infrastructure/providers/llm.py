@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import base64
 import json
+import mimetypes
 import ssl
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal, Protocol
 from urllib import error, request
 
@@ -105,6 +108,15 @@ class FakeLLMProvider:
             ensure_ascii=False,
         )
 
+    def complete_image_json(
+        self,
+        prompt: str,
+        image_path: str | Path,
+        *,
+        temperature: float = 0.2,
+    ) -> str:
+        return json.dumps({"visual_description": ""}, ensure_ascii=False)
+
 
 class OpenAICompatibleLLMProvider:
     """Minimal OpenAI-compatible chat/completions client.
@@ -168,6 +180,144 @@ class OpenAICompatibleLLMProvider:
         except (KeyError, IndexError, TypeError) as exc:
             raise RuntimeError(f"Unexpected LLM response shape: {body}") from exc
 
+    def complete_image_json(
+        self,
+        prompt: str,
+        image_path: str | Path,
+        *,
+        temperature: float = 0.2,
+    ) -> str:
+        path = Path(image_path)
+        mime_type = mimetypes.guess_type(path.name)[0] or "image/png"
+        data_url = (
+            f"data:{mime_type};base64,"
+            f"{base64.b64encode(path.read_bytes()).decode('ascii')}"
+        )
+        payload = {
+            "model": self.model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
+                }
+            ],
+            "temperature": temperature if temperature is not None else self.default_temperature,
+            "response_format": {"type": "json_object"},
+        }
+        if self.max_tokens:
+            payload["max_tokens"] = self.max_tokens
+        req = request.Request(
+            f"{self.base_url}/chat/completions",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        try:
+            with request.urlopen(
+                req, timeout=self.timeout_seconds, context=self.ssl_context
+            ) as response:
+                body = json.loads(response.read().decode("utf-8"))
+        except error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Vision request failed: HTTP {exc.code} {detail}") from exc
+        except error.URLError as exc:
+            raise RuntimeError(f"Vision request failed: {exc.reason}") from exc
+
+        try:
+            return str(body["choices"][0]["message"]["content"])
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RuntimeError(f"Unexpected vision response shape: {body}") from exc
+
+
+class GeminiVisionProvider:
+    """Gemini native REST provider for image understanding."""
+
+    name = "gemini"
+
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        api_key: str,
+        model: str,
+        timeout_seconds: float = 60.0,
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.model = model
+        self.timeout_seconds = timeout_seconds
+        self.ssl_context = ssl.create_default_context(cafile=certifi.where())
+
+    def complete_json(self, messages: list[LLMMessage], *, temperature: float = 0.2) -> str:
+        prompt = "\n\n".join(f"{message.role}: {message.content}" for message in messages)
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": temperature,
+                "response_mime_type": "application/json",
+            },
+        }
+        return self._generate_content(payload)
+
+    def complete_image_json(
+        self,
+        prompt: str,
+        image_path: str | Path,
+        *,
+        temperature: float = 0.2,
+    ) -> str:
+        path = Path(image_path)
+        mime_type = mimetypes.guess_type(path.name)[0] or "image/png"
+        payload = {
+            "contents": [
+                {
+                    "parts": [
+                        {"text": prompt},
+                        {
+                            "inline_data": {
+                                "mime_type": mime_type,
+                                "data": base64.b64encode(path.read_bytes()).decode("ascii"),
+                            }
+                        },
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "temperature": temperature,
+                "response_mime_type": "application/json",
+            },
+        }
+        return self._generate_content(payload)
+
+    def _generate_content(self, payload: dict) -> str:
+        req = request.Request(
+            f"{self.base_url}/models/{self.model}:generateContent?key={self.api_key}",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with request.urlopen(
+                req, timeout=self.timeout_seconds, context=self.ssl_context
+            ) as response:
+                body = json.loads(response.read().decode("utf-8"))
+        except error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise RuntimeError(f"Gemini request failed: HTTP {exc.code} {detail}") from exc
+        except error.URLError as exc:
+            raise RuntimeError(f"Gemini request failed: {exc.reason}") from exc
+
+        try:
+            return str(body["candidates"][0]["content"]["parts"][0]["text"])
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RuntimeError(f"Unexpected Gemini response shape: {body}") from exc
+
 
 def build_llm_provider(
     *,
@@ -194,5 +344,14 @@ def build_llm_provider(
             timeout_seconds=timeout_seconds,
             default_temperature=temperature,
             max_tokens=max_tokens,
+        )
+    if normalized in {"gemini", "google", "google-gemini"}:
+        if not api_key:
+            raise RuntimeError("METACLASS_VISION_API_KEY is required when provider=gemini")
+        return GeminiVisionProvider(
+            base_url=base_url or "https://generativelanguage.googleapis.com/v1beta",
+            api_key=api_key,
+            model=model,
+            timeout_seconds=timeout_seconds,
         )
     raise RuntimeError(f"Unsupported METACLASS_LLM_PROVIDER: {provider}")
