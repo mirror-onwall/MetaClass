@@ -39,14 +39,16 @@ class FakeLLMProvider:
         user_text = messages[-1].content if messages else ""
         if "MetaClass 的 ClassroomPlan planner" in system_text:
             request_payload = json.loads(user_text)
+            section_count = len(request_payload["sections"])
             scenes = [
                 {
                     "section_id": section["id"],
-                    "include_probe": index % 3 == 0,
+                    "include_probe": index == 1 or index % 3 == 0,
                     "probe_question": f"你能用自己的话解释{section['title']}的核心意思吗？"
-                    if index % 3 == 0
+                    if index == 1 or index % 3 == 0
                     else None,
-                    "include_quiz": bool(section.get("has_quiz")),
+                    "include_quiz": bool(section.get("has_quiz"))
+                    and (section_count == 1 or index % 2 == 0),
                     "include_review": index % 5 == 0,
                     "teaching_note": f"围绕{section['title']}做一个阶段性回顾。"
                     if index % 5 == 0
@@ -137,17 +139,30 @@ class FakeLLMProvider:
                     "reason": "默认由教师保持课堂节奏并推进讲解",
                     "prompt": "请自然推进下一步课堂互动，保持简洁。",
                 },
+                    ensure_ascii=False,
+                )
+        if "正在回答真实用户刚刚输入的问题" in system_text:
+            request_payload = json.loads(user_text)
+            question = request_payload.get("user_question", "")
+            explanation = request_payload.get("current_explanation", "")
+            return json.dumps(
+                {
+                    "answer": (
+                        f"你问的是“{question}”。结合当前页，我会先抓住材料里的主线："
+                        f"{explanation} 如果你愿意，我们可以再把这个问题拆成一个更具体的例子。"
+                    )
+                },
                 ensure_ascii=False,
             )
-        speech = "我会根据当前课堂状态，用简短方式回应并推进互动。"
-        if "深度思考者" in user_text:
+        speech = "我这里有个小困惑，想听老师用当前页的例子再落一下。"
+        if "课堂气氛调节者" in user_text:
+            speech = "老师我刚刚有点走神，但如果把这个点想成选外卖排序，好像又能跟上了。"
+        elif "深度思考者" in user_text:
             speech = "如果条件变化，这个结论还成立吗？我想追问一下它背后的原因。"
         elif "课堂笔记员" in user_text:
-            speech = "我先记三个关键词：概念、例子、易错点，方便大家课后复习。"
-        elif "课堂气氛调节者" in user_text:
-            speech = "这个点有点像生活里的路线规划，先别紧张，我们拆开看。"
+            speech = "我先记一句：这页重点是分清条件和结论，不是只背名词。"
         elif "研究型同学" in user_text:
-            speech = "这个知识能不能迁移到真实项目里？比如换一个场景还怎么用？"
+            speech = "这个知识能不能迁移到真实项目里？比如换一个场景，最容易在哪一步用错？"
         return json.dumps(
             {
                 "speech": speech,

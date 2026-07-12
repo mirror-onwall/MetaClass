@@ -4,8 +4,8 @@ from typing import Protocol
 from sqlalchemy import select
 
 from metaclass.infrastructure.database import Database
-from metaclass.modules.video.models import VideoJobRecord, VideoResultRecord
-from metaclass.modules.video.schemas import VideoJob, VideoResult
+from metaclass.modules.video.models import TTSArtifactRecord, VideoJobRecord, VideoResultRecord
+from metaclass.modules.video.schemas import TTSArtifact, VideoJob, VideoResult
 
 
 def ensure_utc(value: datetime) -> datetime:
@@ -22,6 +22,10 @@ class VideoRepository(Protocol):
     def get_result(self, result_id: str) -> VideoResult | None: ...
 
     def get_result_for_job(self, job_id: str) -> VideoResult | None: ...
+
+    def save_tts_artifact(self, artifact: TTSArtifact) -> None: ...
+
+    def get_tts_artifact(self, artifact_id: str) -> TTSArtifact | None: ...
 
 
 class SqlAlchemyVideoRepository:
@@ -74,6 +78,28 @@ class SqlAlchemyVideoRepository:
             )
             return self._result(record) if record else None
 
+    def save_tts_artifact(self, artifact: TTSArtifact) -> None:
+        with self.database.session() as session:
+            session.merge(
+                TTSArtifactRecord(
+                    id=artifact.id,
+                    text=artifact.text,
+                    scope=artifact.scope,
+                    ref_id=artifact.ref_id,
+                    voice=artifact.voice,
+                    audio_path=artifact.audio_path,
+                    audio_url=artifact.audio_url,
+                    duration_ms=artifact.duration_ms,
+                    duration_seconds=artifact.duration_seconds,
+                    created_at=artifact.created_at,
+                )
+            )
+
+    def get_tts_artifact(self, artifact_id: str) -> TTSArtifact | None:
+        with self.database.session() as session:
+            record = session.get(TTSArtifactRecord, artifact_id)
+            return self._tts_artifact(record) if record else None
+
     @staticmethod
     def _job(record: VideoJobRecord) -> VideoJob:
         return VideoJob(
@@ -95,6 +121,21 @@ class SqlAlchemyVideoRepository:
             content_id=record.content_id,
             video_path=record.video_path,
             subtitles_path=record.subtitles_path,
+            duration_seconds=record.duration_seconds,
+            created_at=ensure_utc(record.created_at),
+        )
+
+    @staticmethod
+    def _tts_artifact(record: TTSArtifactRecord) -> TTSArtifact:
+        return TTSArtifact(
+            id=record.id,
+            text=record.text,
+            scope=record.scope,
+            ref_id=record.ref_id,
+            voice=record.voice,
+            audio_path=record.audio_path,
+            audio_url=record.audio_url,
+            duration_ms=record.duration_ms,
             duration_seconds=record.duration_seconds,
             created_at=ensure_utc(record.created_at),
         )

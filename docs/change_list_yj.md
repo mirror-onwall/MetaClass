@@ -195,6 +195,45 @@ SHOW_PAGE
 
 这个互动不会替用户回答正式小测，也不会把主屏 PPT 页面切走。
 
+### 调整：按 ClassroomPlan 规划触发互动，取消每页固定对话
+
+试用后发现“每页 EXPLAIN 后固定学生插话 + 老师回应”仍然太机械，和 OpenMAIC 的设计不一致。
+
+已调整为：
+
+```text
+LearningContent
+  -> LLM ClassroomPlanGenerator 生成轻量 ClassroomPlanBlueprint
+  -> 后端 hydrate 成严格 ClassroomPlan
+  -> Runtime 只在计划内 PROBE 动作之后触发学生/老师互动
+```
+
+现在的互动节奏由 `ClassroomPlan` 决定：
+
+```text
+SHOW_PAGE
+  -> EXPLAIN
+  -> 如果 plan 有 PROBE:
+       PROBE action
+       -> student agent 回应开放问题
+       -> teacher agent 简短回应并拉回主线
+  -> 如果 plan 有 ASK_QUIZ:
+       用户小测
+  -> END / 下一页
+```
+
+取消的机械规则：
+
+- 不再每个 `EXPLAIN` 后固定触发学生插话。
+- 不再每个 `ASK_QUIZ` 前固定让老师额外追问。
+- 小测是否出现由 LLM planner 的 `include_quiz` 决定；即使上游提供了 `quiz_items`，也不要求每页都测。
+
+当前 fake LLM 的本地开发行为：
+
+- 第 1 页和每 3 页左右安排一次 `PROBE`，用于保证本地 demo 能看到互动。
+- 多页材料不会每页都 `include_quiz=true`，避免“页页小测”。
+- 真实 LLM 接入后，由 prompt 控制其按关键概念、易错点和阶段收束来安排互动/小测。
+
 和 classroom 的关系：
 
 - 当前没有强行改 `ClassroomPlan` 输入，所以不会影响现有前端课堂流程。
@@ -773,3 +812,324 @@ apps/web/src/App.tsx
 apps/web/src/shared/api.ts
 apps/web/src/shared/types.ts
 ```
+
+## 2026-07-12：补充 plan generation meta 与 TTS artifact 接口
+
+新增 ClassroomPlan 生成元信息记录，用来判断某个课堂规划到底来自 LLM 还是 fallback：
+
+```text
+GET /api/v1/classroom-plans/{plan_id}/generation-meta
+```
+
+返回字段包括：
+
+```text
+plan_id
+content_id
+source              # llm 或 fallback
+provider            # fake / openai-compatible / none
+model
+fallback_reason
+raw_response        # LLM 原始 JSON 字符串
+parsed_blueprint    # 解析后的轻量蓝图
+created_at
+```
+
+说明：
+
+- 新生成的 ClassroomPlan 会自动写入 generation meta。
+- 如果 LLM 成功，`source = "llm"`。
+- 如果 LLM 超时、返回非 JSON、结构校验失败，或者没有配置 LLM，`source = "fallback"`，并记录 `fallback_reason`。
+- 旧的 ClassroomPlan 由于之前没有记录 meta，可能查不到该接口。
+
+新增 TTS artifact 标准接口，前端可以把任意课堂文本统一转成可播放音频：
+
+```text
+POST /api/v1/tts-artifacts
+GET  /api/v1/tts-artifacts/{artifact_id}
+GET  /api/v1/tts-artifacts/{artifact_id}/audio
+```
+
+请求示例：
+
+```json
+{
+  "text": "这一页我们讲解大模型工具服务搭建。",
+  "scope": "slide_script",
+  "ref_id": "slide_001",
+  "voice": "teacher"
+}
+```
+
+返回字段包括：
+
+```text
+id
+text
+scope
+ref_id
+voice
+audio_url
+duration_ms
+duration_seconds
+created_at
+```
+
+建议前端使用方式：
+
+- PPT 页面讲稿：`scope = "slide_script"`，`ref_id = slide_id`。
+- 老师 agent 发言：`scope = "teacher_turn"`，`ref_id = event_id/action_id`。
+- 学生 agent 发言：`scope = "student_turn"`，`ref_id = event_id`。
+- 小测反馈：`scope = "quiz_feedback"`，`ref_id = quiz_action_id`。
+- 用户提问后的老师回答：`scope = "teacher_answer"`，`ref_id = question_event_id`。
+
+自动播放逻辑建议从固定计时器改成：
+
+```text
+拿到课堂动作/agent 发言
+-> 请求 TTS artifact
+-> 播放 artifact.audio_url
+-> audio ended 后再请求下一次 auto-step
+```
+
+## 2026-07-12：优化课堂规划、学生智能体互动与小测生成
+
+调整 ClassroomPlan planner prompt：
+
+- 不再鼓励每页固定“讲解 + 提问 + 小测”。
+- 要求 planner 先判断每个 section 在整节课中的作用：封面/目录/过渡页、新概念页、易混淆页、案例/结果页、阶段总结页。
+- `include_probe` 只在有讨论价值、能暴露误区或连接例子的地方打开。
+- `probe_question` 必须具体指向本页内容，避免“你理解了吗”这类泛泛提问。
+- `include_quiz` 只在关键概念、易错点、阶段收束处少量出现；多页内容通常每 2-4 个 section 最多 1 次。
+
+调整老师/学生 agent prompt：
+
+- 学生发言必须尽量贴着当前页、当前知识点或最近老师/同学说的话。
+- 学生不必每次都提问，可以是困惑、复述、轻微吐槽、走神、要求例子或短反馈。
+- 课堂气氛调节者允许偶尔像真实学生一样说“有点无聊”“我想上厕所”“这个例子突然听懂了”，但不能每次都搞笑，也不能离课堂太远。
+- 老师需要能接住这类真实课堂插话，先回应情绪，再一句话拉回当前页内容。
+
+调整小测生成：
+
+- 以前的小测是在 `ContentService.build()` 里机械生成的：
+
+```text
+问题：本页主要讲解的内容是？
+选项：核心知识点 / 以上内容均未出现
+```
+
+- 现在改为在 PageUnderstanding 阶段由 LLM 生成 `quiz_items` 草稿。
+- `LearningContent.sections[].quiz_items` 会优先使用 LLM 生成的小测。
+- 如果 LLM 没给小测，后端才生成一个保底题。
+- 新增 `PageUnderstanding.quiz_items` 字段，并落库到 `page_understandings.quiz_items`。
+- 旧 SQLite 数据库会自动补 `quiz_items = []`，不需要手动迁移。
+
+需要和 A 同学对齐：
+
+- A 的 LearningContent 生成链路现在最好把每页的 `quiz_items` 一起生成。
+- 每个 quiz item 应包含：
+
+```text
+question
+options
+correct_index
+explanation
+knowledge_point
+```
+
+- 小测设计目标不是问“本页讲了什么”，而是检查概念区分、条件、因果、应用判断或常见误区。
+
+## 2026-07-12：优化 PPT 生成字体，降低跨平台预览乱码概率
+
+修复背景：
+
+- 之前下载 `deck.pptx` 本身通常正常，但网页课堂区展示的 slide image 可能乱码。
+- 原因多半出在 `soffice --headless` 把 PPTX 转 PDF/PNG 时，运行机器缺少对应中文字体。
+- 原实现主要使用 macOS 的 `PingFang SC`，别的组员在 Windows/Linux 上重新生成预览图时容易字体替换失败。
+
+本次调整：
+
+- PPT 生成时不再只设置 `paragraph.font.name`。
+- 现在会同时设置：
+
+```text
+latin font
+eastAsia / CJK font
+complex script font
+```
+
+- 按运行平台选择字体：
+
+```text
+macOS:   Arial + PingFang SC
+Windows: Arial + Microsoft YaHei
+Linux:   DejaVu Sans + Noto Sans CJK SC
+```
+
+- placeholder PNG 预览图的 PIL 字体搜索路径也加入了 Linux/Windows/macOS 常见字体：
+
+```text
+Noto Sans CJK / Noto Sans SC
+WenQuanYi Micro Hei / WenQuanYi Zen Hei
+Microsoft YaHei / SimHei / Arial
+PingFang / STHeiti / Arial Unicode / Songti / Helvetica
+```
+
+注意：
+
+- 这个修复会影响“新生成”的 PPT artifact。
+- 已经生成过的旧 `data/generated/presentations/.../slides/*.png` 不会自动刷新。
+- 如果组员拉代码后网页预览仍乱码，需要重新生成 PPT job。
+- Linux 环境最好安装 `Noto Sans CJK SC` 或其他中文字体，否则 LibreOffice 渲染中文仍可能 fallback 不理想。
+
+补充修复：
+
+- 进一步排查发现，部分网页预览图并不是 LibreOffice 成功转换出来的，而是 `soffice --headless --convert-to pdf` 失败后进入了 PIL fallback renderer。
+- fallback renderer 之前只是直接 `draw.text(...)`，没有按框宽换行，所以会出现“下载 PPT 正常，但网页图中文字冲出框/压到别的元素上”的问题。
+- 现在 `soffice` 转 PDF 时会给 LibreOffice 单独设置临时 user profile：
+
+```text
+-env:UserInstallation=file://...
+```
+
+- 这样可以避免 LibreOffice headless 复用/锁住默认 profile 导致导出 PDF 失败。
+- 如果仍然失败，会在对应 PPT job 目录写入：
+
+```text
+render_error.txt
+```
+
+- fallback PNG renderer 也补了手动换行和行距控制，标题、key points、visual direction 都会按框宽截断/换行，不再直接画出框。
+
+## 2026-07-12：按前端选择的学生智能体类型创建和调度课堂 agent
+
+修复背景：
+
+- 前端已经支持选择 8 类学生智能体，并在创建课堂 session 时传：
+
+```json
+{
+  "mode": "interactive",
+  "student_agent_types": ["foundation_weak", "concept_confused"]
+}
+```
+
+- 后端原本会创建选择的学生列表，但 controller prompt 仍假设固定顺序：
+
+```text
+student_agent_001 = 课堂气氛调节者
+student_agent_002 = 深度思考者
+student_agent_003 = 课堂笔记员
+student_agent_004 = 研究型同学
+```
+
+- 如果用户只选择“基础薄弱型同学、概念混淆型同学”，这个假设会错位。
+
+本次调整：
+
+- `student_agent_types is None` 时仍使用默认四个学生：
+
+```text
+课堂气氛调节者
+深度思考者
+课堂笔记员
+研究型同学
+```
+
+- 前端显式传入列表时，后端严格按该列表和顺序创建 `student_states`。
+- 前端显式传入 `[]` 时，表示当前 session 没有学生 agent，不再自动回默认四个。
+- ClassroomController prompt 改为读取当前 `available_students`，不再写死 `student_agent_001/002/003/004` 的含义。
+- 如果 LLM controller 返回了不存在的 `next_agent_id`，后端会自动纠正为当前 roster 里的第一个学生。
+- 如果当前 roster 为空，controller 不允许选择 student，会转为 teacher 推进。
+- 计划内 `PROBE` 选择学生时改为按类型优先：
+
+```text
+deep_thinker
+concept_confused
+foundation_weak
+researcher
+practical_applier
+classroom_atmosphere_regulator
+note_taker
+silent_observer
+```
+
+新增测试：
+
+- 未传 `student_agent_types` 时默认四个。
+- 显式传空列表时保持空 roster。
+- API 创建 session 时传 `foundation_weak + concept_confused`，后端 session 只包含这两个类型，并在计划内 probe 时优先选择概念混淆型同学。
+
+## 2026-07-12：修复用户自由提问时老师没有针对问题回答
+
+修复背景：
+
+- 前端提问框会调用：
+
+```text
+POST /api/v1/classroom-sessions/{session_id}/questions
+```
+
+- 但后端 `TeacherAgent.answer_question()` 之前没有真正使用用户输入的 `question` 生成答案，只是固定返回：
+
+```text
+根据当前材料：{当前页讲解文本}
+```
+
+- 所以前端看起来像“老师没有回答用户的问题，只是在重复默认讲解”。
+
+本次调整：
+
+- 新增教师自由答疑 prompt：
+
+```text
+build_teacher_answer_messages(...)
+```
+
+- 有 LLM provider 时，老师会基于：
+
+```text
+user_question
+current_explanation
+ClassroomState
+recent_events
+source_refs
+```
+
+生成针对用户问题的回答。
+
+- 返回结构仍然保持原接口兼容：
+
+```text
+ControllerResult.status = "answered"
+ControllerResult.feedback = teacher_answer.answer
+ControllerResult.source_refs = 当前页 source refs
+```
+
+- FakeLLMProvider 也补了对应分支，本地测试/无真实 key 时也会把用户问题纳入回答。
+- fallback 逻辑也改成至少会引用用户问题：
+
+```text
+你问的是“...”。结合当前材料，这里可以这样理解：...
+```
+
+新增测试：
+
+- 端到端测试确认用户输入 `"How does it work?"` 后，返回的 `feedback` 中包含该问题文本。
+
+## 2026-07-12：避免计划内师生互动连续选择同一个学生 agent
+
+修复背景：
+
+- 前端课堂里经常看到“深度思考者浩浩”连续发言。
+- 原因是 `_select_dialog_student()` 按固定 agent 类型优先级选人，只要深度思考者在当前 roster 中，计划内 `PROBE` 后几乎总会优先选到他。
+
+本次调整：
+
+- `_select_dialog_student()` 会先从最近课堂事件里找最后一个发过言的学生 agent，并在本轮候选中临时排除。
+- 如果还有从未发过言的学生，会优先从这些 `last_intent` 为空的学生里选，减少课堂互动一直集中在同一个 agent 身上。
+- 如果当前 roster 里所有学生都刚发过言或没有其他候选，则退回原来的类型优先级，保证课堂不会卡住。
+
+新增测试：
+
+- 模拟深度思考者刚发言后，老师再次触发计划内开放问题，下一轮学生发言会切到另一个可用 agent。

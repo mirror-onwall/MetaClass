@@ -1,6 +1,8 @@
 import json
+import platform
 import subprocess
 import tempfile
+import textwrap
 from pathlib import Path
 from uuid import uuid4
 
@@ -10,6 +12,8 @@ from pptx import Presentation
 from pptx.dml.color import RGBColor
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.text import PP_ALIGN
+from pptx.oxml.ns import qn
+from pptx.oxml.xmlchemy import OxmlElement
 from pptx.util import Inches, Pt
 
 from metaclass.modules.presentation.schemas import PPTArtifact, PPTSlideImage, PresentationPlan
@@ -22,8 +26,6 @@ class PPTSkillAdapter:
     using the project's existing python-pptx dependency. The structured request
     file is kept so a richer external skill can replace this renderer later.
     """
-
-    font_face = "PingFang SC"
 
     def prepare_request(
         self,
@@ -92,10 +94,13 @@ class PPTSkillAdapter:
         output_dir.mkdir(parents=True, exist_ok=True)
         try:
             with tempfile.TemporaryDirectory() as temp_dir:
+                libreoffice_profile = Path(temp_dir) / "lo_profile"
+                libreoffice_profile.mkdir(parents=True, exist_ok=True)
                 subprocess.run(
                     [
                         "soffice",
                         "--headless",
+                        f"-env:UserInstallation={libreoffice_profile.as_uri()}",
                         "--convert-to",
                         "pdf",
                         "--outdir",
@@ -110,8 +115,23 @@ class PPTSkillAdapter:
                 if not pdf_path.exists():
                     raise FileNotFoundError(f"Converted PDF not found: {pdf_path}")
                 return self._render_pdf_pages(plan, pdf_path, output_dir)
-        except (FileNotFoundError, subprocess.SubprocessError, fitz.FileDataError):
+        except (FileNotFoundError, subprocess.SubprocessError, fitz.FileDataError) as exc:
+            (output_dir.parent / "render_error.txt").write_text(
+                PPTSkillAdapter._render_error_message(exc),
+                encoding="utf-8",
+            )
             return self._render_placeholder_images(plan, output_dir)
+
+    @staticmethod
+    def _render_error_message(exc: Exception) -> str:
+        message = f"PPTX to slide image rendering fell back to PIL placeholder: {exc}"
+        if isinstance(exc, subprocess.CalledProcessError):
+            stderr = exc.stderr.decode("utf-8", errors="replace") if exc.stderr else ""
+            stdout = exc.stdout.decode("utf-8", errors="replace") if exc.stdout else ""
+            details = "\n".join(part for part in [stdout.strip(), stderr.strip()] if part)
+            if details:
+                message = f"{message}\n{details}"
+        return message
 
     @staticmethod
     def _render_pdf_pages(
@@ -147,16 +167,81 @@ class PPTSkillAdapter:
     @staticmethod
     def _load_preview_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
         for path in [
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf",
+            "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/truetype/noto/NotoSansSC-Regular.otf",
+            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+            "C:/Windows/Fonts/msyh.ttc",
+            "C:/Windows/Fonts/simhei.ttf",
+            "C:/Windows/Fonts/arial.ttf",
             "/System/Library/Fonts/PingFang.ttc",
             "/System/Library/Fonts/STHeiti Medium.ttc",
             "/System/Library/Fonts/Supplemental/Arial Unicode.ttf",
             "/System/Library/Fonts/Supplemental/Songti.ttc",
+            "/System/Library/Fonts/Helvetica.ttc",
         ]:
             try:
                 return ImageFont.truetype(path, size=size)
             except OSError:
                 continue
         return ImageFont.load_default()
+
+    @staticmethod
+    def _font_faces() -> tuple[str, str]:
+        system = platform.system().lower()
+        if system == "darwin":
+            return "Arial", "PingFang SC"
+        if system == "windows":
+            return "Arial", "Microsoft YaHei"
+        return "DejaVu Sans", "Noto Sans CJK SC"
+
+    @staticmethod
+    def _apply_font(
+        paragraph,
+        *,
+        size: Pt,
+        color: RGBColor,
+        bold: bool = False,
+    ) -> None:
+        latin_font, cjk_font = PPTSkillAdapter._font_faces()
+        paragraph.font.size = size
+        paragraph.font.bold = bold
+        paragraph.font.name = latin_font
+        paragraph.font.color.rgb = color
+
+        run = paragraph.runs[0] if paragraph.runs else paragraph.add_run()
+        run.font.name = latin_font
+        run.font.size = size
+        run.font.bold = bold
+        run.font.color.rgb = color
+        rpr = run._r.get_or_add_rPr()
+        for tag, font_name in {
+            "a:latin": latin_font,
+            "a:ea": cjk_font,
+            "a:cs": latin_font,
+        }.items():
+            element = rpr.find(qn(tag))
+            if element is None:
+                element = OxmlElement(tag)
+                rpr.append(element)
+            element.set("typeface", font_name)
+
+    @staticmethod
+    def _fit_text(text: str, *, max_chars: int, max_lines: int) -> str:
+        clean = " ".join(text.split())
+        if not clean:
+            return ""
+        lines = textwrap.wrap(
+            clean,
+            width=max_chars,
+            max_lines=max_lines,
+            placeholder="...",
+            break_long_words=True,
+            break_on_hyphens=False,
+        )
+        return "\n".join(lines) if lines else clean[:max_chars]
 
     @staticmethod
     def _render_placeholder_images(
@@ -172,18 +257,41 @@ class PPTSkillAdapter:
             body_font = PPTSkillAdapter._load_preview_font(24)
             caption_font = PPTSkillAdapter._load_preview_font(20)
             draw.rectangle((0, 0, 28, 720), fill="#D1495B")
-            draw.text((70, 60), slide_plan.title[:90], fill="#1F2937", font=title_font)
-            y = 140
+            title = PPTSkillAdapter._fit_text(slide_plan.title, max_chars=42, max_lines=2)
+            draw.multiline_text(
+                (70, 54),
+                title,
+                fill="#1F2937",
+                font=title_font,
+                spacing=8,
+            )
+            y = 150
             for point in slide_plan.key_points[:5]:
-                draw.text((90, y), f"- {point[:90]}", fill="#374151", font=body_font)
-                y += 48
+                text = PPTSkillAdapter._fit_text(point, max_chars=46, max_lines=2)
+                bullet = f"- {text}"
+                draw.multiline_text(
+                    (90, y),
+                    bullet,
+                    fill="#374151",
+                    font=body_font,
+                    spacing=7,
+                )
+                y += 38 * (bullet.count("\n") + 1) + 14
+                if y > 480:
+                    break
             draw.rectangle((720, 150, 1190, 500), outline="#D1495B", width=3)
             draw.text((760, 190), "Visual direction", fill="#D1495B", font=caption_font)
-            draw.text(
+            visual = PPTSkillAdapter._fit_text(
+                slide_plan.suggested_visual,
+                max_chars=34,
+                max_lines=8,
+            )
+            draw.multiline_text(
                 (760, 230),
-                slide_plan.suggested_visual[:120],
+                visual,
                 fill="#374151",
                 font=caption_font,
+                spacing=7,
             )
             image.save(image_path)
             slide_images.append(
@@ -244,11 +352,13 @@ class PPTSkillAdapter:
         frame = title_box.text_frame
         frame.clear()
         paragraph = frame.paragraphs[0]
-        paragraph.text = title
-        paragraph.font.size = Pt(34)
-        paragraph.font.bold = True
-        paragraph.font.name = PPTSkillAdapter.font_face
-        paragraph.font.color.rgb = RGBColor.from_string(slide._metaclass_primary)
+        paragraph.text = PPTSkillAdapter._fit_text(title, max_chars=42, max_lines=2)
+        PPTSkillAdapter._apply_font(
+            paragraph,
+            size=Pt(30),
+            bold=True,
+            color=RGBColor.from_string(slide._metaclass_primary),
+        )
 
         badge = slide.shapes.add_shape(
             MSO_SHAPE.OVAL,
@@ -263,27 +373,31 @@ class PPTSkillAdapter:
         number = badge.text_frame.paragraphs[0]
         number.text = f"{order:02d}"
         number.alignment = PP_ALIGN.CENTER
-        number.font.size = Pt(18)
-        number.font.bold = True
-        number.font.name = PPTSkillAdapter.font_face
-        number.font.color.rgb = RGBColor(255, 255, 255)
+        PPTSkillAdapter._apply_font(
+            number,
+            size=Pt(18),
+            bold=True,
+            color=RGBColor(255, 255, 255),
+        )
 
     @staticmethod
     def _add_key_points(slide, key_points: list[str]) -> None:
         points = key_points[:5] or ["核心概念", "关键例子", "课堂小结"]
-        box = slide.shapes.add_textbox(Inches(0.75), Inches(1.65), Inches(6.25), Inches(4.2))
+        box = slide.shapes.add_textbox(Inches(0.75), Inches(1.55), Inches(5.95), Inches(4.35))
         frame = box.text_frame
         frame.clear()
         frame.word_wrap = True
         for index, point in enumerate(points):
             paragraph = frame.paragraphs[0] if index == 0 else frame.add_paragraph()
-            paragraph.text = point
+            paragraph.text = PPTSkillAdapter._fit_text(point, max_chars=50, max_lines=2)
             paragraph.level = 0
-            paragraph.font.size = Pt(22 if index == 0 else 18)
-            paragraph.font.bold = index == 0
-            paragraph.font.name = PPTSkillAdapter.font_face
-            paragraph.font.color.rgb = RGBColor.from_string(slide._metaclass_primary)
-            paragraph.space_after = Pt(13)
+            PPTSkillAdapter._apply_font(
+                paragraph,
+                size=Pt(18 if index == 0 else 15),
+                bold=index == 0,
+                color=RGBColor.from_string(slide._metaclass_primary),
+            )
+            paragraph.space_after = Pt(8)
 
     @staticmethod
     def _add_visual_panel(slide, suggested_visual: str) -> None:
@@ -304,20 +418,28 @@ class PPTSkillAdapter:
         label_frame.clear()
         label_text = label_frame.paragraphs[0]
         label_text.text = "Visual direction"
-        label_text.font.size = Pt(14)
-        label_text.font.bold = True
-        label_text.font.name = PPTSkillAdapter.font_face
-        label_text.font.color.rgb = RGBColor.from_string(slide._metaclass_accent)
+        PPTSkillAdapter._apply_font(
+            label_text,
+            size=Pt(14),
+            bold=True,
+            color=RGBColor.from_string(slide._metaclass_accent),
+        )
 
         body = slide.shapes.add_textbox(Inches(7.75), Inches(2.55), Inches(4.35), Inches(2.35))
         body_frame = body.text_frame
         body_frame.clear()
         body_frame.word_wrap = True
         paragraph = body_frame.paragraphs[0]
-        paragraph.text = suggested_visual
-        paragraph.font.size = Pt(17)
-        paragraph.font.name = PPTSkillAdapter.font_face
-        paragraph.font.color.rgb = RGBColor.from_string(slide._metaclass_primary)
+        paragraph.text = PPTSkillAdapter._fit_text(
+            suggested_visual,
+            max_chars=36,
+            max_lines=5,
+        )
+        PPTSkillAdapter._apply_font(
+            paragraph,
+            size=Pt(14),
+            color=RGBColor.from_string(slide._metaclass_primary),
+        )
 
     @staticmethod
     def _add_script_summary(slide, speaker_script: str) -> None:
@@ -334,7 +456,13 @@ class PPTSkillAdapter:
         frame = footer.text_frame
         frame.clear()
         paragraph = frame.paragraphs[0]
-        paragraph.text = f"讲稿摘要：{speaker_script[:90]}"
-        paragraph.font.size = Pt(11)
-        paragraph.font.name = PPTSkillAdapter.font_face
-        paragraph.font.color.rgb = RGBColor(75, 85, 99)
+        paragraph.text = PPTSkillAdapter._fit_text(
+            f"讲稿摘要：{speaker_script}",
+            max_chars=92,
+            max_lines=1,
+        )
+        PPTSkillAdapter._apply_font(
+            paragraph,
+            size=Pt(11),
+            color=RGBColor(75, 85, 99),
+        )

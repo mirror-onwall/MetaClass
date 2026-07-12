@@ -11,6 +11,7 @@ class PageUnderstandingDraft(SchemaModel):
     knowledge_points: list[str] = Field(default_factory=list)
     teaching_focus: list[str] = Field(default_factory=list)
     possible_questions: list[str] = Field(default_factory=list)
+    quiz_items: list["QuizItemDraft"] = Field(default_factory=list)
     expanded_explanation: str = ""
     visual_description: str = ""
     depends_on_pages: list[int] = Field(default_factory=list)
@@ -27,6 +28,7 @@ class PageUnderstanding(SchemaModel):
     knowledge_points: list[str] = Field(default_factory=list)
     teaching_focus: list[str] = Field(default_factory=list)
     possible_questions: list[str] = Field(default_factory=list)
+    quiz_items: list["QuizItemDraft"] = Field(default_factory=list)
     source_refs: list[SourceRef] = Field(min_length=1)
     provider: str = Field(min_length=1)
     model: str | None = None

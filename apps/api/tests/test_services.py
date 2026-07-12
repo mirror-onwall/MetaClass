@@ -67,7 +67,16 @@ def test_llm_learning_provider_parses_page_understanding() -> None:
       "summary": "Matrix multiplication combines rows and columns.",
       "knowledge_points": ["matrix multiplication", "row by column"],
       "teaching_focus": ["shape compatibility"],
-      "possible_questions": ["Why must dimensions match?"]
+      "possible_questions": ["Why must dimensions match?"],
+      "quiz_items": [
+        {
+          "question": "What must be true before multiplying two matrices?",
+          "options": ["The inner dimensions match", "They have the same title"],
+          "correct_index": 0,
+          "explanation": "Matrix multiplication depends on compatible dimensions.",
+          "knowledge_point": "shape compatibility"
+        }
+      ]
     }
     """
 
@@ -79,6 +88,7 @@ def test_llm_learning_provider_parses_page_understanding() -> None:
 
     assert draft.summary == "Matrix multiplication combines rows and columns."
     assert draft.knowledge_points == ["matrix multiplication", "row by column"]
+    assert draft.quiz_items[0].question == "What must be true before multiplying two matrices?"
     llm.complete_json.assert_called_once()
 
 

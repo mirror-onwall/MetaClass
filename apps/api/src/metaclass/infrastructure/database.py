@@ -69,6 +69,9 @@ class Database:
                 "created_at": "DATETIME",
                 "updated_at": "DATETIME",
             },
+            "page_understandings": {
+                "quiz_items": "JSON",
+            },
             "classroom_sessions": {
                 "mode": "VARCHAR(20)",
                 "student_states": "JSON",
@@ -123,8 +126,16 @@ class Database:
                             "WHERE slide_images IS NULL"
                         )
                     )
+                if table == "page_understandings":
+                    connection.execute(
+                        text(
+                            "UPDATE page_understandings "
+                            "SET quiz_items = '[]' "
+                            "WHERE quiz_items IS NULL"
+                        )
+                    )
                 for name in columns:
-                    if name in {"student_states", "mode", "slide_images"}:
+                    if name in {"student_states", "mode", "slide_images", "quiz_items"}:
                         continue
                     connection.execute(
                         text(f"UPDATE {table} SET {name} = CURRENT_TIMESTAMP WHERE {name} IS NULL")
