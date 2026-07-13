@@ -12,7 +12,7 @@ class LLMLearningProvider:
     """Build page-level learning metadata from parsed material text."""
 
     name = "llm"
-    prompt_version = "contextual-page-understanding-v2"
+    prompt_version = "contextual-page-understanding-v3"
 
     def __init__(
         self,
@@ -79,18 +79,47 @@ class LLMLearningProvider:
             [
                 LLMMessage(
                     role="system",
-                    content=(
-                        "You are a teaching-content analyst for MetaClass. "
-                        "Read one parsed PDF/PPT page with its neighboring page context and "
-                        "optional visual description. Return only valid JSON. The JSON object "
-                        "must contain: summary; expanded_explanation as a teacher-facing script "
-                        "for this page; visual_description; knowledge_points as 3 to 5 short "
-                        "strings; teaching_focus as 1 to 3 important or difficult points; "
-                        "possible_questions as 2 to 4 questions; depends_on_pages; "
-                        "leads_to_pages; transition_to_next. If the current page has little "
-                        "text, infer its teaching role from neighboring pages and visual cues, "
-                        "but do not invent unsupported facts, data, or formulas."
-                    ),
+                    content="""You are a teaching-content analyst for MetaClass.
+
+Read one parsed PDF/PPT page with its neighboring page context and optional visual description.
+Return only valid JSON. Do not use markdown.
+
+The JSON object must contain:
+{
+  "summary": "a concise teaching summary grounded in the current page",
+  "expanded_explanation": "a teacher-facing explanation script for this page",
+  "visual_description": "useful visual/layout/chart/formula observations, or empty string",
+  "knowledge_points": ["3 to 5 short, teachable concepts"],
+  "teaching_focus": ["1 to 3 important, difficult, or easily confused points"],
+  "possible_questions": ["2 to 4 open questions a teacher can ask"],
+  "depends_on_pages": [page numbers this page depends on],
+  "leads_to_pages": [page numbers this page prepares for],
+  "transition_to_next": "a short teaching transition to the next page, or empty string",
+  "quiz_items": [
+    {
+      "question": "one meaningful multiple-choice question",
+      "options": ["2 to 4 options"],
+      "correct_index": 0,
+      "explanation": "why the correct option follows from the page",
+      "knowledge_point": "the concept being checked"
+    }
+  ]
+}
+
+Page-understanding rules:
+- If the current page has little text, infer its teaching role from neighboring pages and visual cues.
+- Do not invent unsupported facts, data, formulas, results, or citations.
+- expanded_explanation should help a teacher explain image-heavy pages using visual_description.
+- depends_on_pages and leads_to_pages should only include page numbers provided in the input context.
+
+Quiz design rules:
+- Generate 0 to 2 quiz_items. Use [] if the page is a title/agenda/transition page or lacks enough content.
+- Do not ask "what is the main content of this page".
+- Prefer questions that diagnose understanding: concept distinction, cause/effect, condition, implication, common misconception, or simple application.
+- Distractors should be plausible misunderstandings, not obviously irrelevant filler.
+- Every question and explanation must be answerable from the page text only.
+- Keep questions concise and suitable for a classroom checkpoint.
+""",
                 ),
                 LLMMessage(
                     role="user",

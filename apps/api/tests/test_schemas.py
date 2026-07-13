@@ -8,6 +8,7 @@ from metaclass.infrastructure.providers.llm import FakeLLMProvider
 from metaclass.modules.assessment.schemas import Evidence
 from metaclass.modules.assessment.service import estimate_mastery
 from metaclass.modules.classroom.agent_schemas import (
+    AgentTurn,
     StudentAgentType,
     get_default_student_agent_states,
     get_default_student_agent_profiles,
@@ -19,6 +20,8 @@ from metaclass.modules.classroom.schemas import (
     ActionExecutedEvent,
     ActionExecutedPayload,
     ActionType,
+    AgentTurnEvent,
+    AgentTurnPayload,
     AskQuizAction,
     ClassroomEvent,
     ClassroomPlan,
@@ -197,8 +200,8 @@ def test_selected_student_agent_states_keep_the_requested_roles() -> None:
     assert [state.id for state in states] == ["student_agent_001", "student_agent_002"]
 
 
-def test_empty_student_selection_uses_the_default_four_roles() -> None:
-    states = get_student_agent_states([])
+def test_missing_student_selection_uses_the_default_four_roles() -> None:
+    states = get_student_agent_states(None)
 
     assert [state.agent_type for state in states] == [
         StudentAgentType.ATMOSPHERE_REGULATOR,
@@ -206,6 +209,10 @@ def test_empty_student_selection_uses_the_default_four_roles() -> None:
         StudentAgentType.NOTE_TAKER,
         StudentAgentType.RESEARCHER,
     ]
+
+
+def test_empty_student_selection_keeps_an_empty_roster() -> None:
+    assert get_student_agent_states([]) == []
 
 
 def test_session_request_uses_yj_agent_values_and_accepts_legacy_values() -> None:
@@ -443,24 +450,29 @@ def test_auto_step_executes_show_page_without_llm_controller() -> None:
     controller.decide.assert_not_called()
 
 
-def test_auto_step_starts_student_dialog_after_explain_in_interactive_mode() -> None:
+def test_auto_step_starts_student_dialog_after_planned_probe_in_interactive_mode() -> None:
     section = LearningSection(
         id="section_001",
         title="第一页",
-        summary="老师讲完后应有学生互动。",
+        summary="老师按计划追问后应有学生互动。",
         source_refs=[source_ref()],
     )
-    teacher = TeacherAgent()
-    plan = ClassroomPlan(
-        id="plan_001",
-        content_id="content_001",
-        scenes=[teacher.build_scene(1, section)],
+    plan = ClassroomPlanGenerator(FakeLLMProvider()).generate(
+        LearningContent(
+            id="content_001",
+            material_id="mat_001",
+            title="测试内容",
+            sections=[section],
+        )
+    )
+    probe_index = next(
+        index for index, action in enumerate(plan.scenes[0].actions) if action.type == "PROBE"
     )
     session = ClassroomSession(
         id="session_001",
         plan_id=plan.id,
         mode="interactive",
-        action_index=2,
+        action_index=probe_index + 1,
         student_states=get_default_student_agent_states(),
         events=[
             ActionExecutedEvent(
@@ -468,8 +480,8 @@ def test_auto_step_starts_student_dialog_after_explain_in_interactive_mode() -> 
                 session_id="session_001",
                 type="ACTION_EXECUTED",
                 payload=ActionExecutedPayload(
-                    action_id="scene_001_explain",
-                    action_type=ActionType.EXPLAIN,
+                    action_id="scene_001_probe",
+                    action_type=ActionType.PROBE,
                 ),
             )
         ],
@@ -484,10 +496,73 @@ def test_auto_step_starts_student_dialog_after_explain_in_interactive_mode() -> 
     assert result.directed_turn is not None
     assert result.directed_turn.decision.next_role == "student"
     assert result.directed_turn.turns[0].role == "student"
-    assert result.directed_turn.turns[0].intent == "student_comment_after_explain"
+    assert result.directed_turn.turns[0].intent == "student_answer_planned_probe"
 
 
-def test_auto_step_does_not_add_extra_probe_before_quiz_after_planned_probe() -> None:
+def test_planned_probe_dialog_skips_recent_student_speaker() -> None:
+    section = LearningSection(
+        id="section_001",
+        title="第一页",
+        summary="老师追问后应轮换学生，避免同一个学生连续发言。",
+        source_refs=[source_ref()],
+    )
+    plan = ClassroomPlanGenerator(FakeLLMProvider()).generate(
+        LearningContent(
+            id="content_001",
+            material_id="mat_001",
+            title="测试内容",
+            sections=[section],
+        )
+    )
+    probe_index = next(
+        index for index, action in enumerate(plan.scenes[0].actions) if action.type == "PROBE"
+    )
+    students = get_student_agent_states([StudentAgentType.DEEP_THINKER, StudentAgentType.RESEARCHER])
+    students[0].last_intent = "student_answer_planned_probe"
+    session = ClassroomSession(
+        id="session_001",
+        plan_id=plan.id,
+        mode="interactive",
+        action_index=probe_index + 1,
+        student_states=students,
+        events=[
+            AgentTurnEvent(
+                id="event_000",
+                session_id="session_001",
+                type="AGENT_TURN",
+                payload=AgentTurnPayload(
+                    turn=AgentTurn(
+                        agent_id=students[0].id,
+                        role="student",
+                        speech="我先说一下自己的理解。",
+                        intent="student_answer_planned_probe",
+                    )
+                ),
+            ),
+            ActionExecutedEvent(
+                id="event_001",
+                session_id="session_001",
+                type="ACTION_EXECUTED",
+                payload=ActionExecutedPayload(
+                    action_id="scene_001_probe",
+                    action_type=ActionType.PROBE,
+                ),
+            ),
+        ],
+    )
+    repository = Mock()
+    repository.get_session.return_value = session
+    repository.get_plan.return_value = plan
+
+    result = ClassroomService(repository, Mock()).auto_step(session.id)
+
+    assert result.status == "agent_turn"
+    assert result.directed_turn is not None
+    assert result.directed_turn.decision.next_agent_id == students[1].id
+    assert result.directed_turn.turns[0].agent_id == students[1].id
+
+
+def test_auto_step_continues_planned_probe_dialog_before_quiz() -> None:
     section = LearningSection(
         id="section_001",
         title="第一页",
@@ -521,6 +596,7 @@ def test_auto_step_does_not_add_extra_probe_before_quiz_after_planned_probe() ->
         plan_id=plan.id,
         mode="interactive",
         action_index=quiz_index,
+        student_states=get_default_student_agent_states(),
         events=[
             ActionExecutedEvent(
                 id="event_001",
@@ -540,9 +616,9 @@ def test_auto_step_does_not_add_extra_probe_before_quiz_after_planned_probe() ->
 
     result = ClassroomService(repository, Mock(), teacher=teacher).auto_step(session.id)
 
-    assert result.status == "action"
-    assert result.action is not None
-    assert result.action.type == "ASK_QUIZ"
+    assert result.status == "agent_turn"
+    assert result.directed_turn is not None
+    assert result.directed_turn.turns[0].role == "student"
     teacher.generate_turn.assert_not_called()
 
 

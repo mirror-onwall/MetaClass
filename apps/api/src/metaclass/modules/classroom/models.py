@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String
+from sqlalchemy import DateTime, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from metaclass.infrastructure.database import Base
@@ -14,6 +14,22 @@ class ClassroomPlanRecord(Base):
     content_id: Mapped[str] = mapped_column(ForeignKey("learning_contents.id"), index=True)
     scenes: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     version: Mapped[int] = mapped_column(Integer)
+
+
+class ClassroomPlanGenerationMetaRecord(Base):
+    __tablename__ = "classroom_plan_generation_meta"
+
+    plan_id: Mapped[str] = mapped_column(
+        ForeignKey("classroom_plans.id"), primary_key=True
+    )
+    content_id: Mapped[str] = mapped_column(ForeignKey("learning_contents.id"), index=True)
+    source: Mapped[str] = mapped_column(String(20), index=True)
+    provider: Mapped[str] = mapped_column(String(80))
+    model: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    fallback_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    raw_response: Mapped[str | None] = mapped_column(Text, nullable=True)
+    parsed_blueprint: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class ClassroomPlanJobRecord(Base):

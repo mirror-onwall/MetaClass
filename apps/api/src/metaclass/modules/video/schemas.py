@@ -40,3 +40,23 @@ class VideoResult(SchemaModel):
     subtitles_path: str | None = None
     duration_seconds: float = Field(ge=0)
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class TTSArtifactRequest(SchemaModel):
+    text: str = Field(min_length=1, max_length=5000)
+    scope: str = Field(default="generic", min_length=1, max_length=80)
+    ref_id: str | None = Field(default=None, max_length=120)
+    voice: str | None = Field(default=None, max_length=80)
+
+
+class TTSArtifact(SchemaModel):
+    id: str = Field(min_length=1)
+    text: str = Field(min_length=1)
+    scope: str = Field(min_length=1)
+    ref_id: str | None = None
+    voice: str | None = None
+    audio_path: str = Field(min_length=1)
+    audio_url: str = Field(min_length=1)
+    duration_ms: int = Field(ge=0)
+    duration_seconds: float = Field(ge=0)
+    created_at: datetime = Field(default_factory=utc_now)

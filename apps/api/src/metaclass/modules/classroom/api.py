@@ -6,6 +6,7 @@ from metaclass.modules.classroom.schemas import (
     AnswerRequest,
     AutoClassroomStep,
     ClassroomPlan,
+    ClassroomPlanGenerationMeta,
     ClassroomPlanJob,
     ClassroomSession,
     ClassroomState,
@@ -47,6 +48,13 @@ def create_router(classrooms: ClassroomService) -> APIRouter:
     @router.get("/classroom-plans/{plan_id}", response_model=ClassroomPlan)
     async def get_plan(plan_id: str) -> ClassroomPlan:
         return classrooms.get_plan(plan_id)
+
+    @router.get(
+        "/classroom-plans/{plan_id}/generation-meta",
+        response_model=ClassroomPlanGenerationMeta,
+    )
+    async def get_plan_generation_meta(plan_id: str) -> ClassroomPlanGenerationMeta:
+        return classrooms.get_plan_generation_meta(plan_id)
 
     @router.post(
         "/classroom-plans/{plan_id}/sessions",

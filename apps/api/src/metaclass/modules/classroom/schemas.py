@@ -180,6 +180,18 @@ class ClassroomPlan(SchemaModel):
     version: int = Field(default=1, ge=1)
 
 
+class ClassroomPlanGenerationMeta(SchemaModel):
+    plan_id: str = Field(min_length=1)
+    content_id: str = Field(min_length=1)
+    source: Literal["llm", "fallback"]
+    provider: str = Field(min_length=1)
+    model: str | None = None
+    fallback_reason: str | None = None
+    raw_response: str | None = None
+    parsed_blueprint: dict | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class ClassroomPlanJob(SchemaModel):
     id: str = Field(min_length=1)
     content_id: str = Field(min_length=1)

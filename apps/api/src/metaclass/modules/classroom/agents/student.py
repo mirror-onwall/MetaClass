@@ -41,10 +41,10 @@ class StudentRosterAgent:
         )
         if not self.llm:
             speech_by_type = {
-                StudentAgentType.ATMOSPHERE_REGULATOR: "这个点可以类比成生活里的路线选择，感觉一下子没那么紧张了。",
-                StudentAgentType.DEEP_THINKER: "我想追问一下：如果前提条件变了，这个结论还成立吗？",
-                StudentAgentType.NOTE_TAKER: "我先记下来：定义、例子、易错点，这三个是本页重点。",
-                StudentAgentType.RESEARCHER: "这个知识能不能放到真实项目里试一下？应用场景会不会变？",
+                StudentAgentType.ATMOSPHERE_REGULATOR: "老师我有点走神了，但这个例子如果换成点外卖排序，好像突然能懂一点。",
+                StudentAgentType.DEEP_THINKER: "我想追问一下：这个结论成立是不是依赖某个前提？如果前提变了还对吗？",
+                StudentAgentType.NOTE_TAKER: "我先记一句：这页重点不是背概念，而是分清它什么时候成立。",
+                StudentAgentType.RESEARCHER: "这个知识如果放到真实项目里，最容易在哪一步用错？",
             }
             return AgentTurn(
                 agent_id=student_state.id,

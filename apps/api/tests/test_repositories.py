@@ -24,10 +24,12 @@ def test_sqlalchemy_creates_domain_tables(tmp_path) -> None:
         "ppt_generation_jobs",
         "ppt_artifacts",
         "classroom_plans",
+        "classroom_plan_generation_meta",
         "classroom_plan_jobs",
         "classroom_sessions",
         "video_jobs",
         "video_artifacts",
+        "tts_artifacts",
     }
     assert "records" not in tables
     assert {

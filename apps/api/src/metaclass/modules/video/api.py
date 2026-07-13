@@ -1,7 +1,12 @@
 from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
-from metaclass.modules.video.schemas import VideoJob, VideoResult
+from metaclass.modules.video.schemas import (
+    TTSArtifact,
+    TTSArtifactRequest,
+    VideoJob,
+    VideoResult,
+)
 from metaclass.modules.video.service import VideoService
 
 
@@ -35,6 +40,23 @@ def create_router(videos: VideoService) -> APIRouter:
             result.video_path,
             media_type="video/mp4",
             filename=f"{result.id}.mp4",
+        )
+
+    @router.post("/tts-artifacts", response_model=TTSArtifact, status_code=201)
+    async def create_tts_artifact(request: TTSArtifactRequest) -> TTSArtifact:
+        return videos.create_tts_artifact(request)
+
+    @router.get("/tts-artifacts/{artifact_id}", response_model=TTSArtifact)
+    async def get_tts_artifact(artifact_id: str) -> TTSArtifact:
+        return videos.get_tts_artifact(artifact_id)
+
+    @router.get("/tts-artifacts/{artifact_id}/audio")
+    async def get_tts_audio(artifact_id: str) -> FileResponse:
+        artifact = videos.get_tts_artifact(artifact_id)
+        return FileResponse(
+            artifact.audio_path,
+            media_type="audio/wav",
+            filename=f"{artifact.id}.wav",
         )
 
     return router
