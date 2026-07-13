@@ -114,6 +114,17 @@ export type ClassroomSession = {
   mastery: Mastery[];
 };
 
+export type ClassroomPlanJob = {
+  id: string;
+  content_id: string;
+  status: "queued" | "running" | "succeeded" | "failed";
+  step: "queued" | "planning" | "persisting" | "completed" | "failed";
+  progress: number;
+  message: string;
+  plan_id?: string;
+  error?: string;
+};
+
 export type AgentTurn = {
   agent_id: string;
   role: "teacher" | "student" | "assistant" | "evaluator";
