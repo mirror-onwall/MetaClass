@@ -1,7 +1,12 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
-from metaclass.modules.materials.schemas import Material, PageMetadata, ProcessedMaterial
+from metaclass.modules.materials.schemas import (
+    Material,
+    PageMetadata,
+    ProcessedMaterial,
+    ProcessedMaterials,
+)
 from metaclass.modules.materials.service import MaterialService
 
 
@@ -17,6 +22,17 @@ def create_router(materials: MaterialService) -> APIRouter:
         material = await materials.create(file)
         pages = materials.parse(material.id)
         return ProcessedMaterial(material=materials.get(material.id), pages=pages)
+
+    @router.post("/batch-process", response_model=ProcessedMaterials, status_code=201)
+    async def upload_and_parse_materials(
+        files: list[UploadFile] = File(...),
+    ) -> ProcessedMaterials:
+        processed: list[ProcessedMaterial] = []
+        for file in files:
+            material = await materials.create(file)
+            pages = materials.parse(material.id)
+            processed.append(ProcessedMaterial(material=materials.get(material.id), pages=pages))
+        return ProcessedMaterials(items=processed)
 
     @router.get("/{material_id}", response_model=Material)
     async def get_material(material_id: str) -> Material:

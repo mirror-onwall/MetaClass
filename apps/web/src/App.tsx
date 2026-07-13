@@ -126,8 +126,9 @@ const defaultStudentAgentTypes: StudentAgentType[] = [
 ];
 
 function App() {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [material, setMaterial] = useState<Material | null>(null);
+  const [materials, setMaterials] = useState<Material[]>([]);
   const [pages, setPages] = useState<PageMetadata[]>([]);
   const [content, setContent] = useState<LearningContent | null>(null);
   const [presentationArtifact, setPresentationArtifact] = useState<PPTArtifact | null>(null);
@@ -164,6 +165,13 @@ function App() {
   const hoveredStudentAgent = studentAgentChoices.find(
     (agent) => agent.type === hoveredStudentAgentType,
   );
+  const selectedFilesSize = useMemo(
+    () => files.reduce((total, selectedFile) => total + selectedFile.size, 0),
+    [files],
+  );
+  const selectedFilesLabel = files.length > 1
+    ? `${files[0].name} +${files.length - 1}`
+    : files[0]?.name;
   function displayAgentName(agentId: string, role: DirectedAgentTurn["turns"][number]["role"]) {
     if (role === "teacher") return "芊芊老师";
     const studentState = session?.student_states.find((student) => student.id === agentId);
@@ -227,20 +235,24 @@ function App() {
     }
   }
 
-  function chooseFile(nextFile?: File) {
-    if (!nextFile) return;
-    const extension = nextFile.name.split(".").pop()?.toLowerCase();
-    if (extension !== "pdf" && extension !== "pptx") {
+  function chooseFiles(nextFiles: File[]) {
+    if (!nextFiles.length) return;
+    const invalidFile = nextFiles.find((nextFile) => {
+      const extension = nextFile.name.split(".").pop()?.toLowerCase();
+      return extension !== "pdf" && extension !== "pptx";
+    });
+    if (invalidFile) {
       setError("请选择 PDF 或 PPTX 文件");
       return;
     }
     reset(false);
-    setFile(nextFile);
+    setFiles(nextFiles);
   }
 
   function reset(clearFile = true) {
-    if (clearFile) setFile(null);
+    if (clearFile) setFiles([]);
     setMaterial(null);
+    setMaterials([]);
     setPages([]);
     setContent(null);
     setPresentationArtifact(null);
@@ -256,11 +268,16 @@ function App() {
   }
 
   async function upload() {
-    if (!file) return;
-    const result = await run("正在上传并解析材料", () => api.upload(file));
+    if (!files.length) return;
+    const result = files.length === 1
+      ? await run("正在上传并解析材料", () => api.upload(files[0]))
+      : await run("正在上传并解析材料", () => api.uploadMany(files));
     if (result) {
-      setMaterial(result.material);
-      setPages(result.pages);
+      const processed = "items" in result ? result.items : [result];
+      if (!processed.length) return;
+      setMaterials(processed.map((item) => item.material));
+      setMaterial(processed[0].material);
+      setPages(processed[0].pages);
     }
   }
 
@@ -395,7 +412,7 @@ function App() {
   function onDrop(event: DragEvent<HTMLLabelElement>) {
     event.preventDefault();
     setDragging(false);
-    chooseFile(event.dataTransfer.files[0]);
+    chooseFiles(Array.from(event.dataTransfer.files));
   }
 
   const actionLabel = action?.type.replaceAll("_", " ") ?? "WAITING";
@@ -434,15 +451,15 @@ function App() {
               onDragOver={(event) => event.preventDefault()}
               onDrop={onDrop}
             >
-              <input type="file" accept=".pdf,.pptx" onChange={(event: ChangeEvent<HTMLInputElement>) => chooseFile(event.target.files?.[0])} />
+              <input type="file" accept=".pdf,.pptx" multiple onChange={(event: ChangeEvent<HTMLInputElement>) => chooseFiles(Array.from(event.target.files ?? []))} />
               <span className="upload-icon">↥</span>
-              <div>{file ? <><b>{file.name}</b><small>{formatBytes(file.size)}</small></> : <><b>把课件放到讲台</b><small>拖拽或点击选择文件</small></>}</div>
+              <div>{files.length ? <><b>{selectedFilesLabel}</b><small>{files.length} 个文件 · {formatBytes(selectedFilesSize)}</small></> : <><b>把课件放到讲台</b><small>拖拽或点击选择文件</small></>}</div>
             </label>
             {!material ? (
-              <button className="control-button warm" disabled={!file || !!busy} onClick={upload}>上传并解析 <span>→</span></button>
+              <button className="control-button warm" disabled={!files.length || !!busy} onClick={upload}>上传并解析 <span>→</span></button>
             ) : (
               <div className="material-ticket">
-                <div><span>FILE</span><b>{material.filename}</b></div>
+                <div><span>FILE</span><b>{materials.length > 1 ? `${material.filename} 等 ${materials.length} 个文件` : material.filename}</b></div>
                 <div><span>STATUS</span><b className="success">● 已解析 · {pages.length} 页</b></div>
                 <button onClick={() => reset()}>更换材料</button>
               </div>
