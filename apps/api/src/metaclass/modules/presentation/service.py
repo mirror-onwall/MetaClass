@@ -58,7 +58,11 @@ class PresentationService:
             presentation_plan_id=plan.id,
         )
         self.repository.save_job(job)
+        return job
 
+    def run_ppt_job(self, job_id: str) -> None:
+        job = self.get_ppt_job(job_id)
+        plan = self.get_plan(job.presentation_plan_id)
         job.status = PPTGenerationStatus.RUNNING
         job.progress = 0.2
         job.updated_at = utc_now()
@@ -79,7 +83,6 @@ class PresentationService:
             job.progress = 1.0
         job.updated_at = utc_now()
         self.repository.save_job(job)
-        return job
 
     def get_ppt_job(self, job_id: str) -> PPTGenerationJob:
         job = self.repository.get_job(job_id)

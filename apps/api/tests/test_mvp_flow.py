@@ -295,8 +295,12 @@ def test_presentation_plan_and_ppt_skill_request_flow(client: TestClient) -> Non
     assert latest.json()["id"] == plan.json()["id"]
 
     job = client.post(f"/api/v1/presentation-plans/{plan.json()['id']}/ppt-jobs")
-    assert job.status_code == 201
-    assert job.json()["status"] == "finished"
+    assert job.status_code == 202
+    assert job.json()["status"] in {"queued", "running", "finished"}
+
+    job = client.get(f"/api/v1/ppt-jobs/{job.json()['id']}")
+    assert job.status_code == 200
+    assert job.json()["status"] == "finished", job.json().get("error")
     assert job.json()["artifact_id"]
 
     artifact = client.get(f"/api/v1/ppt-jobs/{job.json()['id']}/artifact")
