@@ -51,3 +51,7 @@ class PageMetadata(SchemaModel):
 class ProcessedMaterial(SchemaModel):
     material: Material
     pages: list[PageMetadata]
+
+
+class ProcessedMaterials(SchemaModel):
+    items: list[ProcessedMaterial]

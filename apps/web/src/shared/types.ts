@@ -22,6 +22,15 @@ export type PageMetadata = {
   source_refs: SourceRef[];
 };
 
+export type ProcessedMaterial = {
+  material: Material;
+  pages: PageMetadata[];
+};
+
+export type ProcessedMaterials = {
+  items: ProcessedMaterial[];
+};
+
 export type QuizItem = {
   id: string;
   question: string;

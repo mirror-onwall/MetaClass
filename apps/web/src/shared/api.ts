@@ -6,8 +6,9 @@ import type {
   DirectedAgentTurn,
   LearningContent,
   LearningMode,
-  Material,
   PageMetadata,
+  ProcessedMaterial,
+  ProcessedMaterials,
   PPTArtifact,
   PresentationPlan,
   StudentAgentType,
@@ -59,7 +60,15 @@ export const api = {
   upload(file: File) {
     const form = new FormData();
     form.append("file", file);
-    return request<{ material: Material; pages: PageMetadata[] }>("/api/v1/materials/process", {
+    return request<ProcessedMaterial>("/api/v1/materials/process", {
+      method: "POST",
+      body: form,
+    });
+  },
+  uploadMany(files: File[]) {
+    const form = new FormData();
+    files.forEach((file) => form.append("files", file));
+    return request<ProcessedMaterials>("/api/v1/materials/batch-process", {
       method: "POST",
       body: form,
     });

@@ -63,6 +63,30 @@ def test_combined_upload_and_parse(client: TestClient) -> None:
     assert response.json()["pages"][0]["source_refs"][0]["page_no"] == 1
 
 
+def test_batch_upload_and_parse_accepts_pdf_and_pptx(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/materials/batch-process",
+        files=[
+            ("files", ("lesson.pdf", make_pdf(), "application/pdf")),
+            (
+                "files",
+                (
+                    "lesson.pptx",
+                    make_pptx(),
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                ),
+            ),
+        ],
+    )
+
+    assert response.status_code == 201, response.text
+    items = response.json()["items"]
+    assert len(items) == 2
+    assert {item["material"]["file_type"] for item in items} == {"pdf", "pptx"}
+    assert all(item["material"]["status"] == "parsed" for item in items)
+    assert all(item["pages"] for item in items)
+
+
 def test_complete_mvp_flow(client: TestClient) -> None:
 
     upload = client.post(
