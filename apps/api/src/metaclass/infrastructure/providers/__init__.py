@@ -8,6 +8,10 @@ from metaclass.infrastructure.providers.llm import (
     OpenAICompatibleLLMProvider,
     build_llm_provider,
 )
+from metaclass.infrastructure.providers.tts import (
+    OpenAICompatibleTTSProvider,
+    build_tts_provider,
+)
 
 __all__ = [
     "FakeLLMProvider",
@@ -18,5 +22,7 @@ __all__ = [
     "LLMMessage",
     "LLMProvider",
     "OpenAICompatibleLLMProvider",
+    "OpenAICompatibleTTSProvider",
     "build_llm_provider",
+    "build_tts_provider",
 ]

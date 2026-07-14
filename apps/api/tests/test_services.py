@@ -54,6 +54,49 @@ def test_video_generation_failure_is_persisted_as_failed_job(tmp_path: Path) -> 
     repository.save_result.assert_not_called()
 
 
+def test_video_slides_use_ppt_images_and_speaker_scripts(tmp_path: Path) -> None:
+    content = SimpleNamespace(id="content_001")
+    contents = Mock()
+    contents.get.return_value = content
+    presentations = Mock()
+    presentations.get_artifact.return_value = SimpleNamespace(
+        presentation_plan_id="presentation_plan_001",
+        slide_images=[
+            SimpleNamespace(
+                slide_id="slide_001",
+                slide_no=1,
+                image_path=str(tmp_path / "ppt-1.png"),
+            ),
+            SimpleNamespace(
+                slide_id="slide_002",
+                slide_no=2,
+                image_path=str(tmp_path / "ppt-2.png"),
+            ),
+        ],
+    )
+    presentations.get_plan.return_value = SimpleNamespace(
+        content_id=content.id,
+        slides=[
+            SimpleNamespace(id="slide_002", order=2, speaker_script="Slide two script"),
+            SimpleNamespace(id="slide_001", order=1, speaker_script="Slide one script"),
+        ],
+    )
+    service = VideoService(
+        tmp_path,
+        Mock(),
+        contents,
+        Mock(),
+        presentations=presentations,
+    )
+
+    slides = service._video_slides(content.id, "ppt_artifact_001")
+
+    assert slides == [
+        ("Slide one script", str(tmp_path / "ppt-1.png")),
+        ("Slide two script", str(tmp_path / "ppt-2.png")),
+    ]
+
+
 def test_mineru_content_list_is_grouped_by_page(tmp_path: Path) -> None:
     service = MaterialService(tmp_path, Mock())
     content_list = [

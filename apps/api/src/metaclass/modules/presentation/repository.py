@@ -39,6 +39,8 @@ class PresentationRepository(Protocol):
 
     def get_artifact_for_job(self, job_id: str) -> PPTArtifact | None: ...
 
+    def get_artifact_for_plan(self, plan_id: str) -> PPTArtifact | None: ...
+
 
 class SqlAlchemyPresentationRepository:
     def __init__(self, database: Database) -> None:
@@ -117,6 +119,15 @@ class SqlAlchemyPresentationRepository:
         with self.database.session() as session:
             record = session.scalar(
                 select(PPTArtifactRecord).where(PPTArtifactRecord.job_id == job_id)
+            )
+            return self._artifact(record) if record else None
+
+    def get_artifact_for_plan(self, plan_id: str) -> PPTArtifact | None:
+        with self.database.session() as session:
+            record = session.scalar(
+                select(PPTArtifactRecord)
+                .where(PPTArtifactRecord.presentation_plan_id == plan_id)
+                .order_by(PPTArtifactRecord.created_at.desc())
             )
             return self._artifact(record) if record else None
 
