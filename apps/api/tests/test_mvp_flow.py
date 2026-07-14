@@ -80,11 +80,112 @@ def test_batch_upload_and_parse_accepts_pdf_and_pptx(client: TestClient) -> None
     )
 
     assert response.status_code == 201, response.text
-    items = response.json()["items"]
+    payload = response.json()
+    items = payload["items"]
     assert len(items) == 2
     assert {item["material"]["file_type"] for item in items} == {"pdf", "pptx"}
+    assert all(item["material"]["file_hash"] for item in items)
     assert all(item["material"]["status"] == "parsed" for item in items)
     assert all(item["pages"] for item in items)
+    assert payload["collection"]["material_ids"] == [item["material"]["id"] for item in items]
+
+    listed = client.get("/api/v1/materials")
+    assert listed.status_code == 200
+    assert len(listed.json()) == 2
+
+    collections = client.get("/api/v1/materials/collections")
+    assert collections.status_code == 200
+    assert collections.json()[0]["id"] == payload["collection"]["id"]
+
+
+def test_material_processing_job_can_be_polled_for_result(client: TestClient) -> None:
+    created = client.post(
+        "/api/v1/materials/processing-jobs",
+        files=[
+            ("files", ("lesson.pdf", make_pdf(), "application/pdf")),
+            (
+                "files",
+                (
+                    "lesson.pptx",
+                    make_pptx(),
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                ),
+            ),
+        ],
+    )
+    assert created.status_code == 202, created.text
+    job_id = created.json()["id"]
+
+    job = client.get(f"/api/v1/materials/processing-jobs/{job_id}")
+    assert job.status_code == 200
+    assert job.json()["status"] == "succeeded"
+    assert job.json()["progress"] == 100
+
+    result = client.get(f"/api/v1/materials/processing-jobs/{job_id}/result")
+    assert result.status_code == 200
+    assert len(result.json()["items"]) == 2
+    assert result.json()["collection"]["material_ids"] == job.json()["material_ids"]
+
+
+def test_learning_content_job_can_be_polled_for_result(client: TestClient) -> None:
+    processed = client.post(
+        "/api/v1/materials/process",
+        files={"file": ("lesson.pdf", make_pdf(), "application/pdf")},
+    )
+    material_id = processed.json()["material"]["id"]
+
+    created = client.post(f"/api/v1/materials/{material_id}/learning-content-jobs")
+    assert created.status_code == 202, created.text
+    job_id = created.json()["id"]
+
+    job = client.get(f"/api/v1/learning-content-jobs/{job_id}")
+    assert job.status_code == 200
+    assert job.json()["status"] == "succeeded"
+    assert job.json()["progress"] == 100
+    assert job.json()["content_id"]
+
+    result = client.get(f"/api/v1/learning-content-jobs/{job_id}/result")
+    assert result.status_code == 200
+    assert result.json()["id"] == job.json()["content_id"]
+    assert result.json()["sections"]
+
+
+def test_collection_learning_content_job_uses_all_materials(client: TestClient) -> None:
+    processed = client.post(
+        "/api/v1/materials/batch-process",
+        files=[
+            ("files", ("lesson.pdf", make_pdf(), "application/pdf")),
+            (
+                "files",
+                (
+                    "lesson.pptx",
+                    make_pptx(),
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                ),
+            ),
+        ],
+    )
+    assert processed.status_code == 201, processed.text
+    collection = processed.json()["collection"]
+
+    created = client.post(f"/api/v1/material-collections/{collection['id']}/learning-content-jobs")
+    assert created.status_code == 202, created.text
+    job_id = created.json()["id"]
+
+    job = client.get(f"/api/v1/learning-content-jobs/{job_id}")
+    assert job.status_code == 200
+    assert job.json()["status"] == "succeeded"
+
+    result = client.get(f"/api/v1/learning-content-jobs/{job_id}/result")
+    assert result.status_code == 200
+    payload = result.json()
+    assert payload["collection_id"] == collection["id"]
+    assert payload["material_ids"] == collection["material_ids"]
+    assert payload["knowledge_units"]
+    assert payload["knowledge_units"][0]["source_excerpts"]
+    assert payload["sections"]
+    assert payload["sections"][0]["page_refs"]
+    assert any(section["source_excerpts"] for section in payload["sections"])
 
 
 def test_complete_mvp_flow(client: TestClient) -> None:
@@ -108,10 +209,7 @@ def test_complete_mvp_flow(client: TestClient) -> None:
     content_id = content.json()["id"]
     assert content.json()["sections"][0]["source_refs"]
     assert content.json()["sections"][0]["quiz_items"]
-    assert (
-        content.json()["sections"][0]["quiz_items"][0]["question"]
-        != "本页主要讲解的内容是？"
-    )
+    assert content.json()["sections"][0]["quiz_items"][0]["question"] != "本页主要讲解的内容是？"
     understandings = client.get(f"/api/v1/materials/{material_id}/understandings")
     assert understandings.status_code == 200
     assert understandings.json()[0]["provider"] == "fake"
@@ -167,9 +265,10 @@ def test_complete_mvp_flow(client: TestClient) -> None:
     assert directed.json()["turns"][0]["role"] == "student"
     recorded_session = client.get(f"/api/v1/classroom-sessions/{session_id}")
     assert recorded_session.json()["events"][-1]["type"] == "AGENT_TURN"
-    assert recorded_session.json()["events"][-1]["payload"]["turn"]["agent_id"] == directed.json()[
-        "turns"
-    ][0]["agent_id"]
+    assert (
+        recorded_session.json()["events"][-1]["payload"]["turn"]["agent_id"]
+        == directed.json()["turns"][0]["agent_id"]
+    )
 
     answer = client.post(
         f"/api/v1/classroom-sessions/{session_id}/answers", json={"selected_index": 0}

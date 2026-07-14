@@ -1,8 +1,10 @@
+import hashlib
 import json
 import os
 import shlex
 import subprocess
 import tempfile
+from threading import Lock
 from pathlib import Path
 from uuid import uuid4
 
@@ -14,7 +16,16 @@ from pptx import Presentation
 from metaclass.core.schemas import utc_now
 from metaclass.infrastructure.storage import safe_filename, save_upload
 from metaclass.modules.materials.repository import MaterialRepository
-from metaclass.modules.materials.schemas import Material, PageMetadata, SourceRef
+from metaclass.modules.materials.schemas import (
+    Material,
+    MaterialCollection,
+    MaterialProcessingJob,
+    MaterialProcessingJobStatus,
+    PageMetadata,
+    ProcessedMaterial,
+    ProcessedMaterials,
+    SourceRef,
+)
 
 
 class MaterialService:
@@ -32,6 +43,8 @@ class MaterialService:
         self.parser_backend = parser_backend
         self.mineru_command = mineru_command
         self.mineru_timeout_seconds = mineru_timeout_seconds
+        self._jobs: dict[str, MaterialProcessingJob] = {}
+        self._job_lock = Lock()
 
     async def create(self, upload: UploadFile) -> Material:
         filename = safe_filename(upload.filename)
@@ -41,17 +54,134 @@ class MaterialService:
         material_id = f"mat_{uuid4().hex[:12]}"
         path = self.data_dir / "raw" / material_id / f"source.{suffix}"
         await save_upload(upload, path)
+        file_hash = self._sha256(path)
         material = Material(
-            id=material_id, filename=filename, file_type=suffix, storage_path=str(path)
+            id=material_id,
+            filename=filename,
+            file_type=suffix,
+            file_hash=file_hash,
+            storage_path=str(path),
         )
         self.repository.save_material(material)
         return material
+
+    def list_materials(self) -> list[Material]:
+        return self.repository.list_materials()
 
     def get(self, material_id: str) -> Material:
         material = self.repository.get_material(material_id)
         if not material:
             raise HTTPException(404, "Material not found")
         return material
+
+    def create_collection(
+        self,
+        title: str,
+        material_ids: list[str],
+        primary_material_id: str | None = None,
+    ) -> MaterialCollection:
+        if not material_ids:
+            raise HTTPException(400, "Material collection requires at least one material")
+        for material_id in material_ids:
+            self.get(material_id)
+        primary = primary_material_id or material_ids[0]
+        if primary not in material_ids:
+            raise HTTPException(400, "Primary material must be included in material_ids")
+        collection = MaterialCollection(
+            id=f"col_{uuid4().hex[:12]}",
+            title=title,
+            material_ids=material_ids,
+            primary_material_id=primary,
+        )
+        self.repository.save_collection(collection)
+        return collection
+
+    def get_collection(self, collection_id: str) -> MaterialCollection:
+        collection = self.repository.get_collection(collection_id)
+        if not collection:
+            raise HTTPException(404, "Material collection not found")
+        return collection
+
+    def list_collections(self) -> list[MaterialCollection]:
+        return self.repository.list_collections()
+
+    async def create_processing_job(
+        self,
+        uploads: list[UploadFile],
+        *,
+        title: str = "上传课程资料集",
+    ) -> MaterialProcessingJob:
+        if not uploads:
+            raise HTTPException(400, "Processing job requires at least one material")
+        materials = [await self.create(upload) for upload in uploads]
+        collection = self.create_collection(title, [material.id for material in materials])
+        job = MaterialProcessingJob(
+            id=f"mat_job_{uuid4().hex[:12]}",
+            status=MaterialProcessingJobStatus.QUEUED,
+            progress=0,
+            step="queued",
+            message="Waiting to process materials",
+            material_ids=[material.id for material in materials],
+            collection_id=collection.id,
+        )
+        self._save_job(job)
+        return job
+
+    def get_processing_job(self, job_id: str) -> MaterialProcessingJob:
+        with self._job_lock:
+            job = self._jobs.get(job_id)
+            if not job:
+                raise HTTPException(404, "Material processing job not found")
+            return job.model_copy(deep=True)
+
+    def processing_job_result(self, job_id: str) -> ProcessedMaterials:
+        job = self.get_processing_job(job_id)
+        if job.status == MaterialProcessingJobStatus.FAILED:
+            raise HTTPException(422, job.error or "Material processing job failed")
+        if job.status != MaterialProcessingJobStatus.SUCCEEDED:
+            raise HTTPException(409, "Material processing job is not finished")
+        collection = self.get_collection(job.collection_id) if job.collection_id else None
+        items = [
+            ProcessedMaterial(material=self.get(material_id), pages=self.pages(material_id))
+            for material_id in job.material_ids
+        ]
+        return ProcessedMaterials(items=items, collection=collection)
+
+    def run_processing_job(self, job_id: str) -> None:
+        job = self.get_processing_job(job_id)
+        try:
+            total = max(len(job.material_ids), 1)
+            job.status = MaterialProcessingJobStatus.RUNNING
+            job.step = "parsing"
+            job.message = "Parsing uploaded materials"
+            job.progress = 5
+            job.updated_at = utc_now()
+            self._save_job(job)
+            for index, material_id in enumerate(job.material_ids, start=1):
+                material = self.get(material_id)
+                job.step = f"parsing:{material.filename}"
+                job.message = f"Parsing {material.filename}"
+                job.progress = min(95, 5 + int(((index - 1) / total) * 90))
+                job.updated_at = utc_now()
+                self._save_job(job)
+                self.parse(material_id)
+                job.progress = min(95, 5 + int((index / total) * 90))
+                job.updated_at = utc_now()
+                self._save_job(job)
+            job.status = MaterialProcessingJobStatus.SUCCEEDED
+            job.step = "completed"
+            job.message = "Material processing completed"
+            job.progress = 100
+            job.updated_at = utc_now()
+            self._save_job(job)
+        except Exception as exc:
+            job.status = MaterialProcessingJobStatus.FAILED
+            job.step = "failed"
+            job.message = "Material processing failed"
+            job.progress = 100
+            job.error = str(exc)
+            job.updated_at = utc_now()
+            self._save_job(job)
 
     def pages(self, material_id: str) -> list[PageMetadata]:
         self.get(material_id)
@@ -80,6 +210,18 @@ class MaterialService:
             material.updated_at = utc_now()
             self.repository.save_material(material)
             raise HTTPException(422, f"Material parsing failed: {exc}") from exc
+
+    def _save_job(self, job: MaterialProcessingJob) -> None:
+        with self._job_lock:
+            self._jobs[job.id] = job.model_copy(deep=True)
+
+    @staticmethod
+    def _sha256(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as source:
+            for chunk in iter(lambda: source.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
 
     def _parse_pdf(self, material: Material) -> list[PageMetadata]:
         if self.parser_backend in {"auto", "mineru"}:

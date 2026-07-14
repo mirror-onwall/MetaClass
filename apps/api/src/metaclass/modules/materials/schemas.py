@@ -18,6 +18,13 @@ class MaterialStatus(StrEnum):
     FAILED = "failed"
 
 
+class MaterialProcessingJobStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
 class SourceRef(SchemaModel):
     material_id: str = Field(min_length=1)
     page_id: str = Field(min_length=1)
@@ -30,6 +37,7 @@ class Material(SchemaModel):
     id: str = Field(min_length=1)
     filename: str = Field(min_length=1)
     file_type: MaterialType
+    file_hash: str | None = None
     status: MaterialStatus = MaterialStatus.UPLOADED
     storage_path: str = Field(min_length=1)
     page_count: int = Field(default=0, ge=0)
@@ -53,5 +61,34 @@ class ProcessedMaterial(SchemaModel):
     pages: list[PageMetadata]
 
 
+class MaterialCollection(SchemaModel):
+    id: str = Field(min_length=1)
+    title: str = Field(min_length=1, max_length=200)
+    material_ids: list[str] = Field(default_factory=list)
+    primary_material_id: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class MaterialCollectionCreate(SchemaModel):
+    title: str = Field(default="未命名课程资料集", min_length=1, max_length=200)
+    material_ids: list[str] = Field(min_length=1)
+    primary_material_id: str | None = None
+
+
+class MaterialProcessingJob(SchemaModel):
+    id: str = Field(min_length=1)
+    status: MaterialProcessingJobStatus = MaterialProcessingJobStatus.QUEUED
+    progress: int = Field(default=0, ge=0, le=100)
+    step: str = "queued"
+    message: str = "Waiting to process materials"
+    material_ids: list[str] = Field(default_factory=list)
+    collection_id: str | None = None
+    error: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
 class ProcessedMaterials(SchemaModel):
     items: list[ProcessedMaterial]
+    collection: MaterialCollection | None = None

@@ -4,7 +4,12 @@ import json
 from pathlib import Path
 
 from metaclass.infrastructure.providers.llm import LLMMessage, LLMProvider
-from metaclass.modules.content.schemas import LearningContentDraft, PageUnderstandingDraft
+from metaclass.modules.content.schemas import (
+    KnowledgeCanonicalizationDraft,
+    KnowledgeUnit,
+    LearningContentDraft,
+    PageUnderstandingDraft,
+)
 from metaclass.modules.materials.schemas import PageMetadata
 
 
@@ -86,14 +91,22 @@ Return only valid JSON. Do not use markdown.
 
 The JSON object must contain:
 {
+  "page_role": "cover | agenda | concept | method | formula | example | data | summary | reference | appendix",
   "summary": "a concise teaching summary grounded in the current page",
   "expanded_explanation": "a teacher-facing explanation script for this page",
   "visual_description": "useful visual/layout/chart/formula observations, or empty string",
+  "teachable_points": [{"point": "one teachable point", "importance": "core | supporting | optional", "difficulty": "easy | medium | hard"}],
+  "key_excerpts": [{"text": "short important source quote or formula text", "type": "definition | claim | formula | example | data", "reason": "why it matters"}],
+  "concepts": [{"name": "concept name", "definition": "definition from this page"}],
+  "formulas": [{"latex": "formula if any", "meaning": "what it means", "variables": [{"symbol": "u", "meaning": "meaning of u"}]}],
+  "visual_analysis": {"has_useful_visual": false, "description": "", "candidate_visual_use": "source_image | redraw_flowchart | table | ignore"},
   "knowledge_points": ["3 to 5 short, teachable concepts"],
   "teaching_focus": ["1 to 3 important, difficult, or easily confused points"],
+  "misconceptions": [{"mistake": "likely misunderstanding", "correction": "how to correct it"}],
   "possible_questions": ["2 to 4 open questions a teacher can ask"],
   "depends_on_pages": [page numbers this page depends on],
   "leads_to_pages": [page numbers this page prepares for],
+  "same_topic_pages": [page numbers with the same topic],
   "transition_to_next": "a short teaching transition to the next page, or empty string",
   "quiz_items": [
     {
@@ -110,6 +123,9 @@ Page-understanding rules:
 - If the current page has little text, infer its teaching role from neighboring pages and visual cues.
 - Do not invent unsupported facts, data, formulas, results, or citations.
 - expanded_explanation should help a teacher explain image-heavy pages using visual_description.
+- Extract only selected key_excerpts, not the whole page.
+- Put formulas into formulas instead of burying them in summary.
+- Formula variables must be objects with symbol and meaning fields, not bare strings.
 - depends_on_pages and leads_to_pages should only include page numbers provided in the input context.
 
 Quiz design rules:
@@ -182,6 +198,124 @@ Quiz design rules:
             temperature=0.2,
         )
         return LearningContentDraft.model_validate_json(response)
+
+    def organize_collection_learning_content(
+        self,
+        *,
+        collection_id: str,
+        material_ids: list[str],
+        pages: list[PageMetadata],
+        understandings: list,
+        knowledge_units: list[KnowledgeUnit],
+    ) -> LearningContentDraft:
+        packets = []
+        understanding_by_page = {(item.material_id, item.page_no): item for item in understandings}
+        for page in pages:
+            understanding = understanding_by_page.get((page.material_id, page.page_no))
+            packets.append(
+                {
+                    "material_id": page.material_id,
+                    "page_no": page.page_no,
+                    "title": page.title,
+                    "raw_text_excerpt": page.raw_text[:1000],
+                    "summary": getattr(understanding, "summary", ""),
+                    "page_role": getattr(understanding, "page_role", ""),
+                    "knowledge_points": getattr(understanding, "knowledge_points", []),
+                    "key_excerpts": [
+                        excerpt.model_dump(mode="json")
+                        for excerpt in getattr(understanding, "key_excerpts", [])
+                    ],
+                    "concepts": [
+                        concept.model_dump(mode="json")
+                        for concept in getattr(understanding, "concepts", [])
+                    ],
+                    "formulas": [
+                        formula.model_dump(mode="json")
+                        for formula in getattr(understanding, "formulas", [])
+                    ],
+                    "misconceptions": [
+                        item.model_dump(mode="json")
+                        for item in getattr(understanding, "misconceptions", [])
+                    ],
+                }
+            )
+        response = self.llm.complete_json(
+            [
+                LLMMessage(
+                    role="system",
+                    content=(
+                        "You are an instructional designer building LearningContent from "
+                        "multiple teaching materials. Do not organize by source page or file. "
+                        "Organize by teaching logic. Remove duplicates across documents. "
+                        "Return only valid JSON with keys: title, subtitle, objectives, outline, "
+                        "audience, teaching_intent, material_overview, global_concepts, "
+                        "generation_guidance, quality, sections. Each section must include: "
+                        "title, role, content_goal, page_nos, page_refs, summary, key_points, "
+                        "teaching_narrative, teaching_script, knowledge_points, source_excerpts, "
+                        "formulas, examples, visual_opportunities, misconceptions, "
+                        "interaction_opportunities, visual_summary, transition_to_next, quiz_items. "
+                        "Use page_refs with material_id and page_no for traceability. "
+                        "Do not create one section per page unless pedagogically necessary."
+                    ),
+                ),
+                LLMMessage(
+                    role="user",
+                    content=json.dumps(
+                        {
+                            "collection_id": collection_id,
+                            "material_ids": material_ids,
+                            "knowledge_units": [
+                                unit.model_dump(mode="json") for unit in knowledge_units
+                            ],
+                            "pages": packets,
+                        },
+                        ensure_ascii=False,
+                    ),
+                ),
+            ],
+            temperature=0.2,
+        )
+        return LearningContentDraft.model_validate_json(response)
+
+    def canonicalize_knowledge_units(
+        self, units: list[KnowledgeUnit]
+    ) -> KnowledgeCanonicalizationDraft:
+        payload = [
+            {
+                "id": unit.id,
+                "title": unit.title,
+                "unit_type": unit.unit_type,
+                "summary": unit.summary,
+                "keywords": unit.keywords,
+                "concept_names": [concept.name for concept in unit.concepts],
+                "page_refs": [ref.model_dump(mode="json") for ref in unit.page_refs],
+            }
+            for unit in units
+        ]
+        response = self.llm.complete_json(
+            [
+                LLMMessage(
+                    role="system",
+                    content=(
+                        "You normalize knowledge units extracted from multiple teaching documents. "
+                        "Return only JSON with keys groups and relations. Every input unit id must "
+                        "appear in exactly one group.unit_ids. Merge units only when they express the "
+                        "same teachable concept; do not merge prerequisites, examples, methods, or "
+                        "different levels of detail merely because they share keywords. Each group "
+                        "must contain id, title, unit_ids, unit_type, summary, aliases, confidence. "
+                        "Relations must contain source_group_id, target_group_id, relation_type, "
+                        "reason, confidence. Allowed relation types are prerequisite_of, extends, "
+                        "example_of, contrasts_with, and related_to. Group ids must be unique."
+                    ),
+                ),
+                LLMMessage(
+                    role="user",
+                    content=json.dumps({"knowledge_units": payload}, ensure_ascii=False),
+                ),
+            ],
+            temperature=0.1,
+        )
+        return KnowledgeCanonicalizationDraft.model_validate_json(response)
 
     @staticmethod
     def _page_context(page: PageMetadata | None) -> dict | None:

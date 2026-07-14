@@ -10,6 +10,7 @@ export type Material = {
   id: string;
   filename: string;
   file_type: "pdf" | "pptx";
+  file_hash?: string;
   status: "uploaded" | "parsing" | "parsed" | "failed";
   page_count: number;
 };
@@ -27,8 +28,27 @@ export type ProcessedMaterial = {
   pages: PageMetadata[];
 };
 
+export type MaterialCollection = {
+  id: string;
+  title: string;
+  material_ids: string[];
+  primary_material_id?: string;
+};
+
+export type MaterialProcessingJob = {
+  id: string;
+  status: "queued" | "running" | "succeeded" | "failed";
+  progress: number;
+  step: string;
+  message: string;
+  material_ids: string[];
+  collection_id?: string;
+  error?: string;
+};
+
 export type ProcessedMaterials = {
   items: ProcessedMaterial[];
+  collection?: MaterialCollection;
 };
 
 export type QuizItem = {
@@ -41,20 +61,87 @@ export type QuizItem = {
   source_refs: SourceRef[];
 };
 
+export type SourceExcerpt = {
+  id?: string;
+  text: string;
+  type: string;
+  reason?: string;
+  importance: string;
+  usage: string;
+  source_refs: SourceRef[];
+};
+
+export type PageRef = {
+  material_id: string;
+  page_no: number;
+  reason?: string;
+};
+
+export type KnowledgeRelation = {
+  target_unit_id: string;
+  relation_type: string;
+  reason?: string;
+  confidence: number;
+};
+
+export type KnowledgeUnit = {
+  id: string;
+  title: string;
+  unit_type: string;
+  summary?: string;
+  aliases: string[];
+  keywords: string[];
+  source_excerpts: SourceExcerpt[];
+  source_refs: SourceRef[];
+  page_refs: PageRef[];
+  source_unit_ids: string[];
+  relations: KnowledgeRelation[];
+  importance?: string;
+  confidence: number;
+};
+
 export type LearningSection = {
   id: string;
   title: string;
+  role?: string;
+  content_goal?: string;
   summary: string;
+  key_points?: string[];
+  teaching_narrative?: string;
   knowledge_points: string[];
+  source_excerpts?: SourceExcerpt[];
   source_refs: SourceRef[];
+  page_refs?: PageRef[];
   quiz_items: QuizItem[];
 };
 
 export type LearningContent = {
   id: string;
+  material_id?: string;
+  material_ids?: string[];
+  collection_id?: string;
   title: string;
+  subtitle?: string;
+  audience?: Record<string, unknown>;
+  teaching_intent?: Record<string, unknown>;
+  material_overview?: Record<string, unknown>;
+  knowledge_units?: KnowledgeUnit[];
   objectives: string[];
   sections: LearningSection[];
+  generation_guidance?: Record<string, unknown>;
+  quality?: Record<string, unknown>;
+};
+
+export type ContentGenerationJob = {
+  id: string;
+  material_id?: string;
+  collection_id?: string;
+  status: "queued" | "running" | "succeeded" | "failed";
+  progress: number;
+  step: string;
+  message: string;
+  content_id?: string;
+  error?: string;
 };
 
 export type LearningMode = "lecture" | "interactive";
