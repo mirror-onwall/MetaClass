@@ -74,6 +74,7 @@ class Database:
                 "material_overview": "JSON",
                 "global_concepts": "JSON",
                 "knowledge_units": "JSON",
+                "knowledge_tree": "JSON",
                 "generation_guidance": "JSON",
                 "quality": "JSON",
                 "created_at": "DATETIME",
@@ -131,11 +132,7 @@ class Database:
                         )
                     )
                     connection.execute(
-                        text(
-                            "UPDATE classroom_sessions "
-                            "SET mode = 'lecture' "
-                            "WHERE mode IS NULL"
-                        )
+                        text("UPDATE classroom_sessions SET mode = 'lecture' WHERE mode IS NULL")
                     )
                 if table == "ppt_artifacts":
                     connection.execute(
@@ -180,9 +177,13 @@ class Database:
                     )
                     connection.execute(
                         text(
-                            "UPDATE learning_contents SET subtitle = '' "
-                            "WHERE subtitle IS NULL"
+                            "UPDATE learning_contents SET knowledge_tree = NULL "
+                            "WHERE knowledge_tree IS NOT NULL "
+                            "AND substr(trim(knowledge_tree), 1, 1) <> '{'"
                         )
+                    )
+                    connection.execute(
+                        text("UPDATE learning_contents SET subtitle = '' WHERE subtitle IS NULL")
                     )
                 if table == "page_understandings":
                     connection.execute(
@@ -193,11 +194,7 @@ class Database:
                         )
                     )
                     connection.execute(
-                        text(
-                            "UPDATE page_understandings "
-                            "SET title = '' "
-                            "WHERE title IS NULL"
-                        )
+                        text("UPDATE page_understandings SET title = '' WHERE title IS NULL")
                     )
                     for json_column in (
                         "teachable_points",
@@ -237,6 +234,7 @@ class Database:
                         "material_overview",
                         "global_concepts",
                         "knowledge_units",
+                        "knowledge_tree",
                         "generation_guidance",
                         "quality",
                         "page_role",

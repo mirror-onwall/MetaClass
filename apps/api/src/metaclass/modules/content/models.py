@@ -54,6 +54,7 @@ class LearningContentRecord(Base):
     material_overview: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     global_concepts: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     knowledge_units: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    knowledge_tree: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     objectives: Mapped[list[str]] = mapped_column(JSON)
     sections: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     generation_guidance: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)

@@ -794,6 +794,73 @@ apps/web/src/shared/types.ts
 docs/change_list_lsq.md
 ```
 
+## 2026-07-14：CourseKnowledgeTree 与树驱动 LearningContent
+
+本轮暂不实现历史资料库 UI，聚焦完善 LearningContent 生成质量。
+
+### CourseKnowledgeTree
+
+新增课程知识树结构：
+
+```text
+CourseKnowledgeTree
+  -> root_node_ids
+  -> nodes[]
+       -> parent_id
+       -> knowledge_unit_ids
+       -> prerequisite_node_ids
+       -> order
+  -> teaching_sequence
+```
+
+知识树节点引用 Canonical KnowledgeUnit，不复制原始页面内容。知识树作为 JSON 随
+LearningContent 持久化，旧 SQLite 数据库会自动补充 `knowledge_tree` 列。
+
+### 统一单材料和多材料生成链路
+
+单材料和 MaterialCollection 现在统一使用：
+
+```text
+PageUnderstanding
+-> Canonical KnowledgeUnit
+-> CourseKnowledgeTree
+-> LearningContent
+```
+
+LearningSection 新增 `tree_node_ids`。LLM organizer 必须覆盖全部顶层知识树节点并保留
+`page_refs`，否则使用基于知识树的 fallback。fallback 按教学章节聚合知识单元，不再机械地
+一个 KnowledgeUnit 生成一个 section，同时保留 quiz_items 以兼容课堂链路。
+
+### 自动质量检查
+
+`LearningContent.quality` 新增或补充：
+
+```text
+coverage_score
+material_coverage
+knowledge_coverage
+missing_material_ids
+orphan_unit_ids
+duplicate_section_titles
+sections_without_sources
+low_confidence_unit_ids
+low_confidence_relation_count
+conflict_count
+warnings
+```
+
+### 查看接口与前端视图
+
+新增接口：
+
+```http
+GET /api/v1/learning-contents/{content_id}/knowledge-tree
+GET /api/v1/learning-contents/{content_id}/diagnostics
+```
+
+前端右侧 LearningContent 区域新增“大纲 / 知识树 / 质量”视图，可查看章节结构、知识单元数量、
+覆盖率和质量警告。
+
 ## 2026-07-14：新增轻量 KnowledgeUnit 层
 
 ### 背景

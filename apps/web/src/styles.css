@@ -202,12 +202,22 @@ button { color: inherit; }
 .lesson-outline h2 { margin: 18px 0 10px; font-size: 19px; line-height: 1.35; letter-spacing: -.02em; }
 .objective-tags { display: flex; flex-wrap: wrap; gap: 5px; }
 .objective-tags span { padding: 4px 7px; color: #b5c4be; border: 1px solid var(--line); font-size: 8px; }
+.content-view-tabs { display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 12px; border-bottom: 1px solid var(--line); }
+.content-view-tabs button { min-height: 30px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font-size: 9px; cursor: pointer; }
+.content-view-tabs button.active { border-bottom-color: var(--amber); color: var(--chalk); }
 .lesson-outline ol { max-height: 280px; overflow: auto; list-style: none; padding: 0; margin: 15px 0 0; }
 .lesson-outline li { display: grid; grid-template-columns: 30px 1fr; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
 .lesson-outline li > span { color: var(--amber); font: 8px "DM Mono", monospace; padding-top: 2px; }
 .lesson-outline li b, .lesson-outline li small { display: block; }
 .lesson-outline li b { font-size: 10px; font-weight: 500; }
 .lesson-outline li small { margin-top: 3px; color: var(--muted); font-size: 8px; }
+.content-quality { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 15px; }
+.content-quality > div { padding: 9px 4px; border-top: 1px solid var(--line); }
+.content-quality span, .content-quality b { display: block; }
+.content-quality span { color: var(--muted); font-size: 7px; }
+.content-quality b { margin-top: 5px; color: var(--amber-soft); font: 500 13px "DM Mono", monospace; }
+.content-quality ul { grid-column: 1 / -1; max-height: 180px; margin: 4px 0 0; padding-left: 15px; overflow: auto; color: #c9b18d; font-size: 8px; line-height: 1.55; }
+.content-quality p { grid-column: 1 / -1; margin: 5px 0 0; color: var(--mint); font-size: 8px; }
 .classroom-roster { padding: 18px; border-top: 1px solid var(--line); }
 .classroom-roster-list { display: grid; gap: 7px; margin-top: 12px; }
 .classroom-roster-item { min-width: 0; display: grid; grid-template-columns: 38px 1fr auto; gap: 8px; align-items: center; padding: 5px; border: 1px solid rgba(198,171,126,.18); background: rgba(255,255,255,.025); }

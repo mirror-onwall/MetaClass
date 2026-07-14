@@ -1,16 +1,34 @@
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 
 from metaclass.infrastructure.providers.llm import LLMMessage, LLMProvider
 from metaclass.modules.content.schemas import (
+    CourseKnowledgeTree,
     KnowledgeCanonicalizationDraft,
     KnowledgeUnit,
     LearningContentDraft,
     PageUnderstandingDraft,
 )
 from metaclass.modules.materials.schemas import PageMetadata
+
+
+logger = logging.getLogger(__name__)
+
+
+def _parse_json_object(raw: str) -> dict:
+    text = raw.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if lines and lines[-1].strip() == "```":
+            text = "\n".join(lines[1:-1]).strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start < 0 or end < start:
+        raise ValueError("Response does not contain a JSON object")
+    return json.loads(text[start : end + 1])
 
 
 class LLMLearningProvider:
@@ -56,8 +74,9 @@ class LLMLearningProvider:
         )
         try:
             response = complete_image_json(prompt, page.image_path, temperature=0.1)
-            payload = json.loads(response)
-        except Exception:
+            payload = _parse_json_object(response)
+        except Exception as exc:
+            logger.warning("Vision description failed for %s: %s", page.id, exc)
             return ""
         value = payload.get("visual_description", "")
         return str(value).strip() if value else ""
@@ -207,6 +226,7 @@ Quiz design rules:
         pages: list[PageMetadata],
         understandings: list,
         knowledge_units: list[KnowledgeUnit],
+        knowledge_tree: CourseKnowledgeTree,
     ) -> LearningContentDraft:
         packets = []
         understanding_by_page = {(item.material_id, item.page_no): item for item in understandings}
@@ -246,11 +266,14 @@ Quiz design rules:
                     content=(
                         "You are an instructional designer building LearningContent from "
                         "multiple teaching materials. Do not organize by source page or file. "
-                        "Organize by teaching logic. Remove duplicates across documents. "
+                        "The supplied course_knowledge_tree is authoritative: organize sections "
+                        "from its root teaching nodes and teaching_sequence. Do not bypass it or "
+                        "create one section per knowledge unit. Remove duplicates across documents. "
                         "Return only valid JSON with keys: title, subtitle, objectives, outline, "
                         "audience, teaching_intent, material_overview, global_concepts, "
                         "generation_guidance, quality, sections. Each section must include: "
                         "title, role, content_goal, page_nos, page_refs, summary, key_points, "
+                        "tree_node_ids, "
                         "teaching_narrative, teaching_script, knowledge_points, source_excerpts, "
                         "formulas, examples, visual_opportunities, misconceptions, "
                         "interaction_opportunities, visual_summary, transition_to_next, quiz_items. "
@@ -267,6 +290,7 @@ Quiz design rules:
                             "knowledge_units": [
                                 unit.model_dump(mode="json") for unit in knowledge_units
                             ],
+                            "course_knowledge_tree": knowledge_tree.model_dump(mode="json"),
                             "pages": packets,
                         },
                         ensure_ascii=False,
@@ -276,6 +300,45 @@ Quiz design rules:
             temperature=0.2,
         )
         return LearningContentDraft.model_validate_json(response)
+
+    def build_course_knowledge_tree(
+        self,
+        *,
+        tree_id: str,
+        title: str,
+        units: list[KnowledgeUnit],
+    ) -> CourseKnowledgeTree:
+        response = self.llm.complete_json(
+            [
+                LLMMessage(
+                    role="system",
+                    content=(
+                        "You build a hierarchical course knowledge tree from canonical knowledge "
+                        "units. Return only JSON with keys id, title, nodes, root_node_ids, "
+                        "teaching_sequence, orphan_unit_ids, warnings. Each node must contain id, "
+                        "title, role, summary, parent_id, knowledge_unit_ids, order, and "
+                        "prerequisite_node_ids. Build 3 to 8 coherent top-level teaching chapters "
+                        "when the material supports them. Every knowledge unit id must appear in "
+                        "exactly one node. Parent and prerequisite ids must reference existing "
+                        "nodes. teaching_sequence must contain node ids in pedagogical order. "
+                        "Organize by teaching logic, not source file or page order."
+                    ),
+                ),
+                LLMMessage(
+                    role="user",
+                    content=json.dumps(
+                        {
+                            "tree_id": tree_id,
+                            "title": title,
+                            "knowledge_units": [unit.model_dump(mode="json") for unit in units],
+                        },
+                        ensure_ascii=False,
+                    ),
+                ),
+            ],
+            temperature=0.1,
+        )
+        return CourseKnowledgeTree.model_validate_json(response)
 
     def canonicalize_knowledge_units(
         self, units: list[KnowledgeUnit]

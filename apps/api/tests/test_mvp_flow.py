@@ -146,8 +146,12 @@ def test_learning_content_job_can_be_polled_for_result(client: TestClient) -> No
 
     result = client.get(f"/api/v1/learning-content-jobs/{job_id}/result")
     assert result.status_code == 200
-    assert result.json()["id"] == job.json()["content_id"]
-    assert result.json()["sections"]
+    payload = result.json()
+    assert payload["id"] == job.json()["content_id"]
+    assert payload["sections"]
+    assert payload["knowledge_tree"]["root_node_ids"]
+    assert payload["sections"][0]["tree_node_ids"]
+    assert payload["quality"]["coverage_score"] == 1.0
 
 
 def test_collection_learning_content_job_uses_all_materials(client: TestClient) -> None:
@@ -182,10 +186,20 @@ def test_collection_learning_content_job_uses_all_materials(client: TestClient) 
     assert payload["collection_id"] == collection["id"]
     assert payload["material_ids"] == collection["material_ids"]
     assert payload["knowledge_units"]
+    assert payload["knowledge_tree"]["nodes"]
     assert payload["knowledge_units"][0]["source_excerpts"]
     assert payload["sections"]
     assert payload["sections"][0]["page_refs"]
+    assert payload["sections"][0]["tree_node_ids"]
+    assert len(payload["sections"]) <= len(payload["knowledge_units"])
     assert any(section["source_excerpts"] for section in payload["sections"])
+    assert payload["quality"]["material_coverage"] == 1.0
+    assert payload["quality"]["knowledge_coverage"] == 1.0
+
+    diagnostics = client.get(f"/api/v1/learning-contents/{payload['id']}/diagnostics")
+    assert diagnostics.status_code == 200
+    assert diagnostics.json()["knowledge_tree"]["id"] == payload["knowledge_tree"]["id"]
+    assert diagnostics.json()["quality"]["coverage_score"] == 1.0
 
 
 def test_complete_mvp_flow(client: TestClient) -> None:

@@ -65,8 +65,7 @@ class FormulaNote(SchemaModel):
             ]
         if isinstance(value, list):
             return [
-                {"symbol": item, "meaning": ""} if isinstance(item, str) else item
-                for item in value
+                {"symbol": item, "meaning": ""} if isinstance(item, str) else item for item in value
             ]
         return value
 
@@ -157,6 +156,27 @@ class KnowledgeCanonicalizationDraft(SchemaModel):
     relations: list[KnowledgeRelationDraft] = Field(default_factory=list)
 
 
+class CourseKnowledgeTreeNode(SchemaModel):
+    id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    role: str = "concept"
+    summary: str = ""
+    parent_id: str | None = None
+    knowledge_unit_ids: list[str] = Field(default_factory=list)
+    order: int = Field(default=1, ge=1)
+    prerequisite_node_ids: list[str] = Field(default_factory=list)
+
+
+class CourseKnowledgeTree(SchemaModel):
+    id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    nodes: list[CourseKnowledgeTreeNode] = Field(min_length=1)
+    root_node_ids: list[str] = Field(min_length=1)
+    teaching_sequence: list[str] = Field(default_factory=list)
+    orphan_unit_ids: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
 class PageUnderstandingDraft(SchemaModel):
     summary: str
     knowledge_points: list[str] = Field(default_factory=list)
@@ -236,7 +256,7 @@ class QuizItemDraft(SchemaModel):
 
 class LearningSectionDraft(SchemaModel):
     title: str = Field(min_length=1)
-    page_nos: list[int] = Field(min_length=1)
+    page_nos: list[int] = Field(default_factory=list)
     summary: str
     teaching_script: str
     knowledge_points: list[str] = Field(default_factory=list)
@@ -251,6 +271,7 @@ class LearningSectionDraft(SchemaModel):
     misconceptions: list[Misconception] = Field(default_factory=list)
     interaction_opportunities: list[InteractionOpportunity] = Field(default_factory=list)
     page_refs: list[PageRef] = Field(default_factory=list)
+    tree_node_ids: list[str] = Field(default_factory=list)
     visual_summary: str = ""
     transition_to_next: str = ""
     quiz_items: list[QuizItemDraft] = Field(default_factory=list)
@@ -288,6 +309,7 @@ class LearningSection(SchemaModel):
     transition: dict = Field(default_factory=dict)
     source_refs: list[SourceRef] = Field(min_length=1)
     page_refs: list[PageRef] = Field(default_factory=list)
+    tree_node_ids: list[str] = Field(default_factory=list)
     quiz_items: list[QuizItem] = Field(default_factory=list)
     page_nos: list[int] = Field(default_factory=list)
     outline_level: int = Field(default=1, ge=1)
@@ -308,6 +330,7 @@ class LearningContent(SchemaModel):
     material_overview: dict = Field(default_factory=dict)
     global_concepts: list[ConceptNote] = Field(default_factory=list)
     knowledge_units: list[KnowledgeUnit] = Field(default_factory=list)
+    knowledge_tree: CourseKnowledgeTree | None = None
     objectives: list[str] = Field(default_factory=list)
     sections: list[LearningSection] = Field(min_length=1)
     generation_guidance: dict = Field(default_factory=dict)
@@ -315,6 +338,13 @@ class LearningContent(SchemaModel):
     version: int = Field(default=1, ge=1)
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
+
+
+class LearningContentDiagnostics(SchemaModel):
+    content_id: str = Field(min_length=1)
+    knowledge_units: list[KnowledgeUnit] = Field(default_factory=list)
+    knowledge_tree: CourseKnowledgeTree | None = None
+    quality: dict = Field(default_factory=dict)
 
 
 class ContentGenerationJob(SchemaModel):

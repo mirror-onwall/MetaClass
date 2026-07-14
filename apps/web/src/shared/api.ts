@@ -5,6 +5,7 @@ import type {
   ControllerResult,
   DirectedAgentTurn,
   LearningContent,
+  LearningContentDiagnostics,
   LearningMode,
   Material,
   MaterialCollection,
@@ -140,6 +141,11 @@ export const api = {
   },
   getContentGenerationJobResult(jobId: string) {
     return request<LearningContent>(`/api/v1/learning-content-jobs/${jobId}/result`);
+  },
+  getContentDiagnostics(contentId: string) {
+    return request<LearningContentDiagnostics>(
+      `/api/v1/learning-contents/${contentId}/diagnostics`,
+    );
   },
   async waitForContentGenerationJob(
     jobId: string,

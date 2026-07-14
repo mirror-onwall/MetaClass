@@ -41,6 +41,11 @@ class SqlAlchemyContentRepository:
                     knowledge_units=[
                         item.model_dump(mode="json") for item in content.knowledge_units
                     ],
+                    knowledge_tree=(
+                        content.knowledge_tree.model_dump(mode="json")
+                        if content.knowledge_tree
+                        else None
+                    ),
                     objectives=content.objectives,
                     sections=[item.model_dump(mode="json") for item in content.sections],
                     generation_guidance=content.generation_guidance,
@@ -69,6 +74,7 @@ class SqlAlchemyContentRepository:
                     "material_overview": record.material_overview or {},
                     "global_concepts": record.global_concepts or [],
                     "knowledge_units": record.knowledge_units or [],
+                    "knowledge_tree": record.knowledge_tree,
                     "objectives": record.objectives,
                     "sections": record.sections,
                     "generation_guidance": record.generation_guidance or {},
