@@ -58,7 +58,11 @@ class PresentationService:
             presentation_plan_id=plan.id,
         )
         self.repository.save_job(job)
+        return job
 
+    def run_ppt_job(self, job_id: str) -> None:
+        job = self.get_ppt_job(job_id)
+        plan = self.get_plan(job.presentation_plan_id)
         job.status = PPTGenerationStatus.RUNNING
         job.progress = 0.2
         job.updated_at = utc_now()
@@ -79,7 +83,6 @@ class PresentationService:
             job.progress = 1.0
         job.updated_at = utc_now()
         self.repository.save_job(job)
-        return job
 
     def get_ppt_job(self, job_id: str) -> PPTGenerationJob:
         job = self.repository.get_job(job_id)
@@ -96,6 +99,13 @@ class PresentationService:
     def get_artifact_for_job(self, job_id: str) -> PPTArtifact:
         self.get_ppt_job(job_id)
         artifact = self.repository.get_artifact_for_job(job_id)
+        if not artifact:
+            raise HTTPException(409, "PPT artifact is not available")
+        return artifact
+
+    def get_artifact_for_plan(self, plan_id: str) -> PPTArtifact:
+        self.get_plan(plan_id)
+        artifact = self.repository.get_artifact_for_plan(plan_id)
         if not artifact:
             raise HTTPException(409, "PPT artifact is not available")
         return artifact

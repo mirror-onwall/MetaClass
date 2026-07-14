@@ -313,11 +313,33 @@ def test_complete_mvp_flow(client: TestClient) -> None:
     assert len(student_turns.json()) == 4
     assert {turn["role"] for turn in student_turns.json()} == {"student"}
 
-    job = client.post(f"/api/v1/learning-contents/{content_id}/videos")
-    assert job.status_code == 201
-    assert job.json()["status"] == "finished", job.json().get("error")
-    assert job.json()["progress"] == 1.0
-    result = client.get(f"/api/v1/video-jobs/{job.json()['id']}/result")
+    presentation_plan = client.post(
+        f"/api/v1/learning-contents/{content_id}/presentation-plans"
+    )
+    assert presentation_plan.status_code == 201
+    ppt_job = client.post(
+        f"/api/v1/presentation-plans/{presentation_plan.json()['id']}/ppt-jobs"
+    )
+    assert ppt_job.status_code == 202
+    finished_ppt_job = client.get(f"/api/v1/ppt-jobs/{ppt_job.json()['id']}")
+    assert finished_ppt_job.json()["status"] == "finished", finished_ppt_job.json().get(
+        "error"
+    )
+    ppt_artifact = client.get(
+        f"/api/v1/ppt-jobs/{finished_ppt_job.json()['id']}/artifact"
+    )
+    assert ppt_artifact.status_code == 200
+
+    job = client.post(
+        f"/api/v1/learning-contents/{content_id}/videos",
+        params={"presentation_artifact_id": ppt_artifact.json()["id"]},
+    )
+    assert job.status_code == 202
+    assert job.json()["status"] == "pending"
+    finished_job = client.get(f"/api/v1/video-jobs/{job.json()['id']}")
+    assert finished_job.json()["status"] == "finished", finished_job.json().get("error")
+    assert finished_job.json()["progress"] == 1.0
+    result = client.get(f"/api/v1/video-jobs/{finished_job.json()['id']}/result")
     assert result.status_code == 200
     assert result.json()["job_id"] == job.json()["id"]
     assert Path(result.json()["video_path"]).stat().st_size > 0
@@ -408,8 +430,12 @@ def test_presentation_plan_and_ppt_skill_request_flow(client: TestClient) -> Non
     assert latest.json()["id"] == plan.json()["id"]
 
     job = client.post(f"/api/v1/presentation-plans/{plan.json()['id']}/ppt-jobs")
-    assert job.status_code == 201
-    assert job.json()["status"] == "finished"
+    assert job.status_code == 202
+    assert job.json()["status"] in {"queued", "running", "finished"}
+
+    job = client.get(f"/api/v1/ppt-jobs/{job.json()['id']}")
+    assert job.status_code == 200
+    assert job.json()["status"] == "finished", job.json().get("error")
     assert job.json()["artifact_id"]
 
     artifact = client.get(f"/api/v1/ppt-jobs/{job.json()['id']}/artifact")

@@ -240,6 +240,17 @@ export type ClassroomSession = {
   mastery: Mastery[];
 };
 
+export type ClassroomPlanJob = {
+  id: string;
+  content_id: string;
+  status: "queued" | "running" | "succeeded" | "failed";
+  step: "queued" | "planning" | "persisting" | "completed" | "failed";
+  progress: number;
+  message: string;
+  plan_id?: string;
+  error?: string;
+};
+
 export type AgentTurn = {
   agent_id: string;
   role: "teacher" | "student" | "assistant" | "evaluator";
@@ -295,6 +306,25 @@ export type VideoResult = {
   video_path: string;
   subtitles_path?: string;
   duration_seconds: number;
+};
+
+export type TTSArtifactRequest = {
+  text: string;
+  scope: string;
+  ref_id?: string;
+  voice?: string;
+};
+
+export type TTSArtifact = {
+  id: string;
+  text: string;
+  scope: string;
+  ref_id?: string;
+  voice?: string;
+  audio_url: string;
+  duration_ms: number;
+  duration_seconds: number;
+  created_at: string;
 };
 
 export type PresentationPlan = {

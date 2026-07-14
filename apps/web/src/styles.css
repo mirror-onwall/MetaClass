@@ -129,6 +129,7 @@ button { color: inherit; }
 .speech-bubble { position: relative; width: 100%; margin-top: 17px; padding: 14px 13px 12px; background: #e8e3d7; color: #20342d; box-shadow: 0 8px 18px rgba(0,0,0,.18); }
 .speech-bubble::before { content: ""; position: absolute; top: -8px; left: 50%; width: 15px; height: 15px; background: #e8e3d7; transform: translateX(-50%) rotate(45deg); }
 .speech-bubble span { position: relative; display: block; color: #9c652c; font: 8px "DM Mono", monospace; letter-spacing: .08em; }
+.speech-bubble span em { margin-left: 8px; color: #718078; font-style: normal; letter-spacing: 0; }
 .speech-bubble p { position: relative; margin: 8px 19px 0 0; font-size: 11px; font-weight: 600; line-height: 1.6; }
 .speech-bubble button { position: absolute; z-index: 1; right: 9px; top: 8px; border: 0; padding: 0; background: transparent; color: #718078; font-size: 17px; cursor: pointer; }
 @keyframes live-speaker-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }

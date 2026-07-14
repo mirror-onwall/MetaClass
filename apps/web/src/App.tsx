@@ -9,6 +9,10 @@ import {
 } from "react";
 import { ActionView } from "./features/classroom/ActionView";
 import { SlideNarrationPlayer } from "./features/video/SlideNarrationPlayer";
+import {
+  type NarrationCue,
+  useTTSNarration,
+} from "./features/video/useTTSNarration";
 import atmosphereAvatar from "./assets/agents/atmosphere-regulator.png";
 import conceptConfusedAvatar from "./assets/agents/concept-confused.png";
 import deepThinkerAvatar from "./assets/agents/deep-thinker.png";
@@ -30,6 +34,7 @@ import type {
   MaterialCollection,
   PageMetadata,
   PPTArtifact,
+  PresentationPlan,
   StudentAgentType,
   TeachingAction,
   VideoResult,
@@ -139,12 +144,82 @@ const studentAgentChoices: Array<{
   },
 ];
 
-const defaultStudentAgentTypes: StudentAgentType[] = [
-  "classroom_atmosphere_regulator",
-  "deep_thinker",
-  "note_taker",
-  "researcher",
-];
+const defaultStudentAgentTypes: StudentAgentType[] = studentAgentChoices.map(
+  (student) => student.type,
+);
+
+function synchronizedCaption(text: string, progress: number): string {
+  const segments = text
+    .split(/(?<=[。！？!?；;])/)
+    .map((segment) => segment.trim())
+    .filter(Boolean);
+  if (segments.length <= 1) return text;
+  const target = Math.max(0, Math.min(progress, 0.999)) * text.length;
+  let cursor = 0;
+  for (const segment of segments) {
+    cursor += segment.length;
+    if (target <= cursor) return segment;
+  }
+  return segments.at(-1) ?? text;
+}
+
+function actionNarrationCue(
+  action: TeachingAction,
+  plan: PresentationPlan | null,
+  currentSlide: { pageNo: number } | null,
+): NarrationCue | null {
+  const teacher = {
+    speaker: "芊芊老师",
+    role: "teacher" as const,
+    voice: "teacher",
+  };
+  if (action.type === "SHOW_PAGE" || action.type === "GIVE_FEEDBACK") return null;
+  if (action.type === "EXPLAIN") {
+    const slide = plan?.slides.find((item) => item.order === currentSlide?.pageNo);
+    return {
+      id: `action:${action.id}`,
+      text: slide?.speaker_script || action.payload.text,
+      scope: slide ? "slide_script" : "teacher_action",
+      refId: slide?.id ?? action.id,
+      ...teacher,
+    };
+  }
+  if (action.type === "ASK_QUIZ") {
+    return {
+      id: `action:${action.id}`,
+      text: action.payload.quiz.question,
+      scope: "quiz_prompt",
+      refId: action.id,
+      ...teacher,
+    };
+  }
+  if (action.type === "PROBE") {
+    return {
+      id: `action:${action.id}`,
+      text: action.payload.question,
+      scope: "teacher_turn",
+      refId: action.id,
+      ...teacher,
+    };
+  }
+  if (action.type === "WAIT_STUDENT") {
+    return {
+      id: `action:${action.id}`,
+      text: action.payload.prompt,
+      scope: "teacher_turn",
+      refId: action.id,
+      ...teacher,
+    };
+  }
+  const text = action.type === "END" ? action.payload.summary : action.payload.text;
+  return {
+    id: `action:${action.id}`,
+    text,
+    scope: action.type === "REMEDIATE" ? "quiz_feedback" : "teacher_action",
+    refId: action.id,
+    ...teacher,
+  };
+}
 
 function App() {
   const [files, setFiles] = useState<File[]>([]);
@@ -155,6 +230,7 @@ function App() {
   const [content, setContent] = useState<LearningContent | null>(null);
   const [contentJob, setContentJob] = useState<ContentGenerationJob | null>(null);
   const [contentView, setContentView] = useState<"outline" | "tree" | "quality">("outline");
+  const [presentationPlan, setPresentationPlan] = useState<PresentationPlan | null>(null);
   const [presentationArtifact, setPresentationArtifact] = useState<PPTArtifact | null>(null);
   const [presentationSlideImages, setPresentationSlideImages] = useState<Record<number, string>>({});
   const [session, setSession] = useState<ClassroomSession | null>(null);
@@ -178,6 +254,8 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const autoStepInFlight = useRef(false);
+  const narratedStepRef = useRef<string | null>(null);
+  const narration = useTTSNarration();
 
   const activeStage = useMemo(() => {
     if (video) return 4;
@@ -217,15 +295,20 @@ function App() {
     );
     return studentAgent ? `${studentAgent.studentName} · ${studentAgent.name}` : agentId;
   }
-  const captionTurn = feedback
-    ? agentTurn?.turns.find((turn) => turn.speech === feedback)
-    : undefined;
-  const captionText = feedback;
-  const captionSpeaker = captionTurn
-    ? displayAgentName(captionTurn.agent_id, captionTurn.role)
-    : "芊芊老师";
-  const captionStudentState = captionTurn?.role === "student"
-    ? session?.student_states.find((student) => student.id === captionTurn.agent_id)
+  const captionTurn = narration.cue?.agentId
+    ? agentTurn?.turns.find((turn) => turn.agent_id === narration.cue?.agentId)
+    : feedback
+      ? agentTurn?.turns.find((turn) => turn.speech === feedback)
+      : undefined;
+  const captionText = narration.cue
+    ? synchronizedCaption(narration.cue.text, narration.progress)
+    : feedback;
+  const captionSpeaker = narration.cue?.speaker
+    ?? (captionTurn ? displayAgentName(captionTurn.agent_id, captionTurn.role) : "芊芊老师");
+  const captionStudentState = (narration.cue?.role ?? captionTurn?.role) === "student"
+    ? session?.student_states.find(
+        (student) => student.id === (narration.cue?.agentId ?? captionTurn?.agent_id),
+      )
     : undefined;
   const captionStudentAgent = studentAgentChoices.find(
     (agent) => agent.type === captionStudentState?.agent_type,
@@ -233,13 +316,69 @@ function App() {
   const captionAvatar = captionStudentAgent?.avatar ?? teacherQianqianAvatar;
 
   useEffect(() => {
-    if (!autoPlaying || !session || session.status === "completed") return;
-    const delay = action || agentTurn ? 2800 : 800;
-    const timer = window.setTimeout(() => {
-      void autoStep();
-    }, delay);
-    return () => window.clearTimeout(timer);
-  }, [autoPlaying, session, action, agentTurn]);
+    if (!session || session.status === "completed") return;
+    const stepKey = agentTurn?.turns.length
+      ? `turn:${agentTurn.turns.map((turn) => `${turn.agent_id}:${turn.intent}:${turn.speech}`).join("|")}`
+      : action
+        ? `action:${action.id}`
+        : autoPlaying
+          ? `idle:${session.id}`
+          : null;
+    if (!stepKey || narratedStepRef.current === stepKey) return;
+    narratedStepRef.current = stepKey;
+    let cancelled = false;
+
+    async function playCurrentBeat() {
+      if (!session) return;
+      const cues: NarrationCue[] = agentTurn?.turns.length
+        ? agentTurn.turns.map((turn, index) => {
+            const studentState = session.student_states.find(
+              (student) => student.id === turn.agent_id,
+            );
+            return {
+              id: `${stepKey}:${index}`,
+              text: turn.speech,
+              scope: turn.role === "student" ? "student_turn" : "teacher_turn",
+              refId: `${session.id}:${turn.agent_id}:${turn.intent}:${index}`,
+              voice: turn.role === "student"
+                ? `student_${studentState?.agent_type ?? turn.agent_id}`
+                : "teacher",
+              speaker: displayAgentName(turn.agent_id, turn.role),
+              agentId: turn.agent_id,
+              role: turn.role,
+            };
+          })
+        : action
+          ? [actionNarrationCue(action, presentationPlan, currentSlide)].filter(
+              (cue): cue is NarrationCue => Boolean(cue),
+            )
+          : [];
+
+      if (!cues.length) {
+        await new Promise((resolve) => window.setTimeout(resolve, 300));
+      }
+      for (const cue of cues) {
+        const result = await narration.play(cue);
+        if (cancelled || result === "cancelled") return;
+        if (result === "failed" || result === "blocked") {
+          setAutoPlaying(false);
+          setError(
+            result === "blocked"
+              ? "浏览器尚未启用声音，请点击开始自动课堂重试"
+              : "语音生成或播放失败，请检查 TTS 配置后重新开始课堂",
+          );
+          narratedStepRef.current = null;
+          return;
+        }
+      }
+      if (!cancelled && autoPlaying) void autoStep();
+    }
+
+    void playCurrentBeat();
+    return () => {
+      cancelled = true;
+    };
+  }, [action, agentTurn, autoPlaying, currentSlide, presentationPlan, session]);
 
   useEffect(() => {
     if (!feedback) return;
@@ -295,6 +434,7 @@ function App() {
     setContent(null);
     setContentJob(null);
     setContentView("outline");
+    setPresentationPlan(null);
     setPresentationArtifact(null);
     setPresentationSlideImages({});
     setSession(null);
@@ -305,6 +445,8 @@ function App() {
     setAutoPlaying(false);
     setVideo(null);
     setError(null);
+    narratedStepRef.current = null;
+    narration.stop();
   }
 
   async function upload() {
@@ -344,8 +486,10 @@ function App() {
 
   async function startClassroom() {
     if (!content) return;
+    narration.unlock();
     const result = await run("正在生成 PPT 并布置课堂", async () => {
-      const artifact = await api.createPresentationDeck(content.id);
+      const deck = await api.createPresentationDeck(content.id);
+      const artifact = deck.artifact;
       const slideImages = Object.fromEntries(
         artifact.slide_images.map((slide) => [
           slide.slide_no,
@@ -357,16 +501,18 @@ function App() {
         learningMode,
         learningMode === "interactive" ? studentAgentTypes : [],
       );
-      return { artifact, classroomSession, slideImages };
+      return { artifact, classroomSession, plan: deck.plan, slideImages };
     });
     if (result) {
       setPresentationArtifact(result.artifact);
+      setPresentationPlan(result.plan);
       setPresentationSlideImages(result.slideImages);
       setSession(result.classroomSession);
       setAction(null);
       setAgentTurn(null);
       setAutoPlaying(true);
       setFeedback("PPT 已生成，课堂已就绪，自动播放已开始。你可以随时输入问题打断。");
+      narratedStepRef.current = null;
     }
   }
 
@@ -374,6 +520,13 @@ function App() {
     setStudentAgentTypes((current) =>
       current.includes(type) ? current.filter((item) => item !== type) : [...current, type],
     );
+  }
+
+  function toggleAutoPlaying() {
+    if (!autoPlaying) narration.unlock();
+    narration.stop();
+    narratedStepRef.current = null;
+    setAutoPlaying((value) => !value);
   }
 
   async function autoStep() {
@@ -434,6 +587,7 @@ function App() {
     setSession(result.session);
     setAction(null);
     setAgentTurn(null);
+    narratedStepRef.current = null;
     setAutoPlaying(result.session.status !== "completed");
     setFeedback(result.feedback ?? "");
   }
@@ -450,8 +604,10 @@ function App() {
   }
 
   async function createVideo() {
-    if (!content) return;
-    const result = await run("正在合成视频，这可能需要片刻", () => api.createVideo(content.id));
+    if (!content || !presentationArtifact) return;
+    const result = await run("正在逐页合成 PPT 讲解视频", () =>
+      api.createVideo(content.id, presentationArtifact.id),
+    );
     if (result) setVideo(result);
   }
 
@@ -584,7 +740,7 @@ function App() {
             )}
             <button disabled={!pages.length || !!content || !!busy} onClick={buildContent}><span>01</span><b>{content ? "内容已构建" : "构建学习内容"}</b><i>↗</i></button>
             <button disabled={!content || !!session || !!busy} onClick={startClassroom}><span>02</span><b>{session ? "课堂进行中" : "创建互动课堂"}</b><i>↗</i></button>
-            <button disabled={!content || !!video || !!busy} onClick={createVideo}><span>03</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
+            <button disabled={!content || !presentationArtifact || !!video || !!busy} onClick={createVideo}><span>03</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
           </section>
         </aside>
 
@@ -618,9 +774,24 @@ function App() {
                 <aside className="live-speaker" aria-live="polite">
                   <div className="live-speaker-avatar"><img src={captionAvatar} alt="" /></div>
                   <div className="speech-bubble">
-                    <span>{captionSpeaker}</span>
+                    <span>
+                      {captionSpeaker}
+                      {narration.cue && (
+                        <em>{narration.status === "loading" ? "正在生成语音" : "语音同步中"}</em>
+                      )}
+                    </span>
                     <p>{captionText}</p>
-                    <button onClick={() => setFeedback("")} aria-label="关闭发言气泡">×</button>
+                    <button
+                      onClick={() => {
+                        if (narration.cue) {
+                          narration.stop();
+                          narratedStepRef.current = null;
+                          setAutoPlaying(false);
+                        }
+                        setFeedback("");
+                      }}
+                      aria-label="关闭发言气泡"
+                    >×</button>
                   </div>
                 </aside>
               )}
@@ -634,7 +805,7 @@ function App() {
             <button
               className="next-button"
               disabled={!session || !!busy || session.status === "completed"}
-              onClick={() => setAutoPlaying((value) => !value)}
+              onClick={toggleAutoPlaying}
             >
               {autoPlaying ? "暂停自动课堂" : "开始自动课堂"} <span>{autoPlaying ? "Ⅱ" : "▶"}</span>
             </button>
@@ -716,7 +887,7 @@ function App() {
 
           <section className={`video-status ${video ? "ready" : ""}`}>
             <span className="video-glyph">▶</span>
-            <div><small>LECTURE REPLAY</small><b>{video ? "讲解视频已就绪" : "课后讲解视频"}</b><p>{video ? "MP4 与字幕已保存在本地" : "页面图片 + 测试音轨 + SRT 字幕"}</p></div>
+            <div><small>LECTURE REPLAY</small><b>{video ? "讲解视频已就绪" : "课后讲解视频"}</b><p>{video ? "MP4 与字幕已保存在本地" : "PPT 逐页画面 + 教师配音 + SRT 字幕"}</p></div>
             {video && <>
               <video controls src={api.videoDownload(video.id)} />
               <a href={api.videoDownload(video.id)}>下载 MP4 ↗</a>

@@ -1,4 +1,5 @@
 import type {
+  ClassroomPlanJob,
   ClassroomSession,
   AutoClassroomStep,
   ContentGenerationJob,
@@ -16,6 +17,8 @@ import type {
   PPTArtifact,
   PresentationPlan,
   StudentAgentType,
+  TTSArtifact,
+  TTSArtifactRequest,
   VideoJob,
   VideoResult,
 } from "./types";
@@ -34,7 +37,7 @@ async function request<T>(path: string, init?: RequestOptions): Promise<T> {
   try {
     response = await fetch(`${API_BASE}${path}`, {
       ...requestInit,
-      signal: requestInit.signal ?? AbortSignal.timeout(timeoutMs ?? 180_000),
+      signal: requestInit.signal ?? AbortSignal.timeout(timeoutMs ?? 600_000),
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "TimeoutError") {
@@ -47,6 +50,24 @@ async function request<T>(path: string, init?: RequestOptions): Promise<T> {
     throw new Error(body.detail ?? `请求失败（${response.status}）`);
   }
   return response.json() as Promise<T>;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+async function poll<T>(
+  load: () => Promise<T>,
+  isDone: (value: T) => boolean,
+  isFailed: (value: T) => string | undefined,
+): Promise<T> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 600_000) {
+    const value = await load();
+    const error = isFailed(value);
+    if (error) throw new Error(error);
+    if (isDone(value)) return value;
+    await sleep(1_000);
+  }
+  throw new Error("任务处理超时，请稍后刷新查看结果");
 }
 
 export const api = {
@@ -166,11 +187,16 @@ export const api = {
     mode: LearningMode,
     studentAgentTypes?: StudentAgentType[],
   ) {
-    const plan = await request<{ id: string }>(
-      `/api/v1/learning-contents/${contentId}/classroom-plans`,
+    const created = await request<ClassroomPlanJob>(
+      `/api/v1/learning-contents/${contentId}/classroom-plan-jobs`,
       { method: "POST" },
     );
-    return request<ClassroomSession>(`/api/v1/classroom-plans/${plan.id}/sessions`, {
+    const job = await poll(
+      () => request<ClassroomPlanJob>(`/api/v1/classroom-plan-jobs/${created.id}`),
+      (value) => value.status === "succeeded" && Boolean(value.plan_id),
+      (value) => (value.status === "failed" ? value.error || value.message : undefined),
+    );
+    return request<ClassroomSession>(`/api/v1/classroom-plans/${job.plan_id}/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode, student_agent_types: studentAgentTypes }),
@@ -185,11 +211,16 @@ export const api = {
       `/api/v1/presentation-plans/${plan.id}/ppt-jobs`,
       { method: "POST" },
     );
-    if (job.status === "failed") throw new Error(job.error ?? "PPT 生成失败");
-    if (job.status !== "finished" || !job.artifact_id) {
-      throw new Error("PPT 生成任务尚未完成");
-    }
-    return request<PPTArtifact>(`/api/v1/ppt-jobs/${job.id}/artifact`);
+    const finished = await poll(
+      () =>
+        request<{ id: string; status: string; artifact_id?: string; error?: string }>(
+          `/api/v1/ppt-jobs/${job.id}`,
+        ),
+      (value) => value.status === "finished" && Boolean(value.artifact_id),
+      (value) => (value.status === "failed" ? value.error || "PPT 生成失败" : undefined),
+    );
+    const artifact = await request<PPTArtifact>(`/api/v1/ppt-jobs/${finished.id}/artifact`);
+    return { plan, artifact };
   },
   nextAgentTurn(sessionId: string) {
     return request<DirectedAgentTurn>(`/api/v1/classroom-sessions/${sessionId}/agent-turns/next`, {
@@ -220,15 +251,31 @@ export const api = {
       body: JSON.stringify({ question }),
     });
   },
-  async createVideo(contentId: string) {
-    const job = await request<VideoJob>(`/api/v1/learning-contents/${contentId}/videos`, {
+  createTTSArtifact(payload: TTSArtifactRequest) {
+    return request<TTSArtifact>("/api/v1/tts-artifacts", {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
     });
-    if (job.status === "failed") throw new Error(job.error ?? "视频任务失败");
-    if (job.status !== "finished" || !job.result_id) {
-      throw new Error("视频任务尚未完成");
-    }
-    return request<VideoResult>(`/api/v1/video-jobs/${job.id}/result`);
+  },
+  ttsAudio(audioUrl: string) {
+    if (/^https?:\/\//i.test(audioUrl)) return audioUrl;
+    return `${API_BASE}${audioUrl}`;
+  },
+  async createVideo(contentId: string, presentationArtifactId: string) {
+    const query = new URLSearchParams({
+      presentation_artifact_id: presentationArtifactId,
+    });
+    const job = await request<VideoJob>(
+      `/api/v1/learning-contents/${contentId}/videos?${query}`,
+      { method: "POST" },
+    );
+    const finished = await poll(
+      () => request<VideoJob>(`/api/v1/video-jobs/${job.id}`),
+      (value) => value.status === "finished" && Boolean(value.result_id),
+      (value) => (value.status === "failed" ? value.error || "视频任务失败" : undefined),
+    );
+    return request<VideoResult>(`/api/v1/video-jobs/${finished.id}/result`);
   },
   pageImage(materialId: string, pageNumber: number) {
     return `${API_BASE}/api/v1/materials/${materialId}/pages/${pageNumber}/image`;

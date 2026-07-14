@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 from fastapi.responses import FileResponse
 
 from metaclass.modules.presentation.schemas import (
@@ -35,10 +35,14 @@ def create_router(presentations: PresentationService) -> APIRouter:
     @router.post(
         "/presentation-plans/{plan_id}/ppt-jobs",
         response_model=PPTGenerationJob,
-        status_code=201,
+        status_code=202,
     )
-    async def create_ppt_job(plan_id: str) -> PPTGenerationJob:
-        return presentations.create_ppt_job(plan_id)
+    async def create_ppt_job(
+        plan_id: str, background_tasks: BackgroundTasks
+    ) -> PPTGenerationJob:
+        job = presentations.create_ppt_job(plan_id)
+        background_tasks.add_task(presentations.run_ppt_job, job.id)
+        return job
 
     @router.get("/ppt-jobs/{job_id}", response_model=PPTGenerationJob)
     async def get_ppt_job(job_id: str) -> PPTGenerationJob:

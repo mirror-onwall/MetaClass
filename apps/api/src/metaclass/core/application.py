@@ -8,8 +8,9 @@ from metaclass.infrastructure.providers import (
     FakeLLMProvider,
     LLMLearningProvider,
     build_llm_provider,
+    build_tts_provider,
 )
-from metaclass.infrastructure.providers.fake import FakeLearningProvider, FakeTTSProvider
+from metaclass.infrastructure.providers.fake import FakeLearningProvider
 from metaclass.modules.classroom.agents import EvaluatorAgent, StudentRosterAgent, TeacherAgent
 from metaclass.modules.classroom.controller import ClassroomController
 from metaclass.modules.classroom.planner import ClassroomPlanGenerator
@@ -111,5 +112,22 @@ def build_services(
         controller=ClassroomController(llm),
         planner=ClassroomPlanGenerator(llm, fallback_teacher=TeacherAgent()),
     )
-    videos = VideoService(data_dir, video_repository, contents, FakeTTSProvider())
+    tts = build_tts_provider(
+        provider="fake" if force_fake_llm else settings.tts_provider,
+        base_url=settings.tts_base_url or llm_config.base_url,
+        api_key=settings.tts_api_key or llm_config.api_key,
+        model=settings.tts_model,
+        teacher_voice=settings.tts_teacher_voice,
+        student_voices=[
+            voice.strip() for voice in settings.tts_student_voices.split(",") if voice.strip()
+        ],
+        timeout_seconds=settings.tts_timeout_seconds,
+    )
+    videos = VideoService(
+        data_dir,
+        video_repository,
+        contents,
+        tts,
+        presentations=presentations,
+    )
     return ApplicationServices(database, materials, contents, presentations, classrooms, videos)
