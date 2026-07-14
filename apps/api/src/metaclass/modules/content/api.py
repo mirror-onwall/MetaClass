@@ -1,6 +1,12 @@
 from fastapi import APIRouter, BackgroundTasks
 
-from metaclass.modules.content.schemas import ContentGenerationJob, LearningContent, PageUnderstanding
+from metaclass.modules.content.schemas import (
+    ContentGenerationJob,
+    CourseKnowledgeTree,
+    LearningContent,
+    LearningContentDiagnostics,
+    PageUnderstanding,
+)
 from metaclass.modules.content.service import ContentService
 
 
@@ -76,5 +82,19 @@ def create_router(contents: ContentService) -> APIRouter:
     )
     async def get_content(content_id: str) -> LearningContent:
         return contents.get(content_id)
+
+    @router.get(
+        "/api/v1/learning-contents/{content_id}/knowledge-tree",
+        response_model=CourseKnowledgeTree,
+    )
+    async def get_content_knowledge_tree(content_id: str) -> CourseKnowledgeTree:
+        return contents.get_knowledge_tree(content_id)
+
+    @router.get(
+        "/api/v1/learning-contents/{content_id}/diagnostics",
+        response_model=LearningContentDiagnostics,
+    )
+    async def get_content_diagnostics(content_id: str) -> LearningContentDiagnostics:
+        return contents.get_diagnostics(content_id)
 
     return router

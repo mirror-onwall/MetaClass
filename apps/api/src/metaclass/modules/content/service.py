@@ -12,11 +12,14 @@ from metaclass.modules.content.repository import ContentRepository
 from metaclass.modules.content.schemas import (
     ContentGenerationJob,
     ContentGenerationJobStatus,
+    CourseKnowledgeTree,
+    CourseKnowledgeTreeNode,
     KnowledgeCanonicalizationDraft,
     KnowledgeRelation,
     KnowledgeUnit,
     LearningContent,
     LearningContentDraft,
+    LearningContentDiagnostics,
     LearningSection,
     ConceptNote,
     PageRef,
@@ -101,6 +104,7 @@ class ContentService:
             job.message = "Generating learning content"
             job.updated_at = utc_now()
             self._save_job(job)
+
             def report_progress(progress: int, step: str, message: str) -> None:
                 self._update_job_progress(job_id, progress, step, message)
 
@@ -198,8 +202,21 @@ class ContentService:
             return existing
 
         understandings = []
+        understand_with_context = getattr(self.provider, "understand_page_with_context", None)
+        describe_visual = getattr(self.provider, "describe_page_visual", None)
         for index, page in enumerate(pages, start=1):
-            draft = self.provider.understand_page(page.title, page.raw_text, page.page_no)
+            if understand_with_context:
+                visual_description = describe_visual(page) if describe_visual else ""
+                draft = understand_with_context(
+                    page_no=page.page_no,
+                    title=page.title,
+                    raw_text=page.raw_text,
+                    previous_page=pages[index - 2] if index > 1 else None,
+                    next_page=pages[index] if index < len(pages) else None,
+                    visual_description=visual_description,
+                )
+            else:
+                draft = self.provider.understand_page(page.title, page.raw_text, page.page_no)
             understandings.append(self._understanding_from_draft(material_id, page, draft))
             if page_progress:
                 page_progress(index, len(pages))
@@ -220,84 +237,14 @@ class ContentService:
         page_list = self.materials.pages(material_id)
         if not page_list:
             raise HTTPException(409, "Parse the material before building learning content")
-
-        if hasattr(self.provider, "organize_learning_content"):
-            try:
-                content = self._build_with_global_organizer(
-                    material_id,
-                    page_list,
-                    progress_callback=progress_callback,
-                )
-                self._report_progress(progress_callback, 96, "saving", "Saving learning content")
-                self.repository.save(content)
-                return content
-            except Exception:
-                pass
-
-        pages = {page.id: page for page in page_list}
-        understandings = self.understand_pages(
-            material_id,
-            page_progress=lambda current, total: self._report_page_progress(
-                progress_callback,
-                current,
-                total,
-                start=12,
-                end=72,
-            ),
-        )
-        if not understandings:
-            raise HTTPException(409, "No page understanding is available")
-
-        sections = []
-        for index, understanding in enumerate(understandings, start=1):
-            page = pages[understanding.page_id]
-            sections.append(
-                LearningSection(
-                    id=f"section_{page.page_no:03d}",
-                    title=page.title or f"第 {page.page_no} 页",
-                    role=understanding.page_role,
-                    content_goal="Explain the selected teaching material",
-                    summary=understanding.summary,
-                    key_points=understanding.knowledge_points,
-                    teaching_narrative=understanding.summary,
-                    knowledge_points=understanding.knowledge_points,
-                    source_excerpts=understanding.key_excerpts,
-                    formulas=understanding.formulas,
-                    misconceptions=understanding.misconceptions,
-                    source_refs=understanding.source_refs,
-                    page_refs=[
-                        PageRef(
-                            material_id=page.material_id,
-                            page_no=page.page_no,
-                            reason="Primary source page for this teaching unit",
-                        )
-                    ],
-                    quiz_items=self._build_quiz_items(understanding, page.title),
-                )
-            )
-            self._report_progress(
-                progress_callback,
-                72 + int(22 * index / len(understandings)),
-                "organizing",
-                f"Organizing teaching units ({index}/{len(understandings)})",
-            )
-
-        first_section = sections[0]
-        content_id = f"content_{material_id.removeprefix('mat_')}"
-        existing = self.repository.get(content_id)
-        content = LearningContent(
-            id=content_id,
-            material_id=material_id,
+        return self._build_from_materials(
+            content_id=f"content_{material_id.removeprefix('mat_')}",
             material_ids=[material_id],
-            title=first_section.title,
-            objectives=[f"理解：{point}" for point in first_section.knowledge_points[:3]],
-            sections=sections,
-            created_at=existing.created_at if existing else utc_now(),
-            updated_at=utc_now(),
+            primary_material_id=material_id,
+            collection_id=None,
+            page_groups=[(material_id, page_list)],
+            progress_callback=progress_callback,
         )
-        self._report_progress(progress_callback, 96, "saving", "Saving learning content")
-        self.repository.save(content)
-        return content
 
     def build_collection(
         self,
@@ -318,6 +265,25 @@ class ContentService:
 
         material_ids = collection.material_ids
         primary_material_id = collection.primary_material_id or material_ids[0]
+        return self._build_from_materials(
+            content_id=f"content_{collection_id.removeprefix('col_')}",
+            material_ids=material_ids,
+            primary_material_id=primary_material_id,
+            collection_id=collection_id,
+            page_groups=page_groups,
+            progress_callback=progress_callback,
+        )
+
+    def _build_from_materials(
+        self,
+        *,
+        content_id: str,
+        material_ids: list[str],
+        primary_material_id: str,
+        collection_id: str | None,
+        page_groups: list[tuple[str, list[PageMetadata]]],
+        progress_callback: ProgressCallback | None,
+    ) -> LearningContent:
         all_pages = [page for _, pages in page_groups for page in pages]
         total_pages = len(all_pages)
         processed_pages = 0
@@ -358,6 +324,19 @@ class ContentService:
         knowledge_units, canonicalization_warnings = self._canonicalize_knowledge_units(
             raw_knowledge_units
         )
+        self._report_progress(
+            progress_callback,
+            78,
+            "building_knowledge_tree",
+            "Building the course knowledge tree",
+        )
+        title = next((page.title for page in all_pages if page.title), "Course Knowledge")
+        knowledge_tree, tree_warnings = self._build_course_knowledge_tree(
+            tree_id=f"tree_{content_id.removeprefix('content_')}",
+            title=title,
+            units=knowledge_units,
+        )
+        quality_warnings = canonicalization_warnings + tree_warnings
 
         organizer = getattr(self.provider, "organize_collection_learning_content", None)
         if organizer:
@@ -369,13 +348,14 @@ class ContentService:
                     "Organizing the course-level learning content",
                 )
                 draft = organizer(
-                    collection_id=collection_id,
+                    collection_id=collection_id or f"single_{primary_material_id}",
                     material_ids=material_ids,
                     pages=all_pages,
                     understandings=understandings,
                     knowledge_units=knowledge_units,
+                    knowledge_tree=knowledge_tree,
                 )
-                content_id = f"content_{collection_id.removeprefix('col_')}"
+                self._validate_draft_tree_coverage(draft, knowledge_tree)
                 existing = self.repository.get(content_id)
                 content = self._content_from_draft(
                     content_id=content_id,
@@ -386,17 +366,24 @@ class ContentService:
                     material_ids=material_ids,
                     collection_id=collection_id,
                     knowledge_units=knowledge_units,
-                    quality_warnings=canonicalization_warnings,
+                    knowledge_tree=knowledge_tree,
+                    quality_warnings=quality_warnings,
                 )
-                self._report_progress(
-                    progress_callback, 96, "saving", "Saving learning content"
+                content = content.model_copy(
+                    update={
+                        "quality": self._assess_content_quality(
+                            content,
+                            expected_material_ids=material_ids,
+                        )
+                    }
                 )
+                self._report_progress(progress_callback, 96, "saving", "Saving learning content")
                 self.repository.save(content)
                 return content
             except Exception as exc:
                 logger.warning("Collection learning-content organizer failed: %s", exc)
                 canonicalization_warnings.append(
-                    "The global LLM organizer failed; deterministic knowledge-unit sections were used."
+                    "The global LLM organizer failed; knowledge-tree sections were used."
                 )
 
         self._report_progress(
@@ -405,61 +392,55 @@ class ContentService:
             "organizing",
             "Organizing deterministic teaching units",
         )
-        content = self._fallback_collection_content(
+        content = self._fallback_tree_content(
+            content_id=content_id,
             collection_id=collection_id,
             primary_material_id=primary_material_id,
             material_ids=material_ids,
             knowledge_units=knowledge_units,
-            quality_warnings=canonicalization_warnings,
+            knowledge_tree=knowledge_tree,
+            quality_warnings=quality_warnings + canonicalization_warnings,
+        )
+        content = content.model_copy(
+            update={
+                "quality": self._assess_content_quality(
+                    content,
+                    expected_material_ids=material_ids,
+                )
+            }
         )
         self._report_progress(progress_callback, 96, "saving", "Saving learning content")
         self.repository.save(content)
         return content
 
-    def _fallback_collection_content(
+    def _fallback_tree_content(
         self,
         *,
-        collection_id: str,
+        content_id: str,
+        collection_id: str | None,
         primary_material_id: str,
         material_ids: list[str],
         knowledge_units: list[KnowledgeUnit],
+        knowledge_tree: CourseKnowledgeTree,
         quality_warnings: list[str],
     ) -> LearningContent:
-        sections = []
-        for index, unit in enumerate(knowledge_units, start=1):
-            sections.append(
-                LearningSection(
-                    id=f"section_{index:03d}",
-                    title=unit.title,
-                    role=unit.unit_type,
-                    content_goal=f"Help learners understand {unit.title} as a teaching unit",
-                    summary=unit.summary,
-                    key_points=unit.keywords[:6],
-                    teaching_narrative=self._teaching_narrative_from_unit(unit),
-                    knowledge_points=unit.keywords[:8],
-                    source_excerpts=unit.source_excerpts,
-                    formulas=unit.formulas,
-                    examples=unit.examples,
-                    misconceptions=unit.misconceptions,
-                    source_refs=unit.source_refs,
-                    page_refs=unit.page_refs,
-                    quiz_items=[],
-                )
-            )
+        sections = self._sections_from_knowledge_tree(knowledge_tree, knowledge_units)
 
         if not sections:
             raise HTTPException(409, "No page understanding is available")
-        content_id = f"content_{collection_id.removeprefix('col_')}"
         existing = self.repository.get(content_id)
-        first_section = sections[0]
         return LearningContent(
             id=content_id,
             material_id=primary_material_id,
             material_ids=material_ids,
             collection_id=collection_id,
-            title=first_section.title,
-            subtitle="Multi-material learning content",
-            objectives=[f"Understand {point}" for point in first_section.knowledge_points[:3]],
+            title=knowledge_tree.title,
+            subtitle=(
+                "Multi-material learning content"
+                if len(material_ids) > 1
+                else "Course learning content"
+            ),
+            objectives=[f"Understand {section.title}" for section in sections[:3]],
             material_overview={
                 "source_type": "mixed" if len(material_ids) > 1 else "single",
                 "structure_summary": "Content is organized across uploaded materials by teaching topics.",
@@ -470,6 +451,7 @@ class ContentService:
             },
             global_concepts=self._global_concepts_from_units(knowledge_units),
             knowledge_units=knowledge_units,
+            knowledge_tree=knowledge_tree,
             sections=sections,
             generation_guidance={
                 "recommended_teaching_flow": [section.title for section in sections],
@@ -481,6 +463,331 @@ class ContentService:
             created_at=existing.created_at if existing else utc_now(),
             updated_at=utc_now(),
         )
+
+    def _build_course_knowledge_tree(
+        self,
+        *,
+        tree_id: str,
+        title: str,
+        units: list[KnowledgeUnit],
+    ) -> tuple[CourseKnowledgeTree, list[str]]:
+        builder = getattr(self.provider, "build_course_knowledge_tree", None)
+        if builder:
+            try:
+                tree = builder(tree_id=tree_id, title=title, units=units)
+                self._validate_course_knowledge_tree(tree, units)
+                return tree, []
+            except Exception as exc:
+                logger.warning("Course knowledge-tree generation failed: %s", exc)
+                warning = (
+                    "LLM course knowledge-tree generation failed; deterministic teaching "
+                    "chapters were used."
+                )
+                return self._fallback_course_knowledge_tree(tree_id, title, units), [warning]
+        return self._fallback_course_knowledge_tree(tree_id, title, units), []
+
+    def _fallback_course_knowledge_tree(
+        self,
+        tree_id: str,
+        title: str,
+        units: list[KnowledgeUnit],
+    ) -> CourseKnowledgeTree:
+        categories = [
+            ("foundations", "Foundations and Core Concepts", {"motivation", "concept"}),
+            ("methods", "Methods and Formulas", {"method", "formula"}),
+            ("applications", "Examples and Applications", {"example", "case", "comparison"}),
+            ("summary", "Summary and References", {"summary", "reference"}),
+        ]
+        nodes: list[CourseKnowledgeTreeNode] = []
+        root_node_ids: list[str] = []
+        assigned_ids: set[str] = set()
+        previous_root_id: str | None = None
+
+        for category_key, category_title, roles in categories:
+            category_units = [unit for unit in units if unit.unit_type in roles]
+            if not category_units:
+                continue
+            root_id = f"{tree_id}_{category_key}"
+            root_node_ids.append(root_id)
+            nodes.append(
+                CourseKnowledgeTreeNode(
+                    id=root_id,
+                    title=category_title,
+                    role=category_units[0].unit_type,
+                    summary=" ".join(unit.summary for unit in category_units)[:1200],
+                    order=len(root_node_ids),
+                    prerequisite_node_ids=[previous_root_id] if previous_root_id else [],
+                )
+            )
+            previous_root_id = root_id
+            for chunk_index in range(0, len(category_units), 5):
+                chunk = category_units[chunk_index : chunk_index + 5]
+                child_index = chunk_index // 5 + 1
+                child_id = f"{root_id}_topic_{child_index:02d}"
+                nodes.append(
+                    CourseKnowledgeTreeNode(
+                        id=child_id,
+                        title=(
+                            chunk[0].title if len(chunk) == 1 else f"{category_title} {child_index}"
+                        ),
+                        role=chunk[0].unit_type,
+                        summary=" ".join(unit.summary for unit in chunk)[:1200],
+                        parent_id=root_id,
+                        knowledge_unit_ids=[unit.id for unit in chunk],
+                        order=child_index,
+                    )
+                )
+                assigned_ids.update(unit.id for unit in chunk)
+
+        unassigned = [unit for unit in units if unit.id not in assigned_ids]
+        if unassigned:
+            root_id = f"{tree_id}_additional"
+            root_node_ids.append(root_id)
+            nodes.append(
+                CourseKnowledgeTreeNode(
+                    id=root_id,
+                    title="Additional Knowledge",
+                    role="concept",
+                    summary="Additional units that do not match the standard teaching roles.",
+                    knowledge_unit_ids=[unit.id for unit in unassigned],
+                    order=len(root_node_ids),
+                    prerequisite_node_ids=[previous_root_id] if previous_root_id else [],
+                )
+            )
+
+        return CourseKnowledgeTree(
+            id=tree_id,
+            title=title,
+            nodes=nodes,
+            root_node_ids=root_node_ids,
+            teaching_sequence=root_node_ids,
+        )
+
+    @staticmethod
+    def _validate_course_knowledge_tree(
+        tree: CourseKnowledgeTree,
+        units: list[KnowledgeUnit],
+    ) -> None:
+        node_ids = [node.id for node in tree.nodes]
+        if len(node_ids) != len(set(node_ids)):
+            raise ValueError("Course knowledge tree contains duplicate node ids")
+        node_id_set = set(node_ids)
+        if any(root_id not in node_id_set for root_id in tree.root_node_ids):
+            raise ValueError("Course knowledge tree references an unknown root node")
+        for node in tree.nodes:
+            if node.parent_id and node.parent_id not in node_id_set:
+                raise ValueError(f"Tree node {node.id} references an unknown parent")
+            if any(item not in node_id_set for item in node.prerequisite_node_ids):
+                raise ValueError(f"Tree node {node.id} references an unknown prerequisite")
+
+        expected_unit_ids = {unit.id for unit in units}
+        assigned_unit_ids = [unit_id for node in tree.nodes for unit_id in node.knowledge_unit_ids]
+        if any(unit_id not in expected_unit_ids for unit_id in assigned_unit_ids):
+            raise ValueError("Course knowledge tree references an unknown knowledge unit")
+        if len(assigned_unit_ids) != len(set(assigned_unit_ids)):
+            raise ValueError("A knowledge unit appears in more than one tree node")
+        if set(assigned_unit_ids) != expected_unit_ids:
+            raise ValueError("Course knowledge tree does not cover every knowledge unit")
+
+    @staticmethod
+    def _validate_draft_tree_coverage(
+        draft: LearningContentDraft,
+        tree: CourseKnowledgeTree,
+    ) -> None:
+        valid_node_ids = {node.id for node in tree.nodes}
+        section_node_ids = [
+            node_id for section in draft.sections for node_id in section.tree_node_ids
+        ]
+        if not section_node_ids:
+            raise ValueError("LearningContent sections do not reference the course knowledge tree")
+        if any(not section.page_refs for section in draft.sections):
+            raise ValueError("LearningContent sections must retain source page references")
+        if any(node_id not in valid_node_ids for node_id in section_node_ids):
+            raise ValueError("LearningContent references an unknown course knowledge-tree node")
+        if not set(tree.root_node_ids).issubset(section_node_ids):
+            raise ValueError("LearningContent does not cover every top-level teaching chapter")
+
+    def _sections_from_knowledge_tree(
+        self,
+        tree: CourseKnowledgeTree,
+        units: list[KnowledgeUnit],
+    ) -> list[LearningSection]:
+        unit_by_id = {unit.id: unit for unit in units}
+        children_by_parent: dict[str, list[CourseKnowledgeTreeNode]] = {}
+        for node in tree.nodes:
+            if node.parent_id:
+                children_by_parent.setdefault(node.parent_id, []).append(node)
+        node_by_id = {node.id: node for node in tree.nodes}
+        root_order = [
+            node_id for node_id in tree.teaching_sequence if node_id in tree.root_node_ids
+        ]
+        root_order.extend(node_id for node_id in tree.root_node_ids if node_id not in root_order)
+
+        def descendant_unit_ids(node_id: str) -> list[str]:
+            node = node_by_id[node_id]
+            result = list(node.knowledge_unit_ids)
+            for child in sorted(children_by_parent.get(node_id, []), key=lambda item: item.order):
+                result.extend(descendant_unit_ids(child.id))
+            return self._dedupe_strings(result)
+
+        sections = []
+        for index, root_id in enumerate(root_order, start=1):
+            root = node_by_id[root_id]
+            section_units = [
+                unit_by_id[unit_id]
+                for unit_id in descendant_unit_ids(root_id)
+                if unit_id in unit_by_id
+            ]
+            if not section_units:
+                continue
+            next_title = node_by_id[root_order[index]].title if index < len(root_order) else ""
+            quiz_unit = next(
+                (unit for unit in section_units if unit.keywords and unit.source_refs),
+                None,
+            )
+            quiz_items = []
+            if quiz_unit:
+                point = quiz_unit.keywords[0]
+                quiz_items = [
+                    QuizItem(
+                        id=f"quiz_{index:03d}_01",
+                        question=f"Which statement best demonstrates understanding of {point}?",
+                        options=[
+                            f"Explain {point}, its conditions, or an appropriate example",
+                            "Only remember which source page mentioned it",
+                            "Use it interchangeably with every related concept",
+                        ],
+                        correct_index=0,
+                        explanation=(
+                            "Understanding requires explaining the concept and applying it under "
+                            "appropriate conditions."
+                        ),
+                        knowledge_point=point,
+                        source_refs=quiz_unit.source_refs,
+                    )
+                ]
+            sections.append(
+                LearningSection(
+                    id=f"section_{index:03d}",
+                    title=root.title,
+                    role=root.role,
+                    content_goal=f"Teach the connected knowledge in {root.title}",
+                    summary=root.summary or " ".join(unit.summary for unit in section_units)[:1600],
+                    key_points=self._dedupe_strings(
+                        [keyword for unit in section_units for keyword in unit.keywords]
+                    )[:10],
+                    teaching_narrative="\n\n".join(
+                        self._teaching_narrative_from_unit(unit) for unit in section_units
+                    )[:4000],
+                    knowledge_points=self._dedupe_strings(
+                        [keyword for unit in section_units for keyword in unit.keywords]
+                    )[:12],
+                    source_excerpts=[
+                        excerpt for unit in section_units for excerpt in unit.source_excerpts
+                    ][:12],
+                    formulas=[formula for unit in section_units for formula in unit.formulas],
+                    examples=[example for unit in section_units for example in unit.examples],
+                    misconceptions=[item for unit in section_units for item in unit.misconceptions],
+                    transition={"to_next": f"Next, move to {next_title}." if next_title else ""},
+                    source_refs=self._dedupe_source_refs(
+                        [ref for unit in section_units for ref in unit.source_refs]
+                    ),
+                    page_refs=self._dedupe_page_refs(
+                        [ref for unit in section_units for ref in unit.page_refs]
+                    ),
+                    tree_node_ids=[root_id],
+                    quiz_items=quiz_items,
+                )
+            )
+        return sections
+
+    def _assess_content_quality(
+        self,
+        content: LearningContent,
+        *,
+        expected_material_ids: list[str],
+    ) -> dict:
+        quality = dict(content.quality)
+        warnings = list(quality.get("warnings", []))
+        covered_material_ids = {
+            ref.material_id for section in content.sections for ref in section.source_refs
+        }
+        missing_material_ids = sorted(set(expected_material_ids) - covered_material_ids)
+        if missing_material_ids:
+            warnings.append(
+                "Some source materials are not represented in sections: "
+                + ", ".join(missing_material_ids)
+            )
+
+        normalized_titles = [self._normalize_topic(section.title) for section in content.sections]
+        duplicate_titles = sorted(
+            {title for title in normalized_titles if normalized_titles.count(title) > 1}
+        )
+        if duplicate_titles:
+            warnings.append("Duplicate LearningContent section titles were detected.")
+
+        sections_without_sources = [
+            section.id for section in content.sections if not section.source_refs
+        ]
+        if sections_without_sources:
+            warnings.append("Some LearningContent sections have no source evidence.")
+
+        tree_unit_ids = {
+            unit_id
+            for node in (content.knowledge_tree.nodes if content.knowledge_tree else [])
+            for unit_id in node.knowledge_unit_ids
+        }
+        expected_unit_ids = {unit.id for unit in content.knowledge_units}
+        orphan_unit_ids = sorted(expected_unit_ids - tree_unit_ids)
+        if orphan_unit_ids:
+            warnings.append("Some knowledge units are not assigned to the course knowledge tree.")
+
+        low_confidence_unit_ids = sorted(
+            unit.id for unit in content.knowledge_units if unit.confidence < 0.7
+        )
+        low_confidence_relations = sum(
+            1
+            for unit in content.knowledge_units
+            for relation in unit.relations
+            if relation.confidence < 0.7
+        )
+        conflicts = sum(
+            1
+            for unit in content.knowledge_units
+            for relation in unit.relations
+            if relation.relation_type == "contrasts_with"
+        )
+        if low_confidence_unit_ids or low_confidence_relations:
+            warnings.append("Low-confidence knowledge merges or relations require review.")
+        if conflicts:
+            warnings.append("Cross-document knowledge conflicts require review.")
+
+        material_coverage = (
+            len(covered_material_ids & set(expected_material_ids)) / len(expected_material_ids)
+            if expected_material_ids
+            else 1.0
+        )
+        knowledge_coverage = (
+            len(tree_unit_ids & expected_unit_ids) / len(expected_unit_ids)
+            if expected_unit_ids
+            else 1.0
+        )
+        quality.update(
+            {
+                "coverage_score": round((material_coverage + knowledge_coverage) / 2, 3),
+                "material_coverage": round(material_coverage, 3),
+                "knowledge_coverage": round(knowledge_coverage, 3),
+                "missing_material_ids": missing_material_ids,
+                "orphan_unit_ids": orphan_unit_ids,
+                "duplicate_section_titles": duplicate_titles,
+                "sections_without_sources": sections_without_sources,
+                "low_confidence_unit_ids": low_confidence_unit_ids,
+                "low_confidence_relation_count": low_confidence_relations,
+                "conflict_count": conflicts,
+                "warnings": self._dedupe_strings(warnings),
+            }
+        )
+        return quality
 
     def _knowledge_units_from_understandings(
         self, understandings: list[PageUnderstanding]
@@ -941,6 +1248,7 @@ class ContentService:
         material_ids: list[str] | None = None,
         collection_id: str | None = None,
         knowledge_units: list[KnowledgeUnit] | None = None,
+        knowledge_tree: CourseKnowledgeTree | None = None,
         quality_warnings: list[str] | None = None,
     ) -> LearningContent:
         page_by_no = {page.page_no: page for page in pages}
@@ -1003,6 +1311,7 @@ class ContentService:
                         )
                         for ref in source_refs
                     ],
+                    tree_node_ids=section.tree_node_ids,
                     quiz_items=quiz_items,
                     page_nos=section.page_nos,
                     outline_level=1,
@@ -1027,6 +1336,7 @@ class ContentService:
             material_overview=draft.material_overview,
             global_concepts=draft.global_concepts,
             knowledge_units=knowledge_units or [],
+            knowledge_tree=knowledge_tree,
             objectives=draft.objectives or draft.outline,
             sections=sections,
             generation_guidance=draft.generation_guidance,
@@ -1040,6 +1350,21 @@ class ContentService:
         if not content:
             raise HTTPException(404, "Learning content not found")
         return content
+
+    def get_knowledge_tree(self, content_id: str) -> CourseKnowledgeTree:
+        content = self.get(content_id)
+        if not content.knowledge_tree:
+            raise HTTPException(404, "Course knowledge tree not found")
+        return content.knowledge_tree
+
+    def get_diagnostics(self, content_id: str) -> LearningContentDiagnostics:
+        content = self.get(content_id)
+        return LearningContentDiagnostics(
+            content_id=content.id,
+            knowledge_units=content.knowledge_units,
+            knowledge_tree=content.knowledge_tree,
+            quality=content.quality,
+        )
 
     @staticmethod
     def _build_quiz_items(understanding: PageUnderstanding, page_title: str) -> list[QuizItem]:

@@ -100,6 +100,27 @@ export type KnowledgeUnit = {
   confidence: number;
 };
 
+export type CourseKnowledgeTreeNode = {
+  id: string;
+  title: string;
+  role: string;
+  summary?: string;
+  parent_id?: string;
+  knowledge_unit_ids: string[];
+  order: number;
+  prerequisite_node_ids: string[];
+};
+
+export type CourseKnowledgeTree = {
+  id: string;
+  title: string;
+  nodes: CourseKnowledgeTreeNode[];
+  root_node_ids: string[];
+  teaching_sequence: string[];
+  orphan_unit_ids: string[];
+  warnings: string[];
+};
+
 export type LearningSection = {
   id: string;
   title: string;
@@ -112,6 +133,7 @@ export type LearningSection = {
   source_excerpts?: SourceExcerpt[];
   source_refs: SourceRef[];
   page_refs?: PageRef[];
+  tree_node_ids?: string[];
   quiz_items: QuizItem[];
 };
 
@@ -126,10 +148,18 @@ export type LearningContent = {
   teaching_intent?: Record<string, unknown>;
   material_overview?: Record<string, unknown>;
   knowledge_units?: KnowledgeUnit[];
+  knowledge_tree?: CourseKnowledgeTree;
   objectives: string[];
   sections: LearningSection[];
   generation_guidance?: Record<string, unknown>;
   quality?: Record<string, unknown>;
+};
+
+export type LearningContentDiagnostics = {
+  content_id: string;
+  knowledge_units: KnowledgeUnit[];
+  knowledge_tree?: CourseKnowledgeTree;
+  quality: Record<string, unknown>;
 };
 
 export type ContentGenerationJob = {

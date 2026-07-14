@@ -6,6 +6,7 @@ from metaclass.infrastructure.providers.fake import FakeLearningProvider
 from metaclass.infrastructure.providers.llm import GeminiVisionProvider
 from metaclass.infrastructure.providers.learning import LLMLearningProvider
 from metaclass.modules.content.schemas import (
+    CourseKnowledgeTree,
     KnowledgeCanonicalizationDraft,
     KnowledgeMergeGroup,
     KnowledgeRelationDraft,
@@ -277,6 +278,44 @@ def test_llm_learning_provider_parses_knowledge_canonicalization() -> None:
     assert draft.groups[0].confidence == 0.95
 
 
+def test_llm_learning_provider_parses_course_knowledge_tree() -> None:
+    llm = Mock()
+    llm.model = "test-model"
+    llm.complete_json.return_value = """
+    {
+      "id": "tree_001",
+      "title": "Matrix Course",
+      "nodes": [
+        {
+          "id": "chapter_001",
+          "title": "Matrix Foundations",
+          "role": "concept",
+          "summary": "Core matrix concepts.",
+          "parent_id": null,
+          "knowledge_unit_ids": ["ku_001"],
+          "order": 1,
+          "prerequisite_node_ids": []
+        }
+      ],
+      "root_node_ids": ["chapter_001"],
+      "teaching_sequence": ["chapter_001"],
+      "orphan_unit_ids": [],
+      "warnings": []
+    }
+    """
+    units = [KnowledgeUnit(id="ku_001", title="Matrix multiplication")]
+
+    tree = LLMLearningProvider(llm).build_course_knowledge_tree(
+        tree_id="tree_001",
+        title="Matrix Course",
+        units=units,
+    )
+
+    assert isinstance(tree, CourseKnowledgeTree)
+    assert tree.root_node_ids == ["chapter_001"]
+    assert tree.nodes[0].knowledge_unit_ids == ["ku_001"]
+
+
 def test_llm_learning_provider_parses_page_understanding() -> None:
     llm = Mock()
     llm.model = "test-model"
@@ -343,7 +382,11 @@ def test_llm_learning_provider_describes_visual_and_organizes_content(tmp_path: 
     )
     llm = Mock()
     llm.model = "vision-model"
-    llm.complete_image_json.return_value = '{"visual_description": "A matrix diagram."}'
+    llm.complete_image_json.return_value = """
+    ```json
+    {"visual_description": "A matrix diagram."}
+    ```
+    """
     llm.complete_json.side_effect = [
         """
         {

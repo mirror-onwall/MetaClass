@@ -49,6 +49,7 @@ const contentStepLabels: Record<string, string> = {
   understanding_pages: "正在逐页理解材料",
   extracting_knowledge_units: "正在提取知识单元",
   canonicalizing: "正在融合跨文档知识",
+  building_knowledge_tree: "正在构建课程知识树",
   organizing: "正在组织学习内容",
   saving: "正在保存生成结果",
   completed: "学习内容组织完成",
@@ -228,6 +229,7 @@ function App() {
   const [pages, setPages] = useState<PageMetadata[]>([]);
   const [content, setContent] = useState<LearningContent | null>(null);
   const [contentJob, setContentJob] = useState<ContentGenerationJob | null>(null);
+  const [contentView, setContentView] = useState<"outline" | "tree" | "quality">("outline");
   const [presentationPlan, setPresentationPlan] = useState<PresentationPlan | null>(null);
   const [presentationArtifact, setPresentationArtifact] = useState<PPTArtifact | null>(null);
   const [presentationSlideImages, setPresentationSlideImages] = useState<Record<number, string>>({});
@@ -272,6 +274,19 @@ function App() {
   const selectedFilesLabel = files.length > 1
     ? `${files[0].name} +${files.length - 1}`
     : files[0]?.name;
+  const treeRootNodes = useMemo(() => {
+    if (!content?.knowledge_tree) return [];
+    const nodeById = new Map(content.knowledge_tree.nodes.map((node) => [node.id, node]));
+    return content.knowledge_tree.root_node_ids
+      .map((nodeId) => nodeById.get(nodeId))
+      .filter((node): node is NonNullable<typeof node> => Boolean(node));
+  }, [content]);
+  const qualityWarnings = Array.isArray(content?.quality?.warnings)
+    ? content.quality.warnings.filter((warning): warning is string => typeof warning === "string")
+    : [];
+  const coverageScore = typeof content?.quality?.coverage_score === "number"
+    ? Math.round(content.quality.coverage_score * 100)
+    : null;
   function displayAgentName(agentId: string, role: DirectedAgentTurn["turns"][number]["role"]) {
     if (role === "teacher") return "芊芊老师";
     const studentState = session?.student_states.find((student) => student.id === agentId);
@@ -418,6 +433,7 @@ function App() {
     setPages([]);
     setContent(null);
     setContentJob(null);
+    setContentView("outline");
     setPresentationPlan(null);
     setPresentationArtifact(null);
     setPresentationSlideImages({});
@@ -813,7 +829,30 @@ function App() {
             {content ? <>
               <h2>{content.title}</h2>
               <div className="objective-tags">{content.objectives.map((item) => <span key={item}>{item}</span>)}</div>
-              <ol>{content.sections.map((section, index) => <li key={section.id}><span>{String(index + 1).padStart(2, "0")}</span><div><b>{section.title}</b><small>来源 · 第 {section.source_refs[0]?.page_no ?? "?"} 页</small></div></li>)}</ol>
+              <div className="content-view-tabs" role="tablist" aria-label="学习内容查看方式">
+                <button className={contentView === "outline" ? "active" : ""} onClick={() => setContentView("outline")}>大纲</button>
+                <button className={contentView === "tree" ? "active" : ""} onClick={() => setContentView("tree")}>知识树</button>
+                <button className={contentView === "quality" ? "active" : ""} onClick={() => setContentView("quality")}>质量</button>
+              </div>
+              {contentView === "outline" && (
+                <ol>{content.sections.map((section, index) => <li key={section.id}><span>{String(index + 1).padStart(2, "0")}</span><div><b>{section.title}</b><small>来源 · 第 {section.source_refs[0]?.page_no ?? "?"} 页</small></div></li>)}</ol>
+              )}
+              {contentView === "tree" && (
+                <ol className="knowledge-tree-list">
+                  {treeRootNodes.map((node, index) => {
+                    const childCount = content.knowledge_tree?.nodes.filter((item) => item.parent_id === node.id).length ?? 0;
+                    return <li key={node.id}><span>{String(index + 1).padStart(2, "0")}</span><div><b>{node.title}</b><small>{childCount} 个主题 · {node.role}</small></div></li>;
+                  })}
+                </ol>
+              )}
+              {contentView === "quality" && (
+                <div className="content-quality">
+                  <div><span>覆盖率</span><b>{coverageScore === null ? "--" : `${coverageScore}%`}</b></div>
+                  <div><span>知识单元</span><b>{content.knowledge_units?.length ?? 0}</b></div>
+                  <div><span>教学章节</span><b>{content.sections.length}</b></div>
+                  {qualityWarnings.length ? <ul>{qualityWarnings.map((warning) => <li key={warning}>{warning}</li>)}</ul> : <p>未发现需要人工复核的问题。</p>}
+                </div>
+              )}
             </> : <div className="rail-empty"><span>⌁</span><p>构建 LearningContent 后，这里会出现完整课表。</p></div>}
           </section>
 

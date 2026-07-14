@@ -5,9 +5,16 @@ import pytest
 from sqlalchemy import inspect, text
 
 from metaclass.infrastructure.database import Database
+from metaclass.modules.content.repository import SqlAlchemyContentRepository
+from metaclass.modules.content.schemas import LearningContent, LearningSection
 from metaclass.modules.materials.models import MaterialRecord
 from metaclass.modules.materials.repository import SqlAlchemyMaterialRepository
-from metaclass.modules.materials.schemas import Material, MaterialCollection, PageMetadata, SourceRef
+from metaclass.modules.materials.schemas import (
+    Material,
+    MaterialCollection,
+    PageMetadata,
+    SourceRef,
+)
 
 
 def test_sqlalchemy_creates_domain_tables(tmp_path) -> None:
@@ -90,6 +97,56 @@ def test_database_session_rolls_back_on_error(tmp_path) -> None:
 
     with database.session() as session:
         assert session.get(MaterialRecord, record.id) is None
+    database.dispose()
+
+
+def test_schema_upgrade_clears_invalid_legacy_knowledge_tree(tmp_path) -> None:
+    database = Database.from_sqlite_path(tmp_path / "legacy-tree.db")
+    from metaclass.modules.content import models as _content_models  # noqa: F401
+
+    database.create_schema()
+    material = Material(
+        id="mat_tree",
+        filename="tree.pdf",
+        file_type="pdf",
+        status="parsed",
+        storage_path="data/raw/tree.pdf",
+        page_count=1,
+        created_at=datetime.now(timezone.utc),
+    )
+    source_ref = SourceRef(
+        material_id=material.id,
+        page_id="page_tree",
+        page_no=1,
+    )
+    SqlAlchemyMaterialRepository(database).save_material(material)
+    repository = SqlAlchemyContentRepository(database)
+    repository.save(
+        LearningContent(
+            id="content_tree",
+            material_id=material.id,
+            title="Tree content",
+            sections=[
+                LearningSection(
+                    id="section_tree",
+                    title="Tree section",
+                    summary="Summary",
+                    source_refs=[source_ref],
+                )
+            ],
+        )
+    )
+    with database.engine.begin() as connection:
+        connection.execute(
+            text(
+                "UPDATE learning_contents SET knowledge_tree = "
+                "'2026-07-14 13:53:36' WHERE id = 'content_tree'"
+            )
+        )
+
+    database.create_schema()
+
+    assert repository.get("content_tree").knowledge_tree is None
     database.dispose()
 
 
