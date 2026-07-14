@@ -1,8 +1,11 @@
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from metaclass.modules.materials.schemas import (
     Material,
+    MaterialCollection,
+    MaterialCollectionCreate,
+    MaterialProcessingJob,
     PageMetadata,
     ProcessedMaterial,
     ProcessedMaterials,
@@ -16,6 +19,10 @@ def create_router(materials: MaterialService) -> APIRouter:
     @router.post("", response_model=Material, status_code=201)
     async def upload_material(file: UploadFile = File(...)) -> Material:
         return await materials.create(file)
+
+    @router.get("", response_model=list[Material])
+    async def list_materials() -> list[Material]:
+        return materials.list_materials()
 
     @router.post("/process", response_model=ProcessedMaterial, status_code=201)
     async def upload_and_parse_material(file: UploadFile = File(...)) -> ProcessedMaterial:
@@ -32,7 +39,44 @@ def create_router(materials: MaterialService) -> APIRouter:
             material = await materials.create(file)
             pages = materials.parse(material.id)
             processed.append(ProcessedMaterial(material=materials.get(material.id), pages=pages))
-        return ProcessedMaterials(items=processed)
+        collection = materials.create_collection(
+            title="上传课程资料集",
+            material_ids=[item.material.id for item in processed],
+        )
+        return ProcessedMaterials(items=processed, collection=collection)
+
+    @router.post("/processing-jobs", response_model=MaterialProcessingJob, status_code=202)
+    async def create_processing_job(
+        background_tasks: BackgroundTasks,
+        files: list[UploadFile] = File(...),
+    ) -> MaterialProcessingJob:
+        job = await materials.create_processing_job(files)
+        background_tasks.add_task(materials.run_processing_job, job.id)
+        return job
+
+    @router.get("/processing-jobs/{job_id}", response_model=MaterialProcessingJob)
+    async def get_processing_job(job_id: str) -> MaterialProcessingJob:
+        return materials.get_processing_job(job_id)
+
+    @router.get("/processing-jobs/{job_id}/result", response_model=ProcessedMaterials)
+    async def get_processing_job_result(job_id: str) -> ProcessedMaterials:
+        return materials.processing_job_result(job_id)
+
+    @router.post("/collections", response_model=MaterialCollection, status_code=201)
+    async def create_collection(payload: MaterialCollectionCreate) -> MaterialCollection:
+        return materials.create_collection(
+            payload.title,
+            payload.material_ids,
+            payload.primary_material_id,
+        )
+
+    @router.get("/collections", response_model=list[MaterialCollection])
+    async def list_collections() -> list[MaterialCollection]:
+        return materials.list_collections()
+
+    @router.get("/collections/{collection_id}", response_model=MaterialCollection)
+    async def get_collection(collection_id: str) -> MaterialCollection:
+        return materials.get_collection(collection_id)
 
     @router.get("/{material_id}", response_model=Material)
     async def get_material(material_id: str) -> Material:

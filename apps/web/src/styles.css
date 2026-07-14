@@ -249,6 +249,8 @@ button { color: inherit; }
 .busy-overlay { position: fixed; z-index: 50; inset: 0; display: grid; place-content: center; justify-items: center; background: rgba(7,15,13,.78); backdrop-filter: blur(8px); animation: fade-in .2s ease; }
 .busy-overlay b { margin-top: 18px; font-size: 13px; }
 .busy-overlay small { margin-top: 6px; color: var(--muted); font-size: 9px; }
+.generation-progress { width: min(360px, calc(100vw - 48px)); height: 8px; margin-top: 16px; overflow: hidden; border: 1px solid rgba(211,224,213,.22); background: rgba(255,255,255,.07); }
+.generation-progress i { display: block; width: 0; height: 100%; background: var(--amber); transition: width .35s ease; }
 .loader { display: flex; gap: 6px; }
 .loader i { width: 8px; height: 30px; background: var(--amber); animation: bars .8s ease-in-out infinite alternate; }
 .loader i:nth-child(2) { animation-delay: .2s; }

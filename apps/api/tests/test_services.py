@@ -1,9 +1,20 @@
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock
 
+from metaclass.infrastructure.providers.fake import FakeLearningProvider
 from metaclass.infrastructure.providers.llm import GeminiVisionProvider
 from metaclass.infrastructure.providers.learning import LLMLearningProvider
-from metaclass.modules.content.schemas import LearningContent, LearningSection
+from metaclass.modules.content.schemas import (
+    KnowledgeCanonicalizationDraft,
+    KnowledgeMergeGroup,
+    KnowledgeRelationDraft,
+    KnowledgeUnit,
+    LearningContent,
+    LearningSection,
+    PageRef,
+)
+from metaclass.modules.content.service import ContentService
 from metaclass.modules.materials.schemas import PageMetadata, SourceRef
 from metaclass.modules.materials.service import MaterialService
 from metaclass.modules.video.service import VideoService
@@ -59,6 +70,170 @@ def test_mineru_content_list_is_grouped_by_page(tmp_path: Path) -> None:
     }
 
 
+def test_content_service_canonicalizes_units_without_losing_sources() -> None:
+    service = ContentService(Mock(), Mock(), Mock())
+    first_ref = SourceRef(
+        material_id="mat_001",
+        page_id="mat_001_page_001",
+        page_no=1,
+    )
+    second_ref = SourceRef(
+        material_id="mat_002",
+        page_id="mat_002_page_003",
+        page_no=3,
+    )
+    units = [
+        KnowledgeUnit(
+            id="ku_001",
+            title="Matrix multiplication",
+            summary="Rows combine with columns.",
+            keywords=["matrix", "row-column"],
+            source_refs=[first_ref],
+            page_refs=[PageRef(material_id="mat_001", page_no=1)],
+            source_unit_ids=["raw_001"],
+        ),
+        KnowledgeUnit(
+            id="ku_002",
+            title="Matrix multiplication rule",
+            summary="Inner dimensions must match.",
+            keywords=["matrix", "dimensions"],
+            source_refs=[second_ref],
+            page_refs=[PageRef(material_id="mat_002", page_no=3)],
+            source_unit_ids=["raw_002"],
+        ),
+        KnowledgeUnit(
+            id="ku_003",
+            title="Worked example",
+            unit_type="example",
+            summary="Apply the multiplication rule.",
+            source_refs=[second_ref],
+            page_refs=[PageRef(material_id="mat_002", page_no=3)],
+        ),
+    ]
+
+    locally_grouped = service._merge_knowledge_units(units)
+    assert len(locally_grouped) == 2
+    concept = next(unit for unit in locally_grouped if unit.unit_type == "concept")
+    example = next(unit for unit in locally_grouped if unit.unit_type == "example")
+    draft = KnowledgeCanonicalizationDraft(
+        groups=[
+            KnowledgeMergeGroup(
+                id="canonical_matrix",
+                title="Matrix multiplication",
+                unit_ids=[concept.id],
+                unit_type="concept",
+                confidence=0.94,
+            ),
+            KnowledgeMergeGroup(
+                id="canonical_example",
+                title="Matrix multiplication example",
+                unit_ids=[example.id],
+                unit_type="example",
+            ),
+        ],
+        relations=[
+            KnowledgeRelationDraft(
+                source_group_id="canonical_example",
+                target_group_id="canonical_matrix",
+                relation_type="example_of",
+                reason="The worked example applies the concept.",
+                confidence=0.92,
+            )
+        ],
+    )
+
+    canonical = service._apply_canonicalization(locally_grouped, draft)
+
+    matrix = next(unit for unit in canonical if unit.id == "canonical_matrix")
+    worked_example = next(unit for unit in canonical if unit.id == "canonical_example")
+    assert matrix.confidence == 0.94
+    assert matrix.source_unit_ids == ["raw_001", "raw_002"]
+    assert {(ref.material_id, ref.page_no) for ref in matrix.page_refs} == {
+        ("mat_001", 1),
+        ("mat_002", 3),
+    }
+    assert worked_example.relations[0].target_unit_id == "canonical_matrix"
+    assert worked_example.relations[0].relation_type == "example_of"
+
+
+def test_collection_learning_content_reports_stage_progress() -> None:
+    source_ref = SourceRef(
+        material_id="mat_001",
+        page_id="mat_001_page_001",
+        page_no=1,
+    )
+    page = PageMetadata(
+        id="mat_001_page_001",
+        material_id="mat_001",
+        page_no=1,
+        title="Matrix multiplication",
+        raw_text="Rows are multiplied by columns.",
+        image_path="page.png",
+        source_refs=[source_ref],
+    )
+    repository = Mock()
+    repository.get.return_value = None
+    repository.list_understandings.return_value = []
+    materials = Mock()
+    materials.get_collection.return_value = SimpleNamespace(
+        material_ids=["mat_001"],
+        primary_material_id="mat_001",
+    )
+    materials.get.return_value = SimpleNamespace(status="parsed")
+    materials.pages.return_value = [page]
+    service = ContentService(repository, materials, FakeLearningProvider())
+    updates: list[tuple[int, str]] = []
+
+    content = service.build_collection(
+        "col_001",
+        progress_callback=lambda progress, step, _message: updates.append((progress, step)),
+    )
+
+    assert content.knowledge_units
+    assert [progress for progress, _step in updates] == sorted(
+        progress for progress, _step in updates
+    )
+    steps = {step for _progress, step in updates}
+    assert {
+        "preparing",
+        "understanding_pages",
+        "extracting_knowledge_units",
+        "canonicalizing",
+        "organizing",
+        "saving",
+    } <= steps
+
+
+def test_llm_learning_provider_parses_knowledge_canonicalization() -> None:
+    llm = Mock()
+    llm.model = "test-model"
+    llm.complete_json.return_value = """
+    {
+      "groups": [
+        {
+          "id": "canonical_matrix",
+          "title": "Matrix multiplication",
+          "unit_ids": ["ku_001", "ku_002"],
+          "unit_type": "concept",
+          "summary": "Multiply rows by columns.",
+          "aliases": ["row-column multiplication"],
+          "confidence": 0.95
+        }
+      ],
+      "relations": []
+    }
+    """
+    units = [
+        KnowledgeUnit(id="ku_001", title="Matrix multiplication"),
+        KnowledgeUnit(id="ku_002", title="Row-column multiplication"),
+    ]
+
+    draft = LLMLearningProvider(llm).canonicalize_knowledge_units(units)
+
+    assert draft.groups[0].unit_ids == ["ku_001", "ku_002"]
+    assert draft.groups[0].confidence == 0.95
+
+
 def test_llm_learning_provider_parses_page_understanding() -> None:
     llm = Mock()
     llm.model = "test-model"
@@ -68,6 +243,13 @@ def test_llm_learning_provider_parses_page_understanding() -> None:
       "knowledge_points": ["matrix multiplication", "row by column"],
       "teaching_focus": ["shape compatibility"],
       "possible_questions": ["Why must dimensions match?"],
+      "formulas": [
+        {
+          "latex": "w = u v cos(theta)",
+          "meaning": "Example formula",
+          "variables": ["u", "v", "θ"]
+        }
+      ],
       "quiz_items": [
         {
           "question": "What must be true before multiplying two matrices?",
@@ -88,6 +270,11 @@ def test_llm_learning_provider_parses_page_understanding() -> None:
 
     assert draft.summary == "Matrix multiplication combines rows and columns."
     assert draft.knowledge_points == ["matrix multiplication", "row by column"]
+    assert draft.formulas[0].variables == [
+        {"symbol": "u", "meaning": ""},
+        {"symbol": "v", "meaning": ""},
+        {"symbol": "θ", "meaning": ""},
+    ]
     assert draft.quiz_items[0].question == "What must be true before multiplying two matrices?"
     llm.complete_json.assert_called_once()
 

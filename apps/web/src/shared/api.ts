@@ -1,10 +1,14 @@
 import type {
   ClassroomSession,
   AutoClassroomStep,
+  ContentGenerationJob,
   ControllerResult,
   DirectedAgentTurn,
   LearningContent,
   LearningMode,
+  Material,
+  MaterialCollection,
+  MaterialProcessingJob,
   PageMetadata,
   ProcessedMaterial,
   ProcessedMaterials,
@@ -17,12 +21,19 @@ import type {
 
 export const API_BASE = import.meta.env.VITE_API_BASE ?? "";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+type RequestOptions = RequestInit & { timeoutMs?: number };
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+async function request<T>(path: string, init?: RequestOptions): Promise<T> {
+  const { timeoutMs, ...requestInit } = init ?? {};
   let response: Response;
   try {
     response = await fetch(`${API_BASE}${path}`, {
-      ...init,
-      signal: init?.signal ?? AbortSignal.timeout(180_000),
+      ...requestInit,
+      signal: requestInit.signal ?? AbortSignal.timeout(timeoutMs ?? 180_000),
     });
   } catch (error) {
     if (error instanceof DOMException && error.name === "TimeoutError") {
@@ -38,7 +49,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  upload(file: File) {
+  async upload(file: File) {
+    const result = await api.uploadMany([file]);
+    if (!result.items[0]) throw new Error("材料解析任务没有返回结果");
+    return result.items[0];
+  },
+  uploadSync(file: File) {
     const form = new FormData();
     form.append("file", file);
     return request<ProcessedMaterial>("/api/v1/materials/process", {
@@ -46,21 +62,98 @@ export const api = {
       body: form,
     });
   },
-  uploadMany(files: File[]) {
+  async uploadMany(files: File[]) {
     const form = new FormData();
     files.forEach((file) => form.append("files", file));
-    return request<ProcessedMaterials>("/api/v1/materials/batch-process", {
+    const job = await request<MaterialProcessingJob>("/api/v1/materials/processing-jobs", {
       method: "POST",
       body: form,
+      timeoutMs: 600_000,
+    });
+    return api.waitForMaterialProcessingJob(job.id);
+  },
+  getMaterialProcessingJob(jobId: string) {
+    return request<MaterialProcessingJob>(`/api/v1/materials/processing-jobs/${jobId}`);
+  },
+  getMaterialProcessingJobResult(jobId: string) {
+    return request<ProcessedMaterials>(`/api/v1/materials/processing-jobs/${jobId}/result`);
+  },
+  async waitForMaterialProcessingJob(jobId: string) {
+    for (;;) {
+      const job = await api.getMaterialProcessingJob(jobId);
+      if (job.status === "succeeded") return api.getMaterialProcessingJobResult(jobId);
+      if (job.status === "failed") {
+        throw new Error(job.error ?? "材料解析任务失败");
+      }
+      await wait(1500);
+    }
+  },
+  listMaterials() {
+    return request<Material[]>("/api/v1/materials");
+  },
+  listMaterialCollections() {
+    return request<MaterialCollection[]>("/api/v1/materials/collections");
+  },
+  createMaterialCollection(title: string, materialIds: string[], primaryMaterialId?: string) {
+    return request<MaterialCollection>("/api/v1/materials/collections", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        material_ids: materialIds,
+        primary_material_id: primaryMaterialId,
+      }),
     });
   },
   parse(materialId: string) {
     return request<PageMetadata[]>(`/api/v1/materials/${materialId}/parse`, { method: "POST" });
   },
-  buildContent(materialId: string) {
+  buildContentSync(materialId: string) {
     return request<LearningContent>(`/api/v1/materials/${materialId}/learning-content`, {
       method: "POST",
     });
+  },
+  async buildContent(
+    materialId: string,
+    onProgress?: (job: ContentGenerationJob) => void,
+  ) {
+    const job = await request<ContentGenerationJob>(
+      `/api/v1/materials/${materialId}/learning-content-jobs`,
+      { method: "POST" },
+    );
+    onProgress?.(job);
+    return api.waitForContentGenerationJob(job.id, onProgress);
+  },
+  async buildCollectionContent(
+    collectionId: string,
+    onProgress?: (job: ContentGenerationJob) => void,
+  ) {
+    const job = await request<ContentGenerationJob>(
+      `/api/v1/material-collections/${collectionId}/learning-content-jobs`,
+      { method: "POST" },
+    );
+    onProgress?.(job);
+    return api.waitForContentGenerationJob(job.id, onProgress);
+  },
+  getContentGenerationJob(jobId: string) {
+    return request<ContentGenerationJob>(`/api/v1/learning-content-jobs/${jobId}`);
+  },
+  getContentGenerationJobResult(jobId: string) {
+    return request<LearningContent>(`/api/v1/learning-content-jobs/${jobId}/result`);
+  },
+  async waitForContentGenerationJob(
+    jobId: string,
+    onProgress?: (job: ContentGenerationJob) => void,
+  ) {
+    for (;;) {
+      const job = await api.getContentGenerationJob(jobId);
+      onProgress?.(job);
+      if (job.status === "succeeded") return api.getContentGenerationJobResult(jobId);
+      if (job.status === "failed") {
+        throw new Error(job.error ?? "学习内容生成任务失败");
+      }
+      await wait(1500);
+    }
   },
   async createSession(
     contentId: string,

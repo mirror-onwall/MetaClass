@@ -32,6 +32,7 @@ from metaclass.modules.classroom.schemas import (
 )
 from metaclass.modules.classroom.service import ClassroomService
 from metaclass.modules.content.schemas import (
+    FormulaNote,
     LearningContent,
     LearningSection,
     PageUnderstanding,
@@ -41,6 +42,20 @@ from metaclass.modules.materials.schemas import PageMetadata, SourceRef
 from metaclass.modules.presentation.planner import PresentationPlanGenerator
 from metaclass.modules.presentation.schemas import PPTGenerationJob, PresentationPlan
 from metaclass.modules.video.schemas import VideoJob
+
+
+def test_formula_note_normalizes_llm_variable_shapes() -> None:
+    from_strings = FormulaNote(variables=["u", "v", "θ"])
+    from_mapping = FormulaNote(variables={"n_v": "number of samples"})
+    from_single = FormulaNote(variables="v")
+
+    assert from_strings.variables == [
+        {"symbol": "u", "meaning": ""},
+        {"symbol": "v", "meaning": ""},
+        {"symbol": "θ", "meaning": ""},
+    ]
+    assert from_mapping.variables == [{"symbol": "n_v", "meaning": "number of samples"}]
+    assert from_single.variables == [{"symbol": "v", "meaning": ""}]
 
 
 def source_ref() -> SourceRef:

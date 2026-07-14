@@ -22,10 +22,12 @@ import { api } from "./shared/api";
 import { formatBytes } from "./shared/format";
 import type {
   ClassroomSession,
+  ContentGenerationJob,
   DirectedAgentTurn,
   LearningContent,
   LearningMode,
   Material,
+  MaterialCollection,
   PageMetadata,
   PPTArtifact,
   StudentAgentType,
@@ -34,6 +36,24 @@ import type {
 } from "./shared/types";
 
 const stages = ["导入材料", "页面解析", "组织内容", "互动课堂", "讲解视频"];
+
+const contentStepLabels: Record<string, string> = {
+  queued: "等待生成任务",
+  building: "准备组织学习内容",
+  preparing: "正在准备材料",
+  understanding_pages: "正在逐页理解材料",
+  extracting_knowledge_units: "正在提取知识单元",
+  canonicalizing: "正在融合跨文档知识",
+  organizing: "正在组织学习内容",
+  saving: "正在保存生成结果",
+  completed: "学习内容组织完成",
+};
+
+function contentProgressLabel(job: ContentGenerationJob): string {
+  const label = contentStepLabels[job.step] ?? "正在组织学习内容";
+  const pageCounts = job.message.match(/\((\d+)\/(\d+)\)/);
+  return pageCounts ? `${label} · ${pageCounts[1]}/${pageCounts[2]} 页` : label;
+}
 
 const studentAgentChoices: Array<{
   type: StudentAgentType;
@@ -129,8 +149,10 @@ function App() {
   const [files, setFiles] = useState<File[]>([]);
   const [material, setMaterial] = useState<Material | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
+  const [materialCollection, setMaterialCollection] = useState<MaterialCollection | null>(null);
   const [pages, setPages] = useState<PageMetadata[]>([]);
   const [content, setContent] = useState<LearningContent | null>(null);
+  const [contentJob, setContentJob] = useState<ContentGenerationJob | null>(null);
   const [presentationArtifact, setPresentationArtifact] = useState<PPTArtifact | null>(null);
   const [presentationSlideImages, setPresentationSlideImages] = useState<Record<number, string>>({});
   const [session, setSession] = useState<ClassroomSession | null>(null);
@@ -253,8 +275,10 @@ function App() {
     if (clearFile) setFiles([]);
     setMaterial(null);
     setMaterials([]);
+    setMaterialCollection(null);
     setPages([]);
     setContent(null);
+    setContentJob(null);
     setPresentationArtifact(null);
     setPresentationSlideImages({});
     setSession(null);
@@ -276,6 +300,7 @@ function App() {
       const processed = "items" in result ? result.items : [result];
       if (!processed.length) return;
       setMaterials(processed.map((item) => item.material));
+      setMaterialCollection("collection" in result ? result.collection ?? null : null);
       setMaterial(processed[0].material);
       setPages(processed[0].pages);
     }
@@ -292,7 +317,12 @@ function App() {
 
   async function buildContent() {
     if (!material) return;
-    const result = await run("正在组织学习内容", () => api.buildContent(material.id));
+    setContentJob(null);
+    const result = await run("正在组织学习内容", () =>
+      materialCollection
+        ? api.buildCollectionContent(materialCollection.id, setContentJob)
+        : api.buildContent(material.id, setContentJob),
+    );
     if (result) setContent(result);
   }
 
@@ -668,7 +698,32 @@ function App() {
       </main>
 
       {error && <div className="error-toast" role="alert"><span>!</span><div><b>流程暂停</b><p>{error}</p></div><button onClick={() => setError(null)}>×</button></div>}
-      {busy && <div className="busy-overlay"><div className="loader"><i /><i /><i /></div><b>{busy}</b><small>请不要关闭课堂</small></div>}
+      {busy && (
+        <div className="busy-overlay" aria-live="polite">
+          {contentJob && busy === "正在组织学习内容" ? (
+            <>
+              <b>{contentProgressLabel(contentJob)}</b>
+              <div
+                className="generation-progress"
+                role="progressbar"
+                aria-label="学习内容组织进度"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={contentJob.progress}
+              >
+                <i style={{ width: `${contentJob.progress}%` }} />
+              </div>
+              <small>{contentJob.progress}% · 任务可在后台继续运行</small>
+            </>
+          ) : (
+            <>
+              <div className="loader"><i /><i /><i /></div>
+              <b>{busy}</b>
+              <small>请不要关闭课堂</small>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

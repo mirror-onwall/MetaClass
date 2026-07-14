@@ -7,7 +7,7 @@ from sqlalchemy import inspect, text
 from metaclass.infrastructure.database import Database
 from metaclass.modules.materials.models import MaterialRecord
 from metaclass.modules.materials.repository import SqlAlchemyMaterialRepository
-from metaclass.modules.materials.schemas import Material, PageMetadata, SourceRef
+from metaclass.modules.materials.schemas import Material, MaterialCollection, PageMetadata, SourceRef
 
 
 def test_sqlalchemy_creates_domain_tables(tmp_path) -> None:
@@ -17,6 +17,7 @@ def test_sqlalchemy_creates_domain_tables(tmp_path) -> None:
     tables = set(inspect(services.database.engine).get_table_names())
     assert tables == {
         "materials",
+        "material_collections",
         "page_metadata",
         "page_understandings",
         "learning_contents",
@@ -72,6 +73,7 @@ def test_database_session_rolls_back_on_error(tmp_path) -> None:
         id="mat_rollback",
         filename="rollback.pdf",
         file_type="pdf",
+        file_hash=None,
         status="uploaded",
         storage_path="data/raw/rollback.pdf",
         page_count=0,
@@ -101,6 +103,7 @@ def test_material_repository_round_trip(tmp_path) -> None:
         id="mat_001",
         filename="demo.pdf",
         file_type="pdf",
+        file_hash="a" * 64,
         status="parsed",
         storage_path="data/raw/mat_001/source.pdf",
         page_count=1,
@@ -127,7 +130,19 @@ def test_material_repository_round_trip(tmp_path) -> None:
     repository.replace_pages(material.id, [page])
 
     assert repository.get_material(material.id) == material
+    assert repository.list_materials() == [material]
     assert repository.list_pages(material.id) == [page]
+
+    collection = MaterialCollection(
+        id="col_001",
+        title="课程资料集",
+        material_ids=[material.id],
+        primary_material_id=material.id,
+        created_at=datetime.now(timezone.utc),
+    )
+    repository.save_collection(collection)
+    assert repository.get_collection(collection.id) == collection
+    assert repository.list_collections() == [collection]
 
     replacement = page.model_copy(
         update={

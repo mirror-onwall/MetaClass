@@ -64,12 +64,31 @@ class Database:
         if self.engine.dialect.name != "sqlite":
             return
         additions = {
-            "materials": {"updated_at": "DATETIME"},
+            "materials": {"file_hash": "VARCHAR(64)", "updated_at": "DATETIME"},
             "learning_contents": {
+                "material_ids": "JSON",
+                "collection_id": "VARCHAR(64)",
+                "subtitle": "VARCHAR(500)",
+                "audience": "JSON",
+                "teaching_intent": "JSON",
+                "material_overview": "JSON",
+                "global_concepts": "JSON",
+                "knowledge_units": "JSON",
+                "generation_guidance": "JSON",
+                "quality": "JSON",
                 "created_at": "DATETIME",
                 "updated_at": "DATETIME",
             },
             "page_understandings": {
+                "page_role": "VARCHAR(50)",
+                "title": "VARCHAR(500)",
+                "teachable_points": "JSON",
+                "key_excerpts": "JSON",
+                "concepts": "JSON",
+                "formulas": "JSON",
+                "visual_analysis": "JSON",
+                "misconceptions": "JSON",
+                "relations": "JSON",
                 "quiz_items": "JSON",
             },
             "classroom_sessions": {
@@ -126,7 +145,80 @@ class Database:
                             "WHERE slide_images IS NULL"
                         )
                     )
+                if table == "learning_contents":
+                    connection.execute(
+                        text(
+                            "UPDATE learning_contents "
+                            "SET material_ids = '[\"' || material_id || '\"]' "
+                            "WHERE material_ids IS NULL"
+                        )
+                    )
+                    for json_column in (
+                        "audience",
+                        "teaching_intent",
+                        "material_overview",
+                        "generation_guidance",
+                        "quality",
+                    ):
+                        connection.execute(
+                            text(
+                                f"UPDATE learning_contents SET {json_column} = '{{}}' "
+                                f"WHERE {json_column} IS NULL"
+                            )
+                        )
+                    connection.execute(
+                        text(
+                            "UPDATE learning_contents SET global_concepts = '[]' "
+                            "WHERE global_concepts IS NULL"
+                        )
+                    )
+                    connection.execute(
+                        text(
+                            "UPDATE learning_contents SET knowledge_units = '[]' "
+                            "WHERE knowledge_units IS NULL"
+                        )
+                    )
+                    connection.execute(
+                        text(
+                            "UPDATE learning_contents SET subtitle = '' "
+                            "WHERE subtitle IS NULL"
+                        )
+                    )
                 if table == "page_understandings":
+                    connection.execute(
+                        text(
+                            "UPDATE page_understandings "
+                            "SET page_role = 'concept' "
+                            "WHERE page_role IS NULL"
+                        )
+                    )
+                    connection.execute(
+                        text(
+                            "UPDATE page_understandings "
+                            "SET title = '' "
+                            "WHERE title IS NULL"
+                        )
+                    )
+                    for json_column in (
+                        "teachable_points",
+                        "key_excerpts",
+                        "concepts",
+                        "formulas",
+                        "misconceptions",
+                    ):
+                        connection.execute(
+                            text(
+                                f"UPDATE page_understandings SET {json_column} = '[]' "
+                                f"WHERE {json_column} IS NULL"
+                            )
+                        )
+                    for json_column in ("visual_analysis", "relations"):
+                        connection.execute(
+                            text(
+                                f"UPDATE page_understandings SET {json_column} = '{{}}' "
+                                f"WHERE {json_column} IS NULL"
+                            )
+                        )
                     connection.execute(
                         text(
                             "UPDATE page_understandings "
@@ -135,7 +227,32 @@ class Database:
                         )
                     )
                 for name in columns:
-                    if name in {"student_states", "mode", "slide_images", "quiz_items"}:
+                    if name in {
+                        "file_hash",
+                        "material_ids",
+                        "collection_id",
+                        "subtitle",
+                        "audience",
+                        "teaching_intent",
+                        "material_overview",
+                        "global_concepts",
+                        "knowledge_units",
+                        "generation_guidance",
+                        "quality",
+                        "page_role",
+                        "title",
+                        "teachable_points",
+                        "key_excerpts",
+                        "concepts",
+                        "formulas",
+                        "visual_analysis",
+                        "misconceptions",
+                        "relations",
+                        "student_states",
+                        "mode",
+                        "slide_images",
+                        "quiz_items",
+                    }:
                         continue
                     connection.execute(
                         text(f"UPDATE {table} SET {name} = CURRENT_TIMESTAMP WHERE {name} IS NULL")

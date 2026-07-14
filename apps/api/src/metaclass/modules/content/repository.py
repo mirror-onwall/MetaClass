@@ -28,9 +28,23 @@ class SqlAlchemyContentRepository:
                 LearningContentRecord(
                     id=content.id,
                     material_id=content.material_id,
+                    material_ids=content.material_ids or [content.material_id],
+                    collection_id=content.collection_id,
                     title=content.title,
+                    subtitle=content.subtitle,
+                    audience=content.audience,
+                    teaching_intent=content.teaching_intent,
+                    material_overview=content.material_overview,
+                    global_concepts=[
+                        item.model_dump(mode="json") for item in content.global_concepts
+                    ],
+                    knowledge_units=[
+                        item.model_dump(mode="json") for item in content.knowledge_units
+                    ],
                     objectives=content.objectives,
                     sections=[item.model_dump(mode="json") for item in content.sections],
+                    generation_guidance=content.generation_guidance,
+                    quality=content.quality,
                     version=content.version,
                     created_at=content.created_at,
                     updated_at=content.updated_at,
@@ -46,9 +60,19 @@ class SqlAlchemyContentRepository:
                 {
                     "id": record.id,
                     "material_id": record.material_id,
+                    "material_ids": record.material_ids or [record.material_id],
+                    "collection_id": record.collection_id,
                     "title": record.title,
+                    "subtitle": record.subtitle or "",
+                    "audience": record.audience or {},
+                    "teaching_intent": record.teaching_intent or {},
+                    "material_overview": record.material_overview or {},
+                    "global_concepts": record.global_concepts or [],
+                    "knowledge_units": record.knowledge_units or [],
                     "objectives": record.objectives,
                     "sections": record.sections,
+                    "generation_guidance": record.generation_guidance or {},
+                    "quality": record.quality or {},
                     "version": record.version,
                     "created_at": (
                         record.created_at.replace(tzinfo=timezone.utc)
@@ -72,11 +96,27 @@ class SqlAlchemyContentRepository:
                         material_id=item.material_id,
                         page_id=item.page_id,
                         page_no=item.page_no,
+                        page_role=item.page_role,
+                        title=item.title,
                         summary=item.summary,
+                        teachable_points=[
+                            point.model_dump(mode="json") for point in item.teachable_points
+                        ],
+                        key_excerpts=[
+                            excerpt.model_dump(mode="json") for excerpt in item.key_excerpts
+                        ],
+                        concepts=[concept.model_dump(mode="json") for concept in item.concepts],
+                        formulas=[formula.model_dump(mode="json") for formula in item.formulas],
+                        visual_analysis=item.visual_analysis,
                         knowledge_points=item.knowledge_points,
                         teaching_focus=item.teaching_focus,
+                        misconceptions=[
+                            misconception.model_dump(mode="json")
+                            for misconception in item.misconceptions
+                        ],
                         possible_questions=item.possible_questions,
                         quiz_items=[quiz.model_dump(mode="json") for quiz in item.quiz_items],
+                        relations=item.relations,
                         source_refs=[ref.model_dump(mode="json") for ref in item.source_refs],
                         provider=item.provider,
                         model=item.model,
@@ -99,11 +139,20 @@ class SqlAlchemyContentRepository:
                         "material_id": record.material_id,
                         "page_id": record.page_id,
                         "page_no": record.page_no,
+                        "page_role": record.page_role or "concept",
+                        "title": record.title or "",
                         "summary": record.summary,
+                        "teachable_points": record.teachable_points or [],
+                        "key_excerpts": record.key_excerpts or [],
+                        "concepts": record.concepts or [],
+                        "formulas": record.formulas or [],
+                        "visual_analysis": record.visual_analysis or {},
                         "knowledge_points": record.knowledge_points,
                         "teaching_focus": record.teaching_focus,
+                        "misconceptions": record.misconceptions or [],
                         "possible_questions": record.possible_questions,
                         "quiz_items": record.quiz_items or [],
+                        "relations": record.relations or {},
                         "source_refs": record.source_refs,
                         "provider": record.provider,
                         "model": record.model,
