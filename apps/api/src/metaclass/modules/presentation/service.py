@@ -103,6 +103,13 @@ class PresentationService:
             raise HTTPException(409, "PPT artifact is not available")
         return artifact
 
+    def get_artifact_for_plan(self, plan_id: str) -> PPTArtifact:
+        self.get_plan(plan_id)
+        artifact = self.repository.get_artifact_for_plan(plan_id)
+        if not artifact:
+            raise HTTPException(409, "PPT artifact is not available")
+        return artifact
+
     def list_slide_images(self, artifact_id: str) -> list[PPTSlideImage]:
         artifact = self.get_artifact(artifact_id)
         return artifact.slide_images

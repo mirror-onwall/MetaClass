@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, BackgroundTasks
 from fastapi.responses import FileResponse
 
 from metaclass.modules.video.schemas import (
@@ -16,10 +16,16 @@ def create_router(videos: VideoService) -> APIRouter:
     @router.post(
         "/learning-contents/{content_id}/videos",
         response_model=VideoJob,
-        status_code=201,
+        status_code=202,
     )
-    async def create_video_job(content_id: str) -> VideoJob:
-        return videos.create_job(content_id)
+    async def create_video_job(
+        content_id: str,
+        background_tasks: BackgroundTasks,
+        presentation_artifact_id: str | None = None,
+    ) -> VideoJob:
+        job = videos.queue_job(content_id)
+        background_tasks.add_task(videos.run_job, job.id, presentation_artifact_id)
+        return job
 
     @router.get("/video-jobs/{job_id}", response_model=VideoJob)
     async def get_video_job(job_id: str) -> VideoJob:

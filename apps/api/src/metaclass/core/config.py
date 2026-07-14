@@ -25,6 +25,13 @@ class Settings(BaseSettings):
     mineru_timeout_seconds: float = 180.0
     llm_temperature: float = 0.2
     llm_max_tokens: int = 8192
+    tts_provider: str = "fake"
+    tts_base_url: str | None = None
+    tts_api_key: str | None = None
+    tts_model: str = "tts-1"
+    tts_teacher_voice: str = "alloy"
+    tts_student_voices: str = "ash,ballad,coral,echo,fable,nova,onyx,shimmer"
+    tts_timeout_seconds: float = 180.0
     vision_enabled: bool = False
     vision_provider: str | None = None
     vision_base_url: str | None = None

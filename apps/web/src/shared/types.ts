@@ -278,6 +278,25 @@ export type VideoResult = {
   duration_seconds: number;
 };
 
+export type TTSArtifactRequest = {
+  text: string;
+  scope: string;
+  ref_id?: string;
+  voice?: string;
+};
+
+export type TTSArtifact = {
+  id: string;
+  text: string;
+  scope: string;
+  ref_id?: string;
+  voice?: string;
+  audio_url: string;
+  duration_ms: number;
+  duration_seconds: number;
+  created_at: string;
+};
+
 export type PresentationPlan = {
   id: string;
   content_id: string;

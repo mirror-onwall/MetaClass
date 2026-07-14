@@ -47,9 +47,10 @@ class FakeTTSProvider:
 
     sample_rate = 16_000
 
-    def synthesize(self, text: str, output: Path) -> float:
+    def synthesize(self, text: str, output: Path, voice: str | None = None) -> float:
         duration = min(max(len(text) * 0.035, 1.2), 8.0)
         frame_count = int(duration * self.sample_rate)
+        frequency = 330 + (sum(ord(char) for char in (voice or "teacher")) % 7) * 35
         output.parent.mkdir(parents=True, exist_ok=True)
         with wave.open(str(output), "wb") as wav:
             wav.setnchannels(1)
@@ -58,7 +59,9 @@ class FakeTTSProvider:
             for index in range(frame_count):
                 envelope = min(1.0, index / 800, (frame_count - index) / 800)
                 value = int(
-                    1800 * envelope * math.sin(2 * math.pi * 330 * index / self.sample_rate)
+                    1800
+                    * envelope
+                    * math.sin(2 * math.pi * frequency * index / self.sample_rate)
                 )
                 wav.writeframesraw(struct.pack("<h", value))
         return duration
