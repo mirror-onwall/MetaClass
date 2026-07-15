@@ -861,6 +861,25 @@ GET /api/v1/learning-contents/{content_id}/diagnostics
 前端右侧 LearningContent 区域新增“大纲 / 知识树 / 质量”视图，可查看章节结构、知识单元数量、
 覆盖率和质量警告。
 
+## 2026-07-14：修复 LearningContent 教学单元过度压缩
+
+知识树顶层节点继续作为章节容器，但不再直接生成 LearningSection。LearningSection 改为由真正包含
+Canonical KnowledgeUnit 的知识主题节点生成。
+
+粒度约束：
+
+```text
+每个知识主题节点最多包含 3 个 KnowledgeUnit
+每个 LearningSection 最多覆盖 3 个 KnowledgeUnit
+所有知识主题节点必须且只能被 LearningContent 覆盖一次
+```
+
+fallback 会将同类知识按最多 3 个一组拆为多个教学主题，避免十几个知识点被压进一个顶层章节。
+质量报告新增 `section_unit_counts`、`overloaded_section_ids` 和
+`recommended_min_section_count`，用于识别 LearningContent 是否过度压缩。
+
+本次只调整 LearningContent，不修改 PresentationPlan/PPT 的一 section 一页规则。
+
 ## 2026-07-14：新增轻量 KnowledgeUnit 层
 
 ### 背景

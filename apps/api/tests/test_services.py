@@ -200,6 +200,55 @@ def test_content_service_canonicalizes_units_without_losing_sources() -> None:
     assert worked_example.relations[0].relation_type == "example_of"
 
 
+def test_knowledge_tree_fallback_keeps_teaching_topics_at_usable_granularity() -> None:
+    service = ContentService(Mock(), Mock(), Mock())
+    units = []
+    for index in range(1, 8):
+        source_ref = SourceRef(
+            material_id="mat_001",
+            page_id=f"page_{index:03d}",
+            page_no=index,
+        )
+        units.append(
+            KnowledgeUnit(
+                id=f"ku_{index:03d}",
+                title=f"Concept {index}",
+                summary=f"Summary for concept {index}.",
+                keywords=[f"concept-{index}"],
+                source_refs=[source_ref],
+                page_refs=[PageRef(material_id="mat_001", page_no=index)],
+            )
+        )
+
+    tree = service._fallback_course_knowledge_tree("tree_001", "Course", units)
+    sections = service._sections_from_knowledge_tree(tree, units)
+
+    assert len(tree.root_node_ids) == 1
+    assert len(sections) == 3
+    assert [
+        sum(
+            len(next(node for node in tree.nodes if node.id == node_id).knowledge_unit_ids)
+            for node_id in section.tree_node_ids
+        )
+        for section in sections
+    ] == [3, 3, 1]
+
+    content = LearningContent(
+        id="content_001",
+        material_id="mat_001",
+        material_ids=["mat_001"],
+        title="Course",
+        knowledge_units=units,
+        knowledge_tree=tree,
+        sections=sections,
+    )
+    quality = service._assess_content_quality(content, expected_material_ids=["mat_001"])
+
+    assert quality["recommended_min_section_count"] == 3
+    assert quality["overloaded_section_ids"] == []
+    assert "LearningContent may be over-compressed" not in " ".join(quality["warnings"])
+
+
 def test_collection_learning_content_reports_stage_progress() -> None:
     source_ref = SourceRef(
         material_id="mat_001",
