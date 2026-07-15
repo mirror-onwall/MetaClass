@@ -1,5 +1,6 @@
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
 from pydantic import Field, model_validator
 
@@ -14,6 +15,57 @@ class PPTGenerationStatus(StrEnum):
     FAILED = "failed"
 
 
+class PresentationPlanJobStatus(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+class SlideElementStyle(SchemaModel):
+    font_size: float = Field(default=18, ge=8, le=72)
+    bold: bool = False
+    color: str = Field(default="1F2937", pattern=r"^[0-9A-Fa-f]{6}$")
+    fill: str | None = Field(default=None, pattern=r"^[0-9A-Fa-f]{6}$")
+    line_color: str | None = Field(default=None, pattern=r"^[0-9A-Fa-f]{6}$")
+    line_width: float = Field(default=1, ge=0, le=8)
+    align: Literal["left", "center", "right"] = "left"
+    valign: Literal["top", "middle", "bottom"] = "top"
+    opacity: int = Field(default=100, ge=0, le=100)
+
+
+class SlideElement(SchemaModel):
+    """Safe, declarative element on a normalized 16:9 slide canvas."""
+
+    type: Literal["text", "shape", "line", "image", "table", "chart"]
+    x: float = Field(ge=0, le=1)
+    y: float = Field(ge=0, le=1)
+    w: float = Field(ge=0, le=1)
+    h: float = Field(ge=0, le=1)
+    z: int = Field(default=0, ge=0, le=100)
+    text: str | None = None
+    items: list[str] = Field(default_factory=list, max_length=12)
+    shape: Literal["rectangle", "rounded_rectangle", "oval", "chevron"] = "rectangle"
+    image_path: str | None = None
+    table_rows: list[list[str]] = Field(default_factory=list, max_length=12)
+    chart_type: Literal["bar", "line", "pie", "doughnut"] = "bar"
+    chart_categories: list[str] = Field(default_factory=list, max_length=12)
+    chart_series: list[list[float]] = Field(default_factory=list, max_length=6)
+    chart_series_names: list[str] = Field(default_factory=list, max_length=6)
+    style: SlideElementStyle = Field(default_factory=SlideElementStyle)
+
+    @model_validator(mode="after")
+    def validate_canvas_bounds(self) -> "SlideElement":
+        if self.type == "line":
+            if self.w == 0 and self.h == 0:
+                raise ValueError("line element must have a non-zero span")
+        elif self.w == 0 or self.h == 0:
+            raise ValueError("slide element width and height must be positive")
+        if self.x + self.w > 1 or self.y + self.h > 1:
+            raise ValueError("slide element must stay inside the normalized canvas")
+        return self
+
+
 class SlidePlan(SchemaModel):
     id: str = Field(min_length=1)
     order: int = Field(ge=1)
@@ -22,6 +74,11 @@ class SlidePlan(SchemaModel):
     key_points: list[str] = Field(default_factory=list)
     speaker_script: str = Field(min_length=1)
     suggested_visual: str = Field(min_length=1)
+    # Compatibility label only. `elements` defines the actual free-form layout.
+    layout: str = "freeform"
+    visual_payload: list[str] = Field(default_factory=list)
+    background: str = Field(default="F7F9F7", pattern=r"^[0-9A-Fa-f]{6}$")
+    elements: list[SlideElement] = Field(default_factory=list, max_length=40)
 
 
 class PresentationPlan(SchemaModel):
@@ -29,6 +86,19 @@ class PresentationPlan(SchemaModel):
     content_id: str = Field(min_length=1)
     title: str = Field(min_length=1)
     slides: list[SlidePlan] = Field(min_length=1)
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class PresentationPlanJob(SchemaModel):
+    id: str = Field(min_length=1)
+    content_id: str = Field(min_length=1)
+    status: PresentationPlanJobStatus = PresentationPlanJobStatus.QUEUED
+    progress: int = Field(default=0, ge=0, le=100)
+    step: str = "queued"
+    message: str = "Waiting to generate presentation plan"
+    plan_id: str | None = None
+    error: str | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 

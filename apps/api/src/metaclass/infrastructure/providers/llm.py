@@ -62,13 +62,84 @@ class FakeLLMProvider:
                 },
                 ensure_ascii=False,
             )
+        if "PPT_SCENE_ONLY" in system_text:
+            request_payload = json.loads(user_text)
+            slide = request_payload["slide"]
+            index = request_payload["deck"]["slide_index"] - 1
+            points = (slide.get("key_points") or [slide["title"]])[:4]
+            palettes = [
+                ("F7F3EA", "6B3F2A", "D97757"),
+                ("EEF5F2", "173F3A", "45A08A"),
+                ("F2F1F8", "302B63", "7165A8"),
+            ]
+            background, ink, accent = palettes[index % len(palettes)]
+            elements = [{
+                "type": "text", "x": 0.07, "y": 0.07, "w": 0.82,
+                "h": 0.12, "z": 4, "text": slide["title"],
+                "style": {"font_size": 34, "bold": True, "color": ink},
+            }]
+            for point_index, point in enumerate(points):
+                row, column = divmod(point_index, 2)
+                x, y = 0.08 + column * 0.44, 0.27 + row * 0.27
+                elements.extend([
+                    {
+                        "type": "shape", "x": x, "y": y, "w": 0.39,
+                        "h": 0.21, "z": 0, "shape": "rounded_rectangle",
+                        "style": {"fill": "FFFFFF", "line_color": accent},
+                    },
+                    {
+                        "type": "text", "x": x + 0.035, "y": y + 0.045,
+                        "w": 0.32, "h": 0.12, "z": 2, "text": point,
+                        "style": {"font_size": 18, "color": ink},
+                    },
+                ])
+            return json.dumps(
+                {"background": background, "elements": elements},
+                ensure_ascii=False,
+            )
         if "MetaClass 的 PresentationPlan planner" in system_text:
             request_payload = json.loads(user_text)
-            slides = [
-                {
+            slides = []
+            for index, section in enumerate(request_payload["sections"]):
+                points = (section.get("knowledge_points") or [section["title"]])[:4]
+                elements = [
+                    {
+                        "type": "shape", "x": 0.04, "y": 0.08, "w": 0.012,
+                        "h": 0.82, "z": 0, "shape": "rectangle",
+                        "style": {"fill": ["D1495B", "66A182", "F7B801"][index % 3]},
+                    },
+                    {
+                        "type": "text", "x": 0.08, "y": 0.08, "w": 0.78,
+                        "h": 0.14, "z": 3, "text": section["title"],
+                        "style": {"font_size": 34, "bold": True, "color": "243B53"},
+                    },
+                ]
+                for point_index, point in enumerate(points):
+                    columns = 2 if len(points) == 4 else max(len(points), 1)
+                    row, column = divmod(point_index, columns)
+                    card_w = 0.38 if columns == 2 else 0.78 / columns
+                    card_x = 0.09 + column * (card_w + 0.04)
+                    card_y = 0.29 + row * 0.27
+                    elements.extend(
+                        [
+                            {
+                                "type": "shape", "x": card_x, "y": card_y,
+                                "w": card_w, "h": 0.2, "z": 1,
+                                "shape": "rounded_rectangle",
+                                "style": {"fill": "FFFFFF", "line_color": "CBD5E1"},
+                            },
+                            {
+                                "type": "text", "x": card_x + 0.025,
+                                "y": card_y + 0.035, "w": card_w - 0.05,
+                                "h": 0.13, "z": 2, "text": point,
+                                "style": {"font_size": 17, "color": "334E68"},
+                            },
+                        ]
+                    )
+                slides.append({
                     "source_section_ids": [section["id"]],
                     "title": section["title"],
-                    "key_points": section.get("knowledge_points") or [section["title"]],
+                    "key_points": points,
                     "speaker_script": (
                         f"这一页我们讲{section['title']}。"
                         f"{section.get('summary', '')} "
@@ -78,9 +149,11 @@ class FakeLLMProvider:
                         "Use the source page image with a highlighted callout for "
                         f"{section['title']}."
                     ),
-                }
-                for section in request_payload["sections"]
-            ]
+                    "layout": "freeform",
+                    "visual_payload": points,
+                    "background": ["F7F9F7", "F8F5F0", "F4F7FB"][index % 3],
+                    "elements": elements,
+                })
             return json.dumps(
                 {
                     "title": request_payload["title"],

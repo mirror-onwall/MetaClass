@@ -39,8 +39,16 @@ from metaclass.modules.content.schemas import (
     QuizItem,
 )
 from metaclass.modules.materials.schemas import PageMetadata, SourceRef
-from metaclass.modules.presentation.planner import PresentationPlanGenerator
-from metaclass.modules.presentation.schemas import PPTGenerationJob, PresentationPlan
+from metaclass.modules.presentation.planner import (
+    PresentationPlanDraft,
+    PresentationPlanGenerator,
+    SlidePlanDraft,
+)
+from metaclass.modules.presentation.schemas import (
+    PPTGenerationJob,
+    PresentationPlan,
+    SlideElement,
+)
 from metaclass.modules.video.schemas import VideoJob
 
 
@@ -204,9 +212,7 @@ def test_default_student_agent_states_start_with_four_classroom_roles() -> None:
 
 
 def test_selected_student_agent_states_keep_the_requested_roles() -> None:
-    states = get_student_agent_states(
-        [StudentAgentType.NOTE_TAKER, StudentAgentType.RESEARCHER]
-    )
+    states = get_student_agent_states([StudentAgentType.NOTE_TAKER, StudentAgentType.RESEARCHER])
 
     assert [state.agent_type for state in states] == [
         StudentAgentType.NOTE_TAKER,
@@ -231,9 +237,7 @@ def test_empty_student_selection_keeps_an_empty_roster() -> None:
 
 
 def test_session_request_uses_yj_agent_values_and_accepts_legacy_values() -> None:
-    request = CreateClassroomSessionRequest(
-        student_agent_types=["deep_thinker", "NOTE_TAKER"]
-    )
+    request = CreateClassroomSessionRequest(student_agent_types=["deep_thinker", "NOTE_TAKER"])
 
     assert request.student_agent_types == [
         StudentAgentType.DEEP_THINKER,
@@ -243,9 +247,7 @@ def test_session_request_uses_yj_agent_values_and_accepts_legacy_values() -> Non
 
 def test_session_request_limits_student_selection_to_eight_agents() -> None:
     with pytest.raises(ValidationError):
-        CreateClassroomSessionRequest(
-            student_agent_types=[StudentAgentType.DEEP_THINKER] * 9
-        )
+        CreateClassroomSessionRequest(student_agent_types=[StudentAgentType.DEEP_THINKER] * 9)
 
 
 def test_finished_video_job_requires_result_id() -> None:
@@ -304,6 +306,86 @@ def test_presentation_plan_generator_uses_learning_content_sections() -> None:
     assert plan.slides[0].source_section_ids == ["section_001"]
     assert plan.slides[0].speaker_script
     assert plan.slides[0].suggested_visual
+    assert plan.slides[0].layout == "freeform"
+    assert plan.slides[0].visual_payload
+    assert plan.slides[0].elements
+
+
+def test_presentation_plan_allows_multiple_slides_for_one_section() -> None:
+    content = LearningContent(
+        id="content_split",
+        material_id="mat_001",
+        title="可拆页内容",
+        sections=[
+            LearningSection(
+                id="section_001",
+                title="概念、公式与案例",
+                summary="本节内容较丰富，适合拆成多页。",
+                source_refs=[source_ref()],
+            )
+        ],
+    )
+    draft = PresentationPlanDraft(
+        title=content.title,
+        slides=[
+            SlidePlanDraft(
+                source_section_ids=["section_001"],
+                title="先理解核心概念",
+                key_points=["概念页"],
+                speaker_script="先讲概念。",
+                suggested_visual="概念关系图",
+            ),
+            SlidePlanDraft(
+                source_section_ids=["section_001"],
+                title="再看公式与案例",
+                key_points=["公式页", "案例页"],
+                speaker_script="再讲公式和案例。",
+                suggested_visual="公式与案例并列",
+            ),
+        ],
+    )
+
+    plan = PresentationPlanGenerator()._hydrate_draft(content, draft)
+
+    assert len(plan.slides) == 2
+    assert [slide.source_section_ids for slide in plan.slides] == [
+        ["section_001"],
+        ["section_001"],
+    ]
+
+
+def test_presentation_prompt_is_loaded_from_editable_skill_file() -> None:
+    generator = PresentationPlanGenerator(FakeLLMProvider())
+    messages = generator._build_messages(
+        LearningContent(
+            id="content_skill",
+            material_id="mat_001",
+            title="Prompt test",
+            sections=[
+                LearningSection(
+                    id="section_skill",
+                    title="Skill prompt",
+                    summary="Verify runtime prompt loading.",
+                    source_refs=[source_ref()],
+                )
+            ],
+        )
+    )
+    assert generator.skill_path.name == "SKILL.md"
+    assert "# 自由画布" in messages[0].content
+    assert "visual_payload" in messages[0].content
+    assert "概念页" in messages[0].content
+    assert "例子页" in messages[0].content
+    assert "推导页" in messages[0].content
+    assert "练习页" in messages[0].content
+    assert "禁止" in messages[0].content
+
+
+def test_slide_element_must_stay_inside_canvas() -> None:
+    with pytest.raises(ValidationError):
+        SlideElement(type="text", x=0.9, y=0.1, w=0.2, h=0.1, text="overflow")
+    line = SlideElement(type="line", x=0.1, y=0.2, w=0.5, h=0)
+    assert line.h == 0
 
 
 def test_mastery_estimate_keeps_session_identity() -> None:
@@ -407,8 +489,7 @@ def test_auto_step_treats_intermediate_end_as_scene_boundary() -> None:
         id="plan_001",
         content_id="content_001",
         scenes=[
-            teacher.build_scene(index, section)
-            for index, section in enumerate(sections, start=1)
+            teacher.build_scene(index, section) for index, section in enumerate(sections, start=1)
         ],
     )
     session = ClassroomSession(
@@ -532,7 +613,9 @@ def test_planned_probe_dialog_skips_recent_student_speaker() -> None:
     probe_index = next(
         index for index, action in enumerate(plan.scenes[0].actions) if action.type == "PROBE"
     )
-    students = get_student_agent_states([StudentAgentType.DEEP_THINKER, StudentAgentType.RESEARCHER])
+    students = get_student_agent_states(
+        [StudentAgentType.DEEP_THINKER, StudentAgentType.RESEARCHER]
+    )
     students[0].last_intent = "student_answer_planned_probe"
     session = ClassroomSession(
         id="session_001",

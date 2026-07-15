@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from metaclass.infrastructure.providers.tts import _write_standard_wav
+from metaclass.infrastructure.providers.tts import _ffmpeg_executable, _write_standard_wav
 
 
 def make_wav(duration_seconds: float = 0.1, sample_rate: int = 8_000) -> bytes:
@@ -41,3 +41,20 @@ def test_non_wav_tts_response_is_converted_with_ffmpeg(
     assert output.read_bytes() == converted_wav
     assert duration == pytest.approx(0.1)
     assert not output.with_suffix(".source-audio").exists()
+
+
+def test_ffmpeg_falls_back_to_imageio_bundle(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bundled = tmp_path / "ffmpeg-bundled"
+    bundled.write_bytes(b"binary")
+    _ffmpeg_executable.cache_clear()
+    monkeypatch.setattr("metaclass.infrastructure.providers.tts.which", lambda _name: None)
+    monkeypatch.setattr(
+        "metaclass.infrastructure.providers.tts.imageio_ffmpeg.get_ffmpeg_exe",
+        lambda: str(bundled),
+    )
+
+    assert _ffmpeg_executable() == str(bundled)
+    _ffmpeg_executable.cache_clear()
