@@ -1,4 +1,5 @@
 from pathlib import Path
+from threading import Lock
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -12,6 +13,8 @@ from metaclass.modules.presentation.schemas import (
     PPTGenerationJob,
     PPTGenerationStatus,
     PPTSlideImage,
+    PresentationPlanJob,
+    PresentationPlanJobStatus,
     PresentationPlan,
 )
 from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
@@ -31,12 +34,106 @@ class PresentationService:
         self.contents = contents
         self.planner = planner or PresentationPlanGenerator()
         self.ppt_adapter = ppt_adapter or PPTSkillAdapter()
+        self._plan_jobs: dict[str, PresentationPlanJob] = {}
+        self._plan_job_lock = Lock()
 
     def create_plan(self, content_id: str) -> PresentationPlan:
         content = self.contents.get(content_id)
         plan = self.planner.generate(content)
         self.repository.save_plan(plan)
         return plan
+
+    def create_plan_job(self, content_id: str) -> PresentationPlanJob:
+        self.contents.get(content_id)
+        job = PresentationPlanJob(
+            id=f"presentation_plan_job_{uuid4().hex[:12]}",
+            content_id=content_id,
+            status=PresentationPlanJobStatus.QUEUED,
+            progress=0,
+            step="queued",
+            message="Waiting to generate presentation plan",
+        )
+        self._save_plan_job(job)
+        return job
+
+    def get_plan_job(self, job_id: str) -> PresentationPlanJob:
+        with self._plan_job_lock:
+            job = self._plan_jobs.get(job_id)
+            if not job:
+                raise HTTPException(404, "Presentation plan job not found")
+            return job.model_copy(deep=True)
+
+    def plan_job_result(self, job_id: str) -> PresentationPlan:
+        job = self.get_plan_job(job_id)
+        if job.status == PresentationPlanJobStatus.FAILED:
+            raise HTTPException(422, job.error or "Presentation plan job failed")
+        if job.status != PresentationPlanJobStatus.SUCCEEDED or not job.plan_id:
+            raise HTTPException(409, "Presentation plan job is not finished")
+        return self.get_plan(job.plan_id)
+
+    def run_plan_job(self, job_id: str) -> None:
+        job = self.get_plan_job(job_id)
+        try:
+            job.status = PresentationPlanJobStatus.RUNNING
+            job.progress = 5
+            job.step = "starting"
+            job.message = "Starting presentation planning"
+            job.updated_at = utc_now()
+            self._save_plan_job(job)
+
+            def report_progress(progress: int, step: str, message: str) -> None:
+                self._update_plan_job_progress(job_id, progress, step, message)
+
+            content = self.contents.get(job.content_id)
+            plan = self.planner.generate(content, progress_callback=report_progress)
+
+            self._update_plan_job_progress(
+                job_id,
+                75,
+                "saving",
+                "Saving presentation plan",
+            )
+            self.repository.save_plan(plan)
+
+            job.status = PresentationPlanJobStatus.SUCCEEDED
+            job.progress = 100
+            job.step = "completed"
+            job.message = "Presentation plan generation completed"
+            job.plan_id = plan.id
+            job.updated_at = utc_now()
+            self._save_plan_job(job)
+        except Exception as exc:
+            job.status = PresentationPlanJobStatus.FAILED
+            job.progress = 100
+            job.step = "failed"
+            job.message = "Presentation plan generation failed"
+            job.error = str(exc)
+            job.updated_at = utc_now()
+            self._save_plan_job(job)
+
+    def _save_plan_job(self, job: PresentationPlanJob) -> None:
+        with self._plan_job_lock:
+            self._plan_jobs[job.id] = job.model_copy(deep=True)
+
+    def _update_plan_job_progress(
+        self,
+        job_id: str,
+        progress: int,
+        step: str,
+        message: str,
+    ) -> None:
+        with self._plan_job_lock:
+            job = self._plan_jobs.get(job_id)
+            if not job or job.status != PresentationPlanJobStatus.RUNNING:
+                return
+            progress = min(progress, 99)
+            if progress < job.progress:
+                return
+            job.progress = progress
+            job.step = step
+            job.message = message
+            job.updated_at = utc_now()
+            self._plan_jobs[job_id] = job.model_copy(deep=True)
 
     def get_plan(self, plan_id: str) -> PresentationPlan:
         plan = self.repository.get_plan(plan_id)

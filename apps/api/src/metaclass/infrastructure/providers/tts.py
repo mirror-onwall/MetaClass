@@ -7,10 +7,13 @@ import struct
 import subprocess
 import time
 import wave
+from functools import lru_cache
 from pathlib import Path
+from shutil import which
 from urllib import error, request
 
 import certifi
+import imageio_ffmpeg
 
 from metaclass.infrastructure.providers.base import TTSProvider
 from metaclass.infrastructure.providers.fake import FakeTTSProvider
@@ -25,6 +28,17 @@ DEFAULT_STUDENT_ROLES = (
     "concept_confused",
     "practical_applier",
 )
+
+
+@lru_cache(maxsize=1)
+def _ffmpeg_executable() -> str:
+    system_ffmpeg = which("ffmpeg")
+    if system_ffmpeg:
+        return system_ffmpeg
+    bundled_ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+    if not Path(bundled_ffmpeg).is_file():
+        raise RuntimeError("ffmpeg is unavailable for TTS audio conversion")
+    return bundled_ffmpeg
 
 
 def _normalize_wav_header(audio: bytes) -> bytes:
@@ -50,7 +64,7 @@ def _write_standard_wav(audio: bytes, output: Path) -> float:
             try:
                 converted = subprocess.run(
                     [
-                        "ffmpeg",
+                        _ffmpeg_executable(),
                         "-y",
                         "-loglevel",
                         "error",
@@ -65,7 +79,7 @@ def _write_standard_wav(audio: bytes, output: Path) -> float:
                     text=True,
                     check=False,
                 )
-            except FileNotFoundError as exc:
+            except (FileNotFoundError, RuntimeError) as exc:
                 raise RuntimeError(
                     "TTS returned non-WAV audio, but ffmpeg is unavailable for conversion"
                 ) from exc

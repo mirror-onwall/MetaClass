@@ -378,7 +378,10 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [action, agentTurn, autoPlaying, currentSlide, presentationPlan, session]);
+  // SHOW_PAGE updates currentSlide. Treating that visual update as a new
+  // narration beat cancels the pending autoStep after the action has already
+  // been marked handled, leaving the classroom stuck on its first page.
+  }, [action, agentTurn, autoPlaying, presentationPlan, session]);
 
   useEffect(() => {
     if (!feedback) return;

@@ -6,6 +6,7 @@ from metaclass.modules.presentation.schemas import (
     PPTGenerationJob,
     PPTSlideImage,
     PresentationPlan,
+    PresentationPlanJob,
 )
 from metaclass.modules.presentation.service import PresentationService
 
@@ -20,6 +21,33 @@ def create_router(presentations: PresentationService) -> APIRouter:
     )
     async def create_presentation_plan(content_id: str) -> PresentationPlan:
         return presentations.create_plan(content_id)
+
+    @router.post(
+        "/learning-contents/{content_id}/presentation-plan-jobs",
+        response_model=PresentationPlanJob,
+        status_code=202,
+    )
+    async def create_presentation_plan_job(
+        content_id: str,
+        background_tasks: BackgroundTasks,
+    ) -> PresentationPlanJob:
+        job = presentations.create_plan_job(content_id)
+        background_tasks.add_task(presentations.run_plan_job, job.id)
+        return job
+
+    @router.get(
+        "/presentation-plan-jobs/{job_id}",
+        response_model=PresentationPlanJob,
+    )
+    async def get_presentation_plan_job(job_id: str) -> PresentationPlanJob:
+        return presentations.get_plan_job(job_id)
+
+    @router.get(
+        "/presentation-plan-jobs/{job_id}/result",
+        response_model=PresentationPlan,
+    )
+    async def get_presentation_plan_job_result(job_id: str) -> PresentationPlan:
+        return presentations.plan_job_result(job_id)
 
     @router.get(
         "/learning-contents/{content_id}/presentation-plan",
