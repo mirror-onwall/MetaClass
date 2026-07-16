@@ -5,6 +5,7 @@ from pathlib import Path
 import fitz
 import pytest
 from fastapi.testclient import TestClient
+from PIL import Image
 from pptx import Presentation
 
 from metaclass.main import create_app
@@ -21,6 +22,18 @@ def make_pdf() -> bytes:
     page = document.new_page(width=800, height=450)
     page.insert_text((72, 90), "Matrix Multiplication", fontsize=28)
     page.insert_text((72, 140), "Rows are multiplied by columns.", fontsize=16)
+    payload = document.tobytes()
+    document.close()
+    return payload
+
+
+def make_pdf_with_embedded_image() -> bytes:
+    image_stream = BytesIO()
+    Image.new("RGB", (80, 40), "#336699").save(image_stream, format="PNG")
+    document = fitz.open()
+    page = document.new_page(width=800, height=450)
+    page.insert_text((72, 90), "Image Example", fontsize=28)
+    page.insert_image(fitz.Rect(72, 140, 232, 220), stream=image_stream.getvalue())
     payload = document.tobytes()
     document.close()
     return payload
@@ -61,6 +74,21 @@ def test_combined_upload_and_parse(client: TestClient) -> None:
     assert response.status_code == 201
     assert response.json()["material"]["status"] == "parsed"
     assert response.json()["pages"][0]["source_refs"][0]["page_no"] == 1
+
+
+def test_pdf_parse_extracts_embedded_images(client: TestClient) -> None:
+    response = client.post(
+        "/api/v1/materials/process",
+        files={"file": ("lesson.pdf", make_pdf_with_embedded_image(), "application/pdf")},
+    )
+
+    assert response.status_code == 201, response.text
+    images = response.json()["pages"][0]["embedded_images"]
+    assert len(images) == 1
+    assert images[0]["page_no"] == 1
+    assert images[0]["width"] == 80
+    assert images[0]["height"] == 40
+    assert Path(images[0]["image_path"]).exists()
 
 
 def test_batch_upload_and_parse_accepts_pdf_and_pptx(client: TestClient) -> None:

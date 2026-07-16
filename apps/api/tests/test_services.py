@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -14,9 +15,10 @@ from metaclass.modules.content.schemas import (
     LearningContent,
     LearningSection,
     PageRef,
+    VisualOpportunity,
 )
 from metaclass.modules.content.service import ContentService
-from metaclass.modules.materials.schemas import PageMetadata, SourceRef
+from metaclass.modules.materials.schemas import PageImage, PageMetadata, SourceRef
 from metaclass.modules.materials.service import MaterialService
 from metaclass.modules.video.service import VideoService
 
@@ -365,6 +367,35 @@ def test_llm_learning_provider_parses_course_knowledge_tree() -> None:
     assert tree.nodes[0].knowledge_unit_ids == ["ku_001"]
 
 
+def test_visual_opportunity_hydration_only_allows_embedded_image_paths() -> None:
+    source_ref = SourceRef(
+        material_id="mat_001",
+        page_id="mat_001_page_001",
+        page_no=1,
+        image_path="page-render.png",
+    )
+
+    hydrated = ContentService._hydrate_visual_opportunities(
+        [
+            VisualOpportunity(
+                description="Use the real figure.",
+                image_path="embedded-figure.png",
+                source_refs=[source_ref],
+            ),
+            VisualOpportunity(
+                description="Do not use a full-page render.",
+                image_path="page-render.png",
+                source_refs=[source_ref],
+            ),
+        ],
+        [source_ref],
+        {"embedded-figure.png"},
+    )
+
+    assert hydrated[0].image_path == "embedded-figure.png"
+    assert hydrated[1].image_path is None
+
+
 def test_llm_learning_provider_parses_page_understanding() -> None:
     llm = Mock()
     llm.model = "test-model"
@@ -412,7 +443,9 @@ def test_llm_learning_provider_parses_page_understanding() -> None:
 
 def test_llm_learning_provider_describes_visual_and_organizes_content(tmp_path: Path) -> None:
     image = tmp_path / "page.png"
+    embedded_image = tmp_path / "figure.png"
     image.write_bytes(b"fake image payload")
+    embedded_image.write_bytes(b"fake embedded image payload")
     page = PageMetadata(
         id="mat_001_page_001",
         material_id="mat_001",
@@ -420,6 +453,18 @@ def test_llm_learning_provider_describes_visual_and_organizes_content(tmp_path: 
         title="Matrix Multiplication",
         raw_text="Rows by columns.",
         image_path=str(image),
+        embedded_images=[
+            PageImage(
+                id="mat_001_page_001_image_01",
+                material_id="mat_001",
+                page_id="mat_001_page_001",
+                page_no=1,
+                image_path=str(embedded_image),
+                width=80,
+                height=40,
+                description="A matrix diagram image.",
+            )
+        ],
         source_refs=[
             SourceRef(
                 material_id="mat_001",
@@ -462,6 +507,16 @@ def test_llm_learning_provider_describes_visual_and_organizes_content(tmp_path: 
               "summary": "Rows combine with columns.",
               "teaching_script": "Start from the diagram, then connect rows to columns.",
               "knowledge_points": ["row-column multiplication"],
+              "visual_opportunities": [
+                {
+                  "type": "source_image",
+                  "description": "Use the matrix diagram image.",
+                  "image_path": "%s",
+                  "image_description": "A matrix diagram image.",
+                  "usage_hint": "Place beside the row-column explanation.",
+                  "priority": "high"
+                }
+              ],
               "visual_summary": "A matrix diagram.",
               "transition_to_next": "Next, practice the rule.",
               "quiz_items": [
@@ -476,7 +531,8 @@ def test_llm_learning_provider_describes_visual_and_organizes_content(tmp_path: 
             }
           ]
         }
-        """,
+        """
+        % str(embedded_image).replace("\\", "\\\\"),
     ]
     provider = LLMLearningProvider(llm, vision_enabled=True)
 
@@ -498,6 +554,11 @@ def test_llm_learning_provider_describes_visual_and_organizes_content(tmp_path: 
 
     assert visual == "A matrix diagram."
     assert draft.sections[0].teaching_script.startswith("Start from the diagram")
+    assert draft.sections[0].visual_opportunities[0].image_path == str(embedded_image)
+    organizer_payload = json.loads(llm.complete_json.call_args_list[1].args[0][1].content)
+    assert organizer_payload["pages"][0]["visual_candidates"][0]["image_path"] == str(
+        embedded_image
+    )
 
 
 def test_gemini_vision_provider_parses_generate_content_response(

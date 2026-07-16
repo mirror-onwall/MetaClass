@@ -22,6 +22,7 @@ from metaclass.modules.materials.schemas import (
     MaterialProcessingJob,
     MaterialProcessingJobStatus,
     PageMetadata,
+    PageImage,
     ProcessedMaterial,
     ProcessedMaterials,
     SourceRef,
@@ -253,13 +254,22 @@ class MaterialService:
         document = fitz.open(material.storage_path)
         images_dir = self.data_dir / "processed" / material.id / "pages"
         images_dir.mkdir(parents=True, exist_ok=True)
+        embedded_images = self._extract_pdf_embedded_images(material)
         result = []
         for index, page in enumerate(document):
             number = index + 1
             text = page.get_text("text").strip()
             image_path = images_dir / f"page_{number:03d}.png"
             page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False).save(image_path)
-            result.append(self._metadata(material.id, number, text, image_path))
+            result.append(
+                self._metadata(
+                    material.id,
+                    number,
+                    text,
+                    image_path,
+                    embedded_images=embedded_images.get(number, []),
+                )
+            )
         document.close()
         return self._save_pages(material.id, result)
 
@@ -267,6 +277,7 @@ class MaterialService:
         self, material: Material, output_dir: Path
     ) -> list[PageMetadata]:
         page_images = self._render_pdf_pages(material)
+        embedded_images = self._extract_pdf_embedded_images(material)
         content_list = self._load_mineru_content_list(output_dir)
         if content_list:
             texts_by_page = self._mineru_text_by_page(content_list)
@@ -284,9 +295,62 @@ class MaterialService:
                 )
             )
             pages.append(
-                self._metadata(material.id, number, texts_by_page.get(number, ""), image_path)
+                self._metadata(
+                    material.id,
+                    number,
+                    texts_by_page.get(number, ""),
+                    image_path,
+                    embedded_images=embedded_images.get(number, []),
+                )
             )
         return pages
+
+    def _extract_pdf_embedded_images(self, material: Material) -> dict[int, list[PageImage]]:
+        output_dir = self.data_dir / "processed" / material.id / "embedded_images"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        result: dict[int, list[PageImage]] = {}
+        document = fitz.open(material.storage_path)
+        try:
+            for page_index, page in enumerate(document):
+                page_no = page_index + 1
+                seen_xrefs: set[int] = set()
+                for image_index, image_info in enumerate(page.get_images(full=True), start=1):
+                    xref = int(image_info[0])
+                    if xref in seen_xrefs:
+                        continue
+                    seen_xrefs.add(xref)
+                    try:
+                        extracted = document.extract_image(xref)
+                    except (RuntimeError, ValueError):
+                        continue
+                    image_bytes = extracted.get("image")
+                    if not image_bytes:
+                        continue
+                    width = int(extracted.get("width") or 0)
+                    height = int(extracted.get("height") or 0)
+                    if width <= 1 or height <= 1:
+                        continue
+                    extension = str(extracted.get("ext") or "png").lower()
+                    if extension == "jpeg":
+                        extension = "jpg"
+                    image_id = f"{material.id}_page_{page_no:03d}_image_{image_index:02d}"
+                    image_path = output_dir / f"page_{page_no:03d}_image_{image_index:02d}.{extension}"
+                    image_path.write_bytes(image_bytes)
+                    result.setdefault(page_no, []).append(
+                        PageImage(
+                            id=image_id,
+                            material_id=material.id,
+                            page_id=f"{material.id}_page_{page_no:03d}",
+                            page_no=page_no,
+                            image_path=str(image_path),
+                            width=width,
+                            height=height,
+                            description=f"Embedded image {image_index} from page {page_no}.",
+                        )
+                    )
+        finally:
+            document.close()
+        return result
 
     def _render_pdf_pages(self, material: Material) -> list[Path]:
         document = fitz.open(material.storage_path)
@@ -402,7 +466,15 @@ class MaterialService:
         image.save(path)
         return path
 
-    def _metadata(self, material_id: str, number: int, text: str, image_path: Path) -> PageMetadata:
+    def _metadata(
+        self,
+        material_id: str,
+        number: int,
+        text: str,
+        image_path: Path,
+        *,
+        embedded_images: list[PageImage] | None = None,
+    ) -> PageMetadata:
         title = next(
             (line.strip() for line in text.splitlines() if line.strip()), f"第 {number} 页"
         )
@@ -420,6 +492,7 @@ class MaterialService:
             title=title[:100],
             raw_text=text,
             image_path=str(image_path),
+            embedded_images=embedded_images or [],
             source_refs=[ref],
         )
 

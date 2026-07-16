@@ -83,6 +83,9 @@ class VisualOpportunity(SchemaModel):
     id: str = ""
     type: str = "diagram"
     description: str = ""
+    image_path: str | None = None
+    image_description: str = ""
+    usage_hint: str = ""
     priority: str = "medium"
     source_refs: list[SourceRef] = Field(default_factory=list)
 

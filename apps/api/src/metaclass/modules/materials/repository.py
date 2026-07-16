@@ -127,6 +127,9 @@ class SqlAlchemyMaterialRepository:
                         title=page.title,
                         raw_text=page.raw_text,
                         image_path=page.image_path,
+                        embedded_images=[
+                            image.model_dump(mode="json") for image in page.embedded_images
+                        ],
                         source_refs=[ref.model_dump(mode="json") for ref in page.source_refs],
                     )
                 )
@@ -147,6 +150,7 @@ class SqlAlchemyMaterialRepository:
                         "title": record.title,
                         "raw_text": record.raw_text,
                         "image_path": record.image_path,
+                        "embedded_images": record.embedded_images or [],
                         "source_refs": record.source_refs,
                     }
                 )

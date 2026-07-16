@@ -33,6 +33,17 @@ class SourceRef(SchemaModel):
     image_path: str | None = None
 
 
+class PageImage(SchemaModel):
+    id: str = Field(min_length=1)
+    material_id: str = Field(min_length=1)
+    page_id: str = Field(min_length=1)
+    page_no: int = Field(ge=1)
+    image_path: str = Field(min_length=1)
+    width: int = Field(ge=1)
+    height: int = Field(ge=1)
+    description: str = ""
+
+
 class Material(SchemaModel):
     id: str = Field(min_length=1)
     filename: str = Field(min_length=1)
@@ -53,6 +64,7 @@ class PageMetadata(SchemaModel):
     title: str = Field(default="", max_length=200)
     raw_text: str = ""
     image_path: str = Field(min_length=1)
+    embedded_images: list[PageImage] = Field(default_factory=list)
     source_refs: list[SourceRef] = Field(min_length=1)
 
 

@@ -28,6 +28,7 @@ from metaclass.modules.content.schemas import (
     QuizItem,
     SourceExcerpt,
     TeachingPoint,
+    VisualOpportunity,
 )
 from metaclass.modules.materials.schemas import PageMetadata
 from metaclass.modules.materials.service import MaterialService
@@ -1311,22 +1312,26 @@ class ContentService:
         sections = []
         for index, section in enumerate(draft.sections, start=1):
             if section.page_refs:
-                source_refs = [
-                    ref
+                section_pages = [
+                    page_by_source.get((page_ref.material_id, page_ref.page_no), pages[0])
                     for page_ref in section.page_refs
-                    for ref in page_by_source.get(
-                        (page_ref.material_id, page_ref.page_no),
-                        pages[0],
-                    ).source_refs
                 ]
             else:
-                source_refs = [
-                    ref
+                section_pages = [
+                    page_by_no.get(page_no, page_by_no[pages[0].page_no])
                     for page_no in section.page_nos
-                    for ref in page_by_no.get(page_no, page_by_no[pages[0].page_no]).source_refs
                 ]
+            source_refs = [ref for page in section_pages for ref in page.source_refs]
             if not source_refs:
                 source_refs = pages[0].source_refs
+            valid_image_paths = {
+                image.image_path for page in section_pages for image in page.embedded_images
+            }
+            visual_opportunities = self._hydrate_visual_opportunities(
+                section.visual_opportunities,
+                source_refs,
+                valid_image_paths,
+            )
             quiz_items = [
                 QuizItem(
                     id=f"quiz_{index:03d}_{quiz_index:02d}",
@@ -1352,7 +1357,7 @@ class ContentService:
                     source_excerpts=section.source_excerpts,
                     formulas=section.formulas,
                     examples=section.examples,
-                    visual_opportunities=section.visual_opportunities,
+                    visual_opportunities=visual_opportunities,
                     misconceptions=section.misconceptions,
                     interaction_opportunities=section.interaction_opportunities,
                     transition={"to_next": section.transition_to_next},
@@ -1399,6 +1404,39 @@ class ContentService:
             created_at=created_at,
             updated_at=utc_now(),
         )
+
+    @staticmethod
+    def _hydrate_visual_opportunities(
+        opportunities: list[VisualOpportunity],
+        source_refs: list,
+        valid_image_paths: set[str],
+    ) -> list[VisualOpportunity]:
+        hydrated = []
+        for index, opportunity in enumerate(opportunities, start=1):
+            refs = opportunity.source_refs or source_refs
+            image_path = (
+                opportunity.image_path
+                if opportunity.image_path in valid_image_paths
+                else None
+            )
+            image_description = (
+                opportunity.image_description
+                or opportunity.description
+                or "Embedded source image selected from the material."
+            )
+            hydrated.append(
+                opportunity.model_copy(
+                    update={
+                        "id": opportunity.id or f"visual_{index:02d}",
+                        "image_path": image_path,
+                        "image_description": image_description,
+                        "source_refs": refs,
+                    }
+                )
+            )
+        if hydrated:
+            return hydrated
+        return []
 
     def get(self, content_id: str) -> LearningContent:
         content = self.repository.get(content_id)

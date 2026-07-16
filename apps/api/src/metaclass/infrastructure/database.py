@@ -65,6 +65,7 @@ class Database:
             return
         additions = {
             "materials": {"file_hash": "VARCHAR(64)", "updated_at": "DATETIME"},
+            "page_metadata": {"embedded_images": "JSON"},
             "learning_contents": {
                 "material_ids": "JSON",
                 "collection_id": "VARCHAR(64)",
@@ -140,6 +141,14 @@ class Database:
                             "UPDATE ppt_artifacts "
                             "SET slide_images = '[]' "
                             "WHERE slide_images IS NULL"
+                        )
+                    )
+                if table == "page_metadata":
+                    connection.execute(
+                        text(
+                            "UPDATE page_metadata "
+                            "SET embedded_images = '[]' "
+                            "WHERE embedded_images IS NULL"
                         )
                     )
                 if table == "learning_contents":
@@ -250,6 +259,7 @@ class Database:
                         "mode",
                         "slide_images",
                         "quiz_items",
+                        "embedded_images",
                     }:
                         continue
                     connection.execute(

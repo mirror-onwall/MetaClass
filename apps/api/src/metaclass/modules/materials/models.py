@@ -47,4 +47,5 @@ class PageRecord(Base):
     title: Mapped[str] = mapped_column(String(200))
     raw_text: Mapped[str] = mapped_column(Text)
     image_path: Mapped[str] = mapped_column(Text)
+    embedded_images: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
     source_refs: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
