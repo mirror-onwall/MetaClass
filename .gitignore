@@ -28,6 +28,12 @@ data/generated/*
 data/runtime/*
 !data/**/.gitkeep
 
+# Local runtime and test artifacts
+logs/
+outputs/
+data/test-tmp/
+.codex-pytest-*/
+
 # OS / IDE
 .DS_Store
 .idea/
