@@ -492,12 +492,14 @@ class ClassroomService:
         student = self._select_dialog_student(state)
         if not student:
             return None
+        probe_question = self._executed_probe_question(session)
         student_turn = self.student_roster.generate_turn(
             student,
             state,
             (
-                "老师刚刚抛出了一个计划内开放问题。请你像课堂学生一样自然回应："
-                "可以说出自己的理解、提出困惑，或给一个很短的例子。不要替用户回答正式小测。"
+                f"老师刚刚问：{probe_question}。这是回答回合，请直接回答老师的问题，"
+                "先给出自己的判断，再用一句理由或很短的例子说明。可以不完全确定，"
+                "但不要反问老师、不要提出新的问题，也不要转移话题。"
             ),
         )
         student_turn.intent = "student_answer_planned_probe"
@@ -517,6 +519,16 @@ class ClassroomService:
             feedback=student_turn.speech,
             session=self.get_session(session.id),
         )
+
+    def _executed_probe_question(self, session: ClassroomSession) -> str:
+        event = session.events[-1]
+        action_id = event.payload.action_id
+        plan = self.get_plan(session.plan_id)
+        for scene in plan.scenes:
+            for action in scene.actions:
+                if action.id == action_id and action.type == "PROBE":
+                    return action.payload.question
+        return "请说说你对刚才知识点的理解。"
 
     @staticmethod
     def _last_agent_turn(session: ClassroomSession) -> AgentTurn | None:

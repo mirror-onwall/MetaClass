@@ -284,10 +284,13 @@ function App() {
   const [question, setQuestion] = useState("");
   const [video, setVideo] = useState<VideoResult | null>(null);
   const [autoPlaying, setAutoPlaying] = useState(false);
+  const [playbackTrigger, setPlaybackTrigger] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const autoStepInFlight = useRef(false);
+  const autoPlayingRef = useRef(false);
+  const playbackVersionRef = useRef(0);
   const narratedStepRef = useRef<string | null>(null);
   const narration = useTTSNarration();
 
@@ -350,7 +353,11 @@ function App() {
   const captionAvatar = captionStudentAgent?.avatar ?? teacherQianqianAvatar;
 
   useEffect(() => {
-    if (!session || session.status === "completed") return;
+    autoPlayingRef.current = autoPlaying;
+  }, [autoPlaying]);
+
+  useEffect(() => {
+    if (!session || session.status === "completed" || !autoPlayingRef.current) return;
     const stepKey = agentTurn?.turns.length
       ? `turn:${agentTurn.turns.map((turn) => `${turn.agent_id}:${turn.intent}:${turn.speech}`).join("|")}`
       : action
@@ -360,6 +367,7 @@ function App() {
           : null;
     if (!stepKey || narratedStepRef.current === stepKey) return;
     narratedStepRef.current = stepKey;
+    const playbackVersion = playbackVersionRef.current;
     let cancelled = false;
 
     async function playCurrentBeat() {
@@ -395,6 +403,8 @@ function App() {
         const result = await narration.play(cue);
         if (cancelled || result === "cancelled") return;
         if (result === "blocked") {
+          playbackVersionRef.current += 1;
+          autoPlayingRef.current = false;
           setAutoPlaying(false);
           setError("浏览器尚未启用声音，请点击开始自动课堂重试");
           narratedStepRef.current = null;
@@ -404,7 +414,13 @@ function App() {
           setError("语音暂时不可用，课堂已切换为无声模式并继续推进");
         }
       }
-      if (!cancelled && autoPlaying) void autoStep();
+      if (
+        !cancelled
+        && autoPlayingRef.current
+        && playbackVersion === playbackVersionRef.current
+      ) {
+        void autoStep(playbackVersion);
+      }
     }
 
     void playCurrentBeat();
@@ -415,7 +431,7 @@ function App() {
   // cancels the short SHOW_PAGE beat before autoStep can advance, while the same
   // action has already been marked narrated. Keep slide rendering independent
   // from the classroom playback state machine.
-  }, [action, agentTurn, autoPlaying, presentationPlan, session]);
+  }, [action, agentTurn, playbackTrigger, presentationPlan, session]);
 
   useEffect(() => {
     if (!feedback) return;
@@ -482,6 +498,8 @@ function App() {
   }
 
   function reset(clearFile = true) {
+    playbackVersionRef.current += 1;
+    autoPlayingRef.current = false;
     if (clearFile) setFiles([]);
     setMaterial(null);
     setMaterials([]);
@@ -572,6 +590,8 @@ function App() {
       return { artifact, classroomSession, plan: deck.plan, slideImages };
     });
     if (result) {
+      playbackVersionRef.current += 1;
+      autoPlayingRef.current = true;
       setPresentationArtifact(result.artifact);
       setPresentationPlan(result.plan);
       setPresentationSlideImages(result.slideImages);
@@ -590,15 +610,35 @@ function App() {
     );
   }
 
-  function toggleAutoPlaying() {
-    if (!autoPlaying) narration.unlock();
-    narration.stop();
+  async function toggleAutoPlaying() {
+    if (autoPlaying) {
+      autoPlayingRef.current = false;
+      if (narration.status !== "playing" && narration.status !== "loading") {
+        playbackVersionRef.current += 1;
+      }
+      narration.pause();
+      setAutoPlaying(false);
+      return;
+    }
+
+    autoPlayingRef.current = true;
+    setAutoPlaying(true);
+    if (narration.status === "paused") {
+      await narration.resume();
+      return;
+    }
+    narration.unlock();
+    playbackVersionRef.current += 1;
     narratedStepRef.current = null;
-    setAutoPlaying((value) => !value);
+    setPlaybackTrigger((value) => value + 1);
   }
 
-  async function autoStep() {
-    if (!session || autoStepInFlight.current) return;
+  async function autoStep(playbackVersion = playbackVersionRef.current) {
+    if (
+      !session
+      || autoStepInFlight.current
+      || playbackVersion !== playbackVersionRef.current
+    ) return;
     autoStepInFlight.current = true;
     setError(null);
     try {
@@ -614,14 +654,21 @@ function App() {
       setAgentTurn(result.directed_turn);
       if (result.feedback) setFeedback(result.feedback);
       if (result.status === "waiting" && result.session.waiting_for === "quiz_answer") {
+        playbackVersionRef.current += 1;
+        autoPlayingRef.current = false;
         setAutoPlaying(false);
         setFeedback("请先完成当前小测，提交后课堂会继续。");
       }
       if (result.status === "completed") {
+        playbackVersionRef.current += 1;
+        autoPlayingRef.current = false;
         setAutoPlaying(false);
         setFeedback(result.feedback ?? "本次课堂已经完成。");
       }
     } catch (caught) {
+      if (playbackVersion !== playbackVersionRef.current) return;
+      playbackVersionRef.current += 1;
+      autoPlayingRef.current = false;
       setAutoPlaying(false);
       setError(caught instanceof Error ? caught.message : "自动课堂运行失败");
     } finally {
@@ -656,7 +703,9 @@ function App() {
     setAction(null);
     setAgentTurn(null);
     narratedStepRef.current = null;
-    setAutoPlaying(result.session.status !== "completed");
+    playbackVersionRef.current += 1;
+    autoPlayingRef.current = result.session.status !== "completed";
+    setAutoPlaying(autoPlayingRef.current);
     setFeedback(result.feedback ?? "");
   }
 
@@ -851,6 +900,8 @@ function App() {
                     <button
                       onClick={() => {
                         if (narration.cue) {
+                          playbackVersionRef.current += 1;
+                          autoPlayingRef.current = false;
                           narration.stop();
                           narratedStepRef.current = null;
                           setAutoPlaying(false);

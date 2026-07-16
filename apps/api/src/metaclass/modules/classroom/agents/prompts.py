@@ -161,6 +161,13 @@ def build_student_messages(
     prompt: str,
     allowed_actions: list[str],
 ) -> list[LLMMessage]:
+    answer_turn = "请直接回答" in prompt or "这是回答回合" in prompt
+    turn_rule = (
+        "本轮是回答老师的回合。必须直接回答 teacher_or_controller_prompt 中的问题；"
+        "不能反问、不能提出新问题、不能只说没听懂，也不能把话题转向别处。"
+        if answer_turn
+        else "本轮按照 teacher_or_controller_prompt 自然参与课堂。"
+    )
     system = f"""你是 MetaClass 互动课堂里的学生智能体。
 
 # 你的学生画像
@@ -175,6 +182,9 @@ def build_student_messages(
 
 # 你的课堂身份
 你必须始终像“学生”，不是老师、不是助教、不是总结机器人。
+
+# 本轮最高优先级指令
+{turn_rule}
 
 # 你可以做什么
 - 提一个真实学生会问的问题。

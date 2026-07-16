@@ -2,6 +2,168 @@
 
 本文记录 yj 近期围绕 classroom 自动课堂、多 agent 互动和前端对接的改动，方便后续和前端同学协调。
 
+## 2026-07-16 当前版本更新（以本节为准）
+
+> 本节对应 `feature/yj` 当前代码。下方较早记录保留用于说明演进过程；若旧描述与本节冲突，以本节为准。
+
+### 1. 当前完整生成链路
+
+```text
+上传 PDF/PPT
+  -> PageMetadata / PageUnderstanding
+  -> LearningContent
+  -> 异步 PresentationPlan Job
+  -> 第一阶段：按教学内容动态拆页
+  -> 第二阶段：生成每页自由画布布局
+  -> PPTX + 逐页预览图 + speaker_scripts.json
+  -> 异步 ClassroomPlan Job
+  -> ClassroomSession / 自动课堂播放 / TTS
+```
+
+当前不再按“一个 Section 固定生成一页 PPT”。Planner 会基于每个 Section 中实际包含的概念、例子、公式推导、案例、练习、互动和总结决定拆页数量，因此一个 Section 可以自然展开为多页，也可以在内容较少时保持一页。
+
+### 2. PresentationPlan 丰富字段与两阶段生成
+
+`PresentationPlan` 已从简单的标题、要点和讲稿，扩展为能够承接教学内容与页面设计的中间层。Planner 会尽量保留并使用：
+
+- 概念、定义、知识点与教学目标；
+- 公式、变量解释、推导步骤；
+- 案例、例子、反例与应用场景；
+- 练习、小测、开放问题和互动提示；
+- 原材料来源页、原材料图片候选及视觉使用建议；
+- 每页讲稿、页面用途、教学意图和内容层级。
+
+生成分为两个阶段：
+
+```text
+阶段一：教学规划
+LearningContent -> slide plan
+决定讲什么、拆成几页、每页承担什么教学任务
+
+阶段二：画布规划
+slide plan -> freeform canvas
+决定标题、文本、公式、案例、图片、提示框等元素的坐标、尺寸和样式
+```
+
+自由画布布局主要由 LLM 输出结构化描述，后端再用 Pydantic Schema 校验和归一化。LLM 不直接编写 `python-pptx` 代码；真正的元素创建、布局修正、重叠检测和文件导出由项目内渲染器完成。
+
+### 3. PPTX 自研生成与预览
+
+核心实现：
+
+```text
+apps/api/src/metaclass/modules/presentation/skill_adapter.py
+apps/api/src/metaclass/modules/presentation/pptx_skill/SKILL.md
+```
+
+当前 `PPTSkillAdapter` 已不是早期的占位适配器，而是项目内的 PPTX 渲染实现，主要包括：
+
+- 使用 `python-pptx` 渲染标题、正文、列表、公式、案例卡片、图片和装饰元素；
+- 支持多种教学型布局以及自由画布元素；
+- 对坐标和尺寸进行边界约束，并检测明显元素重叠；
+- 自由画布质量不合格时回退到更稳定的安全布局；
+- 生成可下载的 `deck.pptx`；
+- 生成逐页 PNG 预览和 `speaker_scripts.json`；
+- LibreOffice 可用时优先通过 PPTX -> PDF -> PNG 获得高一致性预览；不可用时使用 Pillow 自由画布预览，而不是展示原材料页。
+
+目前本机 LibreOffice 命令路径失效时会进入 Pillow fallback，因此下载的 PPTX 与前端预览在字体和细节上仍可能存在差异，但前端不会再因为预览转换失败而回退展示原始 PDF 页面。
+
+### 4. 中英文生成规则
+
+已加入统一语言约束：
+
+- 中文材料或中英混合材料：PPT 标题、正文、讲稿和课堂内容统一使用简体中文；
+- 只有原材料整体明确为英文时，才生成英文内容；
+- 专有名词、公式符号、模型名等可保留必要英文。
+
+该规则同时进入 LearningContent、PresentationPlan/PPT 与 ClassroomPlan 的相关生成提示，减少同一页或同一课堂中不必要的中英文混杂。
+
+### 5. 前端异步生成进度
+
+前端已恢复并接入三段异步任务进度：
+
+```text
+PresentationPlan 生成进度
+PPT 生成与预览进度
+ClassroomPlan 生成进度
+```
+
+相关文件：
+
+```text
+apps/web/src/App.tsx
+apps/web/src/shared/api.ts
+apps/web/src/shared/types.ts
+```
+
+前端通过创建 job 后轮询状态，展示 `queued / running / succeeded / failed` 及阶段消息，避免长耗时 LLM 请求表现为页面无响应。LLM 默认读取超时已提高，并保留一次重试；异步 job 解决的是 HTTP 和 UI 阻塞问题，模型调用本身仍可能因供应商响应过慢而超时并进入失败状态。
+
+### 6. PPT 页数与课堂播放对齐
+
+已修复“下载 PPT 有 10 页，但课堂只播放 3 页”的问题。原因是旧 `ClassroomPlan` 按 LearningContent Section 创建 scene，而 PPT 已经动态拆成更多 slide。
+
+现在创建课堂计划时可传入 `presentation_plan_id`，Planner 会以 `PresentationPlan.slides[]` 为播放基准：
+
+```text
+3 个 LearningContent Section
+  -> PresentationPlan 动态拆成 10 个 slide
+  -> ClassroomPlan 展开为 10 个对应 scene
+  -> SHOW_PAGE 使用明确的 slide_no
+  -> 前端依次播放全部 10 页
+```
+
+这样讲稿、页面、课堂动作和 TTS 可以围绕同一个 slide 对齐，而不再依赖不稳定的 `source_ref.page_no -> slide_no` 猜测映射。
+
+### 7. 课堂讲稿、问答与事件存储
+
+当前数据保存位置：
+
+- 每页 PPT 讲稿：`PresentationPlan.slides[].speaker_script`，并导出到 `speaker_scripts.json`；
+- 计划内讲解、开放问题和小测：保存在 `classroom_plans.scenes`；
+- 自动课堂中的老师/学生发言、用户提问、老师回答、动作执行和答题结果：保存在 `classroom_sessions.events` JSON；
+- TTS 文本、音频地址和时长：保存在 `tts_artifacts`。
+
+当前自动课堂使用的 directed teacher/student turn 会写入 session events。旧的独立 `/teacher-turn`、`/student-turns` 接口只返回生成结果，不自动形成统一课堂记录。后续建议新增 transcript API，把 ClassroomPlan 中的计划文本和 Session events 中的实际发言按时间合并，便于直接查看、导出和分析整节课。
+
+### 8. 学生没有回答老师问题的问题（当前未提交改动）
+
+实际 session 日志中发现：计划执行 `PROBE` 后，学生 agent 会重新提出一个问题，而不是回答老师的问题。根因有两个：
+
+1. Runtime 给学生的提示只说“回应计划内开放问题”，没有传入老师刚问的具体问题；
+2. 学生通用 prompt 允许提出困惑和新问题，`deep_thinker` 等画像又更偏向追问。
+
+当前工作区已修复：
+
+- 从最近执行的 `PROBE action_id` 回查 `ClassroomPlan`，取得真实问题文本；
+- 明确要求学生“先给判断，再给一句理由或短例子”；
+- 回答回合禁止反问、禁止提出新问题、禁止转移话题；
+- 补充 prompt 单元测试，确保回答回合的最高优先级规则存在。
+
+涉及尚未提交的文件：
+
+```text
+apps/api/src/metaclass/modules/classroom/agents/prompts.py
+apps/api/src/metaclass/modules/classroom/service.py
+apps/api/tests/test_schemas.py
+```
+
+最近验证结果：
+
+```text
+72 passed
+ruff passed
+frontend build passed（本次三处未提交改动仅涉及后端）
+```
+
+### 9. 当前仍需继续处理
+
+- 增加统一课堂 transcript 查询/导出接口，方便分析讲稿、实际发言和用户问答；
+- 区分“对话连续发生”和“TTS 音频真正重叠播放”，进一步检查前端音频队列；
+- 安装或修复 LibreOffice，验证 PPTX 与前端逐页预览的视觉一致性；
+- 继续改善自由画布的密度、对齐、长文本溢出和复杂公式表现；
+- 让原材料图片、公式、案例在 LearningContent -> PresentationPlan -> Canvas 各阶段的引用关系可追踪、可审计；
+- 根据 LLM 供应商实际速度继续调整模型、超时、重试和降级策略。
+
 ## 补充记录：本次检查后新增在前面的重点
 
 以下是对当前修改记录的补充，主要补上之前容易被忽略、但后续联调时很重要的细节。

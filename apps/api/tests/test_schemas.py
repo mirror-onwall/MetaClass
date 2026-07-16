@@ -15,6 +15,7 @@ from metaclass.modules.classroom.agent_schemas import (
     get_student_agent_states,
 )
 from metaclass.modules.classroom.agents import TeacherAgent
+from metaclass.modules.classroom.agents.prompts import build_student_messages
 from metaclass.modules.classroom.planner import ClassroomPlanGenerator
 from metaclass.modules.classroom.schemas import (
     ActionExecutedEvent,
@@ -26,6 +27,7 @@ from metaclass.modules.classroom.schemas import (
     ClassroomEvent,
     ClassroomPlan,
     ClassroomSession,
+    ClassroomState,
     CreateClassroomSessionRequest,
     GiveFeedbackAction,
     ShowPageAction,
@@ -698,6 +700,36 @@ def test_auto_step_starts_student_dialog_after_planned_probe_in_interactive_mode
     assert result.directed_turn.decision.next_role == "student"
     assert result.directed_turn.turns[0].role == "student"
     assert result.directed_turn.turns[0].intent == "student_answer_planned_probe"
+
+
+def test_student_answer_turn_forbids_starting_a_new_question() -> None:
+    student = get_default_student_agent_states()[0]
+    state = ClassroomSession(
+        id="session_answer_rule",
+        plan_id="plan_answer_rule",
+        mode="interactive",
+        student_states=[student],
+    )
+    classroom_state = ClassroomState(
+        session_id=state.id,
+        plan_id=state.plan_id,
+        mode=state.mode,
+        status="running",
+        scene_index=0,
+        action_index=0,
+        students=state.student_states,
+    )
+    profile = get_default_student_agent_profiles()[0]
+
+    messages = build_student_messages(
+        profile=profile,
+        state=student,
+        classroom_state=classroom_state,
+        prompt="老师刚刚问：这个结论为什么成立？这是回答回合，请直接回答。",
+        allowed_actions=["PROBE"],
+    )
+
+    assert "不能反问、不能提出新问题" in messages[0].content
 
 
 def test_planned_probe_dialog_skips_recent_student_speaker() -> None:
