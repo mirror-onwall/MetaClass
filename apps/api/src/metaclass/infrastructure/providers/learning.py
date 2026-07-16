@@ -177,9 +177,14 @@ Quiz design rules:
                 "page_no": page.page_no,
                 "title": page.title,
                 "raw_text_excerpt": page.raw_text[:1200],
+                "page_image_path": page.image_path,
+                "visual_candidates": [
+                    image.model_dump(mode="json") for image in page.embedded_images[:8]
+                ],
                 "summary": understanding.summary,
                 "expanded_explanation": understanding.expanded_explanation,
                 "visual_description": understanding.visual_description,
+                "visual_analysis": understanding.visual_analysis,
                 "knowledge_points": understanding.knowledge_points,
                 "teaching_focus": understanding.teaching_focus,
                 "possible_questions": understanding.possible_questions,
@@ -200,7 +205,14 @@ Quiz design rules:
                         "when they serve one concept. Preserve page_nos for traceability. "
                         "Return only valid JSON with keys: title, objectives, outline, sections. "
                         "Each section must contain title, page_nos, summary, teaching_script, "
-                        "knowledge_points, visual_summary, transition_to_next, quiz_items. "
+                        "knowledge_points, visual_opportunities, visual_summary, "
+                        "transition_to_next, quiz_items. "
+                        "When a source page contains an embedded image that should be inserted "
+                        "into PPT, add a visual_opportunities item with description, image_path "
+                        "copied from the relevant visual_candidates item, image_description, "
+                        "usage_hint, priority, and source_refs if available. Use [] when no "
+                        "embedded source visual is useful. Do not use page_image_path for "
+                        "visual_opportunities because it is a full-page render. "
                         "Each quiz item must contain question, options, correct_index, "
                         "explanation, knowledge_point. The teaching_script should connect pages "
                         "logically and explain image-heavy pages using visual_description."
@@ -253,6 +265,12 @@ Quiz design rules:
                         formula.model_dump(mode="json")
                         for formula in getattr(understanding, "formulas", [])
                     ],
+                    "visual_description": getattr(understanding, "visual_description", ""),
+                    "visual_analysis": getattr(understanding, "visual_analysis", {}),
+                    "page_image_path": page.image_path,
+                    "visual_candidates": [
+                        image.model_dump(mode="json") for image in page.embedded_images[:8]
+                    ],
                     "misconceptions": [
                         item.model_dump(mode="json")
                         for item in getattr(understanding, "misconceptions", [])
@@ -281,6 +299,12 @@ Quiz design rules:
                         "formulas, examples, visual_opportunities, misconceptions, "
                         "interaction_opportunities, visual_summary, transition_to_next, quiz_items. "
                         "Use page_refs with material_id and page_no for traceability. "
+                        "For visual_opportunities, only recommend embedded source images when "
+                        "they help the PPT explain the section. Each item should include "
+                        "description, image_path copied from a supplied visual_candidates item, "
+                        "image_description, usage_hint, priority, and source_refs/page refs when "
+                        "possible. Do not invent image paths and do not use page_image_path, "
+                        "which is only the full-page render. "
                         "Do not create one section per page unless pedagogically necessary."
                     ),
                 ),
