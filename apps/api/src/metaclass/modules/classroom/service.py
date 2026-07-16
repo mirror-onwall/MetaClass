@@ -37,6 +37,7 @@ from metaclass.modules.classroom.schemas import (
 )
 from metaclass.modules.classroom.repository import ClassroomRepository
 from metaclass.modules.content.service import ContentService
+from metaclass.modules.presentation.service import PresentationService
 
 
 class ClassroomService:
@@ -49,6 +50,7 @@ class ClassroomService:
         student_roster: StudentRosterAgent | None = None,
         controller: ClassroomController | None = None,
         planner: ClassroomPlanGenerator | None = None,
+        presentations: PresentationService | None = None,
     ) -> None:
         self.repository = repository
         self.contents = contents
@@ -57,19 +59,36 @@ class ClassroomService:
         self.student_roster = student_roster or StudentRosterAgent()
         self.controller = controller or ClassroomController()
         self.planner = planner or ClassroomPlanGenerator(fallback_teacher=self.teacher)
+        self.presentations = presentations
 
-    def create_plan(self, content_id: str) -> ClassroomPlan:
+    def create_plan(
+        self, content_id: str, presentation_plan_id: str | None = None
+    ) -> ClassroomPlan:
         content = self.contents.get(content_id)
-        plan, meta = self.planner.generate_with_meta(content)
+        presentation_plan = None
+        if presentation_plan_id:
+            if not self.presentations:
+                raise HTTPException(409, "Presentation service is unavailable")
+            presentation_plan = self.presentations.get_plan(presentation_plan_id)
+            if presentation_plan.content_id != content_id:
+                raise HTTPException(409, "PresentationPlan does not belong to LearningContent")
+        plan, meta = self.planner.generate_with_meta(content, presentation_plan)
         self.repository.save_plan(plan)
         self.repository.save_plan_generation_meta(meta)
         return plan
 
-    def create_plan_job(self, content_id: str) -> ClassroomPlanJob:
+    def create_plan_job(
+        self, content_id: str, presentation_plan_id: str | None = None
+    ) -> ClassroomPlanJob:
         self.contents.get(content_id)
+        if presentation_plan_id:
+            if not self.presentations:
+                raise HTTPException(409, "Presentation service is unavailable")
+            self.presentations.get_plan(presentation_plan_id)
         job = ClassroomPlanJob(
             id=f"plan_job_{uuid4().hex[:12]}",
             content_id=content_id,
+            presentation_plan_id=presentation_plan_id,
             status="queued",
             step="queued",
             progress=0,
@@ -93,7 +112,7 @@ class ClassroomService:
             job.message = "Generating classroom plan"
             self._save_plan_job(job)
 
-            plan = self.create_plan(job.content_id)
+            plan = self.create_plan(job.content_id, job.presentation_plan_id)
 
             job.status = "running"
             job.step = "persisting"
@@ -463,9 +482,7 @@ class ClassroomService:
 
         return None
 
-    def _continue_after_planned_probe(
-        self, session: ClassroomSession
-    ) -> AutoClassroomStep | None:
+    def _continue_after_planned_probe(self, session: ClassroomSession) -> AutoClassroomStep | None:
         if not session.events or session.events[-1].type != "ACTION_EXECUTED":
             return None
         if session.events[-1].payload.action_type != ActionType.PROBE:

@@ -200,7 +200,10 @@ export type StudentAgentState = {
 type ActionBase = { id: string; actor: "system" | "teacher" | "evaluator" };
 
 export type TeachingAction =
-  | (ActionBase & { type: "SHOW_PAGE"; payload: { source_ref: SourceRef } })
+  | (ActionBase & {
+      type: "SHOW_PAGE";
+      payload: { source_ref: SourceRef; slide_no?: number };
+    })
   | (ActionBase & {
       type: "EXPLAIN";
       payload: { text: string; source_refs: SourceRef[] };
@@ -243,6 +246,7 @@ export type ClassroomSession = {
 export type ClassroomPlanJob = {
   id: string;
   content_id: string;
+  presentation_plan_id?: string;
   status: "queued" | "running" | "succeeded" | "failed";
   step: "queued" | "planning" | "persisting" | "completed" | "failed";
   progress: number;
@@ -339,7 +343,49 @@ export type PresentationPlan = {
     key_points: string[];
     speaker_script: string;
     suggested_visual: string;
+    layout: string;
+    visual_payload: string[];
+    background: string;
+    elements: Array<{
+      type: "text" | "shape" | "line" | "image" | "table" | "chart";
+      x: number;
+      y: number;
+      w: number;
+      h: number;
+      z: number;
+      text?: string;
+      items: string[];
+      shape: "rectangle" | "rounded_rectangle" | "oval" | "chevron";
+      image_path?: string;
+      table_rows: string[][];
+      chart_type: "bar" | "line" | "pie" | "doughnut";
+      chart_categories: string[];
+      chart_series: number[][];
+      chart_series_names: string[];
+      style: {
+        font_size: number;
+        bold: boolean;
+        color: string;
+        fill?: string;
+        line_color?: string;
+        line_width: number;
+        align: "left" | "center" | "right";
+        valign: "top" | "middle" | "bottom";
+        opacity: number;
+      };
+    }>;
   }>;
+};
+
+export type PresentationPlanJob = {
+  id: string;
+  content_id: string;
+  status: "queued" | "running" | "succeeded" | "failed";
+  progress: number;
+  step: string;
+  message: string;
+  plan_id?: string;
+  error?: string;
 };
 
 export type PPTGenerationJob = {

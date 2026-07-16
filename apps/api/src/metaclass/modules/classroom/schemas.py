@@ -36,6 +36,7 @@ class ActionType(StrEnum):
 
 class ShowPagePayload(SchemaModel):
     source_ref: SourceRef
+    slide_no: int | None = Field(default=None, ge=1)
 
 
 class ExplainPayload(SchemaModel):
@@ -195,6 +196,7 @@ class ClassroomPlanGenerationMeta(SchemaModel):
 class ClassroomPlanJob(SchemaModel):
     id: str = Field(min_length=1)
     content_id: str = Field(min_length=1)
+    presentation_plan_id: str | None = None
     status: Literal["queued", "running", "succeeded", "failed"] = "queued"
     step: Literal["queued", "planning", "persisting", "completed", "failed"] = "queued"
     progress: int = Field(default=0, ge=0, le=100)

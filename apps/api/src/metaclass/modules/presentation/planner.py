@@ -383,9 +383,7 @@ suggested_visual、visual_payload；layout 固定写 freeform。不要输出 bac
                 "transition_to_next": section.transition_to_next[:500],
                 "visual_summary": section.visual_summary[:600],
                 "page_refs": [item.model_dump(mode="json") for item in section.page_refs],
-                "source_refs": [
-                    self._source_ref_payload(ref) for ref in section.source_refs[:20]
-                ],
+                "source_refs": [self._source_ref_payload(ref) for ref in section.source_refs[:20]],
             }
             for section in content.sections
         ]
@@ -427,9 +425,7 @@ suggested_visual、visual_payload；layout 固定写 freeform。不要输出 bac
                         misconception.model_dump(mode="json")
                         for misconception in item.misconceptions[:6]
                     ],
-                    "source_refs": [
-                        self._source_ref_payload(ref) for ref in item.source_refs[:12]
-                    ],
+                    "source_refs": [self._source_ref_payload(ref) for ref in item.source_refs[:12]],
                     "page_refs": [ref.model_dump(mode="json") for ref in item.page_refs],
                     "relations": [
                         relation.model_dump(mode="json") for relation in item.relations[:6]
@@ -608,7 +604,43 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                     "elements": self._with_fallback_scene(slide, index).elements,
                 }
             )
+        if self._has_unsafe_scene_collisions(elements, slide.title):
+            logger.warning("Replaced overlapping PPT scene on %s with safe layout", slide.id)
+            return SlideSceneDraft.model_validate(
+                {
+                    "background": scene.background,
+                    "elements": self._with_fallback_scene(slide, index).elements,
+                }
+            )
         return SlideSceneDraft(background=scene.background, elements=elements)
+
+    @classmethod
+    def _has_unsafe_scene_collisions(
+        cls,
+        elements: list[SlideElement],
+        slide_title: str,
+    ) -> bool:
+        """Reject collisions between content objects while allowing text on card shapes."""
+        content = [
+            element
+            for element in elements
+            if element.type in {"text", "image", "table", "chart"}
+            and not (
+                element.type == "text"
+                and cls._looks_like_title(element.text or "\n".join(element.items), slide_title)
+            )
+        ]
+        for index, left in enumerate(content):
+            for right in content[index + 1 :]:
+                overlap_w = min(left.x + left.w, right.x + right.w) - max(left.x, right.x)
+                overlap_h = min(left.y + left.h, right.y + right.h) - max(left.y, right.y)
+                if overlap_w <= 0 or overlap_h <= 0:
+                    continue
+                overlap_area = overlap_w * overlap_h
+                smaller_area = min(left.w * left.h, right.w * right.h)
+                if smaller_area and overlap_area / smaller_area >= 0.08:
+                    return True
+        return False
 
     @staticmethod
     def _clean_text_placeholders(text: str) -> str:

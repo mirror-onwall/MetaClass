@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     llm_base_url: str = "https://api.openai.com/v1"
     llm_api_key: str | None = None
     llm_model: str = "gpt-4o-mini"
-    llm_timeout_seconds: float = 60.0
+    llm_timeout_seconds: float = 180.0
     material_parser: str = "auto"
     mineru_command: str = "mineru"
     mineru_timeout_seconds: float = 180.0
@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     vision_timeout_seconds: float | None = None
     embedding_provider: str = "local"
     embedding_model_path: str = ""
-    embedding_base_url: str =  "https://api.openai.com/v1"
+    embedding_base_url: str = "https://api.openai.com/v1"
     embedding_api_key: str = ""
     embedding_model: str = "text-embedding-3-small"
     embedding_dimension: int = 1024

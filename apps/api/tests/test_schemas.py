@@ -28,6 +28,7 @@ from metaclass.modules.classroom.schemas import (
     ClassroomSession,
     CreateClassroomSessionRequest,
     GiveFeedbackAction,
+    ShowPageAction,
     TeachingAction,
 )
 from metaclass.modules.classroom.service import ClassroomService
@@ -48,6 +49,7 @@ from metaclass.modules.presentation.schemas import (
     PPTGenerationJob,
     PresentationPlan,
     SlideElement,
+    SlidePlan,
 )
 from metaclass.modules.video.schemas import VideoJob
 
@@ -386,6 +388,109 @@ def test_slide_element_must_stay_inside_canvas() -> None:
         SlideElement(type="text", x=0.9, y=0.1, w=0.2, h=0.1, text="overflow")
     line = SlideElement(type="line", x=0.1, y=0.2, w=0.5, h=0)
     assert line.h == 0
+
+
+def test_presentation_scene_rejects_overlapping_content_objects() -> None:
+    generator = PresentationPlanGenerator()
+    elements = [
+        SlideElement(
+            type="text",
+            x=0.05,
+            y=0.06,
+            w=0.9,
+            h=0.12,
+            text="页面标题",
+        ),
+        SlideElement(
+            type="image",
+            x=0.08,
+            y=0.25,
+            w=0.5,
+            h=0.5,
+            image_path="source.png",
+        ),
+        SlideElement(
+            type="text",
+            x=0.1,
+            y=0.3,
+            w=0.4,
+            h=0.12,
+            text="不应直接压在图片上的正文",
+        ),
+    ]
+
+    assert generator._has_unsafe_scene_collisions(elements, "页面标题")
+
+
+def test_presentation_scene_allows_text_on_background_card() -> None:
+    generator = PresentationPlanGenerator()
+    elements = [
+        SlideElement(
+            type="shape",
+            x=0.08,
+            y=0.25,
+            w=0.4,
+            h=0.3,
+            shape="rounded_rectangle",
+        ),
+        SlideElement(
+            type="text",
+            x=0.11,
+            y=0.3,
+            w=0.34,
+            h=0.15,
+            text="卡片中的正文",
+        ),
+    ]
+
+    assert not generator._has_unsafe_scene_collisions(elements, "其他标题")
+
+
+def test_classroom_plan_covers_every_presentation_slide() -> None:
+    sections = [
+        LearningSection(
+            id=f"section_{index:03d}",
+            title=f"章节 {index}",
+            summary=f"章节 {index} 的教学内容",
+            source_refs=[source_ref().model_copy(update={"page_no": index})],
+        )
+        for index in range(1, 4)
+    ]
+    content = LearningContent(
+        id="content_ten_slides",
+        material_id="mat_001",
+        title="三节十页课程",
+        sections=sections,
+    )
+    slides = [
+        SlidePlan(
+            id=f"slide_{index:03d}",
+            order=index,
+            source_section_ids=[sections[min((index - 1) // 4, 2)].id],
+            title=f"第 {index} 页",
+            key_points=[f"第 {index} 页要点"],
+            speaker_script=f"讲解第 {index} 页。",
+            suggested_visual="教学图示",
+        )
+        for index in range(1, 11)
+    ]
+    presentation = PresentationPlan(
+        id="presentation_plan_ten",
+        content_id=content.id,
+        title=content.title,
+        slides=slides,
+    )
+
+    plan, _ = ClassroomPlanGenerator(FakeLLMProvider()).generate_with_meta(content, presentation)
+
+    show_actions = [
+        action
+        for scene in plan.scenes
+        for action in scene.actions
+        if isinstance(action, ShowPageAction)
+    ]
+    assert len(plan.scenes) == 10
+    assert [action.payload.slide_no for action in show_actions] == list(range(1, 11))
 
 
 def test_mastery_estimate_keeps_session_identity() -> None:

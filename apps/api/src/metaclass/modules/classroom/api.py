@@ -35,9 +35,11 @@ def create_router(classrooms: ClassroomService) -> APIRouter:
         status_code=202,
     )
     async def create_plan_job(
-        content_id: str, background_tasks: BackgroundTasks
+        content_id: str,
+        background_tasks: BackgroundTasks,
+        presentation_plan_id: str | None = None,
     ) -> ClassroomPlanJob:
-        job = classrooms.create_plan_job(content_id)
+        job = classrooms.create_plan_job(content_id, presentation_plan_id)
         background_tasks.add_task(classrooms.run_plan_job, job.id)
         return job
 

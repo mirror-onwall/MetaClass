@@ -15,6 +15,8 @@ import type {
   ProcessedMaterial,
   ProcessedMaterials,
   PPTArtifact,
+  PPTGenerationJob,
+  PresentationPlanJob,
   PresentationPlan,
   StudentAgentType,
   TTSArtifact,
@@ -184,15 +186,24 @@ export const api = {
   },
   async createSession(
     contentId: string,
+    presentationPlanId: string,
     mode: LearningMode,
     studentAgentTypes?: StudentAgentType[],
+    onProgress?: (job: ClassroomPlanJob) => void,
   ) {
     const created = await request<ClassroomPlanJob>(
-      `/api/v1/learning-contents/${contentId}/classroom-plan-jobs`,
+      `/api/v1/learning-contents/${contentId}/classroom-plan-jobs?presentation_plan_id=${encodeURIComponent(presentationPlanId)}`,
       { method: "POST" },
     );
+    onProgress?.(created);
     const job = await poll(
-      () => request<ClassroomPlanJob>(`/api/v1/classroom-plan-jobs/${created.id}`),
+      async () => {
+        const value = await request<ClassroomPlanJob>(
+          `/api/v1/classroom-plan-jobs/${created.id}`,
+        );
+        onProgress?.(value);
+        return value;
+      },
       (value) => value.status === "succeeded" && Boolean(value.plan_id),
       (value) => (value.status === "failed" ? value.error || value.message : undefined),
     );
@@ -202,25 +213,62 @@ export const api = {
       body: JSON.stringify({ mode, student_agent_types: studentAgentTypes }),
     });
   },
-  async createPresentationDeck(contentId: string) {
-    const plan = await request<PresentationPlan>(
-      `/api/v1/learning-contents/${contentId}/presentation-plans`,
+  async createPresentationDeck(
+    contentId: string,
+    onPlanProgress?: (job: PresentationPlanJob) => void,
+    onPptProgress?: (job: PPTGenerationJob) => void,
+  ) {
+    const createdPlanJob = await request<PresentationPlanJob>(
+      `/api/v1/learning-contents/${contentId}/presentation-plan-jobs`,
       { method: "POST" },
     );
-    const job = await request<{ id: string; status: string; artifact_id?: string; error?: string }>(
+    onPlanProgress?.(createdPlanJob);
+    const planJob = await api.waitForPresentationPlanJob(createdPlanJob.id, onPlanProgress);
+    const plan = await request<PresentationPlan>(
+      `/api/v1/presentation-plan-jobs/${planJob.id}/result`,
+    );
+    const job = await request<PPTGenerationJob>(
       `/api/v1/presentation-plans/${plan.id}/ppt-jobs`,
       { method: "POST" },
     );
-    const finished = await poll(
-      () =>
-        request<{ id: string; status: string; artifact_id?: string; error?: string }>(
-          `/api/v1/ppt-jobs/${job.id}`,
-        ),
-      (value) => value.status === "finished" && Boolean(value.artifact_id),
-      (value) => (value.status === "failed" ? value.error || "PPT 生成失败" : undefined),
-    );
+    onPptProgress?.(job);
+    const finished = await api.waitForPptJob(job.id, onPptProgress);
     const artifact = await request<PPTArtifact>(`/api/v1/ppt-jobs/${finished.id}/artifact`);
     return { plan, artifact };
+  },
+  getPptJob(jobId: string) {
+    return request<PPTGenerationJob>(`/api/v1/ppt-jobs/${jobId}`);
+  },
+  async waitForPptJob(
+    jobId: string,
+    onProgress?: (job: PPTGenerationJob) => void,
+  ) {
+    for (;;) {
+      const job = await api.getPptJob(jobId);
+      onProgress?.(job);
+      if (job.status === "finished" && job.artifact_id) return job;
+      if (job.status === "failed") {
+        throw new Error(job.error ?? "PPT 生成失败");
+      }
+      await wait(1500);
+    }
+  },
+  getPresentationPlanJob(jobId: string) {
+    return request<PresentationPlanJob>(`/api/v1/presentation-plan-jobs/${jobId}`);
+  },
+  async waitForPresentationPlanJob(
+    jobId: string,
+    onProgress?: (job: PresentationPlanJob) => void,
+  ) {
+    for (;;) {
+      const job = await api.getPresentationPlanJob(jobId);
+      onProgress?.(job);
+      if (job.status === "succeeded" && job.plan_id) return job;
+      if (job.status === "failed") {
+        throw new Error(job.error ?? "PPT 规划生成任务失败");
+      }
+      await wait(1500);
+    }
   },
   nextAgentTurn(sessionId: string) {
     return request<DirectedAgentTurn>(`/api/v1/classroom-sessions/${sessionId}/agent-turns/next`, {

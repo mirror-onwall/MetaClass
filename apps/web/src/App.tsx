@@ -26,6 +26,7 @@ import { api } from "./shared/api";
 import { formatBytes } from "./shared/format";
 import type {
   ClassroomSession,
+  ClassroomPlanJob,
   ContentGenerationJob,
   DirectedAgentTurn,
   LearningContent,
@@ -34,7 +35,9 @@ import type {
   MaterialCollection,
   PageMetadata,
   PPTArtifact,
+  PPTGenerationJob,
   PresentationPlan,
+  PresentationPlanJob,
   StudentAgentType,
   TeachingAction,
   VideoResult,
@@ -59,6 +62,34 @@ function contentProgressLabel(job: ContentGenerationJob): string {
   const label = contentStepLabels[job.step] ?? "正在组织学习内容";
   const pageCounts = job.message.match(/\((\d+)\/(\d+)\)/);
   return pageCounts ? `${label} · ${pageCounts[1]}/${pageCounts[2]} 页` : label;
+}
+
+const presentationStepLabels: Record<string, string> = {
+  queued: "等待生成 PPT 规划",
+  starting: "正在启动 PPT 规划",
+  planning_content: "正在规划页面内容",
+  planning_scenes: "正在设计页面版式",
+  saving: "正在保存 PPT 规划",
+  completed: "PPT 规划完成",
+  failed: "PPT 规划失败",
+};
+
+function presentationProgressLabel(job: PresentationPlanJob): string {
+  const label = presentationStepLabels[job.step] ?? "正在生成 PPT 规划";
+  const slideCounts = job.message.match(/\((\d+)\/(\d+)\)/);
+  return slideCounts ? `${label} · ${slideCounts[1]}/${slideCounts[2]} 页` : label;
+}
+
+const classroomPlanStepLabels: Record<string, string> = {
+  queued: "等待生成课堂计划",
+  planning: "正在生成课堂计划",
+  persisting: "正在保存课堂计划",
+  completed: "课堂计划完成",
+  failed: "课堂计划失败",
+};
+
+function classroomPlanProgressLabel(job: ClassroomPlanJob): string {
+  return classroomPlanStepLabels[job.step] ?? "正在生成课堂计划";
 }
 
 const studentAgentChoices: Array<{
@@ -231,6 +262,9 @@ function App() {
   const [contentJob, setContentJob] = useState<ContentGenerationJob | null>(null);
   const [contentView, setContentView] = useState<"outline" | "tree" | "quality">("outline");
   const [presentationPlan, setPresentationPlan] = useState<PresentationPlan | null>(null);
+  const [presentationPlanJob, setPresentationPlanJob] = useState<PresentationPlanJob | null>(null);
+  const [pptJob, setPptJob] = useState<PPTGenerationJob | null>(null);
+  const [classroomPlanJob, setClassroomPlanJob] = useState<ClassroomPlanJob | null>(null);
   const [presentationArtifact, setPresentationArtifact] = useState<PPTArtifact | null>(null);
   const [presentationSlideImages, setPresentationSlideImages] = useState<Record<number, string>>({});
   const [session, setSession] = useState<ClassroomSession | null>(null);
@@ -360,15 +394,14 @@ function App() {
       for (const cue of cues) {
         const result = await narration.play(cue);
         if (cancelled || result === "cancelled") return;
-        if (result === "failed" || result === "blocked") {
+        if (result === "blocked") {
           setAutoPlaying(false);
-          setError(
-            result === "blocked"
-              ? "浏览器尚未启用声音，请点击开始自动课堂重试"
-              : "语音生成或播放失败，请检查 TTS 配置后重新开始课堂",
-          );
+          setError("浏览器尚未启用声音，请点击开始自动课堂重试");
           narratedStepRef.current = null;
           return;
+        }
+        if (result === "failed") {
+          setError("语音暂时不可用，课堂已切换为无声模式并继续推进");
         }
       }
       if (!cancelled && autoPlaying) void autoStep();
@@ -378,9 +411,10 @@ function App() {
     return () => {
       cancelled = true;
     };
-  // SHOW_PAGE updates currentSlide. Treating that visual update as a new
-  // narration beat cancels the pending autoStep after the action has already
-  // been marked handled, leaving the classroom stuck on its first page.
+  // currentSlide is updated as a consequence of SHOW_PAGE. Depending on it here
+  // cancels the short SHOW_PAGE beat before autoStep can advance, while the same
+  // action has already been marked narrated. Keep slide rendering independent
+  // from the classroom playback state machine.
   }, [action, agentTurn, autoPlaying, presentationPlan, session]);
 
   useEffect(() => {
@@ -391,8 +425,27 @@ function App() {
 
   useEffect(() => {
     if (!action || action.type !== "SHOW_PAGE") return;
-    const pageNo = action.payload.source_ref.page_no;
+    const pageNo = action.payload.slide_no ?? action.payload.source_ref.page_no;
     const generatedImage = presentationSlideImages[pageNo];
+    const generatedPages = Object.keys(presentationSlideImages)
+      .map(Number)
+      .sort((left, right) => left - right);
+    if (generatedPages.length) {
+      if (generatedImage) {
+        setCurrentSlide({ src: generatedImage, pageNo, generated: true });
+      } else {
+        setCurrentSlide((previous) => {
+          if (previous?.generated) return previous;
+          const fallbackPage = generatedPages.at(-1)!;
+          return {
+            src: presentationSlideImages[fallbackPage],
+            pageNo: fallbackPage,
+            generated: true,
+          };
+        });
+      }
+      return;
+    }
     const fallbackImage = material ? api.pageImage(material.id, pageNo) : "";
     setCurrentSlide({
       src: generatedImage ?? fallbackImage,
@@ -438,6 +491,9 @@ function App() {
     setContentJob(null);
     setContentView("outline");
     setPresentationPlan(null);
+    setPresentationPlanJob(null);
+    setPptJob(null);
+    setClassroomPlanJob(null);
     setPresentationArtifact(null);
     setPresentationSlideImages({});
     setSession(null);
@@ -490,8 +546,15 @@ function App() {
   async function startClassroom() {
     if (!content) return;
     narration.unlock();
+    setPresentationPlanJob(null);
+    setPptJob(null);
+    setClassroomPlanJob(null);
     const result = await run("正在生成 PPT 并布置课堂", async () => {
-      const deck = await api.createPresentationDeck(content.id);
+      const deck = await api.createPresentationDeck(
+        content.id,
+        setPresentationPlanJob,
+        setPptJob,
+      );
       const artifact = deck.artifact;
       const slideImages = Object.fromEntries(
         artifact.slide_images.map((slide) => [
@@ -501,8 +564,10 @@ function App() {
       );
       const classroomSession = await api.createSession(
         content.id,
+        deck.plan.id,
         learningMode,
         learningMode === "interactive" ? studentAgentTypes : [],
+        setClassroomPlanJob,
       );
       return { artifact, classroomSession, plan: deck.plan, slideImages };
     });
@@ -757,7 +822,6 @@ function App() {
                   <ActionView
                     action={action}
                     answerDisabled={!!busy || session.waiting_for !== "quiz_answer"}
-                    materialId={material?.id}
                     presentationSlideImages={presentationSlideImages}
                     currentSlide={currentSlide}
                     onAnswer={answer}
@@ -927,6 +991,43 @@ function App() {
                 <i style={{ width: `${contentJob.progress}%` }} />
               </div>
               <small>{contentJob.progress}% · 任务可在后台继续运行</small>
+            </>
+          ) : presentationPlanJob && busy === "正在生成 PPT 并布置课堂" ? (
+            <>
+              <b>
+                {classroomPlanJob
+                  ? classroomPlanProgressLabel(classroomPlanJob)
+                  : pptJob ? "正在导出 PPTX" : presentationProgressLabel(presentationPlanJob)}
+              </b>
+              <div
+                className="generation-progress"
+                role="progressbar"
+                aria-label="PPT 生成进度"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={
+                  classroomPlanJob
+                    ? classroomPlanJob.progress
+                    : pptJob ? 75 + Math.round(pptJob.progress * 25) : presentationPlanJob.progress
+                }
+              >
+                <i
+                  style={{
+                    width: `${
+                      classroomPlanJob
+                        ? classroomPlanJob.progress
+                        : pptJob ? 75 + Math.round(pptJob.progress * 25) : presentationPlanJob.progress
+                    }%`,
+                  }}
+                />
+              </div>
+              <small>
+                {classroomPlanJob
+                  ? `${classroomPlanJob.progress}% · 正在布置课堂互动`
+                  : pptJob
+                  ? `${75 + Math.round(pptJob.progress * 25)}% · 正在渲染课堂 PPT`
+                  : `${presentationPlanJob.progress}% · 正在规划课堂 PPT`}
+              </small>
             </>
           ) : (
             <>

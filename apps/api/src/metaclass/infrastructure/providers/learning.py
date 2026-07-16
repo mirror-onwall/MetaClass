@@ -17,6 +17,16 @@ from metaclass.modules.materials.schemas import PageMetadata
 
 logger = logging.getLogger(__name__)
 
+LANGUAGE_RULE = """
+Language policy: inspect the substantive source material, not isolated English terms.
+If the material is Chinese or mixes Chinese and English, write every explanatory field,
+title, summary, teaching script, question, option, label, and recommendation in natural
+Simplified Chinese. Preserve necessary formulas, symbols, proper nouns, and technical terms.
+Use English output only when the substantive source material is entirely or overwhelmingly
+English and contains no meaningful Chinese teaching content. Never mix English UI-style
+labels or instructions into an otherwise Chinese result.
+"""
+
 
 def _parse_json_object(raw: str) -> dict:
     text = raw.strip()
@@ -154,7 +164,8 @@ Quiz design rules:
 - Distractors should be plausible misunderstandings, not obviously irrelevant filler.
 - Every question and explanation must be answerable from the page text only.
 - Keep questions concise and suitable for a classroom checkpoint.
-""",
+"""
+                    + LANGUAGE_RULE,
                 ),
                 LLMMessage(
                     role="user",
@@ -216,6 +227,7 @@ Quiz design rules:
                         "Each quiz item must contain question, options, correct_index, "
                         "explanation, knowledge_point. The teaching_script should connect pages "
                         "logically and explain image-heavy pages using visual_description."
+                        + LANGUAGE_RULE
                     ),
                 ),
                 LLMMessage(
@@ -306,6 +318,7 @@ Quiz design rules:
                         "possible. Do not invent image paths and do not use page_image_path, "
                         "which is only the full-page render. "
                         "Do not create one section per page unless pedagogically necessary."
+                        + LANGUAGE_RULE
                     ),
                 ),
                 LLMMessage(
@@ -351,7 +364,7 @@ Quiz design rules:
                         "nodes should normally have empty knowledge_unit_ids. Parent and prerequisite "
                         "ids must reference existing "
                         "nodes. teaching_sequence must contain node ids in pedagogical order. "
-                        "Organize by teaching logic, not source file or page order."
+                        "Organize by teaching logic, not source file or page order." + LANGUAGE_RULE
                     ),
                 ),
                 LLMMessage(
@@ -399,6 +412,7 @@ Quiz design rules:
                         "Relations must contain source_group_id, target_group_id, relation_type, "
                         "reason, confidence. Allowed relation types are prerequisite_of, extends, "
                         "example_of, contrasts_with, and related_to. Group ids must be unique."
+                        + LANGUAGE_RULE
                     ),
                 ),
                 LLMMessage(

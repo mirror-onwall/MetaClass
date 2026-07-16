@@ -1,16 +1,13 @@
-import { api } from "../../shared/api";
 import type { TeachingAction } from "../../shared/types";
 
 export function ActionView({
   action,
-  materialId,
   presentationSlideImages = {},
   currentSlide,
   onAnswer,
   answerDisabled = false,
 }: {
   action: TeachingAction | null;
-  materialId?: string;
   presentationSlideImages?: Record<number, string>;
   currentSlide?: { src: string; pageNo: number; generated: boolean } | null;
   onAnswer: (index: number) => void;
@@ -36,9 +33,24 @@ export function ActionView({
   }
   if (action.type === "SHOW_PAGE") {
     const source = action.payload.source_ref;
-    const generatedImage = presentationSlideImages[source.page_no];
-    const imageSrc = generatedImage ?? (materialId ? api.pageImage(materialId, source.page_no) : "");
-    return renderSlide({ src: imageSrc, pageNo: source.page_no, generated: Boolean(generatedImage) });
+    const requestedPage = action.payload.slide_no ?? source.page_no;
+    const generatedEntries = Object.entries(presentationSlideImages)
+      .map(([pageNo, src]) => ({ pageNo: Number(pageNo), src }))
+      .sort((left, right) => left.pageNo - right.pageNo);
+    if (generatedEntries.length) {
+      const exact = generatedEntries.find((slide) => slide.pageNo === requestedPage);
+      const generated = exact
+        ?? (currentSlide?.generated ? currentSlide : generatedEntries.at(-1));
+      if (generated) {
+        return renderSlide({ ...generated, generated: true });
+      }
+    }
+    if (currentSlide?.generated) return renderSlide(currentSlide);
+    return (
+      <div className="action-placeholder">
+        <p>正在等待生成的 PPT 页面。</p>
+      </div>
+    );
   }
   if (action.type === "ASK_QUIZ") {
     const quiz = action.payload.quiz;
