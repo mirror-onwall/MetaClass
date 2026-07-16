@@ -34,6 +34,7 @@ export function useTTSNarration() {
   const pendingRef = useRef(new Map<string, Promise<PreparedNarration>>());
   const requestVersionRef = useRef(0);
   const settleRef = useRef<((result: NarrationResult) => void) | null>(null);
+  const pauseRequestedRef = useRef(false);
   const [cue, setCue] = useState<NarrationCue | null>(null);
   const [status, setStatus] = useState<NarrationStatus>("idle");
   const [progress, setProgress] = useState(0);
@@ -66,6 +67,7 @@ export function useTTSNarration() {
   }, [getContext]);
 
   const cancelCurrent = useCallback((clearCue = true) => {
+    pauseRequestedRef.current = false;
     requestVersionRef.current += 1;
     const source = sourceRef.current;
     if (source) {
@@ -208,18 +210,26 @@ export function useTTSNarration() {
       }, 100);
       source.onended = () => settle("ended");
       source.start();
-      setStatus("playing");
+      if (pauseRequestedRef.current) {
+        void context.suspend().then(() => setStatus("paused"));
+      } else {
+        setStatus("playing");
+      }
     });
   }, [cancelCurrent, getContext, prepare, stopProgressTimer]);
 
   const pause = useCallback(() => {
+    pauseRequestedRef.current = true;
     const context = contextRef.current;
-    if (sourceRef.current && context?.state === "running") {
-      void context.suspend().then(() => setStatus("paused"));
+    if (!sourceRef.current || !context || context.state !== "running") {
+      setStatus((current) => current === "loading" ? "paused" : current);
+      return;
     }
+    void context.suspend().then(() => setStatus("paused"));
   }, []);
 
   const resume = useCallback(async () => {
+    pauseRequestedRef.current = false;
     const context = contextRef.current;
     if (!sourceRef.current) return true;
     if (!context || context.state === "running") return true;
