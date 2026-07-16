@@ -111,6 +111,7 @@ def build_services(
         student_roster=StudentRosterAgent(llm),
         controller=ClassroomController(llm),
         planner=ClassroomPlanGenerator(llm, fallback_teacher=TeacherAgent()),
+        presentations=presentations,
     )
     tts = build_tts_provider(
         provider="fake" if force_fake_llm else settings.tts_provider,

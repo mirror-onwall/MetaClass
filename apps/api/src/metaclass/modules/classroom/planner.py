@@ -15,12 +15,17 @@ from metaclass.modules.classroom.schemas import (
     ClassroomScene,
     ExplainAction,
     GiveFeedbackAction,
+    EndAction,
+    EndPayload,
     ProbeAction,
     ProbePayload,
     ReviewAction,
     ReviewPayload,
+    ShowPageAction,
+    ShowPagePayload,
 )
 from metaclass.modules.content.schemas import LearningContent
+from metaclass.modules.presentation.schemas import PresentationPlan
 
 
 class ScenePlanBlueprint(SchemaModel):
@@ -57,10 +62,14 @@ class ClassroomPlanGenerator:
         return plan
 
     def generate_with_meta(
-        self, content: LearningContent
+        self,
+        content: LearningContent,
+        presentation_plan: PresentationPlan | None = None,
     ) -> tuple[ClassroomPlan, ClassroomPlanGenerationMeta]:
         fallback = self._fallback_plan(content)
         if not self.llm:
+            if presentation_plan:
+                fallback = self._align_to_presentation(content, fallback, presentation_plan)
             return fallback, self._meta(
                 fallback,
                 source="fallback",
@@ -71,6 +80,8 @@ class ClassroomPlanGenerator:
             payload = json.loads(raw)
             blueprint = ClassroomPlanBlueprint.model_validate(payload)
             plan = self._hydrate_blueprint(content, blueprint)
+            if presentation_plan:
+                plan = self._align_to_presentation(content, plan, presentation_plan)
             self._validate_runtime_sequence(plan)
             return plan, self._meta(
                 plan,
@@ -85,12 +96,77 @@ class ClassroomPlanGenerator:
             RuntimeError,
             ValueError,
         ) as exc:
+            if presentation_plan:
+                fallback = self._align_to_presentation(content, fallback, presentation_plan)
             return fallback, self._meta(
                 fallback,
                 source="fallback",
                 fallback_reason=str(exc),
                 raw_response=locals().get("raw"),
             )
+
+    @staticmethod
+    def _align_to_presentation(
+        content: LearningContent,
+        classroom_plan: ClassroomPlan,
+        presentation_plan: PresentationPlan,
+    ) -> ClassroomPlan:
+        """Expand section-based classroom scenes to cover every generated PPT slide."""
+        sections = {section.id: section for section in content.sections}
+        scenes_by_section = {
+            section.id: scene
+            for section, scene in zip(content.sections, classroom_plan.scenes, strict=False)
+        }
+        last_slide_for_section: dict[str, int] = {}
+        for slide_no, slide in enumerate(presentation_plan.slides, start=1):
+            for section_id in slide.source_section_ids:
+                last_slide_for_section[section_id] = slide_no
+
+        scenes: list[ClassroomScene] = []
+        for slide_no, slide in enumerate(presentation_plan.slides, start=1):
+            section_id = next(
+                (item for item in slide.source_section_ids if item in sections),
+                content.sections[0].id,
+            )
+            section = sections[section_id]
+            source_ref = section.source_refs[0]
+            prefix = f"slide_scene_{slide_no:03d}"
+            actions = [
+                ShowPageAction(
+                    id=f"{prefix}_show",
+                    type="SHOW_PAGE",
+                    actor="system",
+                    payload=ShowPagePayload(source_ref=source_ref, slide_no=slide_no),
+                ),
+                ExplainAction(
+                    id=f"{prefix}_explain",
+                    type="EXPLAIN",
+                    actor="teacher",
+                    payload={
+                        "text": slide.speaker_script,
+                        "source_refs": section.source_refs,
+                    },
+                ),
+            ]
+            if last_slide_for_section.get(section_id) == slide_no:
+                base_scene = scenes_by_section.get(section_id)
+                if base_scene:
+                    actions.extend(base_scene.actions[2:])
+            if not isinstance(actions[-1], EndAction):
+                actions.append(
+                    EndAction(
+                        id=f"{prefix}_end",
+                        type="END",
+                        actor="system",
+                        payload=EndPayload(summary=f"本页要点：{'；'.join(slide.key_points[:3])}"),
+                    )
+                )
+            scenes.append(ClassroomScene(id=prefix, title=slide.title, actions=actions))
+        return ClassroomPlan(
+            id=f"plan_{uuid4().hex[:12]}",
+            content_id=content.id,
+            scenes=scenes,
+        )
 
     def _meta(
         self,
@@ -221,6 +297,7 @@ class ClassroomPlanGenerator:
 - 阶段收束页：适合 review，而不是再塞新问题。
 
 # 规划原则
+- 语言服从 LearningContent 主体语言：中文或中英混合内容统一使用自然简体中文；只有实质内容为全英文时才使用英文。不要在中文课堂计划中混入英文提示语。
 - 每个输入 section 都应该返回一个 scene 蓝图。
 - include_probe 表示“这里值得自然师生互动”，不是常规打断；只有当问题能帮助理解、暴露误区或连接例子时才打开。
 - probe_question 必须具体指向本 section 的内容，不要写泛泛的“你理解了吗”。
@@ -244,9 +321,7 @@ class ClassroomPlanGenerator:
                         quiz.knowledge_point for quiz in section.quiz_items[:3]
                     ],
                     "has_quiz": bool(section.quiz_items),
-                    "quiz_questions": [
-                        quiz.question[:160] for quiz in section.quiz_items[:2]
-                    ],
+                    "quiz_questions": [quiz.question[:160] for quiz in section.quiz_items[:2]],
                     "page_numbers": sorted({ref.page_no for ref in section.source_refs}),
                 }
             )

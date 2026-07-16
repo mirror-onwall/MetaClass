@@ -73,26 +73,45 @@ class FakeLLMProvider:
                 ("F2F1F8", "302B63", "7165A8"),
             ]
             background, ink, accent = palettes[index % len(palettes)]
-            elements = [{
-                "type": "text", "x": 0.07, "y": 0.07, "w": 0.82,
-                "h": 0.12, "z": 4, "text": slide["title"],
-                "style": {"font_size": 34, "bold": True, "color": ink},
-            }]
+            elements = [
+                {
+                    "type": "text",
+                    "x": 0.07,
+                    "y": 0.07,
+                    "w": 0.82,
+                    "h": 0.12,
+                    "z": 4,
+                    "text": slide["title"],
+                    "style": {"font_size": 34, "bold": True, "color": ink},
+                }
+            ]
             for point_index, point in enumerate(points):
                 row, column = divmod(point_index, 2)
                 x, y = 0.08 + column * 0.44, 0.27 + row * 0.27
-                elements.extend([
-                    {
-                        "type": "shape", "x": x, "y": y, "w": 0.39,
-                        "h": 0.21, "z": 0, "shape": "rounded_rectangle",
-                        "style": {"fill": "FFFFFF", "line_color": accent},
-                    },
-                    {
-                        "type": "text", "x": x + 0.035, "y": y + 0.045,
-                        "w": 0.32, "h": 0.12, "z": 2, "text": point,
-                        "style": {"font_size": 18, "color": ink},
-                    },
-                ])
+                elements.extend(
+                    [
+                        {
+                            "type": "shape",
+                            "x": x,
+                            "y": y,
+                            "w": 0.39,
+                            "h": 0.21,
+                            "z": 0,
+                            "shape": "rounded_rectangle",
+                            "style": {"fill": "FFFFFF", "line_color": accent},
+                        },
+                        {
+                            "type": "text",
+                            "x": x + 0.035,
+                            "y": y + 0.045,
+                            "w": 0.32,
+                            "h": 0.12,
+                            "z": 2,
+                            "text": point,
+                            "style": {"font_size": 18, "color": ink},
+                        },
+                    ]
+                )
             return json.dumps(
                 {"background": background, "elements": elements},
                 ensure_ascii=False,
@@ -104,13 +123,23 @@ class FakeLLMProvider:
                 points = (section.get("knowledge_points") or [section["title"]])[:4]
                 elements = [
                     {
-                        "type": "shape", "x": 0.04, "y": 0.08, "w": 0.012,
-                        "h": 0.82, "z": 0, "shape": "rectangle",
+                        "type": "shape",
+                        "x": 0.04,
+                        "y": 0.08,
+                        "w": 0.012,
+                        "h": 0.82,
+                        "z": 0,
+                        "shape": "rectangle",
                         "style": {"fill": ["D1495B", "66A182", "F7B801"][index % 3]},
                     },
                     {
-                        "type": "text", "x": 0.08, "y": 0.08, "w": 0.78,
-                        "h": 0.14, "z": 3, "text": section["title"],
+                        "type": "text",
+                        "x": 0.08,
+                        "y": 0.08,
+                        "w": 0.78,
+                        "h": 0.14,
+                        "z": 3,
+                        "text": section["title"],
                         "style": {"font_size": 34, "bold": True, "color": "243B53"},
                     },
                 ]
@@ -123,37 +152,46 @@ class FakeLLMProvider:
                     elements.extend(
                         [
                             {
-                                "type": "shape", "x": card_x, "y": card_y,
-                                "w": card_w, "h": 0.2, "z": 1,
+                                "type": "shape",
+                                "x": card_x,
+                                "y": card_y,
+                                "w": card_w,
+                                "h": 0.2,
+                                "z": 1,
                                 "shape": "rounded_rectangle",
                                 "style": {"fill": "FFFFFF", "line_color": "CBD5E1"},
                             },
                             {
-                                "type": "text", "x": card_x + 0.025,
-                                "y": card_y + 0.035, "w": card_w - 0.05,
-                                "h": 0.13, "z": 2, "text": point,
+                                "type": "text",
+                                "x": card_x + 0.025,
+                                "y": card_y + 0.035,
+                                "w": card_w - 0.05,
+                                "h": 0.13,
+                                "z": 2,
+                                "text": point,
                                 "style": {"font_size": 17, "color": "334E68"},
                             },
                         ]
                     )
-                slides.append({
-                    "source_section_ids": [section["id"]],
-                    "title": section["title"],
-                    "key_points": points,
-                    "speaker_script": (
-                        f"这一页我们讲{section['title']}。"
-                        f"{section.get('summary', '')} "
-                        "讲解时可以先给出直观解释，再补充一个例子帮助理解。"
-                    ),
-                    "suggested_visual": (
-                        "Use the source page image with a highlighted callout for "
-                        f"{section['title']}."
-                    ),
-                    "layout": "freeform",
-                    "visual_payload": points,
-                    "background": ["F7F9F7", "F8F5F0", "F4F7FB"][index % 3],
-                    "elements": elements,
-                })
+                slides.append(
+                    {
+                        "source_section_ids": [section["id"]],
+                        "title": section["title"],
+                        "key_points": points,
+                        "speaker_script": (
+                            f"这一页我们讲{section['title']}。"
+                            f"{section.get('summary', '')} "
+                            "讲解时可以先给出直观解释，再补充一个例子帮助理解。"
+                        ),
+                        "suggested_visual": (
+                            f"使用原材料页面图片作为主视觉，并突出说明{section['title']}。"
+                        ),
+                        "layout": "freeform",
+                        "visual_payload": points,
+                        "background": ["F7F9F7", "F8F5F0", "F4F7FB"][index % 3],
+                        "elements": elements,
+                    }
+                )
             return json.dumps(
                 {
                     "title": request_payload["title"],
@@ -212,8 +250,8 @@ class FakeLLMProvider:
                     "reason": "默认由教师保持课堂节奏并推进讲解",
                     "prompt": "请自然推进下一步课堂互动，保持简洁。",
                 },
-                    ensure_ascii=False,
-                )
+                ensure_ascii=False,
+            )
         if "正在回答真实用户刚刚输入的问题" in system_text:
             request_payload = json.loads(user_text)
             question = request_payload.get("user_question", "")
@@ -301,16 +339,7 @@ class OpenAICompatibleLLMProvider:
             },
             method="POST",
         )
-        try:
-            with request.urlopen(
-                req, timeout=self.timeout_seconds, context=self.ssl_context
-            ) as response:
-                body = json.loads(response.read().decode("utf-8"))
-        except error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"LLM request failed: HTTP {exc.code} {detail}") from exc
-        except error.URLError as exc:
-            raise RuntimeError(f"LLM request failed: {exc.reason}") from exc
+        body = self._read_json_with_retry(req, "LLM")
 
         try:
             return str(body["choices"][0]["message"]["content"])
@@ -326,10 +355,7 @@ class OpenAICompatibleLLMProvider:
     ) -> str:
         path = Path(image_path)
         mime_type = mimetypes.guess_type(path.name)[0] or "image/png"
-        data_url = (
-            f"data:{mime_type};base64,"
-            f"{base64.b64encode(path.read_bytes()).decode('ascii')}"
-        )
+        data_url = f"data:{mime_type};base64,{base64.b64encode(path.read_bytes()).decode('ascii')}"
         payload = {
             "model": self.model,
             "messages": [
@@ -355,21 +381,34 @@ class OpenAICompatibleLLMProvider:
             },
             method="POST",
         )
-        try:
-            with request.urlopen(
-                req, timeout=self.timeout_seconds, context=self.ssl_context
-            ) as response:
-                body = json.loads(response.read().decode("utf-8"))
-        except error.HTTPError as exc:
-            detail = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"Vision request failed: HTTP {exc.code} {detail}") from exc
-        except error.URLError as exc:
-            raise RuntimeError(f"Vision request failed: {exc.reason}") from exc
+        body = self._read_json_with_retry(req, "Vision")
 
         try:
             return str(body["choices"][0]["message"]["content"])
         except (KeyError, IndexError, TypeError) as exc:
             raise RuntimeError(f"Unexpected vision response shape: {body}") from exc
+
+    def _read_json_with_retry(self, req: request.Request, label: str) -> dict:
+        """Retry one transient connection/read timeout before failing a job."""
+        for attempt in range(2):
+            try:
+                with request.urlopen(
+                    req,
+                    timeout=self.timeout_seconds,
+                    context=self.ssl_context,
+                ) as response:
+                    return json.loads(response.read().decode("utf-8"))
+            except error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace")
+                raise RuntimeError(f"{label} request failed: HTTP {exc.code} {detail}") from exc
+            except (TimeoutError, error.URLError) as exc:
+                if attempt == 0:
+                    continue
+                reason = exc.reason if isinstance(exc, error.URLError) else str(exc)
+                raise RuntimeError(f"{label} request timed out after 2 attempts: {reason}") from exc
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(f"{label} returned invalid JSON") from exc
+        raise RuntimeError(f"{label} request failed")
 
 
 class GeminiVisionProvider:
