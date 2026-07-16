@@ -179,21 +179,6 @@ const defaultStudentAgentTypes: StudentAgentType[] = studentAgentChoices.map(
   (student) => student.type,
 );
 
-function synchronizedCaption(text: string, progress: number): string {
-  const segments = text
-    .split(/(?<=[。！？!?；;])/)
-    .map((segment) => segment.trim())
-    .filter(Boolean);
-  if (segments.length <= 1) return text;
-  const target = Math.max(0, Math.min(progress, 0.999)) * text.length;
-  let cursor = 0;
-  for (const segment of segments) {
-    cursor += segment.length;
-    if (target <= cursor) return segment;
-  }
-  return segments.at(-1) ?? text;
-}
-
 function actionNarrationCue(
   action: TeachingAction,
   plan: PresentationPlan | null,
@@ -337,9 +322,7 @@ function App() {
     : feedback
       ? agentTurn?.turns.find((turn) => turn.speech === feedback)
       : undefined;
-  const captionText = narration.cue
-    ? synchronizedCaption(narration.cue.text, narration.progress)
-    : feedback;
+  const captionText = narration.cue?.text ?? feedback;
   const captionSpeaker = narration.cue?.speaker
     ?? (captionTurn ? displayAgentName(captionTurn.agent_id, captionTurn.role) : "芊芊老师");
   const captionStudentState = (narration.cue?.role ?? captionTurn?.role) === "student"
@@ -398,7 +381,10 @@ function App() {
 
       if (!cues.length) {
         await new Promise((resolve) => window.setTimeout(resolve, 300));
+      } else {
+        setFeedback("");
       }
+      void narration.prepareAll(cues);
       for (const cue of cues) {
         const result = await narration.play(cue);
         if (cancelled || result === "cancelled") return;
@@ -419,7 +405,9 @@ function App() {
         && autoPlayingRef.current
         && playbackVersion === playbackVersionRef.current
       ) {
-        void autoStep(playbackVersion);
+        await autoStep(playbackVersion);
+      } else if (!cancelled) {
+        narration.clearCue();
       }
     }
 
@@ -652,7 +640,11 @@ function App() {
         return null;
       });
       setAgentTurn(result.directed_turn);
-      if (result.feedback) setFeedback(result.feedback);
+      if (result.directed_turn?.turns.length) {
+        setFeedback("");
+      } else if (result.feedback) {
+        setFeedback(result.feedback);
+      }
       if (result.status === "waiting" && result.session.waiting_for === "quiz_answer") {
         playbackVersionRef.current += 1;
         autoPlayingRef.current = false;
@@ -664,6 +656,13 @@ function App() {
         autoPlayingRef.current = false;
         setAutoPlaying(false);
         setFeedback(result.feedback ?? "本次课堂已经完成。");
+      }
+      if (
+        result.status === "completed"
+        || result.status === "waiting"
+        || (!result.action && !result.directed_turn?.turns.length)
+      ) {
+        narration.clearCue();
       }
     } catch (caught) {
       if (playbackVersion !== playbackVersionRef.current) return;
@@ -691,8 +690,7 @@ function App() {
     const result = await run("LLM Controller 正在调度智能体", () => api.nextAgentTurn(session.id));
     if (!result) return;
     setAgentTurn(result);
-    const firstTurn = result.turns[0];
-    setFeedback(firstTurn ? firstTurn.speech : result.decision.reason);
+    setFeedback(result.turns.length ? "" : result.decision.reason);
   }
 
   async function answer(selectedIndex: number) {

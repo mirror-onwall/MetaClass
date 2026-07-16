@@ -1,0 +1,55 @@
+{"kind":"deck","id":"pr/7h7q4x","name":"Deck"}
+{"kind":"layout","layoutId":"/ppt/slideMasters/slideMaster1.xml","name":"","type":"master","placeholders":[{"name":"title","type":"title","textPreview":"单击此处编辑母版标题样式"},{"name":"body","type":"body","textPreview":"单击此处编辑母版文本样式 | 二级 | 三级 | 四级 | 五级"},{"name":"dateTime","type":"dateTime","textPreview":"2026/7/13"},{"name":"footer","type":"footer"},{"name":"slideNumber","type":"slideNumber","textPreview":"‹#›"}]}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout1.xml","name":"标题幻灯片","type":"title","placeholders":[{"name":"title","type":"title","textPreview":"单击此处编辑母版标题样式"},{"name":"subtitle","type":"subtitle","textPreview":"单击此处编辑母版副标题样式"},{"name":"dateTime","type":"dateTime","textPreview":"2026/7/13"},{"name":"footer","type":"footer"},{"name":"slideNumber","type":"slideNumber","textPreview":"‹#›"}]}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout2.xml","name":"标题和内容"}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout3.xml","name":"节标题"}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout4.xml","name":"两栏内容","type":"twoObj","placeholders":[{"name":"title","type":"title","textPreview":"单击此处编辑母版标题样式"},{"name":"2","textPreview":"单击此处编辑母版文本样式 | 二级 | 三级 | 四级 | 五级"},{"name":"3","textPreview":"单击此处编辑母版文本样式 | 二级 | 三级 | 四级 | 五级"},{"name":"dateTime","type":"dateTime","textPreview":"2026/7/13"},{"name":"footer","type":"footer"},{"name":"slideNumber","type":"slideNumber","textPreview":"‹#›"}]}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout5.xml","name":"比较","type":"twoTxTwoObj","placeholders":[{"name":"title","type":"title","textPreview":"单击此处编辑母版标题样式"},{"name":"body","type":"body","textPreview":"单击此处编辑母版文本样式"},{"name":"3","textPreview":"单击此处编辑母版文本样式 | 二级 | 三级 | 四级 | 五级"},{"name":"body","type":"body","textPreview":"单击此处编辑母版文本样式"},{"name":"5","textPreview":"单击此处编辑母版文本样式 | 二级 | 三级 | 四级 | 五级"},{"name":"dateTime","type":"dateTime","textPreview":"2026/7/13"},{"name":"footer","type":"footer"},{"name":"slideNumber","type":"slideNumber","textPreview":"‹#›"}]}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout6.xml","name":"仅标题","type":"titleOnly","placeholders":[{"name":"title","type":"title","textPreview":"单击此处编辑母版标题样式"},{"name":"dateTime","type":"dateTime","textPreview":"2026/7/13"},{"name":"footer","type":"footer"},{"name":"slideNumber","type":"slideNumber","textPreview":"‹#›"}]}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout7.xml","name":"空白","type":"blank","placeholders":[{"name":"dateTime","type":"dateTime","textPreview":"2026/7/13"},{"name":"footer","type":"footer"},{"name":"slideNumber","type":"slideNumber","textPreview":"‹#›"}]}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout8.xml","name":"内容与标题","type":"objTx","placeholders":[{"name":"title","type":"title","textPreview":"单击此处编辑母版标题样式"},{"name":"2","textPreview":"单击此处编辑母版文本样式 | 二级 | 三级 | 四级 | 五级"},{"name":"body","type":"body","textPreview":"单击此处编辑母版文本样式"},{"name":"dateTime","type":"dateTime","textPreview":"2026/7/13"},{"name":"footer","type":"footer"},{"name":"slideNumber","type":"slideNumber","textPreview":"‹#›"}]}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout9.xml","name":"图片与标题","type":"picTx","placeholders":[{"name":"title","type":"title","textPreview":"单击此处编辑母版标题样式"},{"name":"picture","type":"picture"},{"name":"body","type":"body","textPreview":"单击此处编辑母版文本样式"},{"name":"dateTime","type":"dateTime","textPreview":"2026/7/13"},{"name":"footer","type":"footer"},{"name":"slideNumber","type":"slideNumber","textPreview":"‹#›"}]}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout10.xml","name":"标题和竖排文字","type":"vertTx","placeholders":[{"name":"title","type":"title","textPreview":"单击此处编辑母版标题样式"},{"name":"body","type":"body","textPreview":"单击此处编辑母版文本样式 | 二级 | 三级 | 四级 | 五级"},{"name":"dateTime","type":"dateTime","textPreview":"2026/7/13"},{"name":"footer","type":"footer"},{"name":"slideNumber","type":"slideNumber","textPreview":"‹#›"}]}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout11.xml","name":"竖排标题与文本","type":"vertTitleAndTx","placeholders":[{"name":"title","type":"title","textPreview":"单击此处编辑母版标题样式"},{"name":"body","type":"body","textPreview":"单击此处编辑母版文本样式 | 二级 | 三级 | 四级 | 五级"},{"name":"dateTime","type":"dateTime","textPreview":"2026/7/13"},{"name":"footer","type":"footer"},{"name":"slideNumber","type":"slideNumber","textPreview":"‹#›"}]}
+{"kind":"slide","id":"sl/y90nupkv","slide":1,"title":"四、课堂智能体语音接入","textShapes":8}
+{"kind":"shape","id":"sh/6psjmpwj","slide":1,"name":"任意多边形: 形状 93","bbox":[586.9,-472.56,106.21,1280]}
+{"kind":"textbox","id":"sh/ipovexwn","slide":1,"name":"文本框 15","text":"四、课堂智能体语音接入","textPreview":"四、课堂智能体语音接入","textChars":11,"textLines":1,"bbox":[30.28,9.57,1277.15,67.73]}
+{"kind":"shape","id":"sh/547294r6","slide":1,"name":"矩形 1","bbox":[49.95,259.55,785.61,116.26]}
+{"kind":"shape","id":"sh/k3yl0zql","slide":1,"name":"箭头: 五边形 2","bbox":[49.95,259.75,177.52,116.06]}
+{"kind":"textbox","id":"sh/7qp4be9c","slide":1,"name":"文本框 3","text":"完成\n成果","textPreview":"完成 | 成果","textChars":5,"textLines":2,"bbox":[49.95,265.53,145.35,108.8]}
+{"kind":"shape","id":"sh/at8zelcb","slide":1,"name":"箭头: 右 48","bbox":[660.18,455.07,409.46,18.41]}
+{"kind":"shape","id":"sh/yt8fyl87","slide":1,"name":"矩形 55","bbox":[893.48,417.99,340.02,42.01]}
+{"kind":"textbox","id":"sh/juhg7q9s","slide":1,"name":"文本框 56","text":"已实现：学生角色发言","textPreview":"已实现：学生角色发言","textChars":10,"textLines":1,"bbox":[893.48,419.6,339.76,38.67]}
+{"kind":"shape","id":"sh/9kr6lsfm","slide":1,"name":"矩形 67","bbox":[893.48,625.26,340.8,42.01]}
+{"kind":"textbox","id":"sh/oji5sne1","slide":1,"name":"文本框 68","text":"已实现：语音字幕同步","textPreview":"已实现：语音字幕同步","textChars":10,"textLines":1,"bbox":[893.48,626.87,340.8,38.78]}
+{"kind":"textbox","id":"sh/7q1kfudo","slide":1,"name":"文本框 70","text":"完成 TTS 语音接入：教师与 8 类学生智能体按角色发声，字幕与课堂同步。","textPreview":"完成 TTS 语音接入：教师与 8 类学生智能体按角色发声，字幕与课堂同步。","textChars":38,"textLines":1,"bbox":[48.65,117.67,1184.85,102.6]}
+{"kind":"shape","id":"sh/8ra1oze9","slide":1,"name":"梯形 71","bbox":[0,218.99,1280,33.69]}
+{"kind":"shape","id":"sh/jm1kbuds","slide":1,"name":"矩形 74","bbox":[49.95,406.15,785.61,259.52]}
+{"kind":"shape","id":"sh/kna1kzed","slide":1,"name":"箭头: 五边形 75","bbox":[49.95,406.35,177.52,259.32]}
+{"kind":"textbox","id":"sh/loj2dkvy","slide":1,"name":"文本框 76","text":"语音\n联动","textPreview":"语音 | 联动","textChars":5,"textLines":2,"bbox":[91.91,419.6,48.18,253.53]}
+{"kind":"textbox","id":"sh/298ju94j","slide":1,"name":"文本框 84","text":"课堂由“只显示文字”升级为\n“教师和学生智能体均可发声”","textPreview":"课堂由“只显示文字”升级为 | “教师和学生智能体均可发声”","textChars":28,"textLines":2,"bbox":[240.6,280.26,554.58,79.33]}
+{"kind":"textbox","id":"sh/4bq1wzmp","slide":1,"name":"文本框 86","text":"➤ 角色化 TTS：教师使用统一音色，8 类学生按角色映射不同音色。\n➤ 字幕同步：智能体先生成发言，再合成语音并同步显示角色字幕。\n➤ 自动推进：语音结束后自动推进，页面、问答和智能体发言同步。","textPreview":"➤ 角色化 TTS：教师使用统一音色，8 类学生按角色映射不同音色。 | ➤ 字幕同步：智能体先生成发言，再合成语音并同步显示角色字幕。 | ➤ 自动推进：语音结束后自动推进，页面、问答和智能体发言同步。","textChars":98,"textLines":3,"bbox":[230.95,399.36,604.61,271.33]}
+{"kind":"image","id":"im/lsfqt0nu","slide":1,"name":"","alt":"Student agent speech in the MetaClass classroom","bbox":[911.76,220.54,304,236.1]}
+{"kind":"image","id":"im/vmhsjupw","slide":1,"name":"","alt":"Synchronized classroom speech and subtitle UI","bbox":[894.27,481.33,338.98,171.67]}
+{"kind":"notes","id":"nt/y90nupkv","slide":1,"text":"目前前端已经具备逐页展示课件、读取页面讲稿和组织课堂流程的基础，也可以根据 PPT 页面和讲稿生成基础的无声教学内容。下一步需要在现有链路上接入大语言模型和 TTS，完成逐页配音。\n首先，后端会将每一页 PPT 的文字、页面理解结果和上下文传给大语言模型，生成更加自然、适合口头讲解的逐页讲稿。然后将讲稿按照页码结构化保存，保证每一页 PPT 都能对应自己的讲稿、音频和字幕。\n接着，通过 TTS 将逐页讲稿转换成语音，并根据讲稿内容切分字幕。前端则通过音频播放事件和课堂状态管理，控制当前 PPT 页码、音频、字幕和互动界面同步更新。\n最终希望实现的效果是：播放到哪一页，就展示对应的 PPT，同时播放这一页的讲解语音和字幕，使整个课堂形成连续、同步的教学体验。"}
+{"kind":"slide","id":"sl/hwbqtkby","slide":2,"title":"四、逐页讲解视频生成","textShapes":8}
+{"kind":"shape","id":"sh/yxkfi9wz","slide":2,"name":"任意多边形: 形状 93","bbox":[586.9,-472.56,106.21,1280]}
+{"kind":"textbox","id":"sh/ahwrqhgj","slide":2,"name":"文本框 15","text":"四、逐页讲解视频生成","textPreview":"四、逐页讲解视频生成","textChars":10,"textLines":1,"bbox":[30.28,9.57,1277.15,67.73]}
+{"kind":"shape","id":"sh/9072xkry","slide":2,"name":"矩形 1","bbox":[49.95,259.55,785.61,116.26]}
+{"kind":"shape","id":"sh/ozy1ofad","slide":2,"name":"箭头: 五边形 2","bbox":[49.95,259.75,177.52,116.06]}
+{"kind":"textbox","id":"sh/b29kza94","slide":2,"name":"文本框 3","text":"完成\n成果","textPreview":"完成 | 成果","textChars":5,"textLines":2,"bbox":[49.95,265.53,145.35,108.8]}
+{"kind":"shape","id":"sh/a1cba1wb","slide":2,"name":"箭头: 右 48","bbox":[660.18,455.07,409.46,18.41]}
+{"kind":"shape","id":"sh/q5ozitov","slide":2,"name":"矩形 55","bbox":[893.48,417.99,340.02,42.01]}
+{"kind":"textbox","id":"sh/r6x0rypg","slide":2,"name":"文本框 56","text":"已实现：带配音 MP4","textPreview":"已实现：带配音 MP4","textChars":11,"textLines":1,"bbox":[893.48,419.6,339.76,38.67]}
+{"kind":"shape","id":"sh/9svih8zm","slide":2,"name":"矩形 67","bbox":[893.48,625.26,340.8,42.01]}
+{"kind":"textbox","id":"sh/8rmh83y1","slide":2,"name":"文本框 68","text":"已实现：PPT 逐页入镜","textPreview":"已实现：PPT 逐页入镜","textChars":12,"textLines":1,"bbox":[893.48,626.87,340.8,38.78]}
+{"kind":"textbox","id":"sh/zytgbexk","slide":2,"name":"文本框 70","text":"完成 PPT 逐页讲解视频：页面、教师配音与字幕严格对应，可导出 MP4。","textPreview":"完成 PPT 逐页讲解视频：页面、教师配音与字幕严格对应，可导出 MP4。","textChars":37,"textLines":1,"bbox":[48.65,117.67,1184.85,102.6]}
+{"kind":"shape","id":"sh/0j2xkje5","slide":2,"name":"梯形 71","bbox":[0,218.99,1280,33.69]}
+{"kind":"shape","id":"sh/bu9w7uxo","slide":2,"name":"矩形 74","bbox":[49.95,406.15,785.61,259.52]}
+{"kind":"shape","id":"sh/cv2xgzet","slide":2,"name":"箭头: 五边形 75","bbox":[49.95,406.35,177.52,259.32]}
+{"kind":"textbox","id":"sh/dwbe94fe","slide":2,"name":"文本框 76","text":"视频\n合成","textPreview":"视频 | 合成","textChars":5,"textLines":2,"bbox":[91.91,419.6,48.18,253.53]}
+{"kind":"textbox","id":"sh/ipk7udcn","slide":2,"name":"文本框 84","text":"课后回放由“无声视频”升级为\n“PPT 画面、配音和字幕逐页同步”","textPreview":"课后回放由“无声视频”升级为 | “PPT 画面、配音和字幕逐页同步”","textChars":33,"textLines":2,"bbox":[240.6,280.26,554.58,79.33]}
+{"kind":"textbox","id":"sh/4r2pwnut","slide":2,"name":"文本框 86","text":"➤ 逐页讲稿配音：读取每页讲稿字段，使用教师音色生成对应语音。\n➤ PPT 画面入镜：视频直接使用生成后的 PPT 页图，不再沿用原 PDF 页面。\n➤ MP4 完整输出：按语音时长切换页面，并同步生成 SRT 字幕。","textPreview":"➤ 逐页讲稿配音：读取每页讲稿字段，使用教师音色生成对应语音。 | ➤ PPT 画面入镜：视频直接使用生成后的 PPT 页图，不再沿用原 PDF 页面。 | ➤ MP4 完整输出：按语音时长切换页面，并同步生成 SRT 字幕。","textChars":109,"textLines":3,"bbox":[230.95,399.36,604.61,271.33]}
+{"kind":"image","id":"im/l0nqpsbe","slide":2,"name":"","alt":"Narrated video ready for MP4 download","bbox":[911.76,220.54,304,236.1]}
+{"kind":"image","id":"im/vupsfmdg","slide":2,"name":"","alt":"Generated PPT page used in the narrated video","bbox":[894.27,481.33,338.98,171.67]}
+{"kind":"notes","id":"nt/hwbqtkby","slide":2,"text":"目前前端已经具备逐页展示课件、读取页面讲稿和组织课堂流程的基础，也可以根据 PPT 页面和讲稿生成基础的无声教学内容。下一步需要在现有链路上接入大语言模型和 TTS，完成逐页配音。\n首先，后端会将每一页 PPT 的文字、页面理解结果和上下文传给大语言模型，生成更加自然、适合口头讲解的逐页讲稿。然后将讲稿按照页码结构化保存，保证每一页 PPT 都能对应自己的讲稿、音频和字幕。\n接着，通过 TTS 将逐页讲稿转换成语音，并根据讲稿内容切分字幕。前端则通过音频播放事件和课堂状态管理，控制当前 PPT 页码、音频、字幕和互动界面同步更新。\n最终希望实现的效果是：播放到哪一页，就展示对应的 PPT，同时播放这一页的讲解语音和字幕，使整个课堂形成连续、同步的教学体验。"}

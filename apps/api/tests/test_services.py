@@ -405,6 +405,14 @@ def test_llm_learning_provider_parses_page_understanding() -> None:
       "knowledge_points": ["matrix multiplication", "row by column"],
       "teaching_focus": ["shape compatibility"],
       "possible_questions": ["Why must dimensions match?"],
+      "key_excerpts": [
+        {
+          "text": "Rows are multiplied by columns.",
+          "type": "claim",
+          "reason": "It states the core operation.",
+          "Color": ""
+        }
+      ],
       "formulas": [
         {
           "latex": "w = u v cos(theta)",
@@ -432,6 +440,7 @@ def test_llm_learning_provider_parses_page_understanding() -> None:
 
     assert draft.summary == "Matrix multiplication combines rows and columns."
     assert draft.knowledge_points == ["matrix multiplication", "row by column"]
+    assert draft.key_excerpts[0].text == "Rows are multiplied by columns."
     assert draft.formulas[0].variables == [
         {"symbol": "u", "meaning": ""},
         {"symbol": "v", "meaning": ""},

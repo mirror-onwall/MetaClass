@@ -174,7 +174,7 @@ Quiz design rules:
             ],
             temperature=0.2,
         )
-        return PageUnderstandingDraft.model_validate_json(response)
+        return PageUnderstandingDraft.model_validate_json(response, extra="ignore")
 
     def organize_learning_content(
         self,
@@ -240,7 +240,7 @@ Quiz design rules:
             ],
             temperature=0.2,
         )
-        return LearningContentDraft.model_validate_json(response)
+        return LearningContentDraft.model_validate_json(response, extra="ignore")
 
     def organize_collection_learning_content(
         self,
@@ -339,7 +339,7 @@ Quiz design rules:
             ],
             temperature=0.2,
         )
-        return LearningContentDraft.model_validate_json(response)
+        return LearningContentDraft.model_validate_json(response, extra="ignore")
 
     def build_course_knowledge_tree(
         self,
@@ -381,7 +381,7 @@ Quiz design rules:
             ],
             temperature=0.1,
         )
-        return CourseKnowledgeTree.model_validate_json(response)
+        return CourseKnowledgeTree.model_validate_json(response, extra="ignore")
 
     def canonicalize_knowledge_units(
         self, units: list[KnowledgeUnit]
@@ -422,7 +422,7 @@ Quiz design rules:
             ],
             temperature=0.1,
         )
-        return KnowledgeCanonicalizationDraft.model_validate_json(response)
+        return KnowledgeCanonicalizationDraft.model_validate_json(response, extra="ignore")
 
     @staticmethod
     def _page_context(page: PageMetadata | None) -> dict | None:

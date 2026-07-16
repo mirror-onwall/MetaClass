@@ -28,10 +28,57 @@
 | 教学动作 | `POST /api/v1/classroom-sessions/{id}/next` | 返回 `TeachingAction`，前端按 `type` 渲染 | 前端、课堂模块 |
 | 智能体轮次 | `POST /api/v1/classroom-sessions/{id}/agent-turns/next` | 返回调度决策与智能体发言 | 前端、课堂模块 |
 | 提问/答题 | `questions` / `answers` 接口 | 更新 session、反馈与掌握度 | 前端、课堂模块 |
-| 视频生成 | `POST /api/v1/learning-contents/{id}/videos` | 当前同步完成任务后返回结果 | 前端、视频模块 |
+| 实时语音 | `POST /api/v1/tts-artifacts`，再读取响应中的 `audio_url` | 请求携带 `text`、`scope`、`ref_id`、`voice`；教师和学生角色使用固定音色映射 | 前端、视频模块、TTS Provider |
+| 视频生成 | `POST /api/v1/learning-contents/{id}/videos?presentation_artifact_id={id}` | 异步生成任务；使用已生成 PPT 画面和逐页 `speaker_script` 合成讲解视频 | 前端、演示文稿模块、视频模块 |
 | 视频播放 | `GET /api/v1/videos/{resultId}/download` | 返回 MP4，前端直接使用 `<video>` 播放 | 前端、视频模块 |
 
 ## 变更记录
+
+### 2026-07-16 - MiniMax Speech 2.8 云端语音与固定角色音色
+
+- 负责人：Wyr / `wyr`。
+- 改动文件：`apps/web/src/features/video/useTTSNarration.ts`、`apps/web/src/App.tsx`、`apps/api/src/metaclass/modules/video/api.py`、`apps/api/src/metaclass/modules/video/service.py`、`apps/api/tests/test_mvp_flow.py`。
+- 变更：新增 MiniMax T2A v2 Provider，使用低延迟 `speech-2.8-turbo`，解析接口返回的十六进制 MP3 并统一转换为现有课堂和视频流程使用的 WAV。
+- 变更：一轮课堂发言会并行预生成最多三条云端 TTS，并缓存已下载、解码的音频；后端对相同 Provider、文本、作用域、引用和角色音色复用稳定的语音产物，减少重复生成等待。
+- 变更：课堂前端不再启用浏览器 `speechSynthesis`，只播放后端生成的云端语音。MiniMax 配置为芊芊老师和八类学生提供九种固定普通话音色，保证同一角色前后音色一致。
+- 环境要求：设置 `METACLASS_TTS_PROVIDER=minimax`、`METACLASS_TTS_BASE_URL=https://api-bj.minimaxi.com`、`METACLASS_TTS_MODEL=speech-2.8-turbo`，并在 `METACLASS_TTS_API_KEY` 填入 MiniMax 官方 Key；本文档不记录实际密钥。
+- 联调注意：使用 MiniMax 官方北京入口，不再经过智增增语音通道；`.env` 已被 Git 忽略，禁止把官方 Key 写入提交文件。
+- 接口影响：路径和请求结构不变；`voice=teacher` 固定映射教师音色，`voice=student_{agent_type}` 按八种学生角色稳定映射学生音色列表。
+- 联调状态：MiniMax 官方接口真实联调通过；教师测试短句 1.48 秒返回，八种学生音色测试短句分别约 0.67～0.91 秒返回。后端 Provider/缓存测试与前端生产构建均通过。
+
+### 2026-07-16 - 智能体文字气泡稳定显示
+
+- 负责人：Wyr / `wyr`。
+- 改动文件：`apps/web/src/App.tsx`、`apps/web/src/features/video/useTTSNarration.ts`、`apps/web/src/styles.css`。
+- 变更：连续师生发言切换时保留上一条字幕，下一位开始后直接替换，取消字幕短暂清空后回退旧反馈的状态跳转。
+- 变更：语音播放期间稳定显示当前完整发言，不再每 100 毫秒按句切换；气泡使用固定高度和内部滚动，并取消重复入场位移动画，避免角色切换时页面抖动。
+- 接口影响：无，仅调整前端字幕状态与布局。
+- 联调状态：前端生产构建通过。
+
+### 2026-07-16 - 学习内容模型输出兼容
+
+- 负责人：Wyr / `wyr`。
+- 改动文件：`apps/api/src/metaclass/infrastructure/providers/learning.py`、`apps/api/tests/test_services.py`。
+- 变更：解析大模型生成的学习内容草稿时忽略 Schema 未声明的附加字段，避免模型在 `key_excerpts` 中偶发输出 `Color` 等展示字段后触发 `extra_forbidden`，导致“流程暂停”。
+- 接口影响：公开响应结构不变；只丢弃未定义的模型附加字段，已声明字段仍按 Pydantic 类型校验。
+- 联调状态：页面理解定向测试通过。
+
+### 2026-07-16 - 合入最新 main
+
+- 负责人：Wyr / `wyr`。
+- 合并记录：合入 `main` 提交 `019cd4d`，包含 yj 的演示文稿生成与课堂播放改进，以及 lsq 的材料图片提取和 LearningContent 视觉候选改动。
+- 兼容处理：保留 Wyr 的 TTS、语音视频与前端课堂联动实现；未修改 `.env` 中的个人模型配置。
+- 联调状态：前后端已在本地启动并完成主要流程检查。
+
+### 2026-07-14 - 真实 TTS、师生语音联动与 PPT 讲解视频
+
+- 负责人：Wyr / `wyr`。
+- 提交：`109caeb`（`feat: add synchronized classroom TTS and PPT video narration`）。
+- 改动文件：TTS Provider、视频服务与 API、演示文稿服务、前端课堂播放和语音 Hook、共享 API 与类型，以及对应测试和 `.env.example`。
+- 变更：接入 OpenAI-compatible TTS；PPT 逐页讲稿和 Teacher/Student Agent 发言均先生成文字，再按教师或学生角色转换成语音，前端按发言顺序同步显示头像、姓名、文字和声音。
+- 变更：讲解视频改为使用系统生成的 PPT 页面图片，不再使用原 PDF 页面；每页画面与对应 `speaker_script` 教师配音合成为分段视频，最终输出 MP4 与字幕。
+- 接口影响：新增 `POST /api/v1/tts-artifacts`、`GET /api/v1/tts-artifacts/{id}`、`GET /api/v1/tts-artifacts/{id}/audio`；视频生成请求增加可选查询参数 `presentation_artifact_id`，并继续通过视频任务接口轮询结果。
+- 联调状态：TTS Provider、视频流程和前端构建测试通过，已于 2026-07-14 合入 `main`。
 
 ### 2026-07-12 - 黑板右侧发言席
 

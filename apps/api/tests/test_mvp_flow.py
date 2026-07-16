@@ -510,6 +510,18 @@ def test_tts_artifact_flow(client: TestClient) -> None:
     assert payload["duration_seconds"] > 0
     assert Path(payload["audio_path"]).exists()
 
+    cached = client.post(
+        "/api/v1/tts-artifacts",
+        json={
+            "text": "欢迎来到互动课堂。",
+            "scope": "slide_script",
+            "ref_id": "slide_001",
+            "voice": "teacher",
+        },
+    )
+    assert cached.status_code == 201
+    assert cached.json()["id"] == payload["id"]
+
     fetched = client.get(f"/api/v1/tts-artifacts/{payload['id']}")
     assert fetched.status_code == 200
     assert fetched.json()["id"] == payload["id"]
