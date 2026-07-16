@@ -9,6 +9,7 @@ from metaclass.infrastructure.providers.llm import (
     build_llm_provider,
 )
 from metaclass.infrastructure.providers.tts import (
+    MiniMaxTTSProvider,
     OpenAICompatibleTTSProvider,
     build_tts_provider,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "LLMMessage",
     "LLMProvider",
     "OpenAICompatibleLLMProvider",
+    "MiniMaxTTSProvider",
     "OpenAICompatibleTTSProvider",
     "build_llm_provider",
     "build_tts_provider",

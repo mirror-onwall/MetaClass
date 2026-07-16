@@ -185,6 +185,111 @@ class OpenAICompatibleTTSProvider:
         return voice
 
 
+class MiniMaxTTSProvider:
+    """Text-to-speech client for MiniMax T2A v2 compatible endpoints."""
+
+    name = "minimax"
+
+    def __init__(
+        self,
+        *,
+        base_url: str,
+        api_key: str,
+        model: str,
+        teacher_voice: str,
+        student_voices: list[str],
+        timeout_seconds: float = 60.0,
+    ) -> None:
+        self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
+        self.model = model
+        self.teacher_voice = teacher_voice
+        self.student_voices = student_voices or [teacher_voice]
+        self.timeout_seconds = timeout_seconds
+        self.ssl_context = ssl.create_default_context(cafile=certifi.where())
+
+    def synthesize(self, text: str, output: Path, voice: str | None = None) -> float:
+        payload = {
+            "model": self.model,
+            "text": text,
+            "stream": False,
+            "language_boost": "Chinese",
+            "output_format": "hex",
+            "voice_setting": {
+                "voice_id": self._resolve_voice(voice),
+                "speed": 1.0,
+                "vol": 1.0,
+                "pitch": 0,
+            },
+            "audio_setting": {
+                "sample_rate": 32_000,
+                "bitrate": 128_000,
+                "format": "mp3",
+                "channel": 1,
+            },
+        }
+        req = request.Request(
+            f"{self.base_url}/v1/t2a_v2",
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
+        response_payload: dict[str, object] | None = None
+        for attempt in range(2):
+            try:
+                with request.urlopen(
+                    req,
+                    timeout=self.timeout_seconds,
+                    context=self.ssl_context,
+                ) as response:
+                    response_payload = json.loads(response.read().decode("utf-8"))
+                break
+            except error.HTTPError as exc:
+                detail = exc.read().decode("utf-8", errors="replace")
+                raise RuntimeError(f"MiniMax TTS request failed: HTTP {exc.code} {detail}") from exc
+            except (TimeoutError, error.URLError) as exc:
+                if attempt == 0:
+                    time.sleep(0.5)
+                    continue
+                reason = getattr(exc, "reason", exc)
+                raise RuntimeError(f"MiniMax TTS request failed after retry: {reason}") from exc
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                raise RuntimeError("MiniMax TTS returned invalid JSON") from exc
+
+        if response_payload is None:
+            raise RuntimeError("MiniMax TTS request did not return a response")
+        base_resp = response_payload.get("base_resp")
+        if isinstance(base_resp, dict) and base_resp.get("status_code") not in {None, 0}:
+            raise RuntimeError(
+                f"MiniMax TTS request failed: {base_resp.get('status_msg', 'unknown error')}"
+            )
+        data = response_payload.get("data")
+        audio_hex = data.get("audio") if isinstance(data, dict) else None
+        if not isinstance(audio_hex, str) or not audio_hex:
+            raise RuntimeError("MiniMax TTS response did not contain audio")
+        try:
+            audio = bytes.fromhex(audio_hex)
+        except ValueError as exc:
+            raise RuntimeError("MiniMax TTS returned invalid hex audio") from exc
+        return _write_standard_wav(audio, output)
+
+    def _resolve_voice(self, voice: str | None) -> str:
+        if not voice or voice == "teacher":
+            return self.teacher_voice
+        if voice == "student" or voice.startswith("student_"):
+            role = voice.removeprefix("student_")
+            if role in DEFAULT_STUDENT_ROLES:
+                return self.student_voices[
+                    DEFAULT_STUDENT_ROLES.index(role) % len(self.student_voices)
+                ]
+            digest = hashlib.sha256(voice.encode("utf-8")).digest()
+            return self.student_voices[int.from_bytes(digest[:2], "big") % len(self.student_voices)]
+        return voice
+
+
 def build_tts_provider(
     *,
     provider: str,
@@ -204,6 +309,17 @@ def build_tts_provider(
                 "METACLASS_TTS_API_KEY or METACLASS_LLM_API_KEY is required for real TTS"
             )
         return OpenAICompatibleTTSProvider(
+            base_url=base_url,
+            api_key=api_key,
+            model=model,
+            teacher_voice=teacher_voice,
+            student_voices=student_voices,
+            timeout_seconds=timeout_seconds,
+        )
+    if normalized in {"minimax", "minimax-compatible"}:
+        if not api_key:
+            raise RuntimeError("METACLASS_TTS_API_KEY is required for MiniMax TTS")
+        return MiniMaxTTSProvider(
             base_url=base_url,
             api_key=api_key,
             model=model,

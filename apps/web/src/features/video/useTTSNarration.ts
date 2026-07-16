@@ -16,11 +16,22 @@ export type NarrationCue = {
 export type NarrationResult = "ended" | "failed" | "blocked" | "cancelled";
 export type NarrationStatus = "idle" | "loading" | "playing" | "paused" | "blocked" | "error";
 
+type PreparedNarration = {
+  artifact: TTSArtifact;
+  audioBuffer: AudioBuffer;
+};
+
+function narrationCacheKey(cue: NarrationCue) {
+  return [cue.scope, cue.refId, cue.voice, cue.text.trim()].join("::");
+}
+
 export function useTTSNarration() {
   const contextRef = useRef<AudioContext | null>(null);
   const sourceRef = useRef<AudioBufferSourceNode | null>(null);
   const progressTimerRef = useRef<number | null>(null);
-  const cacheRef = useRef(new Map<string, TTSArtifact>());
+  const artifactCacheRef = useRef(new Map<string, TTSArtifact>());
+  const audioCacheRef = useRef(new Map<string, AudioBuffer>());
+  const pendingRef = useRef(new Map<string, Promise<PreparedNarration>>());
   const requestVersionRef = useRef(0);
   const settleRef = useRef<((result: NarrationResult) => void) | null>(null);
   const [cue, setCue] = useState<NarrationCue | null>(null);
@@ -76,6 +87,62 @@ export function useTTSNarration() {
     if (clearCue) setCue(null);
   }, [stopProgressTimer]);
 
+  const prepare = useCallback(async (nextCue: NarrationCue): Promise<PreparedNarration> => {
+    const text = nextCue.text.trim();
+    if (!text) throw new Error("语音文本为空");
+    const cacheKey = narrationCacheKey(nextCue);
+    const cachedArtifact = artifactCacheRef.current.get(cacheKey);
+    const cachedAudio = audioCacheRef.current.get(cacheKey);
+    if (cachedArtifact && cachedAudio) {
+      return { artifact: cachedArtifact, audioBuffer: cachedAudio };
+    }
+
+    const pending = pendingRef.current.get(cacheKey);
+    if (pending) return pending;
+
+    const task = (async () => {
+      let artifact = artifactCacheRef.current.get(cacheKey);
+      artifact ??= await api.createTTSArtifact({
+        text,
+        scope: nextCue.scope,
+        ref_id: nextCue.refId,
+        voice: nextCue.voice,
+      });
+      artifactCacheRef.current.set(cacheKey, artifact);
+
+      let audioBuffer = audioCacheRef.current.get(cacheKey);
+      if (!audioBuffer) {
+        const response = await fetch(api.ttsAudio(artifact.audio_url));
+        if (!response.ok) throw new Error(`音频请求失败（${response.status}）`);
+        const encoded = await response.arrayBuffer();
+        audioBuffer = await getContext().decodeAudioData(encoded.slice(0));
+        audioCacheRef.current.set(cacheKey, audioBuffer);
+      }
+      return { artifact, audioBuffer };
+    })().finally(() => {
+      pendingRef.current.delete(cacheKey);
+    });
+    pendingRef.current.set(cacheKey, task);
+    return task;
+  }, [getContext]);
+
+  const prepareAll = useCallback(async (cues: NarrationCue[]) => {
+    let nextIndex = 0;
+    const worker = async () => {
+      while (nextIndex < cues.length) {
+        const cueIndex = nextIndex;
+        nextIndex += 1;
+        try {
+          await prepare(cues[cueIndex]);
+        } catch {
+          // Playback reports the useful error if this cue is actually reached.
+        }
+      }
+    };
+    const workerCount = Math.min(3, cues.length);
+    await Promise.all(Array.from({ length: workerCount }, worker));
+  }, [prepare]);
+
   const play = useCallback(async (nextCue: NarrationCue): Promise<NarrationResult> => {
     cancelCurrent(false);
     const requestVersion = requestVersionRef.current;
@@ -86,17 +153,10 @@ export function useTTSNarration() {
     setStatus("loading");
     setProgress(0);
     setError(null);
-    const cacheKey = [nextCue.scope, nextCue.refId, nextCue.voice, text].join("::");
 
-    let artifact = cacheRef.current.get(cacheKey);
+    let audioBuffer: AudioBuffer;
     try {
-      artifact ??= await api.createTTSArtifact({
-        text,
-        scope: nextCue.scope,
-        ref_id: nextCue.refId,
-        voice: nextCue.voice,
-      });
-      cacheRef.current.set(cacheKey, artifact);
+      ({ audioBuffer } = await prepare(nextCue));
     } catch (caught) {
       if (requestVersion !== requestVersionRef.current) return "cancelled";
       setStatus("error");
@@ -104,13 +164,8 @@ export function useTTSNarration() {
       return "failed";
     }
 
-    let audioBuffer: AudioBuffer;
     const context = getContext();
     try {
-      const response = await fetch(api.ttsAudio(artifact.audio_url));
-      if (!response.ok) throw new Error(`音频请求失败（${response.status}）`);
-      const encoded = await response.arrayBuffer();
-      audioBuffer = await context.decodeAudioData(encoded.slice(0));
       await context.resume();
     } catch (caught) {
       if (requestVersion !== requestVersionRef.current) return "cancelled";
@@ -143,7 +198,6 @@ export function useTTSNarration() {
         if (result === "ended") {
           setProgress(1);
           setStatus("idle");
-          setCue(null);
         }
         resolve(result);
       };
@@ -156,17 +210,19 @@ export function useTTSNarration() {
       source.start();
       setStatus("playing");
     });
-  }, [cancelCurrent, getContext, stopProgressTimer]);
+  }, [cancelCurrent, getContext, prepare, stopProgressTimer]);
 
   const pause = useCallback(() => {
     const context = contextRef.current;
-    if (!sourceRef.current || !context || context.state !== "running") return;
-    void context.suspend().then(() => setStatus("paused"));
+    if (sourceRef.current && context?.state === "running") {
+      void context.suspend().then(() => setStatus("paused"));
+    }
   }, []);
 
   const resume = useCallback(async () => {
     const context = contextRef.current;
-    if (!sourceRef.current || !context || context.state === "running") return true;
+    if (!sourceRef.current) return true;
+    if (!context || context.state === "running") return true;
     try {
       await context.resume();
       if (String(context.state) !== "running") return false;
@@ -180,6 +236,11 @@ export function useTTSNarration() {
     }
   }, []);
 
+  const clearCue = useCallback(() => {
+    setCue(null);
+    setProgress(0);
+  }, []);
+
   useEffect(() => () => {
     cancelCurrent();
     void contextRef.current?.close();
@@ -190,9 +251,11 @@ export function useTTSNarration() {
     status,
     progress,
     error,
+    prepareAll,
     play,
     pause,
     resume,
+    clearCue,
     unlock,
     stop: cancelCurrent,
   };

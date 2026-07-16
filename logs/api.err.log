@@ -1,6 +1,38 @@
-INFO:     Started server process [49900]
+INFO:     Started server process [45996]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
-ERROR:    [Errno 10048] error while attempting to bind on address ('127.0.0.1', 8000): [winerror 10048] 通常每个套接字地址(协议/网络地址/端口)只允许使用一次。
-INFO:     Waiting for application shutdown.
-INFO:     Application shutdown complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+Course knowledge-tree generation failed: Course knowledge tree does not cover every knowledge unit
+Collection learning-content organizer failed: 1 validation error for LearningContentDraft
+  Invalid JSON: EOF while parsing a string at line 619 column 75 [type=json_invalid, input_value='{\n  "title": "民法典...查文件真实性，', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/json_invalid
+Replaced overlapping PPT scene on slide_001 with safe layout
+PPT scene slide_004 fell back: 2 validation errors for SlideSceneDraft
+elements.1.type
+  Input should be 'text', 'shape', 'line', 'image', 'table' or 'chart' [type=literal_error, input_value='rectangle', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+elements.6.type
+  Input should be 'text', 'shape', 'line', 'image', 'table' or 'chart' [type=literal_error, input_value='rectangle', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+PPT scene slide_005 fell back: 2 validation errors for SlideSceneDraft
+elements.1.type
+  Input should be 'text', 'shape', 'line', 'image', 'table' or 'chart' [type=literal_error, input_value='rectangle', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+elements.6.type
+  Input should be 'text', 'shape', 'line', 'image', 'table' or 'chart' [type=literal_error, input_value='rectangle', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+PPT scene slide_006 fell back: 2 validation errors for SlideSceneDraft
+elements.1.type
+  Input should be 'text', 'shape', 'line', 'image', 'table' or 'chart' [type=literal_error, input_value='rectangle', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+elements.6.type
+  Input should be 'text', 'shape', 'line', 'image', 'table' or 'chart' [type=literal_error, input_value='rectangle', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+Replaced overlapping PPT scene on slide_007 with safe layout
+PPT scene slide_008 fell back: 2 validation errors for SlideSceneDraft
+elements.1.type
+  Input should be 'text', 'shape', 'line', 'image', 'table' or 'chart' [type=literal_error, input_value='rectangle', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/literal_error
+elements.5.type
+  Input should be 'text', 'shape', 'line', 'image', 'table' or 'chart' [type=literal_error, input_value='rectangle', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.13/v/literal_error

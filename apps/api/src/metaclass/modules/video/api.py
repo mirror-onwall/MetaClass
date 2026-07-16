@@ -49,7 +49,7 @@ def create_router(videos: VideoService) -> APIRouter:
         )
 
     @router.post("/tts-artifacts", response_model=TTSArtifact, status_code=201)
-    async def create_tts_artifact(request: TTSArtifactRequest) -> TTSArtifact:
+    def create_tts_artifact(request: TTSArtifactRequest) -> TTSArtifact:
         return videos.create_tts_artifact(request)
 
     @router.get("/tts-artifacts/{artifact_id}", response_model=TTSArtifact)

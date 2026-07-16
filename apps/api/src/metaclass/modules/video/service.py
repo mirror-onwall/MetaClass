@@ -1,4 +1,7 @@
+import hashlib
+import json
 import subprocess
+from threading import Lock
 from pathlib import Path
 from uuid import uuid4
 
@@ -35,6 +38,7 @@ class VideoService:
         self.contents = contents
         self.tts = tts
         self.presentations = presentations
+        self._tts_locks = [Lock() for _ in range(32)]
 
     def create_job(self, content_id: str, presentation_artifact_id: str | None = None) -> VideoJob:
         job = self.queue_job(content_id)
@@ -90,24 +94,49 @@ class VideoService:
         return result
 
     def create_tts_artifact(self, request: TTSArtifactRequest) -> TTSArtifact:
-        artifact_id = f"tts_artifact_{uuid4().hex[:12]}"
-        directory = self.data_dir / "generated" / "tts" / artifact_id
-        audio_path = directory / "audio.wav"
-        duration = self.tts.synthesize(request.text, audio_path, request.voice)
-        duration_ms = round(duration * 1000)
-        artifact = TTSArtifact(
-            id=artifact_id,
-            text=request.text,
-            scope=request.scope,
-            ref_id=request.ref_id,
-            voice=request.voice,
-            audio_path=str(audio_path),
-            audio_url=f"/api/v1/tts-artifacts/{artifact_id}/audio",
-            duration_ms=duration_ms,
-            duration_seconds=duration,
-        )
-        self.repository.save_tts_artifact(artifact)
-        return artifact
+        artifact_id, digest = self._tts_artifact_identity(request)
+        lock = self._tts_locks[int(digest[:8], 16) % len(self._tts_locks)]
+        with lock:
+            cached = self.repository.get_tts_artifact(artifact_id)
+            if cached and Path(cached.audio_path).is_file():
+                return cached
+
+            directory = self.data_dir / "generated" / "tts" / artifact_id
+            audio_path = directory / "audio.wav"
+            duration = self.tts.synthesize(request.text, audio_path, request.voice)
+            duration_ms = round(duration * 1000)
+            artifact = TTSArtifact(
+                id=artifact_id,
+                text=request.text,
+                scope=request.scope,
+                ref_id=request.ref_id,
+                voice=request.voice,
+                audio_path=str(audio_path),
+                audio_url=f"/api/v1/tts-artifacts/{artifact_id}/audio",
+                duration_ms=duration_ms,
+                duration_seconds=duration,
+            )
+            self.repository.save_tts_artifact(artifact)
+            return artifact
+
+    def _tts_artifact_identity(self, request: TTSArtifactRequest) -> tuple[str, str]:
+        provider_signature = {
+            "provider": getattr(self.tts, "name", type(self.tts).__name__),
+            "model": getattr(self.tts, "model", None),
+            "teacher_voice": getattr(self.tts, "teacher_voice", None),
+            "student_voices": getattr(self.tts, "student_voices", None),
+        }
+        payload = {
+            "provider": provider_signature,
+            "text": request.text.strip(),
+            "scope": request.scope,
+            "ref_id": request.ref_id,
+            "voice": request.voice,
+        }
+        digest = hashlib.sha256(
+            json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+        return f"tts_artifact_{digest[:20]}", digest
 
     def get_tts_artifact(self, artifact_id: str) -> TTSArtifact:
         artifact = self.repository.get_tts_artifact(artifact_id)

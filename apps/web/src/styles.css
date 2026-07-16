@@ -123,16 +123,15 @@ button { color: inherit; }
 .board-stage { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(214px, .34fr); gap: 15px; align-items: stretch; }
 .board-stage .projection-screen { min-width: 0; }
 .live-speaker-slot { min-width: 0; }
-.live-speaker { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px 13px; border: 1px solid rgba(198,171,126,.3); background: rgba(12,26,21,.62); animation: live-speaker-in .22s ease-out both; }
+.live-speaker { min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px 13px; border: 1px solid rgba(198,171,126,.3); background: rgba(12,26,21,.62); }
 .live-speaker-avatar { width: min(100%, 136px); aspect-ratio: 1; overflow: hidden; border: 3px solid #e8dfca; background: #e8dfca; box-shadow: 0 8px 16px rgba(0,0,0,.24); }
 .live-speaker-avatar img { width: 100%; height: 100%; object-fit: cover; }
-.speech-bubble { position: relative; width: 100%; margin-top: 17px; padding: 14px 13px 12px; background: #e8e3d7; color: #20342d; box-shadow: 0 8px 18px rgba(0,0,0,.18); }
+.speech-bubble { position: relative; width: 100%; height: 154px; margin-top: 17px; padding: 14px 13px 12px; overflow: hidden; background: #e8e3d7; color: #20342d; box-shadow: 0 8px 18px rgba(0,0,0,.18); }
 .speech-bubble::before { content: ""; position: absolute; top: -8px; left: 50%; width: 15px; height: 15px; background: #e8e3d7; transform: translateX(-50%) rotate(45deg); }
 .speech-bubble span { position: relative; display: block; color: #9c652c; font: 8px "DM Mono", monospace; letter-spacing: .08em; }
 .speech-bubble span em { margin-left: 8px; color: #718078; font-style: normal; letter-spacing: 0; }
-.speech-bubble p { position: relative; margin: 8px 19px 0 0; font-size: 11px; font-weight: 600; line-height: 1.6; }
+.speech-bubble p { position: relative; max-height: 112px; margin: 8px 19px 0 0; overflow-y: auto; scrollbar-gutter: stable; font-size: 11px; font-weight: 600; line-height: 1.6; }
 .speech-bubble button { position: absolute; z-index: 1; right: 9px; top: 8px; border: 0; padding: 0; background: transparent; color: #718078; font-size: 17px; cursor: pointer; }
-@keyframes live-speaker-in { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: translateX(0); } }
 .projection-screen { min-height: clamp(390px, 58vh, 650px); position: relative; z-index: 1; overflow: hidden; background: #e8e4d8; color: var(--ink); box-shadow: inset 0 0 50px rgba(43,49,39,.13), 0 12px 25px rgba(0,0,0,.2); }
 .projection-screen::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(255,255,255,.1), transparent 30%, rgba(80,85,65,.04)); mix-blend-mode: multiply; }
 .empty-classroom { min-height: inherit; padding: 8%; display: flex; flex-direction: column; justify-content: center; background: radial-gradient(circle at 80% 20%, rgba(198,151,76,.18), transparent 25%), #e9e5d9; }
