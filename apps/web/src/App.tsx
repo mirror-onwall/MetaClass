@@ -238,6 +238,11 @@ function actionNarrationCue(
 }
 
 function App() {
+  const [theme, setTheme] = useState<"dark" | "light">(() => {
+    const savedTheme = window.localStorage.getItem("metaclass-theme");
+    if (savedTheme === "dark" || savedTheme === "light") return savedTheme;
+    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+  });
   const [files, setFiles] = useState<File[]>([]);
   const [material, setMaterial] = useState<Material | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -278,6 +283,12 @@ function App() {
   const playbackVersionRef = useRef(0);
   const narratedStepRef = useRef<string | null>(null);
   const narration = useTTSNarration();
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    window.localStorage.setItem("metaclass-theme", theme);
+  }, [theme]);
 
   const activeStage = useMemo(() => {
     if (video) return 4;
@@ -334,6 +345,35 @@ function App() {
     (agent) => agent.type === captionStudentState?.agent_type,
   );
   const captionAvatar = captionStudentAgent?.avatar ?? teacherQianqianAvatar;
+  const speechTextRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const speech = speechTextRef.current;
+    if (!speech || !captionText || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    speech.scrollTop = 0;
+    let direction = 1;
+    let restingTicks = 28;
+    const timer = window.setInterval(() => {
+      if (speech.matches(":hover, :focus")) return;
+      if (restingTicks > 0) {
+        restingTicks -= 1;
+        return;
+      }
+      const maxScroll = speech.scrollHeight - speech.clientHeight;
+      if (maxScroll <= 2) return;
+      speech.scrollTop += direction;
+      if (speech.scrollTop >= maxScroll - 1) {
+        direction = -1;
+        restingTicks = 36;
+      } else if (speech.scrollTop <= 1 && direction < 0) {
+        direction = 1;
+        restingTicks = 36;
+      }
+    }, 48);
+
+    return () => window.clearInterval(timer);
+  }, [captionText]);
 
   useEffect(() => {
     autoPlayingRef.current = autoPlaying;
@@ -733,9 +773,35 @@ function App() {
   }
 
   const actionLabel = action?.type.replaceAll("_", " ") ?? "WAITING";
+  const loadingProgress = contentJob && busy === "正在组织学习内容"
+    ? contentJob.progress
+    : presentationPlanJob && busy === "正在生成 PPT 并布置课堂"
+      ? classroomPlanJob
+        ? classroomPlanJob.progress
+        : pptJob
+          ? 75 + Math.round(pptJob.progress * 25)
+          : presentationPlanJob.progress
+      : null;
+  const loadingLabel = contentJob && busy === "正在组织学习内容"
+    ? contentProgressLabel(contentJob)
+    : presentationPlanJob && busy === "正在生成 PPT 并布置课堂"
+      ? classroomPlanJob
+        ? classroomPlanProgressLabel(classroomPlanJob)
+        : pptJob
+          ? "正在导出 PPTX"
+          : presentationProgressLabel(presentationPlanJob)
+      : busy;
+  const loadingSteps = busy === "正在生成 PPT 并布置课堂"
+    ? ["理解课程内容", "规划课件页面", "设计课堂版式", "渲染并导出 PPT", "布置互动课堂"]
+    : busy === "正在组织学习内容"
+      ? ["读取课程材料", "逐页理解内容", "提取知识单元", "组织课堂结构", "保存备课结果"]
+      : ["接收课堂任务", "检查课程材料", "执行当前操作", "保存处理结果"];
+  const loadingStepIndex = loadingProgress === null
+    ? 0
+    : Math.min(loadingSteps.length - 1, Math.floor((loadingProgress / 100) * loadingSteps.length));
 
   return (
-    <div className="classroom-app">
+    <div className="classroom-app" data-theme={theme}>
       <header className="topbar">
         <a className="brand" href="#top" aria-label="MetaClass 首页">
           <span className="brand-seal">M</span>
@@ -754,7 +820,22 @@ function App() {
             </ol>
           </div>
         </div>
-        <div className="system-live"><i /> LOCAL SYSTEM ONLINE</div>
+        <div className="system-live">
+          <button
+            className="theme-toggle"
+            type="button"
+            role="switch"
+            aria-checked={theme === "light"}
+            aria-label={`切换到${theme === "dark" ? "浅色" : "深色"}模式`}
+            title={`切换到${theme === "dark" ? "浅色" : "深色"}模式`}
+            onClick={() => setTheme((current) => current === "dark" ? "light" : "dark")}
+          >
+            <span className="theme-icon moon" aria-hidden="true">◐</span>
+            <span className="theme-toggle-track"><i /></span>
+            <span className="theme-icon sun" aria-hidden="true">☀</span>
+          </button>
+          <span className="online-status"><i /> LOCAL SYSTEM ONLINE</span>
+        </div>
       </header>
 
       <main id="top" className="classroom-layout">
@@ -806,53 +887,6 @@ function App() {
                 <small>允许 agent 同学提问、总结和插话</small>
               </button>
             </div>
-            {learningMode === "interactive" && (
-              <div
-                className="student-agent-selector"
-                onMouseLeave={() => setHoveredStudentAgentType(null)}
-              >
-                <div className="section-caption">
-                  <span>课堂同学</span>
-                  <small>SELECTED {studentAgentTypes.length} / 8</small>
-                </div>
-                <div className="student-agent-options">
-                  {studentAgentChoices.map((agent) => {
-                    const selected = studentAgentTypes.includes(agent.type);
-                    return (
-                      <button
-                        type="button"
-                        className={selected ? "selected" : ""}
-                        key={agent.type}
-                        disabled={!!session}
-                        onClick={() => toggleStudentAgent(agent.type)}
-                        onMouseEnter={() => setHoveredStudentAgentType(agent.type)}
-                        onFocus={() => setHoveredStudentAgentType(agent.type)}
-                        onBlur={() => setHoveredStudentAgentType(null)}
-                        aria-pressed={selected}
-                      >
-                        <span className="student-agent-avatar"><img src={agent.avatar} alt="" /></span>
-                        <span><b>{agent.name}</b><small>{agent.description}</small></span>
-                        <i>{selected ? "✓" : "+"}</i>
-                      </button>
-                    );
-                  })}
-                </div>
-                {hoveredStudentAgent && (
-                  <aside className="student-agent-profile" aria-live="polite">
-                    <div className="student-agent-profile-head">
-                      <span>同学档案</span>
-                      <small>{hoveredStudentAgent.gender}</small>
-                    </div>
-                    <img src={hoveredStudentAgent.avatar} alt={`${hoveredStudentAgent.studentName}的头像`} />
-                    <div>
-                      <b>{hoveredStudentAgent.studentName}</b>
-                      <small>{hoveredStudentAgent.name}</small>
-                    </div>
-                    <p>{hoveredStudentAgent.profile}</p>
-                  </aside>
-                )}
-              </div>
-            )}
             <button disabled={!pages.length || !!content || !!busy} onClick={buildContent}><span>01</span><b>{content ? "内容已构建" : "构建学习内容"}</b><i>↗</i></button>
             <button disabled={!content || !!session || !!busy} onClick={startClassroom}><span>02</span><b>{session ? "课堂进行中" : "创建互动课堂"}</b><i>↗</i></button>
             <button disabled={!content || !presentationArtifact || !!video || !!busy} onClick={createVideo}><span>03</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
@@ -894,7 +928,7 @@ function App() {
                         <em>{narration.status === "loading" ? "正在生成语音" : "语音同步中"}</em>
                       )}
                     </span>
-                    <p>{captionText}</p>
+                    <p ref={speechTextRef} tabIndex={0} aria-label={`${captionSpeaker}的发言`}>{captionText}</p>
                     <button
                       onClick={() => {
                         if (narration.cue) {
@@ -937,6 +971,65 @@ function App() {
               <button disabled={!question.trim() || !session || !!busy}>发送</button>
             </form>
           </div>
+
+          {learningMode === "interactive" && !session && (
+            <section
+              className="student-agent-selector student-agent-bench"
+              onMouseLeave={() => setHoveredStudentAgentType(null)}
+            >
+              <div className="section-caption">
+                <span>课堂同学</span>
+                <small>SELECTED {studentAgentTypes.length} / 8</small>
+              </div>
+              <div className="student-agent-options">
+                {studentAgentChoices.map((agent) => {
+                  const selected = studentAgentTypes.includes(agent.type);
+                  return (
+                    <button
+                      type="button"
+                      className={selected ? "selected" : ""}
+                      key={agent.type}
+                      onClick={() => toggleStudentAgent(agent.type)}
+                      onMouseEnter={() => setHoveredStudentAgentType(agent.type)}
+                      onFocus={() => setHoveredStudentAgentType(agent.type)}
+                      onBlur={() => setHoveredStudentAgentType(null)}
+                      aria-pressed={selected}
+                    >
+                      <span className="student-agent-avatar"><img src={agent.avatar} alt="" /></span>
+                      <span><b>{agent.name}</b><small>{agent.description}</small></span>
+                      <i>{selected ? "✓" : "+"}</i>
+                    </button>
+                  );
+                })}
+              </div>
+              {hoveredStudentAgent && (
+                <aside className="student-agent-profile" aria-live="polite">
+                  <div className="student-agent-profile-head"><span>同学档案</span><small>{hoveredStudentAgent.gender}</small></div>
+                  <img src={hoveredStudentAgent.avatar} alt={`${hoveredStudentAgent.studentName}的头像`} />
+                  <div><b>{hoveredStudentAgent.studentName}</b><small>{hoveredStudentAgent.name}</small></div>
+                  <p>{hoveredStudentAgent.profile}</p>
+                </aside>
+              )}
+            </section>
+          )}
+
+          {session?.mode === "interactive" && (
+            <section className="classroom-roster classroom-roster-bench">
+              <div className="section-caption"><span>本堂同学</span><small>{session.student_states.length} AGENTS</small></div>
+              <div className="classroom-roster-list">
+                {session.student_states.map((student) => {
+                  const agent = studentAgentChoices.find((item) => item.type === student.agent_type);
+                  return (
+                    <div className="classroom-roster-item" key={student.id}>
+                      {agent && <img src={agent.avatar} alt="" />}
+                      <span><b>{student.display_name}</b><small>{agent?.name ?? "课堂学生智能体"}</small></span>
+                      <i>{student.last_intent ? "·" : "○"}</i>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
         </section>
 
         <aside className="right-board">
@@ -971,24 +1064,6 @@ function App() {
               )}
             </> : <div className="rail-empty"><span>⌁</span><p>构建 LearningContent 后，这里会出现完整课表。</p></div>}
           </section>
-
-          {session?.mode === "interactive" && (
-            <section className="classroom-roster">
-              <div className="section-caption"><span>本堂同学</span><small>{session.student_states.length} AGENTS</small></div>
-              <div className="classroom-roster-list">
-                {session.student_states.map((student) => {
-                  const agent = studentAgentChoices.find((item) => item.type === student.agent_type);
-                  return (
-                    <div className="classroom-roster-item" key={student.id}>
-                      {agent && <img src={agent.avatar} alt="" />}
-                      <span><b>{student.display_name}</b><small>{agent?.description ?? "课堂学生智能体"}</small></span>
-                      <i>{student.last_intent ? "·" : "○"}</i>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
 
           <section className="mastery-panel">
             <div className="section-caption"><span>课堂观察</span><small>ESTIMATED</small></div>
@@ -1026,65 +1101,29 @@ function App() {
       {error && <div className="error-toast" role="alert"><span>!</span><div><b>流程暂停</b><p>{error}</p></div><button onClick={() => setError(null)}>×</button></div>}
       {busy && (
         <div className="busy-overlay" aria-live="polite">
-          {contentJob && busy === "正在组织学习内容" ? (
-            <>
-              <b>{contentProgressLabel(contentJob)}</b>
+          <section className="loading-board">
+            <header><span>METACLASS · LESSON PREP</span><b>正在准备这堂课</b></header>
+            <ol>
+              {loadingSteps.map((step, index) => (
+                <li className={index < loadingStepIndex ? "done" : index === loadingStepIndex ? "active" : ""} key={step}>
+                  <i>{index < loadingStepIndex ? "✓" : index === loadingStepIndex ? "•" : "○"}</i>
+                  <span>{step}</span>
+                </li>
+              ))}
+            </ol>
+            <div className="loading-current"><span className="writing-mark" /> <b>{loadingLabel}</b></div>
+            <footer>
               <div
-                className="generation-progress"
+                className={`generation-progress ${loadingProgress === null ? "indeterminate" : ""}`}
                 role="progressbar"
-                aria-label="学习内容组织进度"
+                aria-label="课堂准备进度"
                 aria-valuemin={0}
                 aria-valuemax={100}
-                aria-valuenow={contentJob.progress}
-              >
-                <i style={{ width: `${contentJob.progress}%` }} />
-              </div>
-              <small>{contentJob.progress}% · 任务可在后台继续运行</small>
-            </>
-          ) : presentationPlanJob && busy === "正在生成 PPT 并布置课堂" ? (
-            <>
-              <b>
-                {classroomPlanJob
-                  ? classroomPlanProgressLabel(classroomPlanJob)
-                  : pptJob ? "正在导出 PPTX" : presentationProgressLabel(presentationPlanJob)}
-              </b>
-              <div
-                className="generation-progress"
-                role="progressbar"
-                aria-label="PPT 生成进度"
-                aria-valuemin={0}
-                aria-valuemax={100}
-                aria-valuenow={
-                  classroomPlanJob
-                    ? classroomPlanJob.progress
-                    : pptJob ? 75 + Math.round(pptJob.progress * 25) : presentationPlanJob.progress
-                }
-              >
-                <i
-                  style={{
-                    width: `${
-                      classroomPlanJob
-                        ? classroomPlanJob.progress
-                        : pptJob ? 75 + Math.round(pptJob.progress * 25) : presentationPlanJob.progress
-                    }%`,
-                  }}
-                />
-              </div>
-              <small>
-                {classroomPlanJob
-                  ? `${classroomPlanJob.progress}% · 正在布置课堂互动`
-                  : pptJob
-                  ? `${75 + Math.round(pptJob.progress * 25)}% · 正在渲染课堂 PPT`
-                  : `${presentationPlanJob.progress}% · 正在规划课堂 PPT`}
-              </small>
-            </>
-          ) : (
-            <>
-              <div className="loader"><i /><i /><i /></div>
-              <b>{busy}</b>
-              <small>请不要关闭课堂</small>
-            </>
-          )}
+                aria-valuenow={loadingProgress ?? undefined}
+              ><i style={loadingProgress === null ? undefined : { width: `${loadingProgress}%` }} /></div>
+              <small>{loadingProgress === null ? "正在整理讲台，请不要关闭课堂" : `${loadingProgress}% · 任务可在后台继续运行`}</small>
+            </footer>
+          </section>
         </div>
       )}
     </div>
