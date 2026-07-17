@@ -93,6 +93,7 @@ class PresentationPlan(SchemaModel):
 class PresentationPlanJob(SchemaModel):
     id: str = Field(min_length=1)
     content_id: str = Field(min_length=1)
+    prepare_question_bank: bool = True
     status: PresentationPlanJobStatus = PresentationPlanJobStatus.QUEUED
     progress: int = Field(default=0, ge=0, le=100)
     step: str = "queued"

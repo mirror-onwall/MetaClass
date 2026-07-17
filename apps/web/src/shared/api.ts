@@ -215,11 +215,12 @@ export const api = {
   },
   async createPresentationDeck(
     contentId: string,
+    prepareQuestionBank: boolean,
     onPlanProgress?: (job: PresentationPlanJob) => void,
     onPptProgress?: (job: PPTGenerationJob) => void,
   ) {
     const createdPlanJob = await request<PresentationPlanJob>(
-      `/api/v1/learning-contents/${contentId}/presentation-plan-jobs`,
+      `/api/v1/learning-contents/${contentId}/presentation-plan-jobs?prepare_question_bank=${prepareQuestionBank}`,
       { method: "POST" },
     );
     onPlanProgress?.(createdPlanJob);

@@ -37,6 +37,9 @@ class ClassroomPlanJobRecord(Base):
 
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     content_id: Mapped[str] = mapped_column(ForeignKey("learning_contents.id"), index=True)
+    presentation_plan_id: Mapped[str | None] = mapped_column(
+        ForeignKey("presentation_plans.id"), nullable=True, index=True
+    )
     status: Mapped[str] = mapped_column(String(20), index=True)
     step: Mapped[str] = mapped_column(String(40))
     progress: Mapped[int] = mapped_column(Integer)

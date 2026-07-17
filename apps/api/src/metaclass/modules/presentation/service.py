@@ -18,6 +18,8 @@ from metaclass.modules.presentation.schemas import (
     PresentationPlan,
 )
 from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
+from metaclass.modules.question_bank.generator import QuestionBankGenerator
+from metaclass.modules.question_bank.repository import QuestionBankRepository
 
 
 class PresentationService:
@@ -28,12 +30,16 @@ class PresentationService:
         contents: ContentService,
         planner: PresentationPlanGenerator | None = None,
         ppt_adapter: PPTSkillAdapter | None = None,
+        question_bank_generator: QuestionBankGenerator | None = None,
+        question_bank_repository: QuestionBankRepository | None = None,
     ) -> None:
         self.data_dir = data_dir
         self.repository = repository
         self.contents = contents
         self.planner = planner or PresentationPlanGenerator()
         self.ppt_adapter = ppt_adapter or PPTSkillAdapter()
+        self.question_bank_generator = question_bank_generator
+        self.question_bank_repository = question_bank_repository
         self._plan_jobs: dict[str, PresentationPlanJob] = {}
         self._plan_job_lock = Lock()
 
@@ -41,13 +47,17 @@ class PresentationService:
         content = self.contents.get(content_id)
         plan = self.planner.generate(content)
         self.repository.save_plan(plan)
+        self._prepare_question_bank(content, plan)
         return plan
 
-    def create_plan_job(self, content_id: str) -> PresentationPlanJob:
+    def create_plan_job(
+        self, content_id: str, *, prepare_question_bank: bool = True
+    ) -> PresentationPlanJob:
         self.contents.get(content_id)
         job = PresentationPlanJob(
             id=f"presentation_plan_job_{uuid4().hex[:12]}",
             content_id=content_id,
+            prepare_question_bank=prepare_question_bank,
             status=PresentationPlanJobStatus.QUEUED,
             progress=0,
             step="queued",
@@ -95,6 +105,15 @@ class PresentationService:
             )
             self.repository.save_plan(plan)
 
+            if job.prepare_question_bank:
+                self._update_plan_job_progress(
+                    job_id,
+                    80,
+                    "preparing_questions",
+                    "Preparing student questions and teacher answers",
+                )
+                self._prepare_question_bank(content, plan)
+
             job.status = PresentationPlanJobStatus.SUCCEEDED
             job.progress = 100
             job.step = "completed"
@@ -110,6 +129,12 @@ class PresentationService:
             job.error = str(exc)
             job.updated_at = utc_now()
             self._save_plan_job(job)
+
+    def _prepare_question_bank(self, content, plan: PresentationPlan) -> None:
+        if not self.question_bank_generator or not self.question_bank_repository:
+            return
+        items = self.question_bank_generator.generate(content, plan)
+        self.question_bank_repository.replace_for_plan(plan.id, items)
 
     def _save_plan_job(self, job: PresentationPlanJob) -> None:
         with self._plan_job_lock:

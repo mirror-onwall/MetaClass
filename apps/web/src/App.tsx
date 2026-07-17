@@ -189,7 +189,12 @@ function actionNarrationCue(
     role: "teacher" as const,
     voice: "teacher",
   };
-  if (action.type === "SHOW_PAGE" || action.type === "GIVE_FEEDBACK") return null;
+  if (
+    action.type === "SHOW_PAGE"
+    || action.type === "GIVE_FEEDBACK"
+    || action.type === "STUDENT_QUESTION"
+    || action.type === "TEACHER_QA_RESPONSE"
+  ) return null;
   if (action.type === "EXPLAIN") {
     const slide = plan?.slides.find((item) => item.order === currentSlide?.pageNo);
     return {
@@ -598,6 +603,7 @@ function App() {
     const result = await run("正在生成 PPT 并布置课堂", async () => {
       const deck = await api.createPresentationDeck(
         content.id,
+        learningMode === "interactive",
         setPresentationPlanJob,
         setPptJob,
       );

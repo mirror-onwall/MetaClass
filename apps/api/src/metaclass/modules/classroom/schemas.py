@@ -26,6 +26,8 @@ class ActionType(StrEnum):
     EXPLAIN = "EXPLAIN"
     ASK_QUIZ = "ASK_QUIZ"
     PROBE = "PROBE"
+    STUDENT_QUESTION = "STUDENT_QUESTION"
+    TEACHER_QA_RESPONSE = "TEACHER_QA_RESPONSE"
     WAIT_STUDENT = "WAIT_STUDENT"
     GIVE_FEEDBACK = "GIVE_FEEDBACK"
     REMEDIATE = "REMEDIATE"
@@ -52,6 +54,16 @@ class ProbePayload(SchemaModel):
     question: str = Field(min_length=1)
     target_knowledge_point: str = Field(min_length=1)
     source_refs: list[SourceRef] = Field(min_length=1)
+
+
+class StudentQuestionPayload(SchemaModel):
+    qa_id: str = Field(min_length=1)
+    preferred_agent_type: StudentAgentType
+    fallback_agent_types: list[StudentAgentType] = Field(default_factory=list)
+
+
+class TeacherQAResponsePayload(SchemaModel):
+    qa_id: str = Field(min_length=1)
 
 
 class WaitStudentPayload(SchemaModel):
@@ -111,6 +123,20 @@ class ProbeAction(SchemaModel):
     payload: ProbePayload
 
 
+class StudentQuestionAction(SchemaModel):
+    id: str
+    type: Literal["STUDENT_QUESTION"]
+    actor: Literal["student"]
+    payload: StudentQuestionPayload
+
+
+class TeacherQAResponseAction(SchemaModel):
+    id: str
+    type: Literal["TEACHER_QA_RESPONSE"]
+    actor: Literal["teacher"]
+    payload: TeacherQAResponsePayload
+
+
 class WaitStudentAction(SchemaModel):
     id: str
     type: Literal["WAIT_STUDENT"]
@@ -158,6 +184,8 @@ TeachingAction = Annotated[
     | ExplainAction
     | AskQuizAction
     | ProbeAction
+    | StudentQuestionAction
+    | TeacherQAResponseAction
     | WaitStudentAction
     | GiveFeedbackAction
     | RemediateAction
@@ -228,6 +256,16 @@ class TeacherAnswerPayload(SchemaModel):
     source_refs: list[SourceRef] = Field(default_factory=list)
 
 
+class QAInteractionExecutedPayload(SchemaModel):
+    qa_id: str = Field(min_length=1)
+    slide_id: str = Field(min_length=1)
+    student_action_id: str = Field(min_length=1)
+    teacher_action_id: str = Field(min_length=1)
+    student_agent_id: str = Field(min_length=1)
+    student_question: str = Field(min_length=1)
+    teacher_answer: str = Field(min_length=1)
+
+
 class AgentTurnPayload(SchemaModel):
     turn: AgentTurn
 
@@ -263,12 +301,18 @@ class AgentTurnEvent(ClassroomEventBase):
     payload: AgentTurnPayload
 
 
+class QAInteractionExecutedEvent(ClassroomEventBase):
+    type: Literal["QA_INTERACTION_EXECUTED"]
+    payload: QAInteractionExecutedPayload
+
+
 ClassroomEvent = Annotated[
     ActionExecutedEvent
     | QuizEvaluatedEvent
     | UserQuestionEvent
     | TeacherAnswerEvent
-    | AgentTurnEvent,
+    | AgentTurnEvent
+    | QAInteractionExecutedEvent,
     Field(discriminator="type"),
 ]
 

@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     mineru_timeout_seconds: float = 180.0
     llm_temperature: float = 0.2
     llm_max_tokens: int = 8192
+    qa_student_concurrency: int = 3
+    qa_candidates_per_slide: int = 4
     tts_provider: str = "fake"
     tts_base_url: str | None = None
     tts_api_key: str | None = None

@@ -453,6 +453,32 @@ def test_presentation_plan_and_ppt_skill_request_flow(client: TestClient) -> Non
     assert plan.json()["slides"][0]["source_section_ids"]
     assert plan.json()["slides"][0]["speaker_script"]
 
+    question_bank = client.get(
+        f"/api/v1/presentation-plans/{plan.json()['id']}/question-bank"
+    )
+    assert question_bank.status_code == 200
+    assert question_bank.json()["items"]
+    prepared_question = question_bank.json()["items"][0]
+    assert prepared_question["slide_id"] == plan.json()["slides"][0]["id"]
+    assert prepared_question["agent_type"]
+    assert prepared_question["canonical_answer"]
+    assert prepared_question["teacher_answer"]
+    source_slide = next(
+        slide
+        for slide in plan.json()["slides"]
+        if slide["id"] == prepared_question["slide_id"]
+    )
+    assert prepared_question["teacher_answer"] != source_slide["speaker_script"]
+    assert prepared_question["canonical_question"] in prepared_question["teacher_answer"]
+    assert prepared_question["moment"] == "after_explanation"
+
+    search = client.get(
+        f"/api/v1/presentation-plans/{plan.json()['id']}/question-bank/search",
+        params={"q": prepared_question["canonical_question"]},
+    )
+    assert search.status_code == 200
+    assert search.json()[0]["item"]["id"] == prepared_question["id"]
+
     latest = client.get(f"/api/v1/learning-contents/{content_id}/presentation-plan")
     assert latest.status_code == 200
     assert latest.json()["id"] == plan.json()["id"]
@@ -487,6 +513,107 @@ def test_presentation_plan_and_ppt_skill_request_flow(client: TestClient) -> Non
     slide_image = client.get(f"/api/v1/ppt-artifacts/{artifact.json()['id']}/slides/1/image")
     assert slide_image.status_code == 200
     assert slide_image.content[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_lecture_presentation_job_skips_question_bank(client: TestClient) -> None:
+    processed = client.post(
+        "/api/v1/materials/process",
+        files={"file": ("lecture.pdf", make_pdf(), "application/pdf")},
+    )
+    material_id = processed.json()["material"]["id"]
+    content = client.post(f"/api/v1/materials/{material_id}/learning-content").json()
+
+    job = client.post(
+        f"/api/v1/learning-contents/{content['id']}/presentation-plan-jobs",
+        params={"prepare_question_bank": False},
+    ).json()
+    finished = client.get(f"/api/v1/presentation-plan-jobs/{job['id']}").json()
+
+    assert job["prepare_question_bank"] is False
+    assert finished["status"] == "succeeded"
+    plan = client.get(
+        f"/api/v1/presentation-plan-jobs/{job['id']}/result"
+    ).json()
+    question_bank = client.get(
+        f"/api/v1/presentation-plans/{plan['id']}/question-bank"
+    ).json()
+    assert question_bank["items"] == []
+
+
+def test_prepared_question_bank_runs_as_classroom_script(client: TestClient) -> None:
+    processed = client.post(
+        "/api/v1/materials/process",
+        files={"file": ("lesson.pdf", make_pdf(), "application/pdf")},
+    )
+    material_id = processed.json()["material"]["id"]
+    content = client.post(f"/api/v1/materials/{material_id}/learning-content").json()
+    presentation = client.post(
+        f"/api/v1/learning-contents/{content['id']}/presentation-plans"
+    ).json()
+    question_bank = client.get(
+        f"/api/v1/presentation-plans/{presentation['id']}/question-bank"
+    ).json()
+    prepared = question_bank["items"][0]
+
+    classroom_plan_response = client.post(
+        f"/api/v1/learning-contents/{content['id']}/classroom-plans",
+        params={"presentation_plan_id": presentation["id"]},
+    )
+    assert classroom_plan_response.status_code == 201, classroom_plan_response.text
+    classroom_plan = classroom_plan_response.json()
+    action_types = [
+        action["type"] for action in classroom_plan["scenes"][0]["actions"]
+    ]
+    end_action = next(
+        action
+        for action in classroom_plan["scenes"][0]["actions"]
+        if action["type"] == "END"
+    )
+    assert not end_action["payload"]["summary"].startswith("本页要点：")
+    student_index = action_types.index("STUDENT_QUESTION")
+    assert action_types[student_index + 1] == "TEACHER_QA_RESPONSE"
+    assert (
+        classroom_plan["scenes"][0]["actions"][student_index]["payload"]["qa_id"]
+        == prepared["id"]
+    )
+
+    session = client.post(
+        f"/api/v1/classroom-plans/{classroom_plan['id']}/sessions",
+        json={"mode": "interactive", "student_agent_types": ["researcher"]},
+    ).json()
+    session_id = session["id"]
+
+    first = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+    second = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+    student_step = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+    teacher_step = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+
+    assert first.json()["action"]["type"] == "SHOW_PAGE"
+    assert second.json()["action"]["type"] == "EXPLAIN"
+    assert student_step.json()["status"] == "agent_turn"
+    assert student_step.json()["directed_turn"]["turns"][0]["role"] == "student"
+    assert student_step.json()["directed_turn"]["turns"][0]["speech"] == prepared[
+        "student_question"
+    ]
+    assert student_step.json()["directed_turn"]["turns"][0]["agent_id"] == (
+        "student_agent_001"
+    )
+    assert teacher_step.json()["directed_turn"]["turns"][0]["role"] == "teacher"
+    assert teacher_step.json()["directed_turn"]["turns"][0]["speech"] == prepared[
+        "teacher_answer"
+    ]
+
+    events = teacher_step.json()["session"]["events"]
+    qa_event = next(event for event in events if event["type"] == "QA_INTERACTION_EXECUTED")
+    assert qa_event["payload"]["qa_id"] == prepared["id"]
+    assert qa_event["payload"]["student_agent_id"] == "student_agent_001"
+
+    continued = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+    assert continued.status_code == 200
+    assert continued.json()["action"]["type"] not in {
+        "STUDENT_QUESTION",
+        "TEACHER_QA_RESPONSE",
+    }
 
 
 def test_tts_artifact_flow(client: TestClient) -> None:

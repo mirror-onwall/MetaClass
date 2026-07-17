@@ -110,6 +110,7 @@ class SqlAlchemyClassroomRepository:
                 ClassroomPlanJobRecord(
                     id=job.id,
                     content_id=job.content_id,
+                    presentation_plan_id=job.presentation_plan_id,
                     status=job.status,
                     step=job.step,
                     progress=job.progress,
@@ -130,6 +131,7 @@ class SqlAlchemyClassroomRepository:
                 {
                     "id": record.id,
                     "content_id": record.content_id,
+                    "presentation_plan_id": record.presentation_plan_id,
                     "status": record.status,
                     "step": record.step,
                     "progress": record.progress,

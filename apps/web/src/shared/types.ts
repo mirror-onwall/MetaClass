@@ -197,7 +197,7 @@ export type StudentAgentState = {
   last_intent?: string;
 };
 
-type ActionBase = { id: string; actor: "system" | "teacher" | "evaluator" };
+type ActionBase = { id: string; actor: "system" | "teacher" | "student" | "evaluator" };
 
 export type TeachingAction =
   | (ActionBase & {
@@ -212,6 +212,18 @@ export type TeachingAction =
   | (ActionBase & {
       type: "PROBE";
       payload: { question: string; target_knowledge_point: string; source_refs: SourceRef[] };
+    })
+  | (ActionBase & {
+      type: "STUDENT_QUESTION";
+      payload: {
+        qa_id: string;
+        preferred_agent_type: StudentAgentType;
+        fallback_agent_types: StudentAgentType[];
+      };
+    })
+  | (ActionBase & {
+      type: "TEACHER_QA_RESPONSE";
+      payload: { qa_id: string };
     })
   | (ActionBase & {
       type: "WAIT_STUDENT";
@@ -380,6 +392,7 @@ export type PresentationPlan = {
 export type PresentationPlanJob = {
   id: string;
   content_id: string;
+  prepare_question_bank: boolean;
   status: "queued" | "running" | "succeeded" | "failed";
   progress: number;
   step: string;

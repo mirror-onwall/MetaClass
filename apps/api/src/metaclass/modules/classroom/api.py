@@ -26,8 +26,10 @@ def create_router(classrooms: ClassroomService) -> APIRouter:
         response_model=ClassroomPlan,
         status_code=201,
     )
-    async def create_plan(content_id: str) -> ClassroomPlan:
-        return classrooms.create_plan(content_id)
+    async def create_plan(
+        content_id: str, presentation_plan_id: str | None = None
+    ) -> ClassroomPlan:
+        return classrooms.create_plan(content_id, presentation_plan_id)
 
     @router.post(
         "/learning-contents/{content_id}/classroom-plan-jobs",
