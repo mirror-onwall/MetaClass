@@ -89,6 +89,17 @@ class VisualOpportunity(SchemaModel):
     priority: str = "medium"
     source_refs: list[SourceRef] = Field(default_factory=list)
 
+    @field_validator("priority", mode="before")
+    @classmethod
+    def normalize_priority(cls, value):
+        if isinstance(value, int | float):
+            if value <= 1:
+                return "high"
+            if value == 2:
+                return "medium"
+            return "low"
+        return "" if value is None else str(value)
+
 
 class Misconception(SchemaModel):
     mistake: str = ""
@@ -250,6 +261,58 @@ class QuizItemDraft(SchemaModel):
     explanation: str
     knowledge_point: str = Field(min_length=1)
 
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_quiz_item(cls, value):
+        if not isinstance(value, dict):
+            return value
+        item = dict(value)
+        options = item.get("options") or []
+        if isinstance(options, dict):
+            options = list(options.values())
+            item["options"] = options
+        correct_index = item.get("correct_index")
+        if correct_index is None and "correct_answer" in item:
+            item["correct_index"] = cls._correct_index_from_answer(
+                item.get("correct_answer"),
+                options,
+            )
+        item.setdefault("explanation", item.get("reason") or item.get("analysis") or "")
+        item.setdefault(
+            "knowledge_point",
+            item.get("knowledge_point")
+            or item.get("concept")
+            or item.get("target_concept")
+            or item.get("question")
+            or "checkpoint",
+        )
+        for extra_key in (
+            "correct_answer",
+            "answer",
+            "reason",
+            "analysis",
+            "concept",
+            "target_concept",
+        ):
+            item.pop(extra_key, None)
+        return item
+
+    @staticmethod
+    def _correct_index_from_answer(answer, options: list) -> int:
+        if isinstance(answer, int):
+            return max(answer, 0)
+        if not isinstance(answer, str):
+            return 0
+        stripped = answer.strip()
+        if len(stripped) == 1 and stripped.isalpha():
+            index = ord(stripped.upper()) - ord("A")
+            if 0 <= index < len(options):
+                return index
+        for index, option in enumerate(options):
+            if stripped == str(option).strip():
+                return index
+        return 0
+
     @model_validator(mode="after")
     def correct_index_must_exist(self) -> "QuizItemDraft":
         if self.correct_index >= len(self.options):
@@ -292,6 +355,71 @@ class LearningContentDraft(SchemaModel):
     generation_guidance: dict = Field(default_factory=dict)
     quality: dict = Field(default_factory=dict)
     sections: list[LearningSectionDraft] = Field(min_length=1)
+
+    @field_validator("outline", mode="before")
+    @classmethod
+    def normalize_outline(cls, value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [value]
+        if isinstance(value, list):
+            result = []
+            for item in value:
+                if isinstance(item, dict):
+                    result.append(
+                        str(
+                            item.get("section_title")
+                            or item.get("title")
+                            or item.get("name")
+                            or item
+                        )
+                    )
+                else:
+                    result.append(str(item))
+            return result
+        return value
+
+    @field_validator("audience", "teaching_intent", "material_overview", "generation_guidance", mode="before")
+    @classmethod
+    def normalize_dict_field(cls, value):
+        if value is None:
+            return {}
+        if isinstance(value, str):
+            return {"description": value}
+        return value
+
+    @field_validator("quality", mode="before")
+    @classmethod
+    def normalize_quality(cls, value):
+        if value is None:
+            return {}
+        if isinstance(value, str):
+            return {"rating": value}
+        return value
+
+    @field_validator("global_concepts", mode="before")
+    @classmethod
+    def normalize_global_concepts(cls, value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [{"name": value[:80], "plain_explanation": value}]
+        if isinstance(value, list):
+            result = []
+            for index, item in enumerate(value, start=1):
+                if isinstance(item, str):
+                    result.append(
+                        {
+                            "id": f"global_concept_{index:02d}",
+                            "name": item[:80],
+                            "plain_explanation": item,
+                        }
+                    )
+                else:
+                    result.append(item)
+            return result
+        return value
 
 
 class LearningSection(SchemaModel):
