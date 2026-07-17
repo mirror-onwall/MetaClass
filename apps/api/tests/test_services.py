@@ -8,11 +8,13 @@ from metaclass.infrastructure.providers.llm import GeminiVisionProvider
 from metaclass.infrastructure.providers.learning import LLMLearningProvider
 from metaclass.modules.content.schemas import (
     CourseKnowledgeTree,
+    CourseKnowledgeTreeNode,
     KnowledgeCanonicalizationDraft,
     KnowledgeMergeGroup,
     KnowledgeRelationDraft,
     KnowledgeUnit,
     LearningContent,
+    LearningContentDraft,
     LearningSection,
     PageRef,
     VisualOpportunity,
@@ -249,6 +251,78 @@ def test_knowledge_tree_fallback_keeps_teaching_topics_at_usable_granularity() -
     assert quality["recommended_min_section_count"] == 3
     assert quality["overloaded_section_ids"] == []
     assert "LearningContent may be over-compressed" not in " ".join(quality["warnings"])
+
+
+def test_incomplete_llm_course_tree_is_completed_with_supplementary_nodes() -> None:
+    service = ContentService(Mock(), Mock(), Mock())
+    units = [
+        KnowledgeUnit(id="ku_001", title="Concept 1", summary="First."),
+        KnowledgeUnit(id="ku_002", title="Concept 2", summary="Second."),
+    ]
+    tree = CourseKnowledgeTree(
+        id="tree_001",
+        title="Course",
+        nodes=[
+            CourseKnowledgeTreeNode(
+                id="topic_001",
+                title="Concept 1",
+                knowledge_unit_ids=["ku_001"],
+            )
+        ],
+        root_node_ids=["topic_001"],
+    )
+
+    completed = service._complete_course_knowledge_tree(tree, units)
+
+    ContentService._validate_course_knowledge_tree(completed, units)
+    assigned = {
+        unit_id for node in completed.nodes for unit_id in node.knowledge_unit_ids
+    }
+    assert assigned == {"ku_001", "ku_002"}
+    assert any("supplementary" in node.id for node in completed.nodes)
+
+
+def test_learning_content_draft_normalizes_common_llm_shape_errors() -> None:
+    draft = LearningContentDraft.model_validate(
+        {
+            "title": "Object Detection",
+            "outline": [{"section_title": "YOLO"}],
+            "audience": "computer vision students",
+            "teaching_intent": "explain detectors",
+            "material_overview": "object detection slides",
+            "global_concepts": ["YOLO predicts boxes in one pass"],
+            "generation_guidance": "focus on misconceptions",
+            "quality": "high",
+            "sections": [
+                {
+                    "title": "YOLO",
+                    "page_nos": [1],
+                    "summary": "YOLO is a one-stage detector.",
+                    "teaching_script": "Explain grid prediction.",
+                    "visual_opportunities": [
+                        {"description": "Show grid layout.", "priority": 1}
+                    ],
+                    "quiz_items": [
+                        {
+                            "question": "Which option describes YOLO?",
+                            "options": ["Two-stage", "One-stage"],
+                            "correct_answer": "B",
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+
+    assert draft.outline == ["YOLO"]
+    assert draft.audience == {"description": "computer vision students"}
+    assert draft.global_concepts[0].name == "YOLO predicts boxes in one pass"
+    assert draft.quality == {"rating": "high"}
+    assert draft.sections[0].visual_opportunities[0].priority == "high"
+    quiz = draft.sections[0].quiz_items[0]
+    assert quiz.correct_index == 1
+    assert quiz.explanation == ""
+    assert quiz.knowledge_point == "Which option describes YOLO?"
 
 
 def test_collection_learning_content_reports_stage_progress() -> None:

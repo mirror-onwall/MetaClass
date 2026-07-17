@@ -478,6 +478,7 @@ class ContentService:
         if builder:
             try:
                 tree = builder(tree_id=tree_id, title=title, units=units)
+                tree = self._complete_course_knowledge_tree(tree, units)
                 self._validate_course_knowledge_tree(tree, units)
                 return tree, []
             except Exception as exc:
@@ -488,6 +489,76 @@ class ContentService:
                 )
                 return self._fallback_course_knowledge_tree(tree_id, title, units), [warning]
         return self._fallback_course_knowledge_tree(tree_id, title, units), []
+
+    def _complete_course_knowledge_tree(
+        self,
+        tree: CourseKnowledgeTree,
+        units: list[KnowledgeUnit],
+    ) -> CourseKnowledgeTree:
+        expected_unit_ids = {unit.id for unit in units}
+        seen_unit_ids: set[str] = set()
+        nodes = []
+        warnings = list(tree.warnings)
+        for node in tree.nodes:
+            valid_unit_ids = []
+            for unit_id in node.knowledge_unit_ids:
+                if unit_id not in expected_unit_ids or unit_id in seen_unit_ids:
+                    continue
+                valid_unit_ids.append(unit_id)
+                seen_unit_ids.add(unit_id)
+            nodes.append(node.model_copy(update={"knowledge_unit_ids": valid_unit_ids}))
+
+        missing_units = [unit for unit in units if unit.id not in seen_unit_ids]
+        if missing_units:
+            existing_node_ids = {node.id for node in nodes}
+            root_id = f"{tree.id}_supplementary"
+            suffix = 1
+            while root_id in existing_node_ids:
+                suffix += 1
+                root_id = f"{tree.id}_supplementary_{suffix}"
+            root_node_ids = list(tree.root_node_ids)
+            root_node_ids.append(root_id)
+            nodes.append(
+                CourseKnowledgeTreeNode(
+                    id=root_id,
+                    title="Supplementary Knowledge",
+                    role="concept",
+                    summary=(
+                        "Knowledge units added by the backend because the LLM tree omitted "
+                        "them."
+                    ),
+                    order=len(root_node_ids),
+                )
+            )
+            existing_node_ids.add(root_id)
+            for chunk_index in range(0, len(missing_units), MAX_UNITS_PER_TOPIC_NODE):
+                chunk = missing_units[chunk_index : chunk_index + MAX_UNITS_PER_TOPIC_NODE]
+                child_id = f"{root_id}_topic_{chunk_index // MAX_UNITS_PER_TOPIC_NODE + 1:02d}"
+                nodes.append(
+                    CourseKnowledgeTreeNode(
+                        id=child_id,
+                        title=chunk[0].title if len(chunk) == 1 else "Supplementary Topic",
+                        role=chunk[0].unit_type,
+                        summary=" ".join(unit.summary for unit in chunk)[:1200],
+                        parent_id=root_id,
+                        knowledge_unit_ids=[unit.id for unit in chunk],
+                        order=chunk_index // MAX_UNITS_PER_TOPIC_NODE + 1,
+                    )
+                )
+            warnings.append(
+                "The LLM course knowledge tree omitted some knowledge units; supplementary "
+                "nodes were added automatically."
+            )
+            return tree.model_copy(
+                update={
+                    "nodes": nodes,
+                    "root_node_ids": root_node_ids,
+                    "teaching_sequence": list(tree.teaching_sequence or []) + [root_id],
+                    "warnings": self._dedupe_strings(warnings),
+                }
+            )
+
+        return tree.model_copy(update={"nodes": nodes, "warnings": self._dedupe_strings(warnings)})
 
     def _fallback_course_knowledge_tree(
         self,
