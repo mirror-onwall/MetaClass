@@ -134,6 +134,12 @@ class PPTSkillAdapter:
         output_dir: Path,
     ) -> list[PPTSlideImage]:
         output_dir.mkdir(parents=True, exist_ok=True)
+        if platform.system().lower() == "darwin":
+            # The bundled headless LibreOffice runtime cannot reliably access
+            # macOS system CJK fonts and renders Chinese as tofu boxes. Browser
+            # previews use our declarative PIL renderer, which loads PingFang
+            # directly; the downloadable PPTX remains unchanged.
+            return self._render_placeholder_images(plan, output_dir)
         try:
             with tempfile.TemporaryDirectory() as temp_dir:
                 libreoffice_profile = Path(temp_dir) / "lo_profile"
@@ -234,10 +240,13 @@ class PPTSkillAdapter:
     def _font_faces() -> tuple[str, str]:
         system = platform.system().lower()
         if system == "darwin":
-            return "Arial", "PingFang SC"
+            # LibreOffice on macOS may classify Chinese glyphs as latin text
+            # when importing python-pptx output. Using the CJK-capable face for
+            # both font slots prevents it from substituting empty Arial glyphs.
+            return "PingFang SC", "PingFang SC"
         if system == "windows":
-            return "Arial", "Microsoft YaHei"
-        return "DejaVu Sans", "Noto Sans CJK SC"
+            return "Microsoft YaHei", "Microsoft YaHei"
+        return "Noto Sans CJK SC", "Noto Sans CJK SC"
 
     @staticmethod
     def _apply_font(

@@ -29,15 +29,20 @@ from metaclass.modules.classroom.schemas import (
     ControllerResult,
     GiveFeedbackAction,
     LearningMode,
+    QAInteractionExecutedEvent,
+    QAInteractionExecutedPayload,
     QuizEvaluatedEvent,
     QuizEvaluatedPayload,
     TeacherAnswerEvent,
+    StudentQuestionAction,
+    TeacherQAResponseAction,
     UserQuestionEvent,
     UserQuestionPayload,
 )
 from metaclass.modules.classroom.repository import ClassroomRepository
 from metaclass.modules.content.service import ContentService
 from metaclass.modules.presentation.service import PresentationService
+from metaclass.modules.question_bank.service import QuestionBankService
 
 
 class ClassroomService:
@@ -51,6 +56,7 @@ class ClassroomService:
         controller: ClassroomController | None = None,
         planner: ClassroomPlanGenerator | None = None,
         presentations: PresentationService | None = None,
+        question_banks: QuestionBankService | None = None,
     ) -> None:
         self.repository = repository
         self.contents = contents
@@ -60,19 +66,23 @@ class ClassroomService:
         self.controller = controller or ClassroomController()
         self.planner = planner or ClassroomPlanGenerator(fallback_teacher=self.teacher)
         self.presentations = presentations
+        self.question_banks = question_banks
 
     def create_plan(
         self, content_id: str, presentation_plan_id: str | None = None
     ) -> ClassroomPlan:
         content = self.contents.get(content_id)
         presentation_plan = None
+        qa_items = []
         if presentation_plan_id:
             if not self.presentations:
                 raise HTTPException(409, "Presentation service is unavailable")
             presentation_plan = self.presentations.get_plan(presentation_plan_id)
             if presentation_plan.content_id != content_id:
                 raise HTTPException(409, "PresentationPlan does not belong to LearningContent")
-        plan, meta = self.planner.generate_with_meta(content, presentation_plan)
+            if self.question_banks:
+                qa_items = self.question_banks.get_for_plan(presentation_plan.id).items
+        plan, meta = self.planner.generate_with_meta(content, presentation_plan, qa_items)
         self.repository.save_plan(plan)
         self.repository.save_plan_generation_meta(meta)
         return plan
@@ -223,6 +233,10 @@ class ClassroomService:
                 session=session,
             )
 
+        scripted_qa_step = self._execute_scripted_qa_step(session)
+        if scripted_qa_step:
+            return scripted_qa_step
+
         if session.mode == LearningMode.INTERACTIVE:
             directed_step = self._maybe_generate_auto_dialog_turn(session)
             if directed_step:
@@ -236,6 +250,170 @@ class ClassroomService:
             correct=result.correct,
             source_refs=result.source_refs,
             session=result.session,
+        )
+
+    def _execute_scripted_qa_step(
+        self, session: ClassroomSession
+    ) -> AutoClassroomStep | None:
+        plan = self.get_plan(session.plan_id)
+        self._normalize_cursor(session, plan)
+        if session.status == "completed":
+            return None
+        scene = plan.scenes[session.scene_index]
+        action = scene.actions[session.action_index]
+        if not isinstance(action, StudentQuestionAction | TeacherQAResponseAction):
+            return None
+
+        if session.mode != LearningMode.INTERACTIVE or not self.question_banks:
+            self._skip_scripted_qa_pair(session, scene)
+            result = self.next(session.id)
+            return AutoClassroomStep(
+                status=result.status,
+                action=result.action,
+                feedback=result.feedback,
+                session=result.session,
+            )
+
+        qa = self.question_banks.get_item(action.payload.qa_id)
+        if isinstance(action, StudentQuestionAction):
+            student = self._select_scripted_qa_student(session, action)
+            if not student:
+                self._skip_scripted_qa_pair(session, scene)
+                result = self.next(session.id)
+                return AutoClassroomStep(
+                    status=result.status,
+                    action=result.action,
+                    feedback=result.feedback,
+                    session=result.session,
+                )
+            self._record_action_executed(session, action)
+            session.action_index += 1
+            turn = AgentTurn(
+                agent_id=student.id,
+                role="student",
+                speech=qa.student_question,
+                actions=[],
+                intent="scripted_qa_question",
+            )
+            self._record_agent_turns(session, [turn])
+            directed = DirectedAgentTurn(
+                decision=ControllerDecision(
+                    next_role="student",
+                    next_agent_id=student.id,
+                    reason="课堂剧本在当前页面安排了预生成学生问题。",
+                    prompt="请按预生成问题自然发言。",
+                ),
+                turns=[turn],
+            )
+            return AutoClassroomStep(
+                status="agent_turn",
+                directed_turn=directed,
+                feedback=turn.speech,
+                session=self.get_session(session.id),
+            )
+
+        previous_action = scene.actions[session.action_index - 1]
+        if not isinstance(previous_action, StudentQuestionAction):
+            raise HTTPException(500, "Invalid prepared QA action sequence")
+        student_turn = self._last_student_turn_for_scripted_qa(session)
+        if not student_turn:
+            raise HTTPException(500, "Prepared QA response has no student question turn")
+        self._record_action_executed(session, action)
+        session.action_index += 1
+        teacher_turn = AgentTurn(
+            agent_id="teacher",
+            role="teacher",
+            speech=qa.teacher_answer,
+            actions=[],
+            intent="scripted_qa_answer",
+        )
+        self._record_agent_turns(session, [teacher_turn])
+        session = self.get_session(session.id)
+        session.events.append(
+            QAInteractionExecutedEvent(
+                id=f"event_{uuid4().hex[:12]}",
+                session_id=session.id,
+                type="QA_INTERACTION_EXECUTED",
+                payload=QAInteractionExecutedPayload(
+                    qa_id=qa.id,
+                    slide_id=qa.slide_id,
+                    student_action_id=previous_action.id,
+                    teacher_action_id=action.id,
+                    student_agent_id=student_turn.agent_id,
+                    student_question=student_turn.speech,
+                    teacher_answer=teacher_turn.speech,
+                ),
+            )
+        )
+        self._save_session(session)
+        directed = DirectedAgentTurn(
+            decision=ControllerDecision(
+                next_role="teacher",
+                next_agent_id="teacher",
+                reason="老师按课堂剧本回答预生成学生问题。",
+                prompt="请按预生成答案回应学生并继续课堂。",
+            ),
+            turns=[teacher_turn],
+        )
+        return AutoClassroomStep(
+            status="agent_turn",
+            directed_turn=directed,
+            feedback=teacher_turn.speech,
+            source_refs=qa.source_refs,
+            session=self.get_session(session.id),
+        )
+
+    def _skip_scripted_qa_pair(self, session: ClassroomSession, scene) -> None:
+        action = scene.actions[session.action_index]
+        if isinstance(action, StudentQuestionAction):
+            session.action_index += 2
+        else:
+            session.action_index += 1
+        self._save_session(session)
+
+    @staticmethod
+    def _select_scripted_qa_student(
+        session: ClassroomSession, action: StudentQuestionAction
+    ):
+        preferred_types = [
+            action.payload.preferred_agent_type,
+            *action.payload.fallback_agent_types,
+        ]
+        for agent_type in preferred_types:
+            selected = next(
+                (
+                    student
+                    for student in session.student_states
+                    if student.agent_type == agent_type
+                ),
+                None,
+            )
+            if selected:
+                return selected
+        return session.student_states[0] if session.student_states else None
+
+    @staticmethod
+    def _last_student_turn_for_scripted_qa(
+        session: ClassroomSession,
+    ) -> AgentTurn | None:
+        for event in reversed(session.events):
+            if event.type == "AGENT_TURN" and event.payload.turn.role == "student":
+                if event.payload.turn.intent == "scripted_qa_question":
+                    return event.payload.turn
+        return None
+
+    @staticmethod
+    def _record_action_executed(session: ClassroomSession, action) -> None:
+        session.events.append(
+            ActionExecutedEvent(
+                id=f"event_{uuid4().hex[:12]}",
+                session_id=session.id,
+                type="ACTION_EXECUTED",
+                payload=ActionExecutedPayload(
+                    action_id=action.id,
+                    action_type=ActionType(action.type),
+                ),
+            )
         )
 
     def answer(self, session_id: str, selected_index: int) -> ControllerResult:

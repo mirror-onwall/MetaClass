@@ -75,7 +75,7 @@ class TeacherAgent:
                     id=f"{prefix}_end",
                     type="END",
                     actor="system",
-                    payload=EndPayload(summary=f"本页要点：{section.summary}"),
+                    payload=EndPayload(summary=section.summary),
                 ),
             ]
         )

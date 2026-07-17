@@ -99,6 +99,9 @@ class Database:
                 "created_at": "DATETIME",
                 "updated_at": "DATETIME",
             },
+            "classroom_plan_jobs": {
+                "presentation_plan_id": "VARCHAR(64)",
+            },
             "ppt_artifacts": {
                 "slide_images": "JSON",
             },

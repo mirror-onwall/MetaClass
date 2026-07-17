@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from uuid import uuid4
 
 from pydantic import Field, ValidationError
@@ -23,9 +24,14 @@ from metaclass.modules.classroom.schemas import (
     ReviewPayload,
     ShowPageAction,
     ShowPagePayload,
+    StudentQuestionAction,
+    StudentQuestionPayload,
+    TeacherQAResponseAction,
+    TeacherQAResponsePayload,
 )
 from metaclass.modules.content.schemas import LearningContent
 from metaclass.modules.presentation.schemas import PresentationPlan
+from metaclass.modules.question_bank.schemas import ClassroomQA
 
 
 class ScenePlanBlueprint(SchemaModel):
@@ -39,6 +45,12 @@ class ScenePlanBlueprint(SchemaModel):
 
 class ClassroomPlanBlueprint(SchemaModel):
     scenes: list[ScenePlanBlueprint] = Field(default_factory=list)
+
+
+class TeacherCheckBlueprint(SchemaModel):
+    slide_id: str = Field(min_length=1)
+    question: str = Field(min_length=1)
+    target_knowledge_point: str = Field(min_length=1)
 
 
 class ClassroomPlanGenerator:
@@ -65,11 +77,18 @@ class ClassroomPlanGenerator:
         self,
         content: LearningContent,
         presentation_plan: PresentationPlan | None = None,
+        qa_items: list[ClassroomQA] | None = None,
     ) -> tuple[ClassroomPlan, ClassroomPlanGenerationMeta]:
         fallback = self._fallback_plan(content)
         if not self.llm:
             if presentation_plan:
                 fallback = self._align_to_presentation(content, fallback, presentation_plan)
+                fallback = self._prepare_teacher_check_actions(
+                    fallback, presentation_plan, qa_items or []
+                )
+                fallback = self._insert_question_bank_actions(
+                    fallback, presentation_plan, qa_items or []
+                )
             return fallback, self._meta(
                 fallback,
                 source="fallback",
@@ -82,6 +101,12 @@ class ClassroomPlanGenerator:
             plan = self._hydrate_blueprint(content, blueprint)
             if presentation_plan:
                 plan = self._align_to_presentation(content, plan, presentation_plan)
+                plan = self._prepare_teacher_check_actions(
+                    plan, presentation_plan, qa_items or []
+                )
+                plan = self._insert_question_bank_actions(
+                    plan, presentation_plan, qa_items or []
+                )
             self._validate_runtime_sequence(plan)
             return plan, self._meta(
                 plan,
@@ -98,6 +123,12 @@ class ClassroomPlanGenerator:
         ) as exc:
             if presentation_plan:
                 fallback = self._align_to_presentation(content, fallback, presentation_plan)
+                fallback = self._prepare_teacher_check_actions(
+                    fallback, presentation_plan, qa_items or []
+                )
+                fallback = self._insert_question_bank_actions(
+                    fallback, presentation_plan, qa_items or []
+                )
             return fallback, self._meta(
                 fallback,
                 source="fallback",
@@ -158,7 +189,9 @@ class ClassroomPlanGenerator:
                         id=f"{prefix}_end",
                         type="END",
                         actor="system",
-                        payload=EndPayload(summary=f"本页要点：{'；'.join(slide.key_points[:3])}"),
+                        payload=EndPayload(
+                            summary="；".join(slide.key_points[:3]) or slide.title
+                        ),
                     )
                 )
             scenes.append(ClassroomScene(id=prefix, title=slide.title, actions=actions))
@@ -166,6 +199,288 @@ class ClassroomPlanGenerator:
             id=f"plan_{uuid4().hex[:12]}",
             content_id=content.id,
             scenes=scenes,
+        )
+
+    @classmethod
+    def _insert_question_bank_actions(
+        cls,
+        classroom_plan: ClassroomPlan,
+        presentation_plan: PresentationPlan,
+        qa_items: list[ClassroomQA],
+    ) -> ClassroomPlan:
+        selected = cls._select_classroom_questions(presentation_plan, qa_items)
+        by_slide = {item.slide_id: item for item in selected}
+        scenes = []
+        for slide, scene in zip(
+            presentation_plan.slides, classroom_plan.scenes, strict=False
+        ):
+            qa = by_slide.get(slide.id)
+            if not qa:
+                scenes.append(scene)
+                continue
+            actions = list(scene.actions)
+            pair = [
+                StudentQuestionAction(
+                    id=f"{scene.id}_student_qa_{qa.id}",
+                    type="STUDENT_QUESTION",
+                    actor="student",
+                    payload=StudentQuestionPayload(
+                        qa_id=qa.id,
+                        preferred_agent_type=qa.agent_type,
+                        fallback_agent_types=cls._fallback_agent_types(qa.agent_type),
+                    ),
+                ),
+                TeacherQAResponseAction(
+                    id=f"{scene.id}_teacher_qa_{qa.id}",
+                    type="TEACHER_QA_RESPONSE",
+                    actor="teacher",
+                    payload=TeacherQAResponsePayload(qa_id=qa.id),
+                ),
+            ]
+            if qa.moment == "before_explanation":
+                insert_at = next(
+                    (index for index, action in enumerate(actions) if isinstance(action, ExplainAction)),
+                    1,
+                )
+            elif qa.moment == "before_next_slide":
+                insert_at = next(
+                    (index for index, action in enumerate(actions) if isinstance(action, EndAction)),
+                    len(actions),
+                )
+            else:
+                insert_at = next(
+                    (
+                        index + 1
+                        for index, action in enumerate(actions)
+                        if isinstance(action, ExplainAction)
+                    ),
+                    min(2, len(actions)),
+                )
+            actions[insert_at:insert_at] = pair
+            scenes.append(scene.model_copy(update={"actions": actions}))
+        return classroom_plan.model_copy(update={"scenes": scenes})
+
+    def _prepare_teacher_check_actions(
+        self,
+        classroom_plan: ClassroomPlan,
+        presentation_plan: PresentationPlan,
+        qa_items: list[ClassroomQA],
+    ) -> ClassroomPlan:
+        """Pre-generate a small number of teacher listening checks before class.
+
+        Student-originated QA is the primary scripted interaction. Teacher checks
+        are placed on different slides so the lesson does not become a sequence of
+        teacher questions followed by student answers.
+        """
+        student_qa_slide_ids = {
+            item.slide_id
+            for item in self._select_classroom_questions(presentation_plan, qa_items)
+        }
+        eligible = [
+            slide for slide in presentation_plan.slides if slide.id not in student_qa_slide_ids
+        ]
+        # A one-page lesson has no alternative page; keep one teacher check so
+        # the runtime still has an explicit listening-check action.
+        if not eligible and presentation_plan.slides:
+            eligible = list(presentation_plan.slides)
+        # Roughly one listening check per four slides; student questions keep the
+        # larger share of classroom interaction.
+        budget = min(len(eligible), max(1, math.ceil(len(presentation_plan.slides) / 4)))
+        selected_slides = self._spread_slides(eligible, budget)
+        prepared = self._generate_teacher_checks(
+            selected_slides, presentation_plan.slides
+        )
+        checks_by_slide = {item.slide_id: item for item in prepared}
+
+        scenes = []
+        for slide, scene in zip(
+            presentation_plan.slides, classroom_plan.scenes, strict=False
+        ):
+            # Remove section-blueprint probes. They were generated before the PPT
+            # and are replaced by checks grounded in the actual page and script.
+            actions = [action for action in scene.actions if not isinstance(action, ProbeAction)]
+            check = checks_by_slide.get(slide.id)
+            if check:
+                explain = next(
+                    (action for action in actions if isinstance(action, ExplainAction)),
+                    None,
+                )
+                if explain:
+                    insert_at = actions.index(explain) + 1
+                    actions.insert(
+                        insert_at,
+                        ProbeAction(
+                            id=f"{scene.id}_prepared_teacher_check",
+                            type="PROBE",
+                            actor="teacher",
+                            payload=ProbePayload(
+                                question=check.question,
+                                target_knowledge_point=check.target_knowledge_point,
+                                source_refs=explain.payload.source_refs,
+                            ),
+                        ),
+                    )
+            scenes.append(scene.model_copy(update={"actions": actions}))
+        return classroom_plan.model_copy(update={"scenes": scenes})
+
+    def _generate_teacher_checks(
+        self, slides: list, all_slides: list
+    ) -> list[TeacherCheckBlueprint]:
+        if not slides:
+            return []
+        fallback = [
+            TeacherCheckBlueprint(
+                slide_id=slide.id,
+                question=(
+                    f"根据刚才的讲解，谁能用自己的话说明“"
+                    f"{(slide.key_points or [slide.title])[0].rstrip('。')}”为什么成立？"
+                ),
+                target_knowledge_point=(slide.key_points or [slide.title])[0],
+            )
+            for slide in slides
+        ]
+        if not self.llm:
+            return fallback
+        system = """你是备课阶段的教师智能体。请根据每个候选检查点截至当前页已经讲过的全部 PPT 页面内容和全部老师讲稿，提前设计课堂上的听课检查问题。
+问题用于检查学生是否听懂刚讲过的概念、机制、步骤或前后关系，而不是让学生猜尚未讲过的知识。
+你可以检查当前页本身，也可以检查当前页与此前页面的概念衔接、因果关系和综合理解；不得使用当前页之后的内容。
+每页只生成一个具体、可简短作答的问题；不要问“听懂了吗”，不要重复讲稿原句，不要出冷知识。
+问题会在该页讲解完成后由老师说出。只输出 JSON：
+{"checks":[{"slide_id":"...","question":"...","target_knowledge_point":"..."}]}"""
+        user = {
+            "checkpoints": [
+                {
+                    "current_slide_id": slide.id,
+                    "current_slide_order": slide.order,
+                    "course_so_far": [
+                        {
+                            "slide_id": history.id,
+                            "slide_order": history.order,
+                            "title": history.title,
+                            "page_content": history.key_points,
+                            "visual_content": history.visual_payload,
+                            "speaker_script": history.speaker_script,
+                        }
+                        for history in all_slides
+                        if history.order <= slide.order
+                    ],
+                }
+                for slide in slides
+            ]
+        }
+        try:
+            raw = self.llm.complete_json(
+                [
+                    LLMMessage(role="system", content=system),
+                    LLMMessage(role="user", content=json.dumps(user, ensure_ascii=False)),
+                ],
+                temperature=0.2,
+            )
+            payload = json.loads(raw)
+            checks = [
+                TeacherCheckBlueprint.model_validate(item)
+                for item in payload.get("checks", [])
+            ]
+            allowed = {slide.id for slide in slides}
+            checks = [item for item in checks if item.slide_id in allowed]
+            by_slide = {item.slide_id: item for item in checks}
+            by_slide.update(
+                {item.slide_id: item for item in fallback if item.slide_id not in by_slide}
+            )
+            return [by_slide[slide.id] for slide in slides]
+        except (TypeError, ValueError, json.JSONDecodeError, ValidationError):
+            return fallback
+
+    @staticmethod
+    def _spread_slides(slides: list, budget: int) -> list:
+        if not slides or budget <= 0:
+            return []
+        if budget == 1:
+            return [slides[len(slides) // 2]]
+        indexes = sorted(
+            {round(index * (len(slides) - 1) / (budget - 1)) for index in range(budget)}
+        )
+        return [slides[index] for index in indexes]
+
+    @staticmethod
+    def _select_classroom_questions(
+        presentation_plan: PresentationPlan,
+        qa_items: list[ClassroomQA],
+    ) -> list[ClassroomQA]:
+        approved = [item for item in qa_items if item.status == "approved"]
+        groups = []
+        for slide in presentation_plan.slides:
+            candidates = [item for item in approved if item.slide_id == slide.id]
+            if candidates:
+                groups.append(candidates)
+        if not groups:
+            return []
+        budget = min(len(groups), max(1, math.ceil(len(presentation_plan.slides) / 2)))
+        if budget == 1:
+            group_indexes = [0]
+        else:
+            group_indexes = sorted(
+                {
+                    round(index * (len(groups) - 1) / (budget - 1))
+                    for index in range(budget)
+                }
+            )
+        selected = []
+        used_types = set()
+        type_priority = [
+            "deep_thinker",
+            "concept_confused",
+            "foundation_weak",
+            "practical_applier",
+            "researcher",
+            "classroom_atmosphere_regulator",
+            "note_taker",
+            "silent_observer",
+        ]
+        for group_index in group_indexes:
+            candidates = groups[group_index]
+            candidates = sorted(
+                candidates,
+                key=lambda item: (
+                    item.agent_type in used_types,
+                    type_priority.index(item.agent_type.value)
+                    if item.agent_type.value in type_priority
+                    else len(type_priority),
+                ),
+            )
+            selected.append(candidates[0])
+            used_types.add(candidates[0].agent_type)
+        return selected
+
+    @staticmethod
+    def _fallback_agent_types(agent_type):
+        from metaclass.modules.classroom.agent_schemas import StudentAgentType
+
+        fallbacks = {
+            StudentAgentType.DEEP_THINKER: [
+                StudentAgentType.RESEARCHER,
+                StudentAgentType.CONCEPT_CONFUSED,
+            ],
+            StudentAgentType.FOUNDATION_WEAK: [
+                StudentAgentType.CONCEPT_CONFUSED,
+                StudentAgentType.SILENT_OBSERVER,
+            ],
+            StudentAgentType.PRACTICAL_APPLIER: [
+                StudentAgentType.RESEARCHER,
+                StudentAgentType.ATMOSPHERE_REGULATOR,
+            ],
+            StudentAgentType.NOTE_TAKER: [
+                StudentAgentType.SILENT_OBSERVER,
+                StudentAgentType.FOUNDATION_WEAK,
+            ],
+        }
+        return fallbacks.get(
+            agent_type,
+            [
+                StudentAgentType.DEEP_THINKER,
+                StudentAgentType.RESEARCHER,
+                StudentAgentType.CONCEPT_CONFUSED,
+            ],
         )
 
     def _meta(
@@ -359,3 +674,13 @@ class ClassroomPlanGenerator:
                     raise ValueError("ASK_QUIZ must be followed by GIVE_FEEDBACK")
                 if next_action.payload.quiz_action_id != action.id:
                     raise ValueError("GIVE_FEEDBACK must reference the previous ASK_QUIZ")
+            if isinstance(action, StudentQuestionAction):
+                next_index = index + 1
+                if next_index >= len(scene.actions) or not isinstance(
+                    scene.actions[next_index], TeacherQAResponseAction
+                ):
+                    raise ValueError(
+                        "STUDENT_QUESTION must be followed by TEACHER_QA_RESPONSE"
+                    )
+                if scene.actions[next_index].payload.qa_id != action.payload.qa_id:
+                    raise ValueError("Prepared QA action pair must reference the same qa_id")

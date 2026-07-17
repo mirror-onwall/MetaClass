@@ -1,3 +1,5 @@
+import json
+import threading
 from unittest.mock import Mock
 
 import pytest
@@ -53,6 +55,8 @@ from metaclass.modules.presentation.schemas import (
     SlideElement,
     SlidePlan,
 )
+from metaclass.modules.question_bank.generator import QuestionBankGenerator
+from metaclass.modules.question_bank.schemas import QuestionCandidate
 from metaclass.modules.video.schemas import VideoJob
 
 
@@ -415,6 +419,227 @@ def test_presentation_fallback_prefers_substantive_section_content() -> None:
     assert plan.slides[0].speaker_script == (
         "先初始化中心，再重复分配与更新，直到结果稳定。"
     )
+
+
+def test_question_bank_student_receives_course_history_and_teacher_receives_course() -> None:
+    profile = get_default_student_agent_profiles()[0]
+    slides = [
+        SlidePlan(
+            id="slide_001",
+            order=1,
+            source_section_ids=["section_001"],
+            title="前置概念",
+            key_points=["先理解前置概念"],
+            speaker_script="这是第一页讲稿。",
+            suggested_visual="概念关系",
+        ),
+        SlidePlan(
+            id="slide_002",
+            order=2,
+            source_section_ids=["section_001"],
+            title="当前概念",
+            key_points=["当前结论建立在前置概念上"],
+            speaker_script="这是第二页讲稿。",
+            suggested_visual="前后关系",
+        ),
+    ]
+    student_messages = QuestionBankGenerator._student_messages(
+        slides[1], profile, slides
+    )
+    assert "课程开始到当前页的全部 PPT" in student_messages[0].content
+    assert "这是第一页讲稿" in student_messages[1].content
+    assert "这是第二页讲稿" in student_messages[1].content
+
+    content = LearningContent(
+        id="content_qa_context",
+        material_id="mat_001",
+        title="完整课程",
+        objectives=["理解前后概念关系"],
+        sections=[
+            LearningSection(
+                id="section_001",
+                title="课程知识",
+                summary="LearningContent 中的完整课程材料。",
+                source_refs=[source_ref()],
+            )
+        ],
+    )
+    plan = PresentationPlan(
+        id="presentation_qa_context",
+        content_id=content.id,
+        title=content.title,
+        slides=slides,
+    )
+    candidate = QuestionCandidate(
+        candidate_id="candidate_001",
+        slide_id="slide_002",
+        slide_order=2,
+        agent_type=profile.type,
+        student_profile_id=profile.id,
+        knowledge_point="前后关系",
+        canonical_question="这两个概念有什么关系？",
+        student_question="老师，这两个概念是怎么连起来的？",
+        reason="需要建立前后联系。",
+    )
+    llm = Mock()
+    llm.complete_json.return_value = (
+        '{"answers":[{"candidate_id":"candidate_001",'
+        '"canonical_answer":"标准答案",'
+        '"teacher_answer":"课堂回答","answerable":true}]}'
+    )
+    QuestionBankGenerator(llm)._teacher_answers(content, plan, [candidate])
+    teacher_messages = llm.complete_json.call_args.args[0]
+    assert "整节课的 PPT 页面内容、全部讲稿和 LearningContent" in teacher_messages[0].content
+    assert "这是第一页讲稿" in teacher_messages[1].content
+    assert "LearningContent 中的完整课程材料" in teacher_messages[1].content
+
+    batch_messages = QuestionBankGenerator._student_batch_messages(plan, profile)
+    checkpoints = json.loads(batch_messages[1].content)["checkpoints"]
+    assert [item["slide_id"] for item in checkpoints[0]["course_so_far"]] == [
+        "slide_001"
+    ]
+    assert [item["slide_id"] for item in checkpoints[1]["course_so_far"]] == [
+        "slide_001",
+        "slide_002",
+    ]
+
+
+def test_question_bank_batches_students_in_parallel_and_teacher_once() -> None:
+    class ParallelBatchLLM:
+        def __init__(self) -> None:
+            self.student_barrier = threading.Barrier(8)
+            self.student_calls = 0
+            self.teacher_calls = 0
+            self.controller_calls = 0
+            self.lock = threading.Lock()
+
+        def complete_json(self, messages, temperature=0.0):
+            system = messages[0].content
+            if "一次性完成整节课各阶段" in system:
+                with self.lock:
+                    self.student_calls += 1
+                self.student_barrier.wait(timeout=3)
+                payload = json.loads(messages[1].content)
+                slide_id = payload["checkpoints"][0]["current_slide_id"]
+                return json.dumps(
+                    {
+                        "questions": [
+                            {
+                                "slide_id": slide_id,
+                                "knowledge_point": "批量知识点",
+                                "canonical_question": "为什么成立？",
+                                "student_question": "老师，这为什么成立呀？",
+                                "reason": "需要理解原因",
+                            }
+                        ]
+                    },
+                    ensure_ascii=False,
+                )
+            if "教师智能体" in system:
+                with self.lock:
+                    self.teacher_calls += 1
+                payload = json.loads(messages[1].content)
+                return json.dumps(
+                    {
+                        "answers": [
+                            {
+                                "candidate_id": item["candidate_id"],
+                                "canonical_answer": "标准答案",
+                                "teacher_answer": "课堂答案",
+                                "answerable": True,
+                            }
+                            for item in payload["questions"]
+                        ]
+                    },
+                    ensure_ascii=False,
+                )
+            with self.lock:
+                self.controller_calls += 1
+            payload = json.loads(messages[1].content)
+            return json.dumps(
+                {
+                    "placements": [
+                        {
+                            "candidate_id": item["candidate_id"],
+                            "approved": True,
+                            "moment": "after_explanation",
+                            "placement_reason": "讲解后提问",
+                        }
+                        for item in payload["questions"]
+                    ]
+                },
+                ensure_ascii=False,
+            )
+
+    content = LearningContent(
+        id="content_parallel_qa",
+        material_id="mat_001",
+        title="并行问答",
+        objectives=["验证批量生成"],
+        sections=[
+            LearningSection(
+                id="section_001",
+                title="核心内容",
+                summary="核心内容摘要",
+                source_refs=[source_ref()],
+            )
+        ],
+    )
+    plan = PresentationPlan(
+        id="presentation_parallel_qa",
+        content_id=content.id,
+        title=content.title,
+        slides=[
+            SlidePlan(
+                id="slide_001",
+                order=1,
+                source_section_ids=["section_001"],
+                title="第一页",
+                key_points=["批量知识点"],
+                speaker_script="第一页讲稿",
+                suggested_visual="示意图",
+            )
+        ],
+    )
+    llm = ParallelBatchLLM()
+
+    result = QuestionBankGenerator(llm, student_concurrency=8).generate(content, plan)
+
+    assert result
+    assert llm.student_calls == 8
+    assert llm.teacher_calls == 1
+    assert llm.controller_calls == 1
+
+
+def test_teacher_check_receives_only_current_and_previous_slides() -> None:
+    slides = [
+        SlidePlan(
+            id=f"slide_{index:03d}",
+            order=index,
+            source_section_ids=["section_001"],
+            title=f"第{index}页",
+            key_points=[f"知识点{index}"],
+            speaker_script=f"这是第{index}页讲稿。",
+            suggested_visual="关系图",
+        )
+        for index in range(1, 4)
+    ]
+    llm = Mock()
+    llm.complete_json.return_value = (
+        '{"checks":[{"slide_id":"slide_002","question":"前两页如何衔接？",'
+        '"target_knowledge_point":"知识点1与知识点2的关系"}]}'
+    )
+
+    checks = ClassroomPlanGenerator(llm)._generate_teacher_checks(
+        [slides[1]], slides
+    )
+
+    assert checks[0].question == "前两页如何衔接？"
+    messages = llm.complete_json.call_args.args[0]
+    assert "截至当前页已经讲过的全部 PPT" in messages[0].content
+    assert "这是第1页讲稿" in messages[1].content
+    assert "这是第2页讲稿" in messages[1].content
+    assert "这是第3页讲稿" not in messages[1].content
 
 
 def test_slide_element_must_stay_inside_canvas() -> None:

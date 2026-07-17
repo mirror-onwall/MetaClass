@@ -23,6 +23,9 @@ from metaclass.modules.materials.service import MaterialService
 from metaclass.modules.presentation.planner import PresentationPlanGenerator
 from metaclass.modules.presentation.repository import SqlAlchemyPresentationRepository
 from metaclass.modules.presentation.service import PresentationService
+from metaclass.modules.question_bank.generator import QuestionBankGenerator
+from metaclass.modules.question_bank.repository import SqlAlchemyQuestionBankRepository
+from metaclass.modules.question_bank.service import QuestionBankService
 from metaclass.modules.video.repository import SqlAlchemyVideoRepository
 from metaclass.modules.video.service import VideoService
 
@@ -33,6 +36,7 @@ class ApplicationServices:
     materials: MaterialService
     contents: ContentService
     presentations: PresentationService
+    question_banks: QuestionBankService
     classrooms: ClassroomService
     videos: VideoService
 
@@ -57,6 +61,7 @@ def build_services(
     material_repository = SqlAlchemyMaterialRepository(database)
     content_repository = SqlAlchemyContentRepository(database)
     presentation_repository = SqlAlchemyPresentationRepository(database)
+    question_bank_repository = SqlAlchemyQuestionBankRepository(database)
     classroom_repository = SqlAlchemyClassroomRepository(database)
     video_repository = SqlAlchemyVideoRepository(database)
     llm_config = get_llm_runtime_config()
@@ -97,11 +102,24 @@ def build_services(
         )
     )
     contents = ContentService(content_repository, materials, learning_provider)
+    question_bank_generator = QuestionBankGenerator(
+        llm,
+        student_concurrency=settings.qa_student_concurrency,
+        candidates_per_slide=settings.qa_candidates_per_slide,
+    )
     presentations = PresentationService(
         data_dir,
         presentation_repository,
         contents,
         planner=PresentationPlanGenerator(llm),
+        question_bank_generator=question_bank_generator,
+        question_bank_repository=question_bank_repository,
+    )
+    question_banks = QuestionBankService(
+        question_bank_repository,
+        contents,
+        presentations,
+        question_bank_generator,
     )
     classrooms = ClassroomService(
         classroom_repository,
@@ -112,6 +130,7 @@ def build_services(
         controller=ClassroomController(llm),
         planner=ClassroomPlanGenerator(llm, fallback_teacher=TeacherAgent()),
         presentations=presentations,
+        question_banks=question_banks,
     )
     tts = build_tts_provider(
         provider="fake" if force_fake_llm else settings.tts_provider,
@@ -131,4 +150,12 @@ def build_services(
         tts,
         presentations=presentations,
     )
-    return ApplicationServices(database, materials, contents, presentations, classrooms, videos)
+    return ApplicationServices(
+        database,
+        materials,
+        contents,
+        presentations,
+        question_banks,
+        classrooms,
+        videos,
+    )

@@ -30,8 +30,11 @@ def create_router(presentations: PresentationService) -> APIRouter:
     async def create_presentation_plan_job(
         content_id: str,
         background_tasks: BackgroundTasks,
+        prepare_question_bank: bool = True,
     ) -> PresentationPlanJob:
-        job = presentations.create_plan_job(content_id)
+        job = presentations.create_plan_job(
+            content_id, prepare_question_bank=prepare_question_bank
+        )
         background_tasks.add_task(presentations.run_plan_job, job.id)
         return job
 

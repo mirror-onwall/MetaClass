@@ -2,6 +2,128 @@
 
 本文记录 yj 近期围绕 classroom 自动课堂、多 agent 互动和前端对接的改动，方便后续和前端同学协调。
 
+## 2026-07-17 互动课堂 QA 与课堂执行链路更新（当前工作区）
+
+> 比较基线为当前分支 `feature/yj` 的 HEAD `074dc8a`。本节改动目前尚未提交；旧记录保留用于说明此前演进。
+
+### 1. 新增课前 QuestionBank
+
+新增独立模块：
+
+```text
+apps/api/src/metaclass/modules/question_bank/
+```
+
+完整准备链路为：
+
+```text
+PresentationPlan
+  -> 8 种学生画像按整课批量准备阶段性问题
+  -> 受控并发执行学生请求
+  -> 同页去重并限制送交老师的候选数
+  -> 老师分批准备针对性答案
+  -> Controller 审核并标注 slide_id / moment
+  -> 持久化 ClassroomQA / QuestionBank
+```
+
+每个学生 checkpoint 都携带从第 1 页到当前页的 PPT 内容和讲稿，提示词禁止用未来页知识生成较早问题。学生问题同时保存标准问法和画像化问法；老师同时保存标准答案和课堂口语答案。
+
+QuestionBank 提供生成、查询和文本检索接口，并新增 `classroom_qa_items` 表保存 QA、页面位置、学生画像、知识点、来源和状态。
+
+### 2. QA 生成性能与降级
+
+- 每个学生画像整课调用一次，不再按“页数 × 8 个学生”逐次调用；
+- 默认学生请求并发数为 3，可通过 `METACLASS_QA_STUDENT_CONCURRENCY` 调整；
+- 每页最多选择 4 个不同画像候选交给老师，可通过 `METACLASS_QA_CANDIDATES_PER_SLIDE` 调整；
+- 老师答案按每批最多 8 题生成，避免单次巨型 JSON 超时或截断；
+- 老师或 Controller 请求失败时使用安全降级，不再让整次互动课堂创建失败；
+- 老师降级答案不再直接复制整页 `speaker_script`，而是围绕具体问题、知识点和页面证据组织。
+
+### 3. 连续课堂与互动课堂分流
+
+前端在创建 PresentationPlan Job 时传入 `prepare_question_bank`：
+
+```text
+连续课堂 -> prepare_question_bank=false -> 只生成 PresentationPlan / PPT
+互动课堂 -> prepare_question_bank=true  -> 额外生成完整 QuestionBank
+```
+
+连续课堂不再调用学生问题生成、老师 QA 回答和 QA Controller，减少不必要等待及模型超时风险。
+
+### 4. QuestionBank 写入 ClassroomPlan
+
+互动课堂会从 QuestionBank 中选择本节课实际执行的 QA：
+
+- 只选择 approved QA；
+- 约每两页选择一次学生提问；
+- 每页最多执行一个学生 QA；
+- 尽量轮换不同学生画像；
+- 按 Controller 预设的 `before_explanation / during_explanation / after_explanation / before_next_slide` 插入。
+
+新增课堂动作：
+
+```text
+STUDENT_QUESTION
+TEACHER_QA_RESPONSE
+```
+
+运行时严格执行：
+
+```text
+学生说 student_question
+  -> 老师说 teacher_answer
+  -> 写入 QA_INTERACTION_EXECUTED
+  -> 继续后续课堂动作
+```
+
+已修复 `presentation_plan_id` 在 ClassroomPlan 后台任务落库时丢失的问题。此前该字段丢失会导致生成旧式 `PROBE -> 学生回答` 计划，而无法插入学生 QuestionBank。
+
+### 5. 老师检查性提问
+
+老师检查题与学生 QA 分开准备。老师检查题会根据每个候选位置截至当前页的全部 PPT 内容和全部讲稿提前生成，不读取未来页，用于检查概念、机制、步骤及前后衔接是否听懂。
+
+当前约每四页安排一次老师检查题，并尽量避开已安排学生 QA 的页面，避免课堂全部变成“老师问、学生答”。
+
+### 6. 课堂收束文案与 QA 回答修复
+
+- 已确认“本页要点：”并非 PresentationPlan 的 speaker_script，而是 ClassroomPlan 的 `END.summary` 硬编码文本；
+- 删除 `END.summary` 中固定的“本页要点：”前缀，避免前端每页末尾通过 TTS 机械朗读；
+- PresentationPlan 提示词仅明确要求 speaker_script 不输出“本页要点：……”格式，未增加额外 Schema 清洗；
+- 老师 QA 提示词要求先回应学生具体问题，不得重新做课程开场或用整页讲稿代替答案。
+
+### 7. macOS 中文 PPT 预览
+
+本地 Codex 运行环境新增了可执行的内置 LibreOffice，但该运行时无法可靠访问 macOS 中文字体，导致“转换成功但中文为方框”。现在 macOS 前端预览固定使用能够直接加载苹方字体的 Pillow 自由画布渲染；可下载的 PPTX 仍正常生成。Windows/Linux 保留 LibreOffice 转换及失败回退逻辑。
+
+### 8. 主要接口与前端变化
+
+新增 QuestionBank API，并扩展 PresentationPlan Job、ClassroomPlan Job 和自动课堂返回类型。前端已经识别 `STUDENT_QUESTION / TEACHER_QA_RESPONSE`，并根据课堂模式决定是否准备 QA。
+
+主要涉及：
+
+```text
+apps/api/src/metaclass/modules/question_bank/*
+apps/api/src/metaclass/modules/classroom/*
+apps/api/src/metaclass/modules/presentation/*
+apps/api/src/metaclass/core/application.py
+apps/api/src/metaclass/infrastructure/database.py
+apps/web/src/App.tsx
+apps/web/src/shared/api.ts
+apps/web/src/shared/types.ts
+```
+
+### 9. 当前验证结果与注意事项
+
+```text
+backend: 81 passed
+frontend: npm build passed
+```
+
+- 已生成的旧 PresentationPlan、QuestionBank 和 ClassroomPlan 不会自动迁移到新逻辑，需要重新创建课堂；
+- `.env` 修改后必须重启后端；
+- 当前第三方 LLM 代理不适合 8 请求同时并发，默认并发 3 是稳定性折中；
+- LearningContent 全局组织的大请求仍可能发生 provider read timeout，后续应拆分全局组织而不是继续无限提高单次 timeout。
+
 ## 2026-07-16 当前版本更新（以本节为准）
 
 > 本节对应 `feature/yj` 当前代码。下方较早记录保留用于说明演进过程；若旧描述与本节冲突，以本节为准。
