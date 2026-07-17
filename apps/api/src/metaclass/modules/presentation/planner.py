@@ -173,7 +173,13 @@ class PresentationPlanGenerator:
     def _fallback_plan(self, content: LearningContent) -> PresentationPlan:
         slides = []
         for index, section in enumerate(content.sections, start=1):
-            points = section.knowledge_points[:5] or [section.title]
+            points = self._fallback_key_points(section)
+            script_parts = [
+                section.teaching_script.strip(),
+                section.teaching_narrative.strip(),
+                section.summary.strip(),
+            ]
+            speaker_script = next((item for item in script_parts if item), section.title)
             slides.append(
                 SlidePlan(
                     id=f"slide_{index:03d}",
@@ -181,7 +187,7 @@ class PresentationPlanGenerator:
                     source_section_ids=[section.id],
                     title=section.title,
                     key_points=points,
-                    speaker_script=f"{section.title}。{section.summary}",
+                    speaker_script=speaker_script,
                     suggested_visual=(
                         f"Use the source page image as the main visual and highlight {points[0]}."
                     ),
@@ -196,6 +202,31 @@ class PresentationPlanGenerator:
             title=content.title,
             slides=slides,
         )
+
+    @staticmethod
+    def _fallback_key_points(section) -> list[str]:
+        """Prefer substantive source material over outline-only labels in fallback decks."""
+        candidates: list[str] = []
+        candidates.extend(point.strip() for point in section.key_points if point.strip())
+        candidates.extend(point.strip() for point in section.knowledge_points if point.strip())
+        candidates.extend(
+            excerpt.text.strip()
+            for excerpt in section.source_excerpts
+            if excerpt.text.strip()
+        )
+        if not candidates and section.summary.strip():
+            candidates.append(section.summary.strip())
+        if not candidates:
+            candidates.append(section.title)
+
+        unique: list[str] = []
+        for candidate in candidates:
+            compact = re.sub(r"\s+", " ", candidate)
+            if compact not in unique:
+                unique.append(compact)
+            if len(unique) == 5:
+                break
+        return unique
 
     def _hydrate_draft(
         self, content: LearningContent, draft: PresentationPlanDraft
@@ -285,8 +316,16 @@ suggested_visual、visual_payload；layout 固定写 freeform。不要输出 bac
 5. 总结页：综合前面结论、比较、迁移或反思，不得只是目录复述。
 同一 section 可以贡献多种功能页，也可以跨相邻 section 合并一个教学功能单元；页数不设上下限。
 每个 section 至少被一页覆盖，slide 顺序必须遵循 section 顺序，不能回退，也不要为增加页数重复内容。
+把 LearningContent 当作课程大纲、结构边界和已有材料，而不是内容上限。逐个 section 先判断内容充分度：
+- 若定义、机制、步骤、变量、例子和条件已经足够，忠实使用并合理拆页；
+- 若只有标题、关键词或总结句，必须补充稳定、通用、可验证的学科基础知识，把主题真正讲清楚；
+- 概念至少说明“是什么、解决什么问题、关键特征或条件”；算法/方法至少说明“输入与目标、核心步骤、停止或输出、适用条件”，并视需要补充直观例子、局限或常见误区；
+- 扩充必须服务于现有大纲，不能另起主题；可以使用公认基础知识，但不得虚构数据、实验、论文、人物或特定事实，无法可靠确定的内容不要补。
 标题和 key_points 必须直接陈述要教给学生的知识或任务，禁止“This page introduces”、
 “本页介绍”“本节将讲”“Overview of”“Summary of”之类描述页面行为的元话语。
+页面上必须出现实质性内容。例如不能只写“本页讲解 K-means 的算法”，而应写清初始化中心、按最近中心分配样本、重算簇中心、迭代至稳定等实际过程。
+把定义、关键公式、算法步骤、对比条件和案例结论放在页面；把完整推理、补充例子、自然过渡放进 speaker_script。页面不能像讲稿一样堆满段落，也不能只剩空泛标签。
+speaker_script 必须像真实老师连续讲课：承接上下文、解释本页核心、讲清原因或步骤、给出恰当例子或辨析、自然引向后续；不要逐字朗读 key_points，也不要反复使用机械的“这一页我们讲……”。
 优先使用 source_excerpts、source_refs、公式、案例和题目中的具体证据；不要把不相干内容压进同一页。
 """
         )
@@ -476,6 +515,8 @@ shape 只能做背景/卡片/标记，正文必须是独立 text 元素且 z 更
 推导用公式与逐步标注，练习必须清楚展示题目和作答区域，总结用综合框架而非泛化 bullet。
 必须利用输入中的 formulas、examples、interactions、quiz_items、misconceptions、
 source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source image 时优先让图像承担证据或讲解作用。
+本页画布以 slide.title、key_points、visual_payload 和 speaker_script 中已经完成的教学内容为直接依据；source sections 用于核对结构和证据。不得把有实质内容的 key_points 再退化成“概念介绍”“算法流程”“案例分析”等空泛标签。
+页面正文应呈现足以独立理解本页的定义、步骤、变量关系、条件或案例结论，但不要把 speaker_script 整段复制到画布上。优先用流程、关系、对比、分组和逐步标注压缩信息。
 """
         )
         payload = {

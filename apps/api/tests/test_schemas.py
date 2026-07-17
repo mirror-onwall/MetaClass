@@ -383,6 +383,38 @@ def test_presentation_prompt_is_loaded_from_editable_skill_file() -> None:
     assert "推导页" in messages[0].content
     assert "练习页" in messages[0].content
     assert "禁止" in messages[0].content
+    assert "不是内容上限" in messages[0].content
+    assert "输入与目标、核心步骤、停止或输出、适用条件" in messages[0].content
+    assert "本页讲解 K-means 的算法" in messages[0].content
+    assert "像真实老师连续讲课" in messages[0].content
+
+
+def test_presentation_fallback_prefers_substantive_section_content() -> None:
+    content = LearningContent(
+        id="content_fallback",
+        material_id="mat_001",
+        title="Fallback content",
+        sections=[
+            LearningSection(
+                id="section_fallback",
+                title="聚类算法",
+                summary="通过重复分配样本并更新中心完成聚类。",
+                key_points=["分配样本到最近的中心", "重新计算每个簇的中心"],
+                teaching_script="先初始化中心，再重复分配与更新，直到结果稳定。",
+                source_refs=[source_ref()],
+            )
+        ],
+    )
+
+    plan = PresentationPlanGenerator()._fallback_plan(content)
+
+    assert plan.slides[0].key_points[:2] == [
+        "分配样本到最近的中心",
+        "重新计算每个簇的中心",
+    ]
+    assert plan.slides[0].speaker_script == (
+        "先初始化中心，再重复分配与更新，直到结果稳定。"
+    )
 
 
 def test_slide_element_must_stay_inside_canvas() -> None:
