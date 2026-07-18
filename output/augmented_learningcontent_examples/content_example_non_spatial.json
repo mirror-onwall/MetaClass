@@ -1,0 +1,588 @@
+{
+  "id": "content_example_non_spatial",
+  "material_id": "mat_example_non_spatial",
+  "material_ids": [
+    "mat_example_non_spatial"
+  ],
+  "collection_id": null,
+  "title": "非空间分析用户材料 LearningContent",
+  "subtitle": "未启用空间分析知识库增强的 LearningContent",
+  "audience": {
+    "level": "undergraduate",
+    "background": "根据用户上传材料自动推断；空间分析材料默认面向 GIS 相关课程学生。"
+  },
+  "teaching_intent": {
+    "goal": "生成可供 PPT 生成模块直接使用的 LearningContent。",
+    "retrieval_policy": "Only retrieve spatial_analysis_kb when the uploaded material is classified as GIS/spatial-analysis related."
+  },
+  "material_overview": {
+    "uploaded_page_count": 2,
+    "section_count": 1,
+    "retrieval_enabled": false,
+    "spatial_analysis_score": 0.0,
+    "matched_terms": []
+  },
+  "global_concepts": [
+    {
+      "id": "global_concept_01",
+      "name": "lesson",
+      "definition": "",
+      "plain_explanation": "lesson 是用户上传材料中识别出的关键主题。",
+      "why_it_matters": "",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_02",
+      "name": "introduces",
+      "definition": "",
+      "plain_explanation": "introduces 是用户上传材料中识别出的关键主题。",
+      "why_it_matters": "",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_03",
+      "name": "thesis",
+      "definition": "",
+      "plain_explanation": "thesis 是用户上传材料中识别出的关键主题。",
+      "why_it_matters": "",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_04",
+      "name": "statements",
+      "definition": "",
+      "plain_explanation": "statements 是用户上传材料中识别出的关键主题。",
+      "why_it_matters": "",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_05",
+      "name": "paragraph",
+      "definition": "",
+      "plain_explanation": "paragraph 是用户上传材料中识别出的关键主题。",
+      "why_it_matters": "",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_06",
+      "name": "structure",
+      "definition": "",
+      "plain_explanation": "structure 是用户上传材料中识别出的关键主题。",
+      "why_it_matters": "",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_07",
+      "name": "evidence",
+      "definition": "",
+      "plain_explanation": "evidence 是用户上传材料中识别出的关键主题。",
+      "why_it_matters": "",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_08",
+      "name": "use",
+      "definition": "",
+      "plain_explanation": "use 是用户上传材料中识别出的关键主题。",
+      "why_it_matters": "",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_09",
+      "name": "revision",
+      "definition": "",
+      "plain_explanation": "revision 是用户上传材料中识别出的关键主题。",
+      "why_it_matters": "",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_10",
+      "name": "strategies",
+      "definition": "",
+      "plain_explanation": "strategies 是用户上传材料中识别出的关键主题。",
+      "why_it_matters": "",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_11",
+      "name": "academic",
+      "definition": "",
+      "plain_explanation": "academic 是用户上传材料中识别出的关键主题。",
+      "why_it_matters": "",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_12",
+      "name": "writing",
+      "definition": "",
+      "plain_explanation": "writing 是用户上传材料中识别出的关键主题。",
+      "why_it_matters": "",
+      "related_concept_ids": [],
+      "source_refs": []
+    }
+  ],
+  "knowledge_units": [
+    {
+      "id": "ku_example_non_spatial_001",
+      "title": "Academic Writing Introduction",
+      "unit_type": "concept",
+      "summary": "This lesson introduces thesis statements, paragraph structure, evidence use, and revision strategies for academic writing. Students practice topic sentences, transitions, and supporting examples in essays. The focus is clarity, style, and logical organization.",
+      "aliases": [
+        "lesson",
+        "introduces",
+        "thesis",
+        "statements",
+        "paragraph"
+      ],
+      "keywords": [
+        "lesson",
+        "introduces",
+        "thesis",
+        "statements",
+        "paragraph",
+        "structure",
+        "evidence",
+        "use",
+        "revision",
+        "strategies",
+        "academic",
+        "writing"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_example_non_spatial_001_01",
+          "name": "lesson",
+          "definition": "",
+          "plain_explanation": "lesson 是本节需要结合上传材料和空间分析知识库解释的知识点。",
+          "why_it_matters": "用于把用户材料中的主题与 GIS 空间分析课程体系连接起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0001",
+              "page_no": 1,
+              "text_span": null,
+              "image_path": null
+            },
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0002",
+              "page_no": 2,
+              "text_span": null,
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_example_non_spatial_001_02",
+          "name": "introduces",
+          "definition": "",
+          "plain_explanation": "introduces 是本节需要结合上传材料和空间分析知识库解释的知识点。",
+          "why_it_matters": "用于把用户材料中的主题与 GIS 空间分析课程体系连接起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0001",
+              "page_no": 1,
+              "text_span": null,
+              "image_path": null
+            },
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0002",
+              "page_no": 2,
+              "text_span": null,
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_example_non_spatial_001_03",
+          "name": "thesis",
+          "definition": "",
+          "plain_explanation": "thesis 是本节需要结合上传材料和空间分析知识库解释的知识点。",
+          "why_it_matters": "用于把用户材料中的主题与 GIS 空间分析课程体系连接起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0001",
+              "page_no": 1,
+              "text_span": null,
+              "image_path": null
+            },
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0002",
+              "page_no": 2,
+              "text_span": null,
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_example_non_spatial_001_04",
+          "name": "statements",
+          "definition": "",
+          "plain_explanation": "statements 是本节需要结合上传材料和空间分析知识库解释的知识点。",
+          "why_it_matters": "用于把用户材料中的主题与 GIS 空间分析课程体系连接起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0001",
+              "page_no": 1,
+              "text_span": null,
+              "image_path": null
+            },
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0002",
+              "page_no": 2,
+              "text_span": null,
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_example_non_spatial_001_05",
+          "name": "paragraph",
+          "definition": "",
+          "plain_explanation": "paragraph 是本节需要结合上传材料和空间分析知识库解释的知识点。",
+          "why_it_matters": "用于把用户材料中的主题与 GIS 空间分析课程体系连接起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0001",
+              "page_no": 1,
+              "text_span": null,
+              "image_path": null
+            },
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0002",
+              "page_no": 2,
+              "text_span": null,
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_example_non_spatial_001_06",
+          "name": "structure",
+          "definition": "",
+          "plain_explanation": "structure 是本节需要结合上传材料和空间分析知识库解释的知识点。",
+          "why_it_matters": "用于把用户材料中的主题与 GIS 空间分析课程体系连接起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0001",
+              "page_no": 1,
+              "text_span": null,
+              "image_path": null
+            },
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0002",
+              "page_no": 2,
+              "text_span": null,
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_example_non_spatial_001_user_01",
+          "text": "This lesson introduces thesis statements, paragraph structure, evidence use, and revision strategies for academic writing.",
+          "type": "uploaded_material",
+          "reason": "Representative text from the uploaded user material.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0001",
+              "page_no": 1,
+              "text_span": null,
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_example_non_spatial_001_user_02",
+          "text": "Students practice topic sentences, transitions, and supporting examples in essays. The focus is clarity, style, and logical organization.",
+          "type": "uploaded_material",
+          "reason": "Representative text from the uploaded user material.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0002",
+              "page_no": 2,
+              "text_span": null,
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "mat_example_non_spatial",
+          "page_id": "mat_example_non_spatial_p0001",
+          "page_no": 1,
+          "text_span": null,
+          "image_path": null
+        },
+        {
+          "material_id": "mat_example_non_spatial",
+          "page_id": "mat_example_non_spatial_p0002",
+          "page_no": 2,
+          "text_span": null,
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "mat_example_non_spatial",
+          "page_no": 1,
+          "reason": "Uploaded material source page"
+        },
+        {
+          "material_id": "mat_example_non_spatial",
+          "page_no": 2,
+          "reason": "Uploaded material source page"
+        }
+      ],
+      "source_unit_ids": [],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.72
+    }
+  ],
+  "knowledge_tree": {
+    "id": "tree_example_non_spatial",
+    "title": "非空间分析用户材料 LearningContent",
+    "nodes": [
+      {
+        "id": "node_example_non_spatial_001",
+        "title": "Academic Writing Introduction",
+        "role": "concept",
+        "summary": "This lesson introduces thesis statements, paragraph structure, evidence use, and revision strategies for academic writing. Students practice topic sentences, transitions, and supporting examples in essays. The focus is clarity, style, and logical organization.",
+        "parent_id": null,
+        "knowledge_unit_ids": [
+          "ku_example_non_spatial_001"
+        ],
+        "order": 1,
+        "prerequisite_node_ids": []
+      }
+    ],
+    "root_node_ids": [
+      "node_example_non_spatial_001"
+    ],
+    "teaching_sequence": [
+      "node_example_non_spatial_001"
+    ],
+    "orphan_unit_ids": [],
+    "warnings": [
+      "Uploaded material was not classified as spatial analysis; KB retrieval was skipped."
+    ]
+  },
+  "objectives": [
+    "把用户上传材料组织为结构化教学内容。",
+    "在材料属于空间分析主题时，使用 GIS 空间分析知识库补充概念、方法和案例。",
+    "保留用户材料与知识库来源引用，供后续 PPT 生成和课堂生成使用。"
+  ],
+  "sections": [
+    {
+      "id": "section_example_non_spatial_001",
+      "title": "Academic Writing Introduction",
+      "role": "concept",
+      "content_goal": "基于用户上传材料生成可讲授、可追溯、可继续生成 PPT 的课程内容。",
+      "summary": "This lesson introduces thesis statements, paragraph structure, evidence use, and revision strategies for academic writing. Students practice topic sentences, transitions, and supporting examples in essays. The focus is clarity, style, and logical organization.",
+      "key_points": [
+        "lesson",
+        "introduces",
+        "thesis",
+        "statements",
+        "paragraph",
+        "structure",
+        "evidence",
+        "use"
+      ],
+      "teaching_narrative": "本节先围绕用户上传材料中的“Academic Writing Introduction”建立课堂主线。讲解时先复述材料中的核心信息，再补充空间分析知识库中可支撑的概念、方法、适用条件和案例。如果用户材料较简略，应使用知识库补充内容帮助学生理解背景和方法逻辑；如果用户材料已经完整，则知识库内容主要用于校验、扩展和生成课堂提问。\n\n用户材料要点：This lesson introduces thesis statements, paragraph structure, evidence use, and revision strategies for academic writing. Students practice topic sentences, transitions, and supporting examples in essays. The focus is clarity, style, and logical organization.",
+      "knowledge_points": [
+        "lesson",
+        "introduces",
+        "thesis",
+        "statements",
+        "paragraph",
+        "structure",
+        "evidence",
+        "use",
+        "revision",
+        "strategies"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_example_non_spatial_001_user_01",
+          "text": "This lesson introduces thesis statements, paragraph structure, evidence use, and revision strategies for academic writing.",
+          "type": "uploaded_material",
+          "reason": "Representative text from the uploaded user material.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0001",
+              "page_no": 1,
+              "text_span": null,
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_example_non_spatial_001_user_02",
+          "text": "Students practice topic sentences, transitions, and supporting examples in essays. The focus is clarity, style, and logical organization.",
+          "type": "uploaded_material",
+          "reason": "Representative text from the uploaded user material.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0002",
+              "page_no": 2,
+              "text_span": null,
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请结合本节材料说明 lesson 可以解决什么空间问题。",
+          "expected_answer": "学生应能说出问题场景、数据条件、方法逻辑和结果解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": ""
+      },
+      "source_refs": [
+        {
+          "material_id": "mat_example_non_spatial",
+          "page_id": "mat_example_non_spatial_p0001",
+          "page_no": 1,
+          "text_span": null,
+          "image_path": null
+        },
+        {
+          "material_id": "mat_example_non_spatial",
+          "page_id": "mat_example_non_spatial_p0002",
+          "page_no": 2,
+          "text_span": null,
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "mat_example_non_spatial",
+          "page_no": 1,
+          "reason": "Uploaded material source page"
+        },
+        {
+          "material_id": "mat_example_non_spatial",
+          "page_no": 2,
+          "reason": "Uploaded material source page"
+        }
+      ],
+      "tree_node_ids": [
+        "node_example_non_spatial_001"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_example_non_spatial_001_01",
+          "question": "关于“lesson”，哪一项最能说明学生已经理解本节内容？",
+          "options": [
+            "能结合上传材料解释 lesson 的含义、条件或应用",
+            "只记住 lesson 这个词",
+            "不区分场景地使用 lesson"
+          ],
+          "correct_index": 0,
+          "explanation": "本节目标不是记忆术语，而是把术语、空间问题、数据条件和应用解释联系起来。",
+          "knowledge_point": "lesson",
+          "source_refs": [
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0001",
+              "page_no": 1,
+              "text_span": null,
+              "image_path": null
+            },
+            {
+              "material_id": "mat_example_non_spatial",
+              "page_id": "mat_example_non_spatial_p0002",
+              "page_no": 2,
+              "text_span": null,
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        1,
+        2
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节先围绕用户上传材料中的“Academic Writing Introduction”建立课堂主线。讲解时先复述材料中的核心信息，再补充空间分析知识库中可支撑的概念、方法、适用条件和案例。如果用户材料较简略，应使用知识库补充内容帮助学生理解背景和方法逻辑；如果用户材料已经完整，则知识库内容主要用于校验、扩展和生成课堂提问。\n\n用户材料要点：This lesson introduces thesis statements, paragraph structure, evidence use, and revision strategies for academic writing. Students practice topic sentences, transitions, and supporting examples in essays. The focus is clarity, style, and logical organization.",
+      "visual_summary": "若用户上传页包含图表、地图或流程图，PPT 生成阶段应优先保留原始视觉材料并结合本节讲稿解释。",
+      "transition_to_next": ""
+    }
+  ],
+  "generation_guidance": {
+    "for_ppt_generator": [
+      "Use sections as the slide/storyboard source.",
+      "Use teaching_narrative as speaker-script material.",
+      "Use source_refs/page_refs for source-page citation and evidence lookup.",
+      "When retrieval_enabled is false, do not assume GIS spatial-analysis background knowledge."
+    ],
+    "retrieval_enabled": false
+  },
+  "quality": {
+    "retrieval_enabled": false,
+    "spatial_analysis_score": 0.0,
+    "spatial_analysis_threshold": 1.0,
+    "retrieved_chunk_count": 0,
+    "warnings": [
+      "主题保护机制触发：用户上传材料未被判定为空间分析主题，因此没有检索空间分析知识库。"
+    ]
+  },
+  "version": 1,
+  "created_at": "2026-07-18T09:44:30.637344Z",
+  "updated_at": "2026-07-18T09:44:30.637344Z"
+}

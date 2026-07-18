@@ -1,0 +1,4333 @@
+{
+  "id": "content_spatial_analysis_lecture_07",
+  "material_id": "64a6ace21075e3f9",
+  "material_ids": [
+    "64a6ace21075e3f9"
+  ],
+  "collection_id": "col_spatial_analysis_kb",
+  "title": "第 7 讲：空间回归分析",
+  "subtitle": "Spatial Regression Analysis 的章节级 LearningContent",
+  "audience": {
+    "level": "undergraduate",
+    "background": "GIS、地理信息科学、遥感或相关专业学生"
+  },
+  "teaching_intent": {
+    "goal": "把空间分析课件知识块组织为可直接进入课堂生成链路的 LearningContent。",
+    "boundary": "本文件不包含向量检索、RAG 编排或最终 PPT/ClassroomPlan 生成。"
+  },
+  "material_overview": {
+    "source": "spatial_analysis PDF knowledge base",
+    "lecture_count": 1,
+    "section_count": 6,
+    "knowledge_unit_count": 6
+  },
+  "global_concepts": [
+    {
+      "id": "global_concept_01",
+      "name": "regression",
+      "definition": "",
+      "plain_explanation": "regression 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_02",
+      "name": "spatial regression",
+      "definition": "",
+      "plain_explanation": "spatial regression 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_03",
+      "name": "model",
+      "definition": "",
+      "plain_explanation": "model 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_04",
+      "name": "GWR",
+      "definition": "",
+      "plain_explanation": "GWR 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_05",
+      "name": "GIS",
+      "definition": "",
+      "plain_explanation": "GIS 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_06",
+      "name": "urban",
+      "definition": "",
+      "plain_explanation": "urban 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_07",
+      "name": "weighted",
+      "definition": "",
+      "plain_explanation": "weighted 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_08",
+      "name": "Geographically",
+      "definition": "",
+      "plain_explanation": "Geographically 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_09",
+      "name": "variable",
+      "definition": "",
+      "plain_explanation": "variable 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_10",
+      "name": "spatial analysis",
+      "definition": "",
+      "plain_explanation": "spatial analysis 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_11",
+      "name": "Moran",
+      "definition": "",
+      "plain_explanation": "Moran 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_12",
+      "name": "Local",
+      "definition": "",
+      "plain_explanation": "Local 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    }
+  ],
+  "knowledge_units": [
+    {
+      "id": "ku_l07_001",
+      "title": "空间回归分析：regression / spatial regression",
+      "unit_type": "method",
+      "summary": "• The conventional regression methods in Lect.6. • Spatial lag model-SLM／Spatial autoregressive model-SAM y = ρWy + Xβ +𝜀 • y is a n × 1 vector of observations on the dependent variable (n is the number of observations) • W is a n × n spatial weights matrix • ρ is a global spatial autoregressive coefficient of the dependent variable y • Wy is a spatially lagged dependent variable with ρ • X is a n × k matrix of observations on the explanatory variables (k is the number of explanatory variables) with associated coefﬁcients β （k × 1）, • 𝜀 is a n × 1 vector of error terms which can generally be assumed as normality distribution, i.e., 𝜀∼ N(0, σ² ) • Spatial lag model-SLM／Spatial autoregressive",
+      "aliases": [
+        "regression",
+        "spatial regression",
+        "model",
+        "autoregressive",
+        "observations"
+      ],
+      "keywords": [
+        "regression",
+        "spatial regression",
+        "model",
+        "autoregressive",
+        "observations",
+        "dependent",
+        "variable",
+        "GIS",
+        "methods",
+        "model-SLM"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l07_001_01",
+          "name": "regression",
+          "definition": "",
+          "plain_explanation": "regression 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0002",
+              "page_no": 2,
+              "text_span": "64a6ace21075e3f9_p0002_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0003",
+              "page_no": 3,
+              "text_span": "64a6ace21075e3f9_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0006",
+              "page_no": 6,
+              "text_span": "64a6ace21075e3f9_p0006_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0008",
+              "page_no": 8,
+              "text_span": "64a6ace21075e3f9_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0013",
+              "page_no": 13,
+              "text_span": "64a6ace21075e3f9_p0013_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_001_02",
+          "name": "spatial regression",
+          "definition": "",
+          "plain_explanation": "spatial regression 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0002",
+              "page_no": 2,
+              "text_span": "64a6ace21075e3f9_p0002_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0003",
+              "page_no": 3,
+              "text_span": "64a6ace21075e3f9_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0006",
+              "page_no": 6,
+              "text_span": "64a6ace21075e3f9_p0006_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0008",
+              "page_no": 8,
+              "text_span": "64a6ace21075e3f9_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0013",
+              "page_no": 13,
+              "text_span": "64a6ace21075e3f9_p0013_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_001_03",
+          "name": "model",
+          "definition": "",
+          "plain_explanation": "model 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0002",
+              "page_no": 2,
+              "text_span": "64a6ace21075e3f9_p0002_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0003",
+              "page_no": 3,
+              "text_span": "64a6ace21075e3f9_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0006",
+              "page_no": 6,
+              "text_span": "64a6ace21075e3f9_p0006_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0008",
+              "page_no": 8,
+              "text_span": "64a6ace21075e3f9_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0013",
+              "page_no": 13,
+              "text_span": "64a6ace21075e3f9_p0013_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_001_04",
+          "name": "autoregressive",
+          "definition": "",
+          "plain_explanation": "autoregressive 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0002",
+              "page_no": 2,
+              "text_span": "64a6ace21075e3f9_p0002_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0003",
+              "page_no": 3,
+              "text_span": "64a6ace21075e3f9_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0006",
+              "page_no": 6,
+              "text_span": "64a6ace21075e3f9_p0006_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0008",
+              "page_no": 8,
+              "text_span": "64a6ace21075e3f9_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0013",
+              "page_no": 13,
+              "text_span": "64a6ace21075e3f9_p0013_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_001_05",
+          "name": "observations",
+          "definition": "",
+          "plain_explanation": "observations 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0002",
+              "page_no": 2,
+              "text_span": "64a6ace21075e3f9_p0002_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0003",
+              "page_no": 3,
+              "text_span": "64a6ace21075e3f9_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0006",
+              "page_no": 6,
+              "text_span": "64a6ace21075e3f9_p0006_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0008",
+              "page_no": 8,
+              "text_span": "64a6ace21075e3f9_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0013",
+              "page_no": 13,
+              "text_span": "64a6ace21075e3f9_p0013_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l07_001_01",
+          "text": "• The conventional regression methods in Lect.6. • Spatial lag model-SLM／Spatial autoregressive model-SAM y = ρWy + Xβ +𝜀 • y is a n × 1 vector of observations on the dependent variable (n is the number of observations) • W is a n × n spatial weights matrix • ρ is a global spatial autoregressive coefficient of the dependent variable y • Wy is a spatially lagged dependent variable with ρ • X is a n × k matrix of observations on the explanatory variables (k is the number of explanatory variables)",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0002",
+              "page_no": 2,
+              "text_span": "64a6ace21075e3f9_p0002_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_001_02",
+          "text": "• Spatial lag model-SLM／Spatial autoregressive model-SAM y = ρWy + Xβ +𝜀 Refer to : • Ord, J.K., 1975. Estimation methods for models of spatial interaction. Journal of the American Statistical Association, 70, 120–126.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0003",
+              "page_no": 3,
+              "text_span": "64a6ace21075e3f9_p0003_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_001_03",
+          "text": "Global drought monitoring with drought severity index (DSI) using Google Earth Engine. THEORETICAL AND APPLIED CLIMATOLOGY,2021. Left side map shows the mean value of twelve months, and the right side map is the statistical median for 2001.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0006",
+              "page_no": 6,
+              "text_span": "64a6ace21075e3f9_p0006_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_001_04",
+          "text": "院 女生 申请 女生 录取 女生 录取率 男生 申请 男生 录取 男生 录取率 合计 申请 合计 录取 合计 录取 率 商学院 100 49 49% 20 15 75% 120 64 53.3% 法学院 20 1 5% 100 10 10% 120 11 9.2% 总计 120 50 42% 120 25 21% 240 75 31.3% 摘自： 百度百科—科普中国 Simpson's paradox (辛普森悖论), which also goes by several other names, is a phenomenon in probability and statistics, in which a trend appears in several different groups of data but disappears or reverses when these groups are combined.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0008",
+              "page_no": 8,
+              "text_span": "64a6ace21075e3f9_p0008_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_001_05",
+          "text": "yi= 0 + 1xi 1 1 1 1 Stationary process i3 i2 i1 i4 Non-stationary process yi= i0 + ijxi Assumed More realistic • If non-stationarity is modeled by stationary models • Possible wrong conclusions might be drawn • Residuals of the model might be highly spatial autocorrelated",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0013",
+              "page_no": 13,
+              "text_span": "64a6ace21075e3f9_p0013_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0002",
+          "page_no": 2,
+          "text_span": "64a6ace21075e3f9_p0002_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0003",
+          "page_no": 3,
+          "text_span": "64a6ace21075e3f9_p0003_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0006",
+          "page_no": 6,
+          "text_span": "64a6ace21075e3f9_p0006_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0008",
+          "page_no": 8,
+          "text_span": "64a6ace21075e3f9_p0008_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0013",
+          "page_no": 13,
+          "text_span": "64a6ace21075e3f9_p0013_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 2,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 3,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 6,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 8,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 13,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "64a6ace21075e3f9_p0002_c01",
+        "64a6ace21075e3f9_p0003_c01",
+        "64a6ace21075e3f9_p0006_c01",
+        "64a6ace21075e3f9_p0008_c01",
+        "64a6ace21075e3f9_p0013_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l07_002",
+      "title": "空间回归分析：regression / spatial regression",
+      "unit_type": "method",
+      "summary": "Spatial non-stationarity/ Heterogenicity : the same stimulus provokes a different response in different parts of the study region • Global models: statements about processes which are assumed to be stationary and as such are location independent • Local models: spatial decompositions of global models, the results of local models are location dependent – a characteristic we usually anticipate from geographical (spatial) data Multiscale GIS based-model to assess urban social vulnerability and associated risk: Evidence from 146 urban centers of Eastern India. SUSTAINABLE CITIES AND SOCIETY ,2023. • Tian, et al.",
+      "aliases": [
+        "regression",
+        "spatial regression",
+        "model",
+        "urban",
+        "Moran"
+      ],
+      "keywords": [
+        "regression",
+        "spatial regression",
+        "model",
+        "urban",
+        "Moran",
+        "GIS",
+        "study",
+        "weighted",
+        "household",
+        "living"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l07_002_01",
+          "name": "regression",
+          "definition": "",
+          "plain_explanation": "regression 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0015",
+              "page_no": 15,
+              "text_span": "64a6ace21075e3f9_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0016",
+              "page_no": 16,
+              "text_span": "64a6ace21075e3f9_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0018",
+              "page_no": 18,
+              "text_span": "64a6ace21075e3f9_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0022",
+              "page_no": 22,
+              "text_span": "64a6ace21075e3f9_p0022_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0024",
+              "page_no": 24,
+              "text_span": "64a6ace21075e3f9_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_002_02",
+          "name": "spatial regression",
+          "definition": "",
+          "plain_explanation": "spatial regression 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0015",
+              "page_no": 15,
+              "text_span": "64a6ace21075e3f9_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0016",
+              "page_no": 16,
+              "text_span": "64a6ace21075e3f9_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0018",
+              "page_no": 18,
+              "text_span": "64a6ace21075e3f9_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0022",
+              "page_no": 22,
+              "text_span": "64a6ace21075e3f9_p0022_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0024",
+              "page_no": 24,
+              "text_span": "64a6ace21075e3f9_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_002_03",
+          "name": "model",
+          "definition": "",
+          "plain_explanation": "model 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0015",
+              "page_no": 15,
+              "text_span": "64a6ace21075e3f9_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0016",
+              "page_no": 16,
+              "text_span": "64a6ace21075e3f9_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0018",
+              "page_no": 18,
+              "text_span": "64a6ace21075e3f9_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0022",
+              "page_no": 22,
+              "text_span": "64a6ace21075e3f9_p0022_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0024",
+              "page_no": 24,
+              "text_span": "64a6ace21075e3f9_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_002_04",
+          "name": "urban",
+          "definition": "",
+          "plain_explanation": "urban 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0015",
+              "page_no": 15,
+              "text_span": "64a6ace21075e3f9_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0016",
+              "page_no": 16,
+              "text_span": "64a6ace21075e3f9_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0018",
+              "page_no": 18,
+              "text_span": "64a6ace21075e3f9_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0022",
+              "page_no": 22,
+              "text_span": "64a6ace21075e3f9_p0022_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0024",
+              "page_no": 24,
+              "text_span": "64a6ace21075e3f9_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_002_05",
+          "name": "Moran",
+          "definition": "",
+          "plain_explanation": "Moran 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0015",
+              "page_no": 15,
+              "text_span": "64a6ace21075e3f9_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0016",
+              "page_no": 16,
+              "text_span": "64a6ace21075e3f9_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0018",
+              "page_no": 18,
+              "text_span": "64a6ace21075e3f9_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0022",
+              "page_no": 22,
+              "text_span": "64a6ace21075e3f9_p0022_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0024",
+              "page_no": 24,
+              "text_span": "64a6ace21075e3f9_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l07_002_01",
+          "text": "Spatial non-stationarity/ Heterogenicity : the same stimulus provokes a different response in different parts of the study region • Global models: statements about processes which are assumed to be stationary and as such are location independent • Local models: spatial decompositions of global models, the results of local models are location dependent – a characteristic we usually anticipate from geographical (spatial) data",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0015",
+              "page_no": 15,
+              "text_span": "64a6ace21075e3f9_p0015_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_002_02",
+          "text": "Multiscale GIS based-model to assess urban social vulnerability and associated risk: Evidence from 146 urban centers of Eastern India. SUSTAINABLE CITIES AND SOCIETY ,2023. • Tian, et al.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0016",
+              "page_no": 16,
+              "text_span": "64a6ace21075e3f9_p0016_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_002_03",
+          "text": "• Backgrounds: The unplanned urban expansion and extreme population pressure have caused several bottlenecks for city dwellers, which have been reflected in the form of inter-urban spatial inequality in living conditions at the household level. • Objectives: The present study integrates GIS with a composite synthetic index to measure the spatial variation of urban household conditions across 146 urban centers in Eastern India (West Bengal). • Methods: The study critically scrutinizes the influen",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0018",
+              "page_no": 18,
+              "text_span": "64a6ace21075e3f9_p0018_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_002_04",
+          "text": "How to measure spatial non-stationarity? • Local Indicators of Spatial Association （LISA）: Local Moran’s I, Local Gi and Gi*, Getis-Ord Gi and Gi*… How to predict variable (s) with spatial non-stationarity? • Spatial regression methods: Geographically weighted regression，…",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0022",
+              "page_no": 22,
+              "text_span": "64a6ace21075e3f9_p0022_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_002_05",
+          "text": "Geographically Weighted Regression: The Analysis of Spatially Varying Relationships . 2002 . Number of references > 5000 Brunsdon C , Fotheringham A S , Charlton M E .",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0024",
+              "page_no": 24,
+              "text_span": "64a6ace21075e3f9_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0015",
+          "page_no": 15,
+          "text_span": "64a6ace21075e3f9_p0015_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0016",
+          "page_no": 16,
+          "text_span": "64a6ace21075e3f9_p0016_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0018",
+          "page_no": 18,
+          "text_span": "64a6ace21075e3f9_p0018_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0022",
+          "page_no": 22,
+          "text_span": "64a6ace21075e3f9_p0022_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0024",
+          "page_no": 24,
+          "text_span": "64a6ace21075e3f9_p0024_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 15,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 16,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 18,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 22,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 24,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "64a6ace21075e3f9_p0015_c01",
+        "64a6ace21075e3f9_p0016_c01",
+        "64a6ace21075e3f9_p0018_c01",
+        "64a6ace21075e3f9_p0022_c01",
+        "64a6ace21075e3f9_p0024_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l07_003",
+      "title": "空间回归分析：regression / spatial regression",
+      "unit_type": "method",
+      "summary": " Reason 1: GWR is part of a growing trend in GIS towards local analysis • Local statistics are spatial disaggregations of global ones • Local analysis intends to understand the spatial data in more detail  Global statistics – Similarity across space – Single-valued statistics – Not mappable – GIS “unfriendly” – Search for regularities – Aspatial  Local statistics – Difference across space – Multi-valued statistics – Mappable – GIS “friendly” – Search for exceptions – Spatial  Reason 2: Provides useful link to GIS • GISs are very useful for the storage, manipulation, analysis and display of spatial data. • Analytical functions are not fully developed. • In some cases the link between GIS",
+      "aliases": [
+        "regression",
+        "spatial regression",
+        "GWR",
+        "model",
+        "GIS"
+      ],
+      "keywords": [
+        "regression",
+        "spatial regression",
+        "GWR",
+        "model",
+        "GIS",
+        "Reason",
+        "statistics",
+        "much",
+        "local",
+        "more"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l07_003_01",
+          "name": "regression",
+          "definition": "",
+          "plain_explanation": "regression 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0026",
+              "page_no": 26,
+              "text_span": "64a6ace21075e3f9_p0026_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0027",
+              "page_no": 27,
+              "text_span": "64a6ace21075e3f9_p0027_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0028",
+              "page_no": 28,
+              "text_span": "64a6ace21075e3f9_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0029",
+              "page_no": 29,
+              "text_span": "64a6ace21075e3f9_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0031",
+              "page_no": 31,
+              "text_span": "64a6ace21075e3f9_p0031_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_003_02",
+          "name": "spatial regression",
+          "definition": "",
+          "plain_explanation": "spatial regression 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0026",
+              "page_no": 26,
+              "text_span": "64a6ace21075e3f9_p0026_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0027",
+              "page_no": 27,
+              "text_span": "64a6ace21075e3f9_p0027_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0028",
+              "page_no": 28,
+              "text_span": "64a6ace21075e3f9_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0029",
+              "page_no": 29,
+              "text_span": "64a6ace21075e3f9_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0031",
+              "page_no": 31,
+              "text_span": "64a6ace21075e3f9_p0031_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_003_03",
+          "name": "GWR",
+          "definition": "",
+          "plain_explanation": "GWR 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0026",
+              "page_no": 26,
+              "text_span": "64a6ace21075e3f9_p0026_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0027",
+              "page_no": 27,
+              "text_span": "64a6ace21075e3f9_p0027_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0028",
+              "page_no": 28,
+              "text_span": "64a6ace21075e3f9_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0029",
+              "page_no": 29,
+              "text_span": "64a6ace21075e3f9_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0031",
+              "page_no": 31,
+              "text_span": "64a6ace21075e3f9_p0031_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_003_04",
+          "name": "model",
+          "definition": "",
+          "plain_explanation": "model 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0026",
+              "page_no": 26,
+              "text_span": "64a6ace21075e3f9_p0026_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0027",
+              "page_no": 27,
+              "text_span": "64a6ace21075e3f9_p0027_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0028",
+              "page_no": 28,
+              "text_span": "64a6ace21075e3f9_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0029",
+              "page_no": 29,
+              "text_span": "64a6ace21075e3f9_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0031",
+              "page_no": 31,
+              "text_span": "64a6ace21075e3f9_p0031_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_003_05",
+          "name": "GIS",
+          "definition": "",
+          "plain_explanation": "GIS 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0026",
+              "page_no": 26,
+              "text_span": "64a6ace21075e3f9_p0026_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0027",
+              "page_no": 27,
+              "text_span": "64a6ace21075e3f9_p0027_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0028",
+              "page_no": 28,
+              "text_span": "64a6ace21075e3f9_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0029",
+              "page_no": 29,
+              "text_span": "64a6ace21075e3f9_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0031",
+              "page_no": 31,
+              "text_span": "64a6ace21075e3f9_p0031_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l07_003_01",
+          "text": " Reason 1: GWR is part of a growing trend in GIS towards local analysis • Local statistics are spatial disaggregations of global ones • Local analysis intends to understand the spatial data in more detail  Global statistics – Similarity across space – Single-valued statistics – Not mappable – GIS “unfriendly” – Search for regularities – Aspatial  Local statistics – Difference across space – Multi-valued statistics – Mappable – GIS “friendly” – Search for exceptions – Spatial",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0026",
+              "page_no": 26,
+              "text_span": "64a6ace21075e3f9_p0026_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_003_02",
+          "text": " Reason 2: Provides useful link to GIS • GISs are very useful for the storage, manipulation, analysis and display of spatial data. • Analytical functions are not fully developed. • In some cases the link between GIS and spatial analysis has been a step backwards.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0027",
+              "page_no": 27,
+              "text_span": "64a6ace21075e3f9_p0027_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_003_03",
+          "text": " Reason 3: GWR is widely applicable to almost any form of spatial data • Spatial link between “health” and “wealth” • Presence/absence of a disease • Determinants of house values • Regional development mechanisms • Remote sensing • Air Quality: AQI, PM2.5 • Urban heat island • …….",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0028",
+              "page_no": 28,
+              "text_span": "64a6ace21075e3f9_p0028_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_003_04",
+          "text": " Reason 4: GWR is truly a spatial technique • It uses geographical information as well as attribute information. • It employs a spatial weighting function with the assumption that near places are more similar than distant ones (geography matters). • The outputs are location specific hence mappable for further analysis.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0029",
+              "page_no": 29,
+              "text_span": "64a6ace21075e3f9_p0029_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_003_05",
+          "text": " Reason 6: GWR as a “spatial microscope” • Instead of determining an optimal bandwidth (nearest neighbors), GWR models can be input a priori. • A series of bandwidths can be selected and the resulting parameter surface examined at different levels of smoothing (adjusting amplifying factor in a microscope). • Different details will exhibit different spatial varying patterns, which enables the researchers to be more flexible in discovering interesting spatial patterns, examining theories, and det",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0031",
+              "page_no": 31,
+              "text_span": "64a6ace21075e3f9_p0031_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0026",
+          "page_no": 26,
+          "text_span": "64a6ace21075e3f9_p0026_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0027",
+          "page_no": 27,
+          "text_span": "64a6ace21075e3f9_p0027_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0028",
+          "page_no": 28,
+          "text_span": "64a6ace21075e3f9_p0028_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0029",
+          "page_no": 29,
+          "text_span": "64a6ace21075e3f9_p0029_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0031",
+          "page_no": 31,
+          "text_span": "64a6ace21075e3f9_p0031_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 26,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 27,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 28,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 29,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 31,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "64a6ace21075e3f9_p0026_c01",
+        "64a6ace21075e3f9_p0027_c01",
+        "64a6ace21075e3f9_p0028_c01",
+        "64a6ace21075e3f9_p0029_c01",
+        "64a6ace21075e3f9_p0031_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l07_004",
+      "title": "空间回归分析：regression / spatial regression",
+      "unit_type": "method",
+      "summary": "• Regression establishes relationship among a dependent variable and a set of independent variable(s) • A typical linear regression model looks like: yi=0 + 1x1i+ 2x2i+……+ mxmi+i With yi the dependent variable, xki (k from 1 to m) the set of independent variables, and i the residual, all at location i • When applied to spatial data, as can be seen, it assumes a stationary spatial process • The same stimulus provokes the same response in all parts of the study region • Highly untenable for spatial process • Local statistical technique to analyze spatial variations in relationships • Spatial non-stationarity is assumed and will be tested • Based on the \"Second Law of Geography” • Address",
+      "aliases": [
+        "regression",
+        "spatial regression",
+        "model",
+        "same",
+        "function"
+      ],
+      "keywords": [
+        "regression",
+        "spatial regression",
+        "model",
+        "same",
+        "function",
+        "schemes",
+        "Gaussian",
+        "variable",
+        "GWR",
+        "Gaussian-like"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l07_004_01",
+          "name": "regression",
+          "definition": "",
+          "plain_explanation": "regression 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0033",
+              "page_no": 33,
+              "text_span": "64a6ace21075e3f9_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0034",
+              "page_no": 34,
+              "text_span": "64a6ace21075e3f9_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0035",
+              "page_no": 35,
+              "text_span": "64a6ace21075e3f9_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0037",
+              "page_no": 37,
+              "text_span": "64a6ace21075e3f9_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0038",
+              "page_no": 38,
+              "text_span": "64a6ace21075e3f9_p0038_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_004_02",
+          "name": "spatial regression",
+          "definition": "",
+          "plain_explanation": "spatial regression 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0033",
+              "page_no": 33,
+              "text_span": "64a6ace21075e3f9_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0034",
+              "page_no": 34,
+              "text_span": "64a6ace21075e3f9_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0035",
+              "page_no": 35,
+              "text_span": "64a6ace21075e3f9_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0037",
+              "page_no": 37,
+              "text_span": "64a6ace21075e3f9_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0038",
+              "page_no": 38,
+              "text_span": "64a6ace21075e3f9_p0038_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_004_03",
+          "name": "model",
+          "definition": "",
+          "plain_explanation": "model 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0033",
+              "page_no": 33,
+              "text_span": "64a6ace21075e3f9_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0034",
+              "page_no": 34,
+              "text_span": "64a6ace21075e3f9_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0035",
+              "page_no": 35,
+              "text_span": "64a6ace21075e3f9_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0037",
+              "page_no": 37,
+              "text_span": "64a6ace21075e3f9_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0038",
+              "page_no": 38,
+              "text_span": "64a6ace21075e3f9_p0038_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_004_04",
+          "name": "same",
+          "definition": "",
+          "plain_explanation": "same 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0033",
+              "page_no": 33,
+              "text_span": "64a6ace21075e3f9_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0034",
+              "page_no": 34,
+              "text_span": "64a6ace21075e3f9_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0035",
+              "page_no": 35,
+              "text_span": "64a6ace21075e3f9_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0037",
+              "page_no": 37,
+              "text_span": "64a6ace21075e3f9_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0038",
+              "page_no": 38,
+              "text_span": "64a6ace21075e3f9_p0038_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_004_05",
+          "name": "function",
+          "definition": "",
+          "plain_explanation": "function 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0033",
+              "page_no": 33,
+              "text_span": "64a6ace21075e3f9_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0034",
+              "page_no": 34,
+              "text_span": "64a6ace21075e3f9_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0035",
+              "page_no": 35,
+              "text_span": "64a6ace21075e3f9_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0037",
+              "page_no": 37,
+              "text_span": "64a6ace21075e3f9_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0038",
+              "page_no": 38,
+              "text_span": "64a6ace21075e3f9_p0038_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l07_004_01",
+          "text": "• Regression establishes relationship among a dependent variable and a set of independent variable(s) • A typical linear regression model looks like: yi=0 + 1x1i+ 2x2i+……+ mxmi+i With yi the dependent variable, xki (k from 1 to m) the set of independent variables, and i the residual, all at location i • When applied to spatial data, as can be seen, it assumes a stationary spatial process • The same stimulus provokes the same response in all parts of the study region • Highly untenable for",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0033",
+              "page_no": 33,
+              "text_span": "64a6ace21075e3f9_p0033_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_004_02",
+          "text": "• Local statistical technique to analyze spatial variations in relationships • Spatial non-stationarity is assumed and will be tested • Based on the \"Second Law of Geography” • Addresses the non-stationarity directly • Allows the relationships to vary over space, i.e., k do not need to be everywhere the same • This is the essence of GWR, in the linear form: yi=0i + 1ix1i+ 2ix2i+……+ mixmi+i = 0i + σ𝑘=1 𝑚 kixki+i yi=0(𝑢𝑖,𝑣𝑖) + ෍ 𝑘=1 𝑚 k(𝑢𝑖,𝑣𝑖)xki+ 𝑖 Instead of remaining the same everyw",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0034",
+              "page_no": 34,
+              "text_span": "64a6ace21075e3f9_p0034_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_004_03",
+          "text": "• Fitting model: ෝ𝑦i= ෡0 (𝑢𝑖,𝑣𝑖) + ෍ 𝑘=1 𝑚 ෡k (𝑢𝑖,𝑣𝑖)xki • Using Local Weighted Least Squares (Weights are attached with locations) Q = min σ𝑗=1 𝑛 𝑤𝑖𝑗[𝑦𝑖 − ෢0 (𝑢𝑖,𝑣𝑖) − σ𝑘=1 𝑚 ෡k (𝑢𝑖,𝑣𝑖) xki]2 Where wij(j=1,2,…n) represents the spatial weight of the sample j to the regression analysis point i. wij is also called kernel function. ෡k (𝑢𝑖,𝑣𝑖) =[𝑋𝑇W(𝑢𝑖,𝑣𝑖)𝑋]−1𝑋𝑇 W(𝑢𝑖,𝑣𝑖)Y Where ෡k(ui,𝑣𝑖) is parameter estimation at (ui ,𝑣𝑖) 𝑋 = 1 𝑥11 … 1 𝑥21 … ⋮ ⋮ 𝑥1n 𝑥2𝑛 ⋮ 1 𝑥𝑚1 … 𝑥𝑚𝑛 , Y= 𝑦1 𝑦2 ⋮ 𝑦𝑛 , W(𝑢𝑖,𝑣𝑖",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0035",
+              "page_no": 35,
+              "text_span": "64a6ace21075e3f9_p0035_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_004_04",
+          "text": "• Spatial weighting schemes can be the following typical types: wij=1/dij 𝑎B. Distance threshold: wij= exp[-(dij /b)2]C. Gaussian or Gaussian-like Function: 𝑤𝑖𝑗 = ቊ1, dij < 𝑏 0, 𝑜𝑡ℎ𝑒𝑟𝑤𝑖𝑠𝑒 , 𝑏 𝑖s the determined distance 𝑤𝑖𝑗 = ቊ[1−(dij /b)2] , dij < 𝑏 0, 𝑜𝑡ℎ𝑒𝑟𝑤𝑖𝑠𝑒 , 𝑏 is the determined distanceD.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0037",
+              "page_no": 37,
+              "text_span": "64a6ace21075e3f9_p0037_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_004_05",
+          "text": "Bandwidth Weighting function Problems of fixed schemes: • Might produce large estimate variances where data are sparse, while mask subtle local variations where data are dense. • In extreme condition, fixed schemes might not be able to calibrate in local areas where data are too sparse to satisfy the calibration requirements (observations must be more than parameters).",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0038",
+              "page_no": 38,
+              "text_span": "64a6ace21075e3f9_p0038_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0033",
+          "page_no": 33,
+          "text_span": "64a6ace21075e3f9_p0033_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0034",
+          "page_no": 34,
+          "text_span": "64a6ace21075e3f9_p0034_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0035",
+          "page_no": 35,
+          "text_span": "64a6ace21075e3f9_p0035_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0037",
+          "page_no": 37,
+          "text_span": "64a6ace21075e3f9_p0037_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0038",
+          "page_no": 38,
+          "text_span": "64a6ace21075e3f9_p0038_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 33,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 34,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 35,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 37,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 38,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "64a6ace21075e3f9_p0033_c01",
+        "64a6ace21075e3f9_p0034_c01",
+        "64a6ace21075e3f9_p0035_c01",
+        "64a6ace21075e3f9_p0037_c01",
+        "64a6ace21075e3f9_p0038_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l07_005",
+      "title": "空间回归分析：model / regression",
+      "unit_type": "method",
+      "summary": "• The results of GWR appear to be relatively insensitive to the choice of weighting functions as long as it is a continuous distance-based function (Gaussian or Gaussian-like functions). • Whichever weighting function is used, however the result will be sensitive to the bandwidth(s). • An optimal bandwidth (or nearest neighbors) satisfies either • Least Cross-Validation (CV) Score • CV score: the difference between observed value and the GWR calibrated value using the bandwidth or nearest neighbors.",
+      "aliases": [
+        "model",
+        "regression",
+        "spatial regression",
+        "GWR",
+        "information"
+      ],
+      "keywords": [
+        "model",
+        "regression",
+        "spatial regression",
+        "GWR",
+        "information",
+        "Moran",
+        "local",
+        "will",
+        "bandwidth",
+        "value"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l07_005_01",
+          "name": "model",
+          "definition": "",
+          "plain_explanation": "model 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0041",
+              "page_no": 41,
+              "text_span": "64a6ace21075e3f9_p0041_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0042",
+              "page_no": 42,
+              "text_span": "64a6ace21075e3f9_p0042_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0045",
+              "page_no": 45,
+              "text_span": "64a6ace21075e3f9_p0045_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0046",
+              "page_no": 46,
+              "text_span": "64a6ace21075e3f9_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0047",
+              "page_no": 47,
+              "text_span": "64a6ace21075e3f9_p0047_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_005_02",
+          "name": "regression",
+          "definition": "",
+          "plain_explanation": "regression 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0041",
+              "page_no": 41,
+              "text_span": "64a6ace21075e3f9_p0041_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0042",
+              "page_no": 42,
+              "text_span": "64a6ace21075e3f9_p0042_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0045",
+              "page_no": 45,
+              "text_span": "64a6ace21075e3f9_p0045_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0046",
+              "page_no": 46,
+              "text_span": "64a6ace21075e3f9_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0047",
+              "page_no": 47,
+              "text_span": "64a6ace21075e3f9_p0047_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_005_03",
+          "name": "spatial regression",
+          "definition": "",
+          "plain_explanation": "spatial regression 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0041",
+              "page_no": 41,
+              "text_span": "64a6ace21075e3f9_p0041_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0042",
+              "page_no": 42,
+              "text_span": "64a6ace21075e3f9_p0042_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0045",
+              "page_no": 45,
+              "text_span": "64a6ace21075e3f9_p0045_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0046",
+              "page_no": 46,
+              "text_span": "64a6ace21075e3f9_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0047",
+              "page_no": 47,
+              "text_span": "64a6ace21075e3f9_p0047_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_005_04",
+          "name": "GWR",
+          "definition": "",
+          "plain_explanation": "GWR 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0041",
+              "page_no": 41,
+              "text_span": "64a6ace21075e3f9_p0041_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0042",
+              "page_no": 42,
+              "text_span": "64a6ace21075e3f9_p0042_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0045",
+              "page_no": 45,
+              "text_span": "64a6ace21075e3f9_p0045_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0046",
+              "page_no": 46,
+              "text_span": "64a6ace21075e3f9_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0047",
+              "page_no": 47,
+              "text_span": "64a6ace21075e3f9_p0047_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_005_05",
+          "name": "information",
+          "definition": "",
+          "plain_explanation": "information 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0041",
+              "page_no": 41,
+              "text_span": "64a6ace21075e3f9_p0041_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0042",
+              "page_no": 42,
+              "text_span": "64a6ace21075e3f9_p0042_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0045",
+              "page_no": 45,
+              "text_span": "64a6ace21075e3f9_p0045_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0046",
+              "page_no": 46,
+              "text_span": "64a6ace21075e3f9_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0047",
+              "page_no": 47,
+              "text_span": "64a6ace21075e3f9_p0047_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l07_005_01",
+          "text": "• The results of GWR appear to be relatively insensitive to the choice of weighting functions as long as it is a continuous distance-based function (Gaussian or Gaussian-like functions). • Whichever weighting function is used, however the result will be sensitive to the bandwidth(s). • An optimal bandwidth (or nearest neighbors) satisfies either • Least Cross-Validation (CV) Score • CV score: the difference between observed value and the GWR calibrated value using the bandwidth or nearest neighb",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0041",
+              "page_no": 41,
+              "text_span": "64a6ace21075e3f9_p0041_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_005_02",
+          "text": "• Cross-Validation (CV, 交叉验证法) • One round of CV involves partitioning a sample of data into complementary subsets, performing the analysis on one subset (called the training set), and validating the analysis on the other subset (called the validation set or testing set). • To reduce variability, in most methods multiple rounds of cross-validation are performed using different partitions, and the validation results are combined (e.g. averaged) over the rounds to give an estimate of the model's p",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0042",
+              "page_no": 42,
+              "text_span": "64a6ace21075e3f9_p0042_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_005_03",
+          "text": "• AIC is founded on information theory. • When a statistical model is used to represent the process that generated the data, the representation will almost never be exact; so some information will be lost by using the model to represent the process. • AIC estimates the relative amount of information lost by a given model: the less information a model loses, the higher the quality of that model.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0045",
+              "page_no": 45,
+              "text_span": "64a6ace21075e3f9_p0045_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_005_04",
+          "text": " Is GWR model really better than simple linear regression model? (1) Local Goodness-of-Fit Measures • Local R²: Computes the weighted R²for each location, indicating local explanatory power. • Residual spatial analysis: Checks if residuals are randomly distributed (e.g., using Moran’s I for spatial autocorrelation).",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0046",
+              "page_no": 46,
+              "text_span": "64a6ace21075e3f9_p0046_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_005_05",
+          "text": " Are the coefficients really varying across space? Monte Carlo Tests: • Define Null Hypothesis (H₀): • Example: \"The local coefficient β(uᵢ, vᵢ) is not significantly different from zero.\" • Generate Simulated Data Under H₀: • Permutation Approach: Randomly shuffle the dependent variable (Y) while fixing predictors (X) and spatial weights to break any spatial relationships. • Fit GWR to Simulated Data: • Re-estimate local coefficients for each simulated dataset.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0047",
+              "page_no": 47,
+              "text_span": "64a6ace21075e3f9_p0047_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0041",
+          "page_no": 41,
+          "text_span": "64a6ace21075e3f9_p0041_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0042",
+          "page_no": 42,
+          "text_span": "64a6ace21075e3f9_p0042_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0045",
+          "page_no": 45,
+          "text_span": "64a6ace21075e3f9_p0045_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0046",
+          "page_no": 46,
+          "text_span": "64a6ace21075e3f9_p0046_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0047",
+          "page_no": 47,
+          "text_span": "64a6ace21075e3f9_p0047_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 41,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 42,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 45,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 46,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 47,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "64a6ace21075e3f9_p0041_c01",
+        "64a6ace21075e3f9_p0042_c01",
+        "64a6ace21075e3f9_p0045_c01",
+        "64a6ace21075e3f9_p0046_c01",
+        "64a6ace21075e3f9_p0047_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l07_006",
+      "title": "空间回归分析：regression / model",
+      "unit_type": "method",
+      "summary": "• Multiscale Geographically Weighted Regression (MGWR) in ArcGIS Pro • MGWR builds upon GWR. • It is a local regression model that allows the coefficients of the explanatory variables to vary across space. • Each explanatory variable may operate at a different spatial scale.",
+      "aliases": [
+        "regression",
+        "model",
+        "spatial regression",
+        "GIS",
+        "Geographically"
+      ],
+      "keywords": [
+        "regression",
+        "model",
+        "spatial regression",
+        "GIS",
+        "Geographically",
+        "weighted",
+        "neural",
+        "network",
+        "GWR",
+        "explanatory"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l07_006_01",
+          "name": "regression",
+          "definition": "",
+          "plain_explanation": "regression 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0051",
+              "page_no": 51,
+              "text_span": "64a6ace21075e3f9_p0051_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0052",
+              "page_no": 52,
+              "text_span": "64a6ace21075e3f9_p0052_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0053",
+              "page_no": 53,
+              "text_span": "64a6ace21075e3f9_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0054",
+              "page_no": 54,
+              "text_span": "64a6ace21075e3f9_p0054_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0055",
+              "page_no": 55,
+              "text_span": "64a6ace21075e3f9_p0055_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_006_02",
+          "name": "model",
+          "definition": "",
+          "plain_explanation": "model 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0051",
+              "page_no": 51,
+              "text_span": "64a6ace21075e3f9_p0051_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0052",
+              "page_no": 52,
+              "text_span": "64a6ace21075e3f9_p0052_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0053",
+              "page_no": 53,
+              "text_span": "64a6ace21075e3f9_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0054",
+              "page_no": 54,
+              "text_span": "64a6ace21075e3f9_p0054_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0055",
+              "page_no": 55,
+              "text_span": "64a6ace21075e3f9_p0055_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_006_03",
+          "name": "spatial regression",
+          "definition": "",
+          "plain_explanation": "spatial regression 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0051",
+              "page_no": 51,
+              "text_span": "64a6ace21075e3f9_p0051_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0052",
+              "page_no": 52,
+              "text_span": "64a6ace21075e3f9_p0052_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0053",
+              "page_no": 53,
+              "text_span": "64a6ace21075e3f9_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0054",
+              "page_no": 54,
+              "text_span": "64a6ace21075e3f9_p0054_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0055",
+              "page_no": 55,
+              "text_span": "64a6ace21075e3f9_p0055_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_006_04",
+          "name": "GIS",
+          "definition": "",
+          "plain_explanation": "GIS 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0051",
+              "page_no": 51,
+              "text_span": "64a6ace21075e3f9_p0051_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0052",
+              "page_no": 52,
+              "text_span": "64a6ace21075e3f9_p0052_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0053",
+              "page_no": 53,
+              "text_span": "64a6ace21075e3f9_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0054",
+              "page_no": 54,
+              "text_span": "64a6ace21075e3f9_p0054_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0055",
+              "page_no": 55,
+              "text_span": "64a6ace21075e3f9_p0055_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l07_006_05",
+          "name": "Geographically",
+          "definition": "",
+          "plain_explanation": "Geographically 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0051",
+              "page_no": 51,
+              "text_span": "64a6ace21075e3f9_p0051_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0052",
+              "page_no": 52,
+              "text_span": "64a6ace21075e3f9_p0052_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0053",
+              "page_no": 53,
+              "text_span": "64a6ace21075e3f9_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0054",
+              "page_no": 54,
+              "text_span": "64a6ace21075e3f9_p0054_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0055",
+              "page_no": 55,
+              "text_span": "64a6ace21075e3f9_p0055_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l07_006_01",
+          "text": "• Multiscale Geographically Weighted Regression (MGWR) in ArcGIS Pro • MGWR builds upon GWR. • It is a local regression model that allows the coefficients of the explanatory variables to vary across space. • Each explanatory variable may operate at a different spatial scale.",
+          "type": "formula",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0051",
+              "page_no": 51,
+              "text_span": "64a6ace21075e3f9_p0051_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_006_02",
+          "text": "• Geographically and Temporally Weighted Regression Model 时空加权回归模型 • Huang B et al. Geographically and temporally weighted regression for modeling spatio-temporal variation in house prices. International journal of geographical information science, 2010, 24(3), 383-401.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0052",
+              "page_no": 52,
+              "text_span": "64a6ace21075e3f9_p0052_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_006_03",
+          "text": "Multiscale GIS based-model to assess urban social vulnerability and associated risk: Evidence from 146 urban centers of Eastern India. SUSTAINABLE CITIES AND SOCIETY ,2023. • Tian, et al.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0053",
+              "page_no": 53,
+              "text_span": "64a6ace21075e3f9_p0053_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_006_04",
+          "text": "Chapter 9.4.2 in Rogerson’s 《Statistical methods for geography》. 2. Section 5.6 in 《Geospatial Analysis 6th Edition, 2020 update》 https://spatialanalysisonline.com/HTML/index.html 3.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0054",
+              "page_no": 54,
+              "text_span": "64a6ace21075e3f9_p0054_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_006_05",
+          "text": "Read references 1 and 2, and one of the rest references or other papers you are interested in. 2. Tell the differences among GWR, spatial lag model and conventional linear regression model 3.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0055",
+              "page_no": 55,
+              "text_span": "64a6ace21075e3f9_p0055_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0051",
+          "page_no": 51,
+          "text_span": "64a6ace21075e3f9_p0051_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0052",
+          "page_no": 52,
+          "text_span": "64a6ace21075e3f9_p0052_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0053",
+          "page_no": 53,
+          "text_span": "64a6ace21075e3f9_p0053_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0054",
+          "page_no": 54,
+          "text_span": "64a6ace21075e3f9_p0054_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0055",
+          "page_no": 55,
+          "text_span": "64a6ace21075e3f9_p0055_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 51,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 52,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 53,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 54,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 55,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "64a6ace21075e3f9_p0051_c01",
+        "64a6ace21075e3f9_p0052_c01",
+        "64a6ace21075e3f9_p0053_c01",
+        "64a6ace21075e3f9_p0054_c01",
+        "64a6ace21075e3f9_p0055_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    }
+  ],
+  "knowledge_tree": {
+    "id": "tree_spatial_analysis_lecture_07",
+    "title": "第 7 讲：空间回归分析",
+    "nodes": [
+      {
+        "id": "node_lecture_07",
+        "title": "第 7 讲：空间回归分析",
+        "role": "chapter",
+        "summary": "• The conventional regression methods in Lect.6. • Spatial lag model-SLM／Spatial autoregressive model-SAM y = ρWy + Xβ +𝜀 • y is a n × 1 vector of observations on the dependent variable (n is the number of observations) • W is a n × n spatial weights matrix • ρ is a global spatial autoregressive coefficient of the dependent variable y • Wy is a spatially lagged dependent variable with ρ • X is a n × k matrix of observations on the explanatory variables (k is the number of explanatory variables) with associated coefﬁcients β （k × 1）, • 𝜀 is a n × 1 vector of error terms which can generally be a",
+        "parent_id": null,
+        "knowledge_unit_ids": [],
+        "order": 7,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l07_001",
+        "title": "空间回归分析：regression / spatial regression",
+        "role": "method",
+        "summary": "• The conventional regression methods in Lect.6. • Spatial lag model-SLM／Spatial autoregressive model-SAM y = ρWy + Xβ +𝜀 • y is a n × 1 vector of observations on the dependent variable (n is the number of observations) • W is a n × n spatial weights matrix • ρ is a global spatial autoregressive coefficient of the dependent variable y • Wy is a spatially lagged dependent variable with ρ • X is a n × k matrix of observations on the explanatory variables (k is the number of explanatory variables) with associated coefﬁcients β （k × 1）, • 𝜀 is a n × 1 vector of error terms which can generally be assumed as normality distribution, i.e., 𝜀∼ N(0, σ² ) • Spatial lag model-SLM／Spatial autoregressive",
+        "parent_id": "node_lecture_07",
+        "knowledge_unit_ids": [
+          "ku_l07_001"
+        ],
+        "order": 1,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l07_002",
+        "title": "空间回归分析：regression / spatial regression",
+        "role": "method",
+        "summary": "Spatial non-stationarity/ Heterogenicity : the same stimulus provokes a different response in different parts of the study region • Global models: statements about processes which are assumed to be stationary and as such are location independent • Local models: spatial decompositions of global models, the results of local models are location dependent – a characteristic we usually anticipate from geographical (spatial) data Multiscale GIS based-model to assess urban social vulnerability and associated risk: Evidence from 146 urban centers of Eastern India. SUSTAINABLE CITIES AND SOCIETY ,2023. • Tian, et al.",
+        "parent_id": "node_lecture_07",
+        "knowledge_unit_ids": [
+          "ku_l07_002"
+        ],
+        "order": 2,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l07_003",
+        "title": "空间回归分析：regression / spatial regression",
+        "role": "method",
+        "summary": " Reason 1: GWR is part of a growing trend in GIS towards local analysis • Local statistics are spatial disaggregations of global ones • Local analysis intends to understand the spatial data in more detail  Global statistics – Similarity across space – Single-valued statistics – Not mappable – GIS “unfriendly” – Search for regularities – Aspatial  Local statistics – Difference across space – Multi-valued statistics – Mappable – GIS “friendly” – Search for exceptions – Spatial  Reason 2: Provides useful link to GIS • GISs are very useful for the storage, manipulation, analysis and display of spatial data. • Analytical functions are not fully developed. • In some cases the link between GIS",
+        "parent_id": "node_lecture_07",
+        "knowledge_unit_ids": [
+          "ku_l07_003"
+        ],
+        "order": 3,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l07_004",
+        "title": "空间回归分析：regression / spatial regression",
+        "role": "method",
+        "summary": "• Regression establishes relationship among a dependent variable and a set of independent variable(s) • A typical linear regression model looks like: yi=0 + 1x1i+ 2x2i+……+ mxmi+i With yi the dependent variable, xki (k from 1 to m) the set of independent variables, and i the residual, all at location i • When applied to spatial data, as can be seen, it assumes a stationary spatial process • The same stimulus provokes the same response in all parts of the study region • Highly untenable for spatial process • Local statistical technique to analyze spatial variations in relationships • Spatial non-stationarity is assumed and will be tested • Based on the \"Second Law of Geography” • Address",
+        "parent_id": "node_lecture_07",
+        "knowledge_unit_ids": [
+          "ku_l07_004"
+        ],
+        "order": 4,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l07_005",
+        "title": "空间回归分析：model / regression",
+        "role": "method",
+        "summary": "• The results of GWR appear to be relatively insensitive to the choice of weighting functions as long as it is a continuous distance-based function (Gaussian or Gaussian-like functions). • Whichever weighting function is used, however the result will be sensitive to the bandwidth(s). • An optimal bandwidth (or nearest neighbors) satisfies either • Least Cross-Validation (CV) Score • CV score: the difference between observed value and the GWR calibrated value using the bandwidth or nearest neighbors.",
+        "parent_id": "node_lecture_07",
+        "knowledge_unit_ids": [
+          "ku_l07_005"
+        ],
+        "order": 5,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l07_006",
+        "title": "空间回归分析：regression / model",
+        "role": "method",
+        "summary": "• Multiscale Geographically Weighted Regression (MGWR) in ArcGIS Pro • MGWR builds upon GWR. • It is a local regression model that allows the coefficients of the explanatory variables to vary across space. • Each explanatory variable may operate at a different spatial scale.",
+        "parent_id": "node_lecture_07",
+        "knowledge_unit_ids": [
+          "ku_l07_006"
+        ],
+        "order": 6,
+        "prerequisite_node_ids": []
+      }
+    ],
+    "root_node_ids": [
+      "node_lecture_07"
+    ],
+    "teaching_sequence": [
+      "node_l07_001",
+      "node_l07_002",
+      "node_l07_003",
+      "node_l07_004",
+      "node_l07_005",
+      "node_l07_006"
+    ],
+    "orphan_unit_ids": [],
+    "warnings": [
+      "This LearningContent was generated deterministically from the spatial_analysis knowledge-base chunks.",
+      "Review low-text pages and chunk labels before high-stakes classroom use."
+    ]
+  },
+  "objectives": [
+    "理解空间回归分析中的核心概念和方法。",
+    "能够解释关键术语、适用条件和典型应用。",
+    "能够基于来源页码组织课堂讲解和检查题。"
+  ],
+  "sections": [
+    {
+      "id": "section_l07_001",
+      "title": "空间回归分析：regression / spatial regression",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间回归分析：regression / spatial regression",
+      "summary": "• The conventional regression methods in Lect.6. • Spatial lag model-SLM／Spatial autoregressive model-SAM y = ρWy + Xβ +𝜀 • y is a n × 1 vector of observations on the dependent variable (n is the number of observations) • W is a n × n spatial weights matrix • ρ is a global spatial autoregressive coefficient of the dependent variable y • Wy is a spatially lagged dependent variable with ρ • X is a n × k matrix of observations on the explanatory variables (k is the number of explanatory variables) with associated coefﬁcients β （k × 1）, • 𝜀 is a n × 1 vector of error terms which can generally be assumed as normality distribution, i.e., 𝜀∼ N(0, σ² ) • Spatial lag model-SLM／Spatial autoregressive",
+      "key_points": [
+        "regression",
+        "spatial regression",
+        "model",
+        "autoregressive",
+        "observations",
+        "dependent",
+        "variable",
+        "GIS"
+      ],
+      "teaching_narrative": "本节围绕“空间回归分析：regression / spatial regression”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• The conventional regression methods in Lect.6. • Spatial lag model-SLM／Spatial autoregressive model-SAM y = ρWy + Xβ +𝜀 • y is a n × 1 vector of observations on the dependent variable (n is the number of observations) • W is a n × n spatial weights matrix • ρ is a global spatial autoregressive coefficient of the dependent variable y • Wy is a spatially lagged dependent variable with ρ • X is a n × k matrix of observations on the explanatory variables (k is the number of explanatory variables) with associated coefﬁcients β （k × 1）, • 𝜀 is a n × 1 vector of error terms which can generally be assumed as normality distribution, i.e., 𝜀∼ N(0, σ² ) • Spatial lag model-SLM／Spatial autoregressive",
+      "knowledge_points": [
+        "regression",
+        "spatial regression",
+        "model",
+        "autoregressive",
+        "observations",
+        "dependent",
+        "variable",
+        "GIS",
+        "methods",
+        "model-SLM"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l07_001_01",
+          "text": "• The conventional regression methods in Lect.6. • Spatial lag model-SLM／Spatial autoregressive model-SAM y = ρWy + Xβ +𝜀 • y is a n × 1 vector of observations on the dependent variable (n is the number of observations) • W is a n × n spatial weights matrix • ρ is a global spatial autoregressive coefficient of the dependent variable y • Wy is a spatially lagged dependent variable with ρ • X is a n × k matrix of observations on the explanatory variables (k is the number of explanatory variables)",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0002",
+              "page_no": 2,
+              "text_span": "64a6ace21075e3f9_p0002_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_001_02",
+          "text": "• Spatial lag model-SLM／Spatial autoregressive model-SAM y = ρWy + Xβ +𝜀 Refer to : • Ord, J.K., 1975. Estimation methods for models of spatial interaction. Journal of the American Statistical Association, 70, 120–126.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0003",
+              "page_no": 3,
+              "text_span": "64a6ace21075e3f9_p0003_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_001_03",
+          "text": "Global drought monitoring with drought severity index (DSI) using Google Earth Engine. THEORETICAL AND APPLIED CLIMATOLOGY,2021. Left side map shows the mean value of twelve months, and the right side map is the statistical median for 2001.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0006",
+              "page_no": 6,
+              "text_span": "64a6ace21075e3f9_p0006_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_001_04",
+          "text": "院 女生 申请 女生 录取 女生 录取率 男生 申请 男生 录取 男生 录取率 合计 申请 合计 录取 合计 录取 率 商学院 100 49 49% 20 15 75% 120 64 53.3% 法学院 20 1 5% 100 10 10% 120 11 9.2% 总计 120 50 42% 120 25 21% 240 75 31.3% 摘自： 百度百科—科普中国 Simpson's paradox (辛普森悖论), which also goes by several other names, is a phenomenon in probability and statistics, in which a trend appears in several different groups of data but disappears or reverses when these groups are combined.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0008",
+              "page_no": 8,
+              "text_span": "64a6ace21075e3f9_p0008_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_001_05",
+          "text": "yi= 0 + 1xi 1 1 1 1 Stationary process i3 i2 i1 i4 Non-stationary process yi= i0 + ijxi Assumed More realistic • If non-stationarity is modeled by stationary models • Possible wrong conclusions might be drawn • Residuals of the model might be highly spatial autocorrelated",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0013",
+              "page_no": 13,
+              "text_span": "64a6ace21075e3f9_p0013_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 regression 为什么重要。",
+          "expected_answer": "学生应能说明 regression 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间回归分析：regression / spatial regression”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0002",
+          "page_no": 2,
+          "text_span": "64a6ace21075e3f9_p0002_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0003",
+          "page_no": 3,
+          "text_span": "64a6ace21075e3f9_p0003_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0006",
+          "page_no": 6,
+          "text_span": "64a6ace21075e3f9_p0006_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0008",
+          "page_no": 8,
+          "text_span": "64a6ace21075e3f9_p0008_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0013",
+          "page_no": 13,
+          "text_span": "64a6ace21075e3f9_p0013_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 2,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 3,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 6,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 8,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 13,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l07_001"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l07_001_01",
+          "question": "关于“regression”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 regression 的含义、适用条件或典型应用",
+            "只记住 regression 在课件中出现过",
+            "把 regression 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "regression",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0002",
+              "page_no": 2,
+              "text_span": "64a6ace21075e3f9_p0002_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0003",
+              "page_no": 3,
+              "text_span": "64a6ace21075e3f9_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0006",
+              "page_no": 6,
+              "text_span": "64a6ace21075e3f9_p0006_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0008",
+              "page_no": 8,
+              "text_span": "64a6ace21075e3f9_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0013",
+              "page_no": 13,
+              "text_span": "64a6ace21075e3f9_p0013_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        2,
+        3,
+        6,
+        8,
+        13
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间回归分析：regression / spatial regression”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• The conventional regression methods in Lect.6. • Spatial lag model-SLM／Spatial autoregressive model-SAM y = ρWy + Xβ +𝜀 • y is a n × 1 vector of observations on the dependent variable (n is the number of observations) • W is a n × n spatial weights matrix • ρ is a global spatial autoregressive coefficient of the dependent variable y • Wy is a spatially lagged dependent variable with ρ • X is a n × k matrix of observations on the explanatory variables (k is the number of explanatory variables) with associated coefﬁcients β （k × 1）, • 𝜀 is a n × 1 vector of error terms which can generally be assumed as normality distribution, i.e., 𝜀∼ N(0, σ² ) • Spatial lag model-SLM／Spatial autoregressive",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间回归分析：regression / spatial regression”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l07_002",
+      "title": "空间回归分析：regression / spatial regression",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间回归分析：regression / spatial regression",
+      "summary": "Spatial non-stationarity/ Heterogenicity : the same stimulus provokes a different response in different parts of the study region • Global models: statements about processes which are assumed to be stationary and as such are location independent • Local models: spatial decompositions of global models, the results of local models are location dependent – a characteristic we usually anticipate from geographical (spatial) data Multiscale GIS based-model to assess urban social vulnerability and associated risk: Evidence from 146 urban centers of Eastern India. SUSTAINABLE CITIES AND SOCIETY ,2023. • Tian, et al.",
+      "key_points": [
+        "regression",
+        "spatial regression",
+        "model",
+        "urban",
+        "Moran",
+        "GIS",
+        "study",
+        "weighted"
+      ],
+      "teaching_narrative": "本节围绕“空间回归分析：regression / spatial regression”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Spatial non-stationarity/ Heterogenicity : the same stimulus provokes a different response in different parts of the study region • Global models: statements about processes which are assumed to be stationary and as such are location independent • Local models: spatial decompositions of global models, the results of local models are location dependent – a characteristic we usually anticipate from geographical (spatial) data Multiscale GIS based-model to assess urban social vulnerability and associated risk: Evidence from 146 urban centers of Eastern India. SUSTAINABLE CITIES AND SOCIETY ,2023. • Tian, et al.",
+      "knowledge_points": [
+        "regression",
+        "spatial regression",
+        "model",
+        "urban",
+        "Moran",
+        "GIS",
+        "study",
+        "weighted",
+        "household",
+        "living"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l07_002_01",
+          "text": "Spatial non-stationarity/ Heterogenicity : the same stimulus provokes a different response in different parts of the study region • Global models: statements about processes which are assumed to be stationary and as such are location independent • Local models: spatial decompositions of global models, the results of local models are location dependent – a characteristic we usually anticipate from geographical (spatial) data",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0015",
+              "page_no": 15,
+              "text_span": "64a6ace21075e3f9_p0015_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_002_02",
+          "text": "Multiscale GIS based-model to assess urban social vulnerability and associated risk: Evidence from 146 urban centers of Eastern India. SUSTAINABLE CITIES AND SOCIETY ,2023. • Tian, et al.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0016",
+              "page_no": 16,
+              "text_span": "64a6ace21075e3f9_p0016_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_002_03",
+          "text": "• Backgrounds: The unplanned urban expansion and extreme population pressure have caused several bottlenecks for city dwellers, which have been reflected in the form of inter-urban spatial inequality in living conditions at the household level. • Objectives: The present study integrates GIS with a composite synthetic index to measure the spatial variation of urban household conditions across 146 urban centers in Eastern India (West Bengal). • Methods: The study critically scrutinizes the influen",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0018",
+              "page_no": 18,
+              "text_span": "64a6ace21075e3f9_p0018_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_002_04",
+          "text": "How to measure spatial non-stationarity? • Local Indicators of Spatial Association （LISA）: Local Moran’s I, Local Gi and Gi*, Getis-Ord Gi and Gi*… How to predict variable (s) with spatial non-stationarity? • Spatial regression methods: Geographically weighted regression，…",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0022",
+              "page_no": 22,
+              "text_span": "64a6ace21075e3f9_p0022_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_002_05",
+          "text": "Geographically Weighted Regression: The Analysis of Spatially Varying Relationships . 2002 . Number of references > 5000 Brunsdon C , Fotheringham A S , Charlton M E .",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0024",
+              "page_no": 24,
+              "text_span": "64a6ace21075e3f9_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 regression 为什么重要。",
+          "expected_answer": "学生应能说明 regression 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间回归分析：regression / spatial regression”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0015",
+          "page_no": 15,
+          "text_span": "64a6ace21075e3f9_p0015_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0016",
+          "page_no": 16,
+          "text_span": "64a6ace21075e3f9_p0016_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0018",
+          "page_no": 18,
+          "text_span": "64a6ace21075e3f9_p0018_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0022",
+          "page_no": 22,
+          "text_span": "64a6ace21075e3f9_p0022_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0024",
+          "page_no": 24,
+          "text_span": "64a6ace21075e3f9_p0024_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 15,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 16,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 18,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 22,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 24,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l07_002"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l07_002_01",
+          "question": "关于“regression”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 regression 的含义、适用条件或典型应用",
+            "只记住 regression 在课件中出现过",
+            "把 regression 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "regression",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0015",
+              "page_no": 15,
+              "text_span": "64a6ace21075e3f9_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0016",
+              "page_no": 16,
+              "text_span": "64a6ace21075e3f9_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0018",
+              "page_no": 18,
+              "text_span": "64a6ace21075e3f9_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0022",
+              "page_no": 22,
+              "text_span": "64a6ace21075e3f9_p0022_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0024",
+              "page_no": 24,
+              "text_span": "64a6ace21075e3f9_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        15,
+        16,
+        18,
+        22,
+        24
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间回归分析：regression / spatial regression”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Spatial non-stationarity/ Heterogenicity : the same stimulus provokes a different response in different parts of the study region • Global models: statements about processes which are assumed to be stationary and as such are location independent • Local models: spatial decompositions of global models, the results of local models are location dependent – a characteristic we usually anticipate from geographical (spatial) data Multiscale GIS based-model to assess urban social vulnerability and associated risk: Evidence from 146 urban centers of Eastern India. SUSTAINABLE CITIES AND SOCIETY ,2023. • Tian, et al.",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间回归分析：regression / spatial regression”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l07_003",
+      "title": "空间回归分析：regression / spatial regression",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间回归分析：regression / spatial regression",
+      "summary": " Reason 1: GWR is part of a growing trend in GIS towards local analysis • Local statistics are spatial disaggregations of global ones • Local analysis intends to understand the spatial data in more detail  Global statistics – Similarity across space – Single-valued statistics – Not mappable – GIS “unfriendly” – Search for regularities – Aspatial  Local statistics – Difference across space – Multi-valued statistics – Mappable – GIS “friendly” – Search for exceptions – Spatial  Reason 2: Provides useful link to GIS • GISs are very useful for the storage, manipulation, analysis and display of spatial data. • Analytical functions are not fully developed. • In some cases the link between GIS",
+      "key_points": [
+        "regression",
+        "spatial regression",
+        "GWR",
+        "model",
+        "GIS",
+        "Reason",
+        "statistics",
+        "much"
+      ],
+      "teaching_narrative": "本节围绕“空间回归分析：regression / spatial regression”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据： Reason 1: GWR is part of a growing trend in GIS towards local analysis • Local statistics are spatial disaggregations of global ones • Local analysis intends to understand the spatial data in more detail  Global statistics – Similarity across space – Single-valued statistics – Not mappable – GIS “unfriendly” – Search for regularities – Aspatial  Local statistics – Difference across space – Multi-valued statistics – Mappable – GIS “friendly” – Search for exceptions – Spatial  Reason 2: Provides useful link to GIS • GISs are very useful for the storage, manipulation, analysis and display of spatial data. • Analytical functions are not fully developed. • In some cases the link between GIS",
+      "knowledge_points": [
+        "regression",
+        "spatial regression",
+        "GWR",
+        "model",
+        "GIS",
+        "Reason",
+        "statistics",
+        "much",
+        "local",
+        "more"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l07_003_01",
+          "text": " Reason 1: GWR is part of a growing trend in GIS towards local analysis • Local statistics are spatial disaggregations of global ones • Local analysis intends to understand the spatial data in more detail  Global statistics – Similarity across space – Single-valued statistics – Not mappable – GIS “unfriendly” – Search for regularities – Aspatial  Local statistics – Difference across space – Multi-valued statistics – Mappable – GIS “friendly” – Search for exceptions – Spatial",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0026",
+              "page_no": 26,
+              "text_span": "64a6ace21075e3f9_p0026_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_003_02",
+          "text": " Reason 2: Provides useful link to GIS • GISs are very useful for the storage, manipulation, analysis and display of spatial data. • Analytical functions are not fully developed. • In some cases the link between GIS and spatial analysis has been a step backwards.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0027",
+              "page_no": 27,
+              "text_span": "64a6ace21075e3f9_p0027_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_003_03",
+          "text": " Reason 3: GWR is widely applicable to almost any form of spatial data • Spatial link between “health” and “wealth” • Presence/absence of a disease • Determinants of house values • Regional development mechanisms • Remote sensing • Air Quality: AQI, PM2.5 • Urban heat island • …….",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0028",
+              "page_no": 28,
+              "text_span": "64a6ace21075e3f9_p0028_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_003_04",
+          "text": " Reason 4: GWR is truly a spatial technique • It uses geographical information as well as attribute information. • It employs a spatial weighting function with the assumption that near places are more similar than distant ones (geography matters). • The outputs are location specific hence mappable for further analysis.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0029",
+              "page_no": 29,
+              "text_span": "64a6ace21075e3f9_p0029_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_003_05",
+          "text": " Reason 6: GWR as a “spatial microscope” • Instead of determining an optimal bandwidth (nearest neighbors), GWR models can be input a priori. • A series of bandwidths can be selected and the resulting parameter surface examined at different levels of smoothing (adjusting amplifying factor in a microscope). • Different details will exhibit different spatial varying patterns, which enables the researchers to be more flexible in discovering interesting spatial patterns, examining theories, and det",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0031",
+              "page_no": 31,
+              "text_span": "64a6ace21075e3f9_p0031_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 regression 为什么重要。",
+          "expected_answer": "学生应能说明 regression 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间回归分析：regression / spatial regression”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0026",
+          "page_no": 26,
+          "text_span": "64a6ace21075e3f9_p0026_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0027",
+          "page_no": 27,
+          "text_span": "64a6ace21075e3f9_p0027_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0028",
+          "page_no": 28,
+          "text_span": "64a6ace21075e3f9_p0028_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0029",
+          "page_no": 29,
+          "text_span": "64a6ace21075e3f9_p0029_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0031",
+          "page_no": 31,
+          "text_span": "64a6ace21075e3f9_p0031_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 26,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 27,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 28,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 29,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 31,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l07_003"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l07_003_01",
+          "question": "关于“regression”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 regression 的含义、适用条件或典型应用",
+            "只记住 regression 在课件中出现过",
+            "把 regression 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "regression",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0026",
+              "page_no": 26,
+              "text_span": "64a6ace21075e3f9_p0026_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0027",
+              "page_no": 27,
+              "text_span": "64a6ace21075e3f9_p0027_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0028",
+              "page_no": 28,
+              "text_span": "64a6ace21075e3f9_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0029",
+              "page_no": 29,
+              "text_span": "64a6ace21075e3f9_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0031",
+              "page_no": 31,
+              "text_span": "64a6ace21075e3f9_p0031_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        26,
+        27,
+        28,
+        29,
+        31
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间回归分析：regression / spatial regression”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据： Reason 1: GWR is part of a growing trend in GIS towards local analysis • Local statistics are spatial disaggregations of global ones • Local analysis intends to understand the spatial data in more detail  Global statistics – Similarity across space – Single-valued statistics – Not mappable – GIS “unfriendly” – Search for regularities – Aspatial  Local statistics – Difference across space – Multi-valued statistics – Mappable – GIS “friendly” – Search for exceptions – Spatial  Reason 2: Provides useful link to GIS • GISs are very useful for the storage, manipulation, analysis and display of spatial data. • Analytical functions are not fully developed. • In some cases the link between GIS",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间回归分析：regression / spatial regression”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l07_004",
+      "title": "空间回归分析：regression / spatial regression",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间回归分析：regression / spatial regression",
+      "summary": "• Regression establishes relationship among a dependent variable and a set of independent variable(s) • A typical linear regression model looks like: yi=0 + 1x1i+ 2x2i+……+ mxmi+i With yi the dependent variable, xki (k from 1 to m) the set of independent variables, and i the residual, all at location i • When applied to spatial data, as can be seen, it assumes a stationary spatial process • The same stimulus provokes the same response in all parts of the study region • Highly untenable for spatial process • Local statistical technique to analyze spatial variations in relationships • Spatial non-stationarity is assumed and will be tested • Based on the \"Second Law of Geography” • Address",
+      "key_points": [
+        "regression",
+        "spatial regression",
+        "model",
+        "same",
+        "function",
+        "schemes",
+        "Gaussian",
+        "variable"
+      ],
+      "teaching_narrative": "本节围绕“空间回归分析：regression / spatial regression”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• Regression establishes relationship among a dependent variable and a set of independent variable(s) • A typical linear regression model looks like: yi=0 + 1x1i+ 2x2i+……+ mxmi+i With yi the dependent variable, xki (k from 1 to m) the set of independent variables, and i the residual, all at location i • When applied to spatial data, as can be seen, it assumes a stationary spatial process • The same stimulus provokes the same response in all parts of the study region • Highly untenable for spatial process • Local statistical technique to analyze spatial variations in relationships • Spatial non-stationarity is assumed and will be tested • Based on the \"Second Law of Geography” • Address",
+      "knowledge_points": [
+        "regression",
+        "spatial regression",
+        "model",
+        "same",
+        "function",
+        "schemes",
+        "Gaussian",
+        "variable",
+        "GWR",
+        "Gaussian-like"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l07_004_01",
+          "text": "• Regression establishes relationship among a dependent variable and a set of independent variable(s) • A typical linear regression model looks like: yi=0 + 1x1i+ 2x2i+……+ mxmi+i With yi the dependent variable, xki (k from 1 to m) the set of independent variables, and i the residual, all at location i • When applied to spatial data, as can be seen, it assumes a stationary spatial process • The same stimulus provokes the same response in all parts of the study region • Highly untenable for",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0033",
+              "page_no": 33,
+              "text_span": "64a6ace21075e3f9_p0033_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_004_02",
+          "text": "• Local statistical technique to analyze spatial variations in relationships • Spatial non-stationarity is assumed and will be tested • Based on the \"Second Law of Geography” • Addresses the non-stationarity directly • Allows the relationships to vary over space, i.e., k do not need to be everywhere the same • This is the essence of GWR, in the linear form: yi=0i + 1ix1i+ 2ix2i+……+ mixmi+i = 0i + σ𝑘=1 𝑚 kixki+i yi=0(𝑢𝑖,𝑣𝑖) + ෍ 𝑘=1 𝑚 k(𝑢𝑖,𝑣𝑖)xki+ 𝑖 Instead of remaining the same everyw",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0034",
+              "page_no": 34,
+              "text_span": "64a6ace21075e3f9_p0034_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_004_03",
+          "text": "• Fitting model: ෝ𝑦i= ෡0 (𝑢𝑖,𝑣𝑖) + ෍ 𝑘=1 𝑚 ෡k (𝑢𝑖,𝑣𝑖)xki • Using Local Weighted Least Squares (Weights are attached with locations) Q = min σ𝑗=1 𝑛 𝑤𝑖𝑗[𝑦𝑖 − ෢0 (𝑢𝑖,𝑣𝑖) − σ𝑘=1 𝑚 ෡k (𝑢𝑖,𝑣𝑖) xki]2 Where wij(j=1,2,…n) represents the spatial weight of the sample j to the regression analysis point i. wij is also called kernel function. ෡k (𝑢𝑖,𝑣𝑖) =[𝑋𝑇W(𝑢𝑖,𝑣𝑖)𝑋]−1𝑋𝑇 W(𝑢𝑖,𝑣𝑖)Y Where ෡k(ui,𝑣𝑖) is parameter estimation at (ui ,𝑣𝑖) 𝑋 = 1 𝑥11 … 1 𝑥21 … ⋮ ⋮ 𝑥1n 𝑥2𝑛 ⋮ 1 𝑥𝑚1 … 𝑥𝑚𝑛 , Y= 𝑦1 𝑦2 ⋮ 𝑦𝑛 , W(𝑢𝑖,𝑣𝑖",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0035",
+              "page_no": 35,
+              "text_span": "64a6ace21075e3f9_p0035_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_004_04",
+          "text": "• Spatial weighting schemes can be the following typical types: wij=1/dij 𝑎B. Distance threshold: wij= exp[-(dij /b)2]C. Gaussian or Gaussian-like Function: 𝑤𝑖𝑗 = ቊ1, dij < 𝑏 0, 𝑜𝑡ℎ𝑒𝑟𝑤𝑖𝑠𝑒 , 𝑏 𝑖s the determined distance 𝑤𝑖𝑗 = ቊ[1−(dij /b)2] , dij < 𝑏 0, 𝑜𝑡ℎ𝑒𝑟𝑤𝑖𝑠𝑒 , 𝑏 is the determined distanceD.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0037",
+              "page_no": 37,
+              "text_span": "64a6ace21075e3f9_p0037_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_004_05",
+          "text": "Bandwidth Weighting function Problems of fixed schemes: • Might produce large estimate variances where data are sparse, while mask subtle local variations where data are dense. • In extreme condition, fixed schemes might not be able to calibrate in local areas where data are too sparse to satisfy the calibration requirements (observations must be more than parameters).",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0038",
+              "page_no": 38,
+              "text_span": "64a6ace21075e3f9_p0038_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 regression 为什么重要。",
+          "expected_answer": "学生应能说明 regression 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间回归分析：model / regression”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0033",
+          "page_no": 33,
+          "text_span": "64a6ace21075e3f9_p0033_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0034",
+          "page_no": 34,
+          "text_span": "64a6ace21075e3f9_p0034_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0035",
+          "page_no": 35,
+          "text_span": "64a6ace21075e3f9_p0035_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0037",
+          "page_no": 37,
+          "text_span": "64a6ace21075e3f9_p0037_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0038",
+          "page_no": 38,
+          "text_span": "64a6ace21075e3f9_p0038_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 33,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 34,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 35,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 37,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 38,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l07_004"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l07_004_01",
+          "question": "关于“regression”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 regression 的含义、适用条件或典型应用",
+            "只记住 regression 在课件中出现过",
+            "把 regression 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "regression",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0033",
+              "page_no": 33,
+              "text_span": "64a6ace21075e3f9_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0034",
+              "page_no": 34,
+              "text_span": "64a6ace21075e3f9_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0035",
+              "page_no": 35,
+              "text_span": "64a6ace21075e3f9_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0037",
+              "page_no": 37,
+              "text_span": "64a6ace21075e3f9_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0038",
+              "page_no": 38,
+              "text_span": "64a6ace21075e3f9_p0038_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        33,
+        34,
+        35,
+        37,
+        38
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间回归分析：regression / spatial regression”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• Regression establishes relationship among a dependent variable and a set of independent variable(s) • A typical linear regression model looks like: yi=0 + 1x1i+ 2x2i+……+ mxmi+i With yi the dependent variable, xki (k from 1 to m) the set of independent variables, and i the residual, all at location i • When applied to spatial data, as can be seen, it assumes a stationary spatial process • The same stimulus provokes the same response in all parts of the study region • Highly untenable for spatial process • Local statistical technique to analyze spatial variations in relationships • Spatial non-stationarity is assumed and will be tested • Based on the \"Second Law of Geography” • Address",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间回归分析：model / regression”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l07_005",
+      "title": "空间回归分析：model / regression",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间回归分析：model / regression",
+      "summary": "• The results of GWR appear to be relatively insensitive to the choice of weighting functions as long as it is a continuous distance-based function (Gaussian or Gaussian-like functions). • Whichever weighting function is used, however the result will be sensitive to the bandwidth(s). • An optimal bandwidth (or nearest neighbors) satisfies either • Least Cross-Validation (CV) Score • CV score: the difference between observed value and the GWR calibrated value using the bandwidth or nearest neighbors.",
+      "key_points": [
+        "model",
+        "regression",
+        "spatial regression",
+        "GWR",
+        "information",
+        "Moran",
+        "local",
+        "will"
+      ],
+      "teaching_narrative": "本节围绕“空间回归分析：model / regression”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• The results of GWR appear to be relatively insensitive to the choice of weighting functions as long as it is a continuous distance-based function (Gaussian or Gaussian-like functions). • Whichever weighting function is used, however the result will be sensitive to the bandwidth(s). • An optimal bandwidth (or nearest neighbors) satisfies either • Least Cross-Validation (CV) Score • CV score: the difference between observed value and the GWR calibrated value using the bandwidth or nearest neighbors.",
+      "knowledge_points": [
+        "model",
+        "regression",
+        "spatial regression",
+        "GWR",
+        "information",
+        "Moran",
+        "local",
+        "will",
+        "bandwidth",
+        "value"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l07_005_01",
+          "text": "• The results of GWR appear to be relatively insensitive to the choice of weighting functions as long as it is a continuous distance-based function (Gaussian or Gaussian-like functions). • Whichever weighting function is used, however the result will be sensitive to the bandwidth(s). • An optimal bandwidth (or nearest neighbors) satisfies either • Least Cross-Validation (CV) Score • CV score: the difference between observed value and the GWR calibrated value using the bandwidth or nearest neighb",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0041",
+              "page_no": 41,
+              "text_span": "64a6ace21075e3f9_p0041_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_005_02",
+          "text": "• Cross-Validation (CV, 交叉验证法) • One round of CV involves partitioning a sample of data into complementary subsets, performing the analysis on one subset (called the training set), and validating the analysis on the other subset (called the validation set or testing set). • To reduce variability, in most methods multiple rounds of cross-validation are performed using different partitions, and the validation results are combined (e.g. averaged) over the rounds to give an estimate of the model's p",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0042",
+              "page_no": 42,
+              "text_span": "64a6ace21075e3f9_p0042_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_005_03",
+          "text": "• AIC is founded on information theory. • When a statistical model is used to represent the process that generated the data, the representation will almost never be exact; so some information will be lost by using the model to represent the process. • AIC estimates the relative amount of information lost by a given model: the less information a model loses, the higher the quality of that model.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0045",
+              "page_no": 45,
+              "text_span": "64a6ace21075e3f9_p0045_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_005_04",
+          "text": " Is GWR model really better than simple linear regression model? (1) Local Goodness-of-Fit Measures • Local R²: Computes the weighted R²for each location, indicating local explanatory power. • Residual spatial analysis: Checks if residuals are randomly distributed (e.g., using Moran’s I for spatial autocorrelation).",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0046",
+              "page_no": 46,
+              "text_span": "64a6ace21075e3f9_p0046_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_005_05",
+          "text": " Are the coefficients really varying across space? Monte Carlo Tests: • Define Null Hypothesis (H₀): • Example: \"The local coefficient β(uᵢ, vᵢ) is not significantly different from zero.\" • Generate Simulated Data Under H₀: • Permutation Approach: Randomly shuffle the dependent variable (Y) while fixing predictors (X) and spatial weights to break any spatial relationships. • Fit GWR to Simulated Data: • Re-estimate local coefficients for each simulated dataset.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0047",
+              "page_no": 47,
+              "text_span": "64a6ace21075e3f9_p0047_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 model 为什么重要。",
+          "expected_answer": "学生应能说明 model 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间回归分析：regression / model”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0041",
+          "page_no": 41,
+          "text_span": "64a6ace21075e3f9_p0041_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0042",
+          "page_no": 42,
+          "text_span": "64a6ace21075e3f9_p0042_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0045",
+          "page_no": 45,
+          "text_span": "64a6ace21075e3f9_p0045_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0046",
+          "page_no": 46,
+          "text_span": "64a6ace21075e3f9_p0046_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0047",
+          "page_no": 47,
+          "text_span": "64a6ace21075e3f9_p0047_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 41,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 42,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 45,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 46,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 47,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l07_005"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l07_005_01",
+          "question": "关于“model”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 model 的含义、适用条件或典型应用",
+            "只记住 model 在课件中出现过",
+            "把 model 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "model",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0041",
+              "page_no": 41,
+              "text_span": "64a6ace21075e3f9_p0041_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0042",
+              "page_no": 42,
+              "text_span": "64a6ace21075e3f9_p0042_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0045",
+              "page_no": 45,
+              "text_span": "64a6ace21075e3f9_p0045_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0046",
+              "page_no": 46,
+              "text_span": "64a6ace21075e3f9_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0047",
+              "page_no": 47,
+              "text_span": "64a6ace21075e3f9_p0047_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        41,
+        42,
+        45,
+        46,
+        47
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间回归分析：model / regression”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• The results of GWR appear to be relatively insensitive to the choice of weighting functions as long as it is a continuous distance-based function (Gaussian or Gaussian-like functions). • Whichever weighting function is used, however the result will be sensitive to the bandwidth(s). • An optimal bandwidth (or nearest neighbors) satisfies either • Least Cross-Validation (CV) Score • CV score: the difference between observed value and the GWR calibrated value using the bandwidth or nearest neighbors.",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间回归分析：regression / model”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l07_006",
+      "title": "空间回归分析：regression / model",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间回归分析：regression / model",
+      "summary": "• Multiscale Geographically Weighted Regression (MGWR) in ArcGIS Pro • MGWR builds upon GWR. • It is a local regression model that allows the coefficients of the explanatory variables to vary across space. • Each explanatory variable may operate at a different spatial scale.",
+      "key_points": [
+        "regression",
+        "model",
+        "spatial regression",
+        "GIS",
+        "Geographically",
+        "weighted",
+        "neural",
+        "network"
+      ],
+      "teaching_narrative": "本节围绕“空间回归分析：regression / model”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• Multiscale Geographically Weighted Regression (MGWR) in ArcGIS Pro • MGWR builds upon GWR. • It is a local regression model that allows the coefficients of the explanatory variables to vary across space. • Each explanatory variable may operate at a different spatial scale.",
+      "knowledge_points": [
+        "regression",
+        "model",
+        "spatial regression",
+        "GIS",
+        "Geographically",
+        "weighted",
+        "neural",
+        "network",
+        "GWR",
+        "explanatory"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l07_006_01",
+          "text": "• Multiscale Geographically Weighted Regression (MGWR) in ArcGIS Pro • MGWR builds upon GWR. • It is a local regression model that allows the coefficients of the explanatory variables to vary across space. • Each explanatory variable may operate at a different spatial scale.",
+          "type": "formula",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0051",
+              "page_no": 51,
+              "text_span": "64a6ace21075e3f9_p0051_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_006_02",
+          "text": "• Geographically and Temporally Weighted Regression Model 时空加权回归模型 • Huang B et al. Geographically and temporally weighted regression for modeling spatio-temporal variation in house prices. International journal of geographical information science, 2010, 24(3), 383-401.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0052",
+              "page_no": 52,
+              "text_span": "64a6ace21075e3f9_p0052_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_006_03",
+          "text": "Multiscale GIS based-model to assess urban social vulnerability and associated risk: Evidence from 146 urban centers of Eastern India. SUSTAINABLE CITIES AND SOCIETY ,2023. • Tian, et al.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0053",
+              "page_no": 53,
+              "text_span": "64a6ace21075e3f9_p0053_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_006_04",
+          "text": "Chapter 9.4.2 in Rogerson’s 《Statistical methods for geography》. 2. Section 5.6 in 《Geospatial Analysis 6th Edition, 2020 update》 https://spatialanalysisonline.com/HTML/index.html 3.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0054",
+              "page_no": 54,
+              "text_span": "64a6ace21075e3f9_p0054_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l07_006_05",
+          "text": "Read references 1 and 2, and one of the rest references or other papers you are interested in. 2. Tell the differences among GWR, spatial lag model and conventional linear regression model 3.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0055",
+              "page_no": 55,
+              "text_span": "64a6ace21075e3f9_p0055_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 regression 为什么重要。",
+          "expected_answer": "学生应能说明 regression 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": ""
+      },
+      "source_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0051",
+          "page_no": 51,
+          "text_span": "64a6ace21075e3f9_p0051_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0052",
+          "page_no": 52,
+          "text_span": "64a6ace21075e3f9_p0052_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0053",
+          "page_no": 53,
+          "text_span": "64a6ace21075e3f9_p0053_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0054",
+          "page_no": 54,
+          "text_span": "64a6ace21075e3f9_p0054_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_id": "64a6ace21075e3f9_p0055",
+          "page_no": 55,
+          "text_span": "64a6ace21075e3f9_p0055_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 51,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 52,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 53,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 54,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "64a6ace21075e3f9",
+          "page_no": 55,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l07_006"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l07_006_01",
+          "question": "关于“regression”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 regression 的含义、适用条件或典型应用",
+            "只记住 regression 在课件中出现过",
+            "把 regression 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "regression",
+          "source_refs": [
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0051",
+              "page_no": 51,
+              "text_span": "64a6ace21075e3f9_p0051_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0052",
+              "page_no": 52,
+              "text_span": "64a6ace21075e3f9_p0052_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0053",
+              "page_no": 53,
+              "text_span": "64a6ace21075e3f9_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0054",
+              "page_no": 54,
+              "text_span": "64a6ace21075e3f9_p0054_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "64a6ace21075e3f9",
+              "page_id": "64a6ace21075e3f9_p0055",
+              "page_no": 55,
+              "text_span": "64a6ace21075e3f9_p0055_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        51,
+        52,
+        53,
+        54,
+        55
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间回归分析：regression / model”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• Multiscale Geographically Weighted Regression (MGWR) in ArcGIS Pro • MGWR builds upon GWR. • It is a local regression model that allows the coefficients of the explanatory variables to vary across space. • Each explanatory variable may operate at a different spatial scale.",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": ""
+    }
+  ],
+  "generation_guidance": {
+    "recommended_use": [
+      "Use sections as the main units for presentation or classroom-plan generation.",
+      "Use source_refs and page_refs for citations and source-page display.",
+      "Use quiz_items only as lightweight classroom checkpoints; review before formal assessment."
+    ],
+    "language": "Chinese teaching narrative with necessary English GIS terms preserved."
+  },
+  "quality": {
+    "coverage_score": 1.0,
+    "warnings": [
+      "Deterministic first-pass LearningContent; manual review is recommended.",
+      "Image-heavy or low-text pages are tracked separately in low_text_pages.csv."
+    ]
+  },
+  "version": 1,
+  "created_at": "2026-07-18T09:27:23.083384Z",
+  "updated_at": "2026-07-18T09:27:23.083384Z"
+}

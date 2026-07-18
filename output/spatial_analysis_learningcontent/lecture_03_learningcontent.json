@@ -1,0 +1,4478 @@
+{
+  "id": "content_spatial_analysis_lecture_03",
+  "material_id": "9a86369166f06027",
+  "material_ids": [
+    "9a86369166f06027"
+  ],
+  "collection_id": "col_spatial_analysis_kb",
+  "title": "第 3 讲：空间数据探索与空间统计",
+  "subtitle": "Data Exploration and Spatial Statistics 的章节级 LearningContent",
+  "audience": {
+    "level": "undergraduate",
+    "background": "GIS、地理信息科学、遥感或相关专业学生"
+  },
+  "teaching_intent": {
+    "goal": "把空间分析课件知识块组织为可直接进入课堂生成链路的 LearningContent。",
+    "boundary": "本文件不包含向量检索、RAG 编排或最终 PPT/ClassroomPlan 生成。"
+  },
+  "material_overview": {
+    "source": "spatial_analysis PDF knowledge base",
+    "lecture_count": 1,
+    "section_count": 6,
+    "knowledge_unit_count": 6
+  },
+  "global_concepts": [
+    {
+      "id": "global_concept_01",
+      "name": "spatial statistics",
+      "definition": "",
+      "plain_explanation": "spatial statistics 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_02",
+      "name": "distribution",
+      "definition": "",
+      "plain_explanation": "distribution 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_03",
+      "name": "mean",
+      "definition": "",
+      "plain_explanation": "mean 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_04",
+      "name": "standard",
+      "definition": "",
+      "plain_explanation": "standard 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_05",
+      "name": "points",
+      "definition": "",
+      "plain_explanation": "points 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_06",
+      "name": "variable",
+      "definition": "",
+      "plain_explanation": "variable 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_07",
+      "name": "time",
+      "definition": "",
+      "plain_explanation": "time 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_08",
+      "name": "have",
+      "definition": "",
+      "plain_explanation": "have 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_09",
+      "name": "been",
+      "definition": "",
+      "plain_explanation": "been 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_10",
+      "name": "observations",
+      "definition": "",
+      "plain_explanation": "observations 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_11",
+      "name": "show",
+      "definition": "",
+      "plain_explanation": "show 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_12",
+      "name": "OLS",
+      "definition": "",
+      "plain_explanation": "OLS 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    }
+  ],
+  "knowledge_units": [
+    {
+      "id": "ku_l03_001",
+      "title": "空间数据探索与空间统计：spatial statistics / geographic",
+      "unit_type": "method",
+      "summary": "Lect.3 Data Exploration and Spatial Statistics TED Video: Why mathematics is so amazing？ https://mp.weixin.qq.com/s?__biz=MzAxOTE1OTc2MQ==&mid=2649985092&idx=3 &sn=ef46cfde56389aed0804ab7f9310df39&chksm=83cc7ffab4bbf6ec6e8e5caf2ba 71080e15b5f70d1cd2eee949c7ced415a263dfe0aa2470be3&scene=27 • Statistics are important tools in the work of many academic disciplines, as well as in many other aspects of society, business, industry and government. • Owing to the growing use of statistics in so many areas of our lives, there is a common recognition of the importance of understanding statistical thinking.",
+      "aliases": [
+        "spatial statistics",
+        "geographic",
+        "statistical",
+        "sample",
+        "median"
+      ],
+      "keywords": [
+        "spatial statistics",
+        "geographic",
+        "statistical",
+        "sample",
+        "median",
+        "time",
+        "have",
+        "methods",
+        "observations",
+        "OLS"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l03_001_01",
+          "name": "spatial statistics",
+          "definition": "",
+          "plain_explanation": "spatial statistics 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0001",
+              "page_no": 1,
+              "text_span": "9a86369166f06027_p0001_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0003",
+              "page_no": 3,
+              "text_span": "9a86369166f06027_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0004",
+              "page_no": 4,
+              "text_span": "9a86369166f06027_p0004_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0006",
+              "page_no": 6,
+              "text_span": "9a86369166f06027_p0006_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0009",
+              "page_no": 9,
+              "text_span": "9a86369166f06027_p0009_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_001_02",
+          "name": "geographic",
+          "definition": "",
+          "plain_explanation": "geographic 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0001",
+              "page_no": 1,
+              "text_span": "9a86369166f06027_p0001_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0003",
+              "page_no": 3,
+              "text_span": "9a86369166f06027_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0004",
+              "page_no": 4,
+              "text_span": "9a86369166f06027_p0004_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0006",
+              "page_no": 6,
+              "text_span": "9a86369166f06027_p0006_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0009",
+              "page_no": 9,
+              "text_span": "9a86369166f06027_p0009_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_001_03",
+          "name": "statistical",
+          "definition": "",
+          "plain_explanation": "statistical 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0001",
+              "page_no": 1,
+              "text_span": "9a86369166f06027_p0001_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0003",
+              "page_no": 3,
+              "text_span": "9a86369166f06027_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0004",
+              "page_no": 4,
+              "text_span": "9a86369166f06027_p0004_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0006",
+              "page_no": 6,
+              "text_span": "9a86369166f06027_p0006_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0009",
+              "page_no": 9,
+              "text_span": "9a86369166f06027_p0009_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_001_04",
+          "name": "sample",
+          "definition": "",
+          "plain_explanation": "sample 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0001",
+              "page_no": 1,
+              "text_span": "9a86369166f06027_p0001_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0003",
+              "page_no": 3,
+              "text_span": "9a86369166f06027_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0004",
+              "page_no": 4,
+              "text_span": "9a86369166f06027_p0004_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0006",
+              "page_no": 6,
+              "text_span": "9a86369166f06027_p0006_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0009",
+              "page_no": 9,
+              "text_span": "9a86369166f06027_p0009_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_001_05",
+          "name": "median",
+          "definition": "",
+          "plain_explanation": "median 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0001",
+              "page_no": 1,
+              "text_span": "9a86369166f06027_p0001_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0003",
+              "page_no": 3,
+              "text_span": "9a86369166f06027_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0004",
+              "page_no": 4,
+              "text_span": "9a86369166f06027_p0004_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0006",
+              "page_no": 6,
+              "text_span": "9a86369166f06027_p0006_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0009",
+              "page_no": 9,
+              "text_span": "9a86369166f06027_p0009_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l03_001_01",
+          "text": "Lect.3 Data Exploration and Spatial Statistics TED Video: Why mathematics is so amazing？ https://mp.weixin.qq.com/s?__biz=MzAxOTE1OTc2MQ==&mid=2649985092&idx=3 &sn=ef46cfde56389aed0804ab7f9310df39&chksm=83cc7ffab4bbf6ec6e8e5caf2ba 71080e15b5f70d1cd2eee949c7ced415a263dfe0aa2470be3&scene=27",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0001",
+              "page_no": 1,
+              "text_span": "9a86369166f06027_p0001_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_001_02",
+          "text": "• Statistics are important tools in the work of many academic disciplines, as well as in many other aspects of society, business, industry and government. • Owing to the growing use of statistics in so many areas of our lives, there is a common recognition of the importance of understanding statistical thinking. • To borrow the words of the famous author who wrote \"The Invisible Man\" and \"War of the Worlds\": Statistical thinking will one day be as necessary for efficient citizenship as the abili",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0003",
+              "page_no": 3,
+              "text_span": "9a86369166f06027_p0003_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_001_03",
+          "text": "The following questions serve to illustrate the broad variety of areas in which statistical analysis has recently been applied geographic problems: (1)How do blood lead levels in children vary over space? Are the levels randomly scattered throughout the city, or are there discernible geographic patterns? How are any patterns related to the characteristics of both housing and occupants?",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0004",
+              "page_no": 4,
+              "text_span": "9a86369166f06027_p0004_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_001_04",
+          "text": "• A key characteristic of geographic data that brings about the need for statistical analysis is that they may often be regarded as a sample from a larger population. • Descriptive statistics (or Descriptive statistical analysis) refers to the use of particular methods for describing and summarizing the characteristics of the samples, whereas inferential statistical analysis refers to the methods that are used to infer something about the population from the sample. • Descriptive methods fall wi",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0006",
+              "page_no": 6,
+              "text_span": "9a86369166f06027_p0006_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_001_05",
+          "text": "• The median time is defined as the time that splits the ranked list of commuting times in half - half of all respondents have commutes that are longer than the median, and half have commutes that are shorter. • When the number of observations is odd, the median is simply equal to the middle value on a list of the observations, ranked from shortest commute to longest commute. • When the number of observations is even, as it is here, we take the median to be the average of the two values in the m",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0009",
+              "page_no": 9,
+              "text_span": "9a86369166f06027_p0009_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0001",
+          "page_no": 1,
+          "text_span": "9a86369166f06027_p0001_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0003",
+          "page_no": 3,
+          "text_span": "9a86369166f06027_p0003_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0004",
+          "page_no": 4,
+          "text_span": "9a86369166f06027_p0004_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0006",
+          "page_no": 6,
+          "text_span": "9a86369166f06027_p0006_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0009",
+          "page_no": 9,
+          "text_span": "9a86369166f06027_p0009_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0015",
+          "page_no": 15,
+          "text_span": "9a86369166f06027_p0015_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 1,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 3,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 4,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 6,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 9,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 15,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "9a86369166f06027_p0001_c01",
+        "9a86369166f06027_p0003_c01",
+        "9a86369166f06027_p0004_c01",
+        "9a86369166f06027_p0006_c01",
+        "9a86369166f06027_p0009_c01",
+        "9a86369166f06027_p0015_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l03_002",
+      "title": "空间数据探索与空间统计：spatial statistics / land",
+      "unit_type": "method",
+      "summary": "• Since data come from distributions with different means and different degrees of variability, it is common to standardize observations. One way to do this is to transform each observation into a z-score by first subtracting the mean of all observations and then dividing the result by the standard deviation: z-scores may be interpreted as the number of standard deviations an observation is away from the mean In the commuting case, the z-score for individual 1 is (5-21.93)/14.3 = -1.17 0 0.2 0.4 0.6 0.8 1 1978 1980 1982 1984 1986 1988 1990 1992 1994 1996 1998 2000 2002 2004 2006 2008 2010 2012 2014 2016 2018 2020 2022 1978-2023各省人均GDP变异系数曲线 2 1 )(1 11  = − −− −−== n i iv xxnxx SC • A组数据的标准差",
+      "aliases": [
+        "spatial statistics",
+        "land",
+        "change",
+        "results",
+        "observations"
+      ],
+      "keywords": [
+        "spatial statistics",
+        "land",
+        "change",
+        "results",
+        "observations",
+        "mean",
+        "than",
+        "project",
+        "CORINE",
+        "consistent"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l03_002_01",
+          "name": "spatial statistics",
+          "definition": "",
+          "plain_explanation": "spatial statistics 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0016",
+              "page_no": 16,
+              "text_span": "9a86369166f06027_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0017",
+              "page_no": 17,
+              "text_span": "9a86369166f06027_p0017_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0018",
+              "page_no": 18,
+              "text_span": "9a86369166f06027_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0020",
+              "page_no": 20,
+              "text_span": "9a86369166f06027_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0024",
+              "page_no": 24,
+              "text_span": "9a86369166f06027_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_002_02",
+          "name": "land",
+          "definition": "",
+          "plain_explanation": "land 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0016",
+              "page_no": 16,
+              "text_span": "9a86369166f06027_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0017",
+              "page_no": 17,
+              "text_span": "9a86369166f06027_p0017_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0018",
+              "page_no": 18,
+              "text_span": "9a86369166f06027_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0020",
+              "page_no": 20,
+              "text_span": "9a86369166f06027_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0024",
+              "page_no": 24,
+              "text_span": "9a86369166f06027_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_002_03",
+          "name": "change",
+          "definition": "",
+          "plain_explanation": "change 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0016",
+              "page_no": 16,
+              "text_span": "9a86369166f06027_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0017",
+              "page_no": 17,
+              "text_span": "9a86369166f06027_p0017_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0018",
+              "page_no": 18,
+              "text_span": "9a86369166f06027_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0020",
+              "page_no": 20,
+              "text_span": "9a86369166f06027_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0024",
+              "page_no": 24,
+              "text_span": "9a86369166f06027_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_002_04",
+          "name": "results",
+          "definition": "",
+          "plain_explanation": "results 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0016",
+              "page_no": 16,
+              "text_span": "9a86369166f06027_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0017",
+              "page_no": 17,
+              "text_span": "9a86369166f06027_p0017_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0018",
+              "page_no": 18,
+              "text_span": "9a86369166f06027_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0020",
+              "page_no": 20,
+              "text_span": "9a86369166f06027_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0024",
+              "page_no": 24,
+              "text_span": "9a86369166f06027_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_002_05",
+          "name": "observations",
+          "definition": "",
+          "plain_explanation": "observations 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0016",
+              "page_no": 16,
+              "text_span": "9a86369166f06027_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0017",
+              "page_no": 17,
+              "text_span": "9a86369166f06027_p0017_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0018",
+              "page_no": 18,
+              "text_span": "9a86369166f06027_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0020",
+              "page_no": 20,
+              "text_span": "9a86369166f06027_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0024",
+              "page_no": 24,
+              "text_span": "9a86369166f06027_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l03_002_01",
+          "text": "• Since data come from distributions with different means and different degrees of variability, it is common to standardize observations. One way to do this is to transform each observation into a z-score by first subtracting the mean of all observations and then dividing the result by the standard deviation: z-scores may be interpreted as the number of standard deviations an observation is away from the mean In the commuting case, the z-score for individual 1 is (5-21.93)/14.3 = -1.17",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0016",
+              "page_no": 16,
+              "text_span": "9a86369166f06027_p0016_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_002_02",
+          "text": "0 0.2 0.4 0.6 0.8 1 1978 1980 1982 1984 1986 1988 1990 1992 1994 1996 1998 2000 2002 2004 2006 2008 2010 2012 2014 2016 2018 2020 2022 1978-2023各省人均GDP变异系数曲线 2 1 )(1 11  = − −− −−== n i iv xxnxx SC • A组数据的标准差为5，平均值为50； • B组的标准差为10，平均值为200 • A组CV=5/50=0.1 • B组CV=10/200=0.05 • 尽管B组标准差较大，但B组的变异系数 较小，表明B组的相对离散程度较低。",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0017",
+              "page_no": 17,
+              "text_span": "9a86369166f06027_p0017_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_002_03",
+          "text": "• Skewness measures the degree of asymmetry exhibited by the data. • This figure reveals that there are more observations below the mean than above it – this is known as positive skewness. • Skewness is computed by first adding together the cubed deviations from the mean and then dividing by the product of the cubed standard deviation and the number of observations: 3 3 1 )( skewness nS xx n i i = − − =",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0018",
+              "page_no": 18,
+              "text_span": "9a86369166f06027_p0018_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_002_04",
+          "text": "• Kurtosis measures how peaked the histogram is. Its definition is similar to that for skewness, with the exception that the fourth power is used instead of the third: 𝑘𝑢𝑟to𝑠𝑖𝑠 = σ𝑖=1 𝑛 (𝑥𝑖 − 𝑥 − )4 𝑛𝑆4     =  = 0 0 0 2g Higher than normal distribution Standard normal distribution Lower than normal distribution 𝑔2 = 𝑘𝑢𝑟𝑡𝑜𝑠𝑖𝑠 − 3",
+          "type": "concept",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0020",
+              "page_no": 20,
+              "text_span": "9a86369166f06027_p0020_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_002_05",
+          "text": "Dynamic Landscapes in the UK Driven by Pressures from Energy Production and Forestry—Results of the CORINE Land Cover Map 2018. The CORINE Land Cover (CLC) map was established in 1985 and is now one of the most widely used products from the Copernicus Land Monitoring Service. As the world's longest consistent operational land cover monitoring product, CLC maps have been produced for reference years 1990, 2000, 2006, 2012 and now for 2018.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0024",
+              "page_no": 24,
+              "text_span": "9a86369166f06027_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0016",
+          "page_no": 16,
+          "text_span": "9a86369166f06027_p0016_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0017",
+          "page_no": 17,
+          "text_span": "9a86369166f06027_p0017_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0018",
+          "page_no": 18,
+          "text_span": "9a86369166f06027_p0018_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0020",
+          "page_no": 20,
+          "text_span": "9a86369166f06027_p0020_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0024",
+          "page_no": 24,
+          "text_span": "9a86369166f06027_p0024_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0024",
+          "page_no": 24,
+          "text_span": "9a86369166f06027_p0024_c02",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 16,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 17,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 18,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 20,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 24,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "9a86369166f06027_p0016_c01",
+        "9a86369166f06027_p0017_c01",
+        "9a86369166f06027_p0018_c01",
+        "9a86369166f06027_p0020_c01",
+        "9a86369166f06027_p0024_c01",
+        "9a86369166f06027_p0024_c02"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l03_003",
+      "title": "空间数据探索与空间统计：spatial statistics / city",
+      "unit_type": "method",
+      "summary": "Analysis of spatial equity and access to urban parks in Ilam Iran. Journal of Environmental Management, 2020,260. • Adequate number of parks and amount of land allocated to those parks, to provide equal access for all city residences, are important factors in achieving cities to spatial equity.",
+      "aliases": [
+        "spatial statistics",
+        "city",
+        "parks",
+        "Ilam",
+        "park"
+      ],
+      "keywords": [
+        "spatial statistics",
+        "city",
+        "parks",
+        "Ilam",
+        "park",
+        "Normal",
+        "distribution",
+        "mean",
+        "Series",
+        "standard"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l03_003_01",
+          "name": "spatial statistics",
+          "definition": "",
+          "plain_explanation": "spatial statistics 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0025",
+              "page_no": 25,
+              "text_span": "9a86369166f06027_p0025_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0027",
+              "page_no": 27,
+              "text_span": "9a86369166f06027_p0027_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0028",
+              "page_no": 28,
+              "text_span": "9a86369166f06027_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0029",
+              "page_no": 29,
+              "text_span": "9a86369166f06027_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0030",
+              "page_no": 30,
+              "text_span": "9a86369166f06027_p0030_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_003_02",
+          "name": "city",
+          "definition": "",
+          "plain_explanation": "city 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0025",
+              "page_no": 25,
+              "text_span": "9a86369166f06027_p0025_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0027",
+              "page_no": 27,
+              "text_span": "9a86369166f06027_p0027_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0028",
+              "page_no": 28,
+              "text_span": "9a86369166f06027_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0029",
+              "page_no": 29,
+              "text_span": "9a86369166f06027_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0030",
+              "page_no": 30,
+              "text_span": "9a86369166f06027_p0030_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_003_03",
+          "name": "parks",
+          "definition": "",
+          "plain_explanation": "parks 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0025",
+              "page_no": 25,
+              "text_span": "9a86369166f06027_p0025_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0027",
+              "page_no": 27,
+              "text_span": "9a86369166f06027_p0027_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0028",
+              "page_no": 28,
+              "text_span": "9a86369166f06027_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0029",
+              "page_no": 29,
+              "text_span": "9a86369166f06027_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0030",
+              "page_no": 30,
+              "text_span": "9a86369166f06027_p0030_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_003_04",
+          "name": "Ilam",
+          "definition": "",
+          "plain_explanation": "Ilam 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0025",
+              "page_no": 25,
+              "text_span": "9a86369166f06027_p0025_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0027",
+              "page_no": 27,
+              "text_span": "9a86369166f06027_p0027_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0028",
+              "page_no": 28,
+              "text_span": "9a86369166f06027_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0029",
+              "page_no": 29,
+              "text_span": "9a86369166f06027_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0030",
+              "page_no": 30,
+              "text_span": "9a86369166f06027_p0030_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_003_05",
+          "name": "park",
+          "definition": "",
+          "plain_explanation": "park 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0025",
+              "page_no": 25,
+              "text_span": "9a86369166f06027_p0025_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0027",
+              "page_no": 27,
+              "text_span": "9a86369166f06027_p0027_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0028",
+              "page_no": 28,
+              "text_span": "9a86369166f06027_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0029",
+              "page_no": 29,
+              "text_span": "9a86369166f06027_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0030",
+              "page_no": 30,
+              "text_span": "9a86369166f06027_p0030_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l03_003_01",
+          "text": "Analysis of spatial equity and access to urban parks in Ilam Iran. Journal of Environmental Management, 2020,260. • Adequate number of parks and amount of land allocated to those parks, to provide equal access for all city residences, are important factors in achieving cities to spatial equity.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0025",
+              "page_no": 25,
+              "text_span": "9a86369166f06027_p0025_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_003_02",
+          "text": "Two Different Normal Distributions with Means and Standard Deviations Normal Distribution (mean = 25, std dev = 12.9099) 0 0.005 0.01 0.015 0.02 0.025 0.03 0.035 0 5 10 15 20 25 30 35 40 45 50 x Relative Frequency Normal Distribution (mean = 45, std dev = 2.582) 0.0000 0.0200 0.0400 0.0600 0.0800 0.1000 0.1200 0.1400 0.1600 0.1800 40 41 42 43 44 45 46 47 48 49 50 x Relative Frequency Two data series: Series A: 5, 10, 15, 20, 25, 30, 35, 40, 45 (μ = 25, = 12.90994) Series B: 41, 42, 43, 44, 45,",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0027",
+              "page_no": 27,
+              "text_span": "9a86369166f06027_p0027_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_003_03",
+          "text": "• Because the standard deviation that defines how a normal distribution spread is a relative measure, sometimes it is difficult to compare those normal distributions with similar standard deviations. • As a result, a set of statistics, called z-scores, have been used to transform values of different numeric ranges in different distributions so that they can be compared. • The Z-score statistics can be computed as: x Where and S are the mean and standard deviation of the original data, xi, i=1,2,",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0028",
+              "page_no": 28,
+              "text_span": "9a86369166f06027_p0028_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_003_04",
+          "text": "• In this example, when both series (A and B) are transformed and standardized, their Z-scores become Series A: μ = 25,  = 12.90994 Series B: μ = 45,  = 2.582 5 -1.5492 41 -1.5492 10 -1.1619 42 -1.1619 15 -0.7746 43 -0.7746 20 -0.3873 44 -0.3873 25 0 45 0 30 0.3873 46 0.3873 35 0.7746 47 0.7746 40 1.1619 48 1.1619 45 1.5492 49 1.5492 μ = 0,  = 1",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0029",
+              "page_no": 29,
+              "text_span": "9a86369166f06027_p0029_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_003_05",
+          "text": "Standard Normal Distribution for the Data Series A and B Standard Normal Distribution 0 0.1 0.2 0.3 0.4 0.5 -2 -1.5 -1 -0.5 0 0.5 1 1.5 2 Z Likelihood of Observing X . For any distribution of continuous values, there are infinite possible outcomes of the likelihood of observing x.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0030",
+              "page_no": 30,
+              "text_span": "9a86369166f06027_p0030_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0025",
+          "page_no": 25,
+          "text_span": "9a86369166f06027_p0025_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0027",
+          "page_no": 27,
+          "text_span": "9a86369166f06027_p0027_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0028",
+          "page_no": 28,
+          "text_span": "9a86369166f06027_p0028_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0029",
+          "page_no": 29,
+          "text_span": "9a86369166f06027_p0029_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0030",
+          "page_no": 30,
+          "text_span": "9a86369166f06027_p0030_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0031",
+          "page_no": 31,
+          "text_span": "9a86369166f06027_p0031_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 25,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 27,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 28,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 29,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 30,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 31,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "9a86369166f06027_p0025_c01",
+        "9a86369166f06027_p0027_c01",
+        "9a86369166f06027_p0028_c01",
+        "9a86369166f06027_p0029_c01",
+        "9a86369166f06027_p0030_c01",
+        "9a86369166f06027_p0031_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l03_004",
+      "title": "空间数据探索与空间统计：spatial statistics / mean",
+      "unit_type": "method",
+      "summary": "What’s Under the Curve? -1—1 68.26% -2—2 95.44% -3—3, 99.74% • For all normal distributions… • Almost 100% of scores will fit between –3 and +3 standard deviations from the mean • So…distributions can be compared • Between different points on the x-axis, a certain percentage of cases will occur The Z-score • A standard score that is the result of dividing the amount that a raw score differs from the mean of the distribution by the standard deviation. • What about those symbols?",
+      "aliases": [
+        "spatial statistics",
+        "mean",
+        "standard",
+        "OLS",
+        "ESDA"
+      ],
+      "keywords": [
+        "spatial statistics",
+        "mean",
+        "standard",
+        "OLS",
+        "ESDA",
+        "distributions",
+        "distribution",
+        "range",
+        "model",
+        "normal"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l03_004_01",
+          "name": "spatial statistics",
+          "definition": "",
+          "plain_explanation": "spatial statistics 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0033",
+              "page_no": 33,
+              "text_span": "9a86369166f06027_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0034",
+              "page_no": 34,
+              "text_span": "9a86369166f06027_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0035",
+              "page_no": 35,
+              "text_span": "9a86369166f06027_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0036",
+              "page_no": 36,
+              "text_span": "9a86369166f06027_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0040",
+              "page_no": 40,
+              "text_span": "9a86369166f06027_p0040_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_004_02",
+          "name": "mean",
+          "definition": "",
+          "plain_explanation": "mean 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0033",
+              "page_no": 33,
+              "text_span": "9a86369166f06027_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0034",
+              "page_no": 34,
+              "text_span": "9a86369166f06027_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0035",
+              "page_no": 35,
+              "text_span": "9a86369166f06027_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0036",
+              "page_no": 36,
+              "text_span": "9a86369166f06027_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0040",
+              "page_no": 40,
+              "text_span": "9a86369166f06027_p0040_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_004_03",
+          "name": "standard",
+          "definition": "",
+          "plain_explanation": "standard 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0033",
+              "page_no": 33,
+              "text_span": "9a86369166f06027_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0034",
+              "page_no": 34,
+              "text_span": "9a86369166f06027_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0035",
+              "page_no": 35,
+              "text_span": "9a86369166f06027_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0036",
+              "page_no": 36,
+              "text_span": "9a86369166f06027_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0040",
+              "page_no": 40,
+              "text_span": "9a86369166f06027_p0040_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_004_04",
+          "name": "OLS",
+          "definition": "",
+          "plain_explanation": "OLS 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0033",
+              "page_no": 33,
+              "text_span": "9a86369166f06027_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0034",
+              "page_no": 34,
+              "text_span": "9a86369166f06027_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0035",
+              "page_no": 35,
+              "text_span": "9a86369166f06027_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0036",
+              "page_no": 36,
+              "text_span": "9a86369166f06027_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0040",
+              "page_no": 40,
+              "text_span": "9a86369166f06027_p0040_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_004_05",
+          "name": "ESDA",
+          "definition": "",
+          "plain_explanation": "ESDA 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0033",
+              "page_no": 33,
+              "text_span": "9a86369166f06027_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0034",
+              "page_no": 34,
+              "text_span": "9a86369166f06027_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0035",
+              "page_no": 35,
+              "text_span": "9a86369166f06027_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0036",
+              "page_no": 36,
+              "text_span": "9a86369166f06027_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0040",
+              "page_no": 40,
+              "text_span": "9a86369166f06027_p0040_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l03_004_01",
+          "text": "What’s Under the Curve? -1—1 68.26% -2—2 95.44% -3—3, 99.74% • For all normal distributions… • Almost 100% of scores will fit between –3 and +3 standard deviations from the mean • So…distributions can be compared • Between different points on the x-axis, a certain percentage of cases will occur",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0033",
+              "page_no": 33,
+              "text_span": "9a86369166f06027_p0033_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_004_02",
+          "text": "The Z-score • A standard score that is the result of dividing the amount that a raw score differs from the mean of the distribution by the standard deviation. • What about those symbols? • Scores below the mean are negative (left of the mean), and those above are positive (right of the mean).",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0034",
+              "page_no": 34,
+              "text_span": "9a86369166f06027_p0034_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_004_03",
+          "text": "• Note that the probability of observing x out of  is very, very close to zero. • Therefore, we often calculate Z-scores only within a given range, i.e., prob(a <Z< b), where a and b define a numeric range. • The standard normal distribution is symmetrical with respect to mean.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0035",
+              "page_no": 35,
+              "text_span": "9a86369166f06027_p0035_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_004_04",
+          "text": "Z-score table • From any of those table, we can verify the p(Z<-1) = p(Z>1) = 0.1587. • For the probability of Z-scores over a range, such as p(1<Z<2), we need the p(Z<2) – p(Z<1) = 0.997 – 0.841 = 0.156. • Some simple statistical tests are essentially using these probabilities to see how likely two parameters are different or if the difference can be attributed to sampling error.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0036",
+              "page_no": 36,
+              "text_span": "9a86369166f06027_p0036_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_004_05",
+          "text": "The Concepts of Exploratory Spatial Data Analysis (ESDA)： • ESDA is a step-by-step process which often starts with aspatial tools, such as choropleth maps and box plots that display the distribution of a variable and identify outliers. • ESDA is an extension of exploratory data analysis as it explicitly focuses on the particular characteristics of geographical data. • ESDA is an increasingly popular GIS-based technique that allows users to describe and visualize spatial distributions, identify a",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0040",
+              "page_no": 40,
+              "text_span": "9a86369166f06027_p0040_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0033",
+          "page_no": 33,
+          "text_span": "9a86369166f06027_p0033_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0034",
+          "page_no": 34,
+          "text_span": "9a86369166f06027_p0034_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0035",
+          "page_no": 35,
+          "text_span": "9a86369166f06027_p0035_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0036",
+          "page_no": 36,
+          "text_span": "9a86369166f06027_p0036_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0040",
+          "page_no": 40,
+          "text_span": "9a86369166f06027_p0040_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0042",
+          "page_no": 42,
+          "text_span": "9a86369166f06027_p0042_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 33,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 34,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 35,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 36,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 40,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 42,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "9a86369166f06027_p0033_c01",
+        "9a86369166f06027_p0034_c01",
+        "9a86369166f06027_p0035_c01",
+        "9a86369166f06027_p0036_c01",
+        "9a86369166f06027_p0040_c01",
+        "9a86369166f06027_p0042_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l03_005",
+      "title": "空间数据探索与空间统计：spatial statistics / variable",
+      "unit_type": "method",
+      "summary": "Pie charts show the breakdown of a whole into parts, using relative frequencies or percentages represented by degrees of a circle. ➢ Pie charts are often used to show relative magnitude, similar to bar charts. ➢ Pie charts are appropriate for all levels of measurement, provided that interval or ratio data are collapsed into categories.",
+      "aliases": [
+        "spatial statistics",
+        "variable",
+        "show",
+        "charts",
+        "time"
+      ],
+      "keywords": [
+        "spatial statistics",
+        "variable",
+        "show",
+        "charts",
+        "time",
+        "graphs",
+        "points",
+        "line",
+        "appropriate",
+        "interval"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l03_005_01",
+          "name": "spatial statistics",
+          "definition": "",
+          "plain_explanation": "spatial statistics 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0043",
+              "page_no": 43,
+              "text_span": "9a86369166f06027_p0043_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0044",
+              "page_no": 44,
+              "text_span": "9a86369166f06027_p0044_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0045",
+              "page_no": 45,
+              "text_span": "9a86369166f06027_p0045_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0046",
+              "page_no": 46,
+              "text_span": "9a86369166f06027_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0048",
+              "page_no": 48,
+              "text_span": "9a86369166f06027_p0048_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_005_02",
+          "name": "variable",
+          "definition": "",
+          "plain_explanation": "variable 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0043",
+              "page_no": 43,
+              "text_span": "9a86369166f06027_p0043_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0044",
+              "page_no": 44,
+              "text_span": "9a86369166f06027_p0044_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0045",
+              "page_no": 45,
+              "text_span": "9a86369166f06027_p0045_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0046",
+              "page_no": 46,
+              "text_span": "9a86369166f06027_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0048",
+              "page_no": 48,
+              "text_span": "9a86369166f06027_p0048_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_005_03",
+          "name": "show",
+          "definition": "",
+          "plain_explanation": "show 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0043",
+              "page_no": 43,
+              "text_span": "9a86369166f06027_p0043_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0044",
+              "page_no": 44,
+              "text_span": "9a86369166f06027_p0044_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0045",
+              "page_no": 45,
+              "text_span": "9a86369166f06027_p0045_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0046",
+              "page_no": 46,
+              "text_span": "9a86369166f06027_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0048",
+              "page_no": 48,
+              "text_span": "9a86369166f06027_p0048_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_005_04",
+          "name": "charts",
+          "definition": "",
+          "plain_explanation": "charts 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0043",
+              "page_no": 43,
+              "text_span": "9a86369166f06027_p0043_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0044",
+              "page_no": 44,
+              "text_span": "9a86369166f06027_p0044_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0045",
+              "page_no": 45,
+              "text_span": "9a86369166f06027_p0045_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0046",
+              "page_no": 46,
+              "text_span": "9a86369166f06027_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0048",
+              "page_no": 48,
+              "text_span": "9a86369166f06027_p0048_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_005_05",
+          "name": "time",
+          "definition": "",
+          "plain_explanation": "time 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0043",
+              "page_no": 43,
+              "text_span": "9a86369166f06027_p0043_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0044",
+              "page_no": 44,
+              "text_span": "9a86369166f06027_p0044_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0045",
+              "page_no": 45,
+              "text_span": "9a86369166f06027_p0045_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0046",
+              "page_no": 46,
+              "text_span": "9a86369166f06027_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0048",
+              "page_no": 48,
+              "text_span": "9a86369166f06027_p0048_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l03_005_01",
+          "text": "Pie charts show the breakdown of a whole into parts, using relative frequencies or percentages represented by degrees of a circle. ➢ Pie charts are often used to show relative magnitude, similar to bar charts. ➢ Pie charts are appropriate for all levels of measurement, provided that interval or ratio data are collapsed into categories.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0043",
+              "page_no": 43,
+              "text_span": "9a86369166f06027_p0043_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_005_02",
+          "text": "Line graphs are used to show the changes in a variable over time. A point is marked at the intersection of time (on the horizontal x-axis) and the values of the variable (on the vertical y-axis). The points can then be linked by a line to show the trend over time.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0044",
+              "page_no": 44,
+              "text_span": "9a86369166f06027_p0044_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_005_03",
+          "text": "Line graphs are used to show the changes in a variable over time. A point is marked at the intersection of time (on the horizontal x-axis) and the values of the variable (on the vertical y-axis). The points can then be linked by a line to show the trend over time.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0045",
+              "page_no": 45,
+              "text_span": "9a86369166f06027_p0045_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_005_04",
+          "text": "Scatter plots are commonly used to illustrate the association, if any, between two variables. The pattern of points indicates the type (positive or negative) and strength (weak or strong) of the association. Scatter plots are appropriate for numeric data (interval or ratio).",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0046",
+              "page_no": 46,
+              "text_span": "9a86369166f06027_p0046_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_005_05",
+          "text": "A stem-and-leaf plot is an alternative way to show how common observations are. It is similar to a histogram tilted onto its side, with the actual digits of each observation's value used in place of bars. The leading digits constitute the ``stem,'' and the trailing digits make up the “leaf”.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0048",
+              "page_no": 48,
+              "text_span": "9a86369166f06027_p0048_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0043",
+          "page_no": 43,
+          "text_span": "9a86369166f06027_p0043_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0044",
+          "page_no": 44,
+          "text_span": "9a86369166f06027_p0044_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0045",
+          "page_no": 45,
+          "text_span": "9a86369166f06027_p0045_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0046",
+          "page_no": 46,
+          "text_span": "9a86369166f06027_p0046_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0048",
+          "page_no": 48,
+          "text_span": "9a86369166f06027_p0048_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0049",
+          "page_no": 49,
+          "text_span": "9a86369166f06027_p0049_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 43,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 44,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 45,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 46,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 48,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 49,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "9a86369166f06027_p0043_c01",
+        "9a86369166f06027_p0044_c01",
+        "9a86369166f06027_p0045_c01",
+        "9a86369166f06027_p0046_c01",
+        "9a86369166f06027_p0048_c01",
+        "9a86369166f06027_p0049_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l03_006",
+      "title": "空间数据探索与空间统计：spatial statistics / points",
+      "unit_type": "method",
+      "summary": "➢ Semivariance/Semivariogram zi, zj, scores of a certain variable of points i and j respectively h- fixed distance or lag dij -the distance between points i and j Δ - the width of a band whose center is at h N(h)-the number of samples within h. 53 Nugget 块金值 h间隔距离 Sill 基台值 Semivariance cloud can be used to explore spatial correlations or to find global/local and local outliers ➢ Voronoi map • Given a set of points in the plane, there exists an associated set of regions surrounding these points, such that all locations within any given region are closer to one of the points than to any other point. • These regions may be regarded as the dual of the point set, and are known as proximity polygo",
+      "aliases": [
+        "spatial statistics",
+        "points",
+        "mobility",
+        "Exploratory",
+        "model"
+      ],
+      "keywords": [
+        "spatial statistics",
+        "points",
+        "mobility",
+        "Exploratory",
+        "model",
+        "spatial correlation",
+        "Voronoi",
+        "regions",
+        "locations",
+        "point"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l03_006_01",
+          "name": "spatial statistics",
+          "definition": "",
+          "plain_explanation": "spatial statistics 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0053",
+              "page_no": 53,
+              "text_span": "9a86369166f06027_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0054",
+              "page_no": 54,
+              "text_span": "9a86369166f06027_p0054_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0055",
+              "page_no": 55,
+              "text_span": "9a86369166f06027_p0055_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0060",
+              "page_no": 60,
+              "text_span": "9a86369166f06027_p0060_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0061",
+              "page_no": 61,
+              "text_span": "9a86369166f06027_p0061_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_006_02",
+          "name": "points",
+          "definition": "",
+          "plain_explanation": "points 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0053",
+              "page_no": 53,
+              "text_span": "9a86369166f06027_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0054",
+              "page_no": 54,
+              "text_span": "9a86369166f06027_p0054_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0055",
+              "page_no": 55,
+              "text_span": "9a86369166f06027_p0055_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0060",
+              "page_no": 60,
+              "text_span": "9a86369166f06027_p0060_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0061",
+              "page_no": 61,
+              "text_span": "9a86369166f06027_p0061_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_006_03",
+          "name": "mobility",
+          "definition": "",
+          "plain_explanation": "mobility 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0053",
+              "page_no": 53,
+              "text_span": "9a86369166f06027_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0054",
+              "page_no": 54,
+              "text_span": "9a86369166f06027_p0054_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0055",
+              "page_no": 55,
+              "text_span": "9a86369166f06027_p0055_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0060",
+              "page_no": 60,
+              "text_span": "9a86369166f06027_p0060_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0061",
+              "page_no": 61,
+              "text_span": "9a86369166f06027_p0061_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_006_04",
+          "name": "Exploratory",
+          "definition": "",
+          "plain_explanation": "Exploratory 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0053",
+              "page_no": 53,
+              "text_span": "9a86369166f06027_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0054",
+              "page_no": 54,
+              "text_span": "9a86369166f06027_p0054_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0055",
+              "page_no": 55,
+              "text_span": "9a86369166f06027_p0055_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0060",
+              "page_no": 60,
+              "text_span": "9a86369166f06027_p0060_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0061",
+              "page_no": 61,
+              "text_span": "9a86369166f06027_p0061_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l03_006_05",
+          "name": "model",
+          "definition": "",
+          "plain_explanation": "model 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0053",
+              "page_no": 53,
+              "text_span": "9a86369166f06027_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0054",
+              "page_no": 54,
+              "text_span": "9a86369166f06027_p0054_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0055",
+              "page_no": 55,
+              "text_span": "9a86369166f06027_p0055_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0060",
+              "page_no": 60,
+              "text_span": "9a86369166f06027_p0060_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0061",
+              "page_no": 61,
+              "text_span": "9a86369166f06027_p0061_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l03_006_01",
+          "text": "➢ Semivariance/Semivariogram zi, zj, scores of a certain variable of points i and j respectively h- fixed distance or lag dij -the distance between points i and j Δ - the width of a band whose center is at h N(h)-the number of samples within h. 53 Nugget 块金值 h间隔距离 Sill 基台值 Semivariance cloud can be used to explore spatial correlations or to find global/local and local outliers",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0053",
+              "page_no": 53,
+              "text_span": "9a86369166f06027_p0053_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_006_02",
+          "text": "➢ Voronoi map • Given a set of points in the plane, there exists an associated set of regions surrounding these points, such that all locations within any given region are closer to one of the points than to any other point. • These regions may be regarded as the dual of the point set, and are known as proximity polygons, Voronoi polygons or Thiessen regions. 54 • Voronoi Polygon and DelaunayTriangulation /Trianulated Irregular Network",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0054",
+              "page_no": 54,
+              "text_span": "9a86369166f06027_p0054_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_006_03",
+          "text": "➢ Mapped data Some alternative methods for exploring variations in mapped point-based datasets with associated weights or continuously variable attributes. In Fig. C, a semivariogram scatterplot of the dataset was generated (using ArcGIS Geostatistical Analyst) and the set of points on the scatterplot with the highest semivariance values were selected by brushing.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0055",
+              "page_no": 55,
+              "text_span": "9a86369166f06027_p0055_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_006_04",
+          "text": "➢ Others • Autocorrelation analysis • Hot spot analysis • Exploratory SpatioTemporal Data Analysis （ESTDA） • …… 60 Gurpreet S, et al. Exploratory Spatio-Temporal Data Analysis (ESTDA) of Dengue and its association with climatic, environmental, and sociodemographic factors in Punjab, India. Ecological Informatics, 2023,75,102020.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0060",
+              "page_no": 60,
+              "text_span": "9a86369166f06027_p0060_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_006_05",
+          "text": "Heterogeneous influences of urban compactness on air pollution: evidence from 285 prefecture-level cities in China. HUMANITIES & SOCIAL SCIENCES COMMUNICATIONS， 2025. • Liu et al.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0061",
+              "page_no": 61,
+              "text_span": "9a86369166f06027_p0061_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0053",
+          "page_no": 53,
+          "text_span": "9a86369166f06027_p0053_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0054",
+          "page_no": 54,
+          "text_span": "9a86369166f06027_p0054_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0055",
+          "page_no": 55,
+          "text_span": "9a86369166f06027_p0055_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0060",
+          "page_no": 60,
+          "text_span": "9a86369166f06027_p0060_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0061",
+          "page_no": 61,
+          "text_span": "9a86369166f06027_p0061_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0062",
+          "page_no": 62,
+          "text_span": "9a86369166f06027_p0062_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 53,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 54,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 55,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 60,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 61,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 62,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "9a86369166f06027_p0053_c01",
+        "9a86369166f06027_p0054_c01",
+        "9a86369166f06027_p0055_c01",
+        "9a86369166f06027_p0060_c01",
+        "9a86369166f06027_p0061_c01",
+        "9a86369166f06027_p0062_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    }
+  ],
+  "knowledge_tree": {
+    "id": "tree_spatial_analysis_lecture_03",
+    "title": "第 3 讲：空间数据探索与空间统计",
+    "nodes": [
+      {
+        "id": "node_lecture_03",
+        "title": "第 3 讲：空间数据探索与空间统计",
+        "role": "chapter",
+        "summary": "Lect.3 Data Exploration and Spatial Statistics TED Video: Why mathematics is so amazing？ https://mp.weixin.qq.com/s?__biz=MzAxOTE1OTc2MQ==&mid=2649985092&idx=3 &sn=ef46cfde56389aed0804ab7f9310df39&chksm=83cc7ffab4bbf6ec6e8e5caf2ba 71080e15b5f70d1cd2eee949c7ced415a263dfe0aa2470be3&scene=27 • Statistics are important tools in the work of many academic disciplines, as well as in many other aspects of society, business, industry and government. • Owing to the growing use of statistics in so many areas of our lives, there is a common recognition of the importance of understanding statistical thinki",
+        "parent_id": null,
+        "knowledge_unit_ids": [],
+        "order": 3,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l03_001",
+        "title": "空间数据探索与空间统计：spatial statistics / geographic",
+        "role": "method",
+        "summary": "Lect.3 Data Exploration and Spatial Statistics TED Video: Why mathematics is so amazing？ https://mp.weixin.qq.com/s?__biz=MzAxOTE1OTc2MQ==&mid=2649985092&idx=3 &sn=ef46cfde56389aed0804ab7f9310df39&chksm=83cc7ffab4bbf6ec6e8e5caf2ba 71080e15b5f70d1cd2eee949c7ced415a263dfe0aa2470be3&scene=27 • Statistics are important tools in the work of many academic disciplines, as well as in many other aspects of society, business, industry and government. • Owing to the growing use of statistics in so many areas of our lives, there is a common recognition of the importance of understanding statistical thinking.",
+        "parent_id": "node_lecture_03",
+        "knowledge_unit_ids": [
+          "ku_l03_001"
+        ],
+        "order": 1,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l03_002",
+        "title": "空间数据探索与空间统计：spatial statistics / land",
+        "role": "method",
+        "summary": "• Since data come from distributions with different means and different degrees of variability, it is common to standardize observations. One way to do this is to transform each observation into a z-score by first subtracting the mean of all observations and then dividing the result by the standard deviation: z-scores may be interpreted as the number of standard deviations an observation is away from the mean In the commuting case, the z-score for individual 1 is (5-21.93)/14.3 = -1.17 0 0.2 0.4 0.6 0.8 1 1978 1980 1982 1984 1986 1988 1990 1992 1994 1996 1998 2000 2002 2004 2006 2008 2010 2012 2014 2016 2018 2020 2022 1978-2023各省人均GDP变异系数曲线 2 1 )(1 11  = − −− −−== n i iv xxnxx SC • A组数据的标准差",
+        "parent_id": "node_lecture_03",
+        "knowledge_unit_ids": [
+          "ku_l03_002"
+        ],
+        "order": 2,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l03_003",
+        "title": "空间数据探索与空间统计：spatial statistics / city",
+        "role": "method",
+        "summary": "Analysis of spatial equity and access to urban parks in Ilam Iran. Journal of Environmental Management, 2020,260. • Adequate number of parks and amount of land allocated to those parks, to provide equal access for all city residences, are important factors in achieving cities to spatial equity.",
+        "parent_id": "node_lecture_03",
+        "knowledge_unit_ids": [
+          "ku_l03_003"
+        ],
+        "order": 3,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l03_004",
+        "title": "空间数据探索与空间统计：spatial statistics / mean",
+        "role": "method",
+        "summary": "What’s Under the Curve? -1—1 68.26% -2—2 95.44% -3—3, 99.74% • For all normal distributions… • Almost 100% of scores will fit between –3 and +3 standard deviations from the mean • So…distributions can be compared • Between different points on the x-axis, a certain percentage of cases will occur The Z-score • A standard score that is the result of dividing the amount that a raw score differs from the mean of the distribution by the standard deviation. • What about those symbols?",
+        "parent_id": "node_lecture_03",
+        "knowledge_unit_ids": [
+          "ku_l03_004"
+        ],
+        "order": 4,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l03_005",
+        "title": "空间数据探索与空间统计：spatial statistics / variable",
+        "role": "method",
+        "summary": "Pie charts show the breakdown of a whole into parts, using relative frequencies or percentages represented by degrees of a circle. ➢ Pie charts are often used to show relative magnitude, similar to bar charts. ➢ Pie charts are appropriate for all levels of measurement, provided that interval or ratio data are collapsed into categories.",
+        "parent_id": "node_lecture_03",
+        "knowledge_unit_ids": [
+          "ku_l03_005"
+        ],
+        "order": 5,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l03_006",
+        "title": "空间数据探索与空间统计：spatial statistics / points",
+        "role": "method",
+        "summary": "➢ Semivariance/Semivariogram zi, zj, scores of a certain variable of points i and j respectively h- fixed distance or lag dij -the distance between points i and j Δ - the width of a band whose center is at h N(h)-the number of samples within h. 53 Nugget 块金值 h间隔距离 Sill 基台值 Semivariance cloud can be used to explore spatial correlations or to find global/local and local outliers ➢ Voronoi map • Given a set of points in the plane, there exists an associated set of regions surrounding these points, such that all locations within any given region are closer to one of the points than to any other point. • These regions may be regarded as the dual of the point set, and are known as proximity polygo",
+        "parent_id": "node_lecture_03",
+        "knowledge_unit_ids": [
+          "ku_l03_006"
+        ],
+        "order": 6,
+        "prerequisite_node_ids": []
+      }
+    ],
+    "root_node_ids": [
+      "node_lecture_03"
+    ],
+    "teaching_sequence": [
+      "node_l03_001",
+      "node_l03_002",
+      "node_l03_003",
+      "node_l03_004",
+      "node_l03_005",
+      "node_l03_006"
+    ],
+    "orphan_unit_ids": [],
+    "warnings": [
+      "This LearningContent was generated deterministically from the spatial_analysis knowledge-base chunks.",
+      "Review low-text pages and chunk labels before high-stakes classroom use."
+    ]
+  },
+  "objectives": [
+    "理解空间数据探索与空间统计中的核心概念和方法。",
+    "能够解释关键术语、适用条件和典型应用。",
+    "能够基于来源页码组织课堂讲解和检查题。"
+  ],
+  "sections": [
+    {
+      "id": "section_l03_001",
+      "title": "空间数据探索与空间统计：spatial statistics / geographic",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间数据探索与空间统计：spatial statistics / geographic",
+      "summary": "Lect.3 Data Exploration and Spatial Statistics TED Video: Why mathematics is so amazing？ https://mp.weixin.qq.com/s?__biz=MzAxOTE1OTc2MQ==&mid=2649985092&idx=3 &sn=ef46cfde56389aed0804ab7f9310df39&chksm=83cc7ffab4bbf6ec6e8e5caf2ba 71080e15b5f70d1cd2eee949c7ced415a263dfe0aa2470be3&scene=27 • Statistics are important tools in the work of many academic disciplines, as well as in many other aspects of society, business, industry and government. • Owing to the growing use of statistics in so many areas of our lives, there is a common recognition of the importance of understanding statistical thinking.",
+      "key_points": [
+        "spatial statistics",
+        "geographic",
+        "statistical",
+        "sample",
+        "median",
+        "time",
+        "have",
+        "methods"
+      ],
+      "teaching_narrative": "本节围绕“空间数据探索与空间统计：spatial statistics / geographic”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Lect.3 Data Exploration and Spatial Statistics TED Video: Why mathematics is so amazing？ https://mp.weixin.qq.com/s?__biz=MzAxOTE1OTc2MQ==&mid=2649985092&idx=3 &sn=ef46cfde56389aed0804ab7f9310df39&chksm=83cc7ffab4bbf6ec6e8e5caf2ba 71080e15b5f70d1cd2eee949c7ced415a263dfe0aa2470be3&scene=27 • Statistics are important tools in the work of many academic disciplines, as well as in many other aspects of society, business, industry and government. • Owing to the growing use of statistics in so many areas of our lives, there is a common recognition of the importance of understanding statistical thinking.",
+      "knowledge_points": [
+        "spatial statistics",
+        "geographic",
+        "statistical",
+        "sample",
+        "median",
+        "time",
+        "have",
+        "methods",
+        "observations",
+        "OLS"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l03_001_01",
+          "text": "Lect.3 Data Exploration and Spatial Statistics TED Video: Why mathematics is so amazing？ https://mp.weixin.qq.com/s?__biz=MzAxOTE1OTc2MQ==&mid=2649985092&idx=3 &sn=ef46cfde56389aed0804ab7f9310df39&chksm=83cc7ffab4bbf6ec6e8e5caf2ba 71080e15b5f70d1cd2eee949c7ced415a263dfe0aa2470be3&scene=27",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0001",
+              "page_no": 1,
+              "text_span": "9a86369166f06027_p0001_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_001_02",
+          "text": "• Statistics are important tools in the work of many academic disciplines, as well as in many other aspects of society, business, industry and government. • Owing to the growing use of statistics in so many areas of our lives, there is a common recognition of the importance of understanding statistical thinking. • To borrow the words of the famous author who wrote \"The Invisible Man\" and \"War of the Worlds\": Statistical thinking will one day be as necessary for efficient citizenship as the abili",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0003",
+              "page_no": 3,
+              "text_span": "9a86369166f06027_p0003_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_001_03",
+          "text": "The following questions serve to illustrate the broad variety of areas in which statistical analysis has recently been applied geographic problems: (1)How do blood lead levels in children vary over space? Are the levels randomly scattered throughout the city, or are there discernible geographic patterns? How are any patterns related to the characteristics of both housing and occupants?",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0004",
+              "page_no": 4,
+              "text_span": "9a86369166f06027_p0004_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_001_04",
+          "text": "• A key characteristic of geographic data that brings about the need for statistical analysis is that they may often be regarded as a sample from a larger population. • Descriptive statistics (or Descriptive statistical analysis) refers to the use of particular methods for describing and summarizing the characteristics of the samples, whereas inferential statistical analysis refers to the methods that are used to infer something about the population from the sample. • Descriptive methods fall wi",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0006",
+              "page_no": 6,
+              "text_span": "9a86369166f06027_p0006_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_001_05",
+          "text": "• The median time is defined as the time that splits the ranked list of commuting times in half - half of all respondents have commutes that are longer than the median, and half have commutes that are shorter. • When the number of observations is odd, the median is simply equal to the middle value on a list of the observations, ranked from shortest commute to longest commute. • When the number of observations is even, as it is here, we take the median to be the average of the two values in the m",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0009",
+              "page_no": 9,
+              "text_span": "9a86369166f06027_p0009_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 spatial statistics 为什么重要。",
+          "expected_answer": "学生应能说明 spatial statistics 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间数据探索与空间统计：spatial statistics / land”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0001",
+          "page_no": 1,
+          "text_span": "9a86369166f06027_p0001_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0003",
+          "page_no": 3,
+          "text_span": "9a86369166f06027_p0003_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0004",
+          "page_no": 4,
+          "text_span": "9a86369166f06027_p0004_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0006",
+          "page_no": 6,
+          "text_span": "9a86369166f06027_p0006_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0009",
+          "page_no": 9,
+          "text_span": "9a86369166f06027_p0009_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0015",
+          "page_no": 15,
+          "text_span": "9a86369166f06027_p0015_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 1,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 3,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 4,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 6,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 9,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 15,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l03_001"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l03_001_01",
+          "question": "关于“spatial statistics”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 spatial statistics 的含义、适用条件或典型应用",
+            "只记住 spatial statistics 在课件中出现过",
+            "把 spatial statistics 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "spatial statistics",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0001",
+              "page_no": 1,
+              "text_span": "9a86369166f06027_p0001_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0003",
+              "page_no": 3,
+              "text_span": "9a86369166f06027_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0004",
+              "page_no": 4,
+              "text_span": "9a86369166f06027_p0004_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0006",
+              "page_no": 6,
+              "text_span": "9a86369166f06027_p0006_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0009",
+              "page_no": 9,
+              "text_span": "9a86369166f06027_p0009_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        1,
+        3,
+        4,
+        6,
+        9,
+        15
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间数据探索与空间统计：spatial statistics / geographic”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Lect.3 Data Exploration and Spatial Statistics TED Video: Why mathematics is so amazing？ https://mp.weixin.qq.com/s?__biz=MzAxOTE1OTc2MQ==&mid=2649985092&idx=3 &sn=ef46cfde56389aed0804ab7f9310df39&chksm=83cc7ffab4bbf6ec6e8e5caf2ba 71080e15b5f70d1cd2eee949c7ced415a263dfe0aa2470be3&scene=27 • Statistics are important tools in the work of many academic disciplines, as well as in many other aspects of society, business, industry and government. • Owing to the growing use of statistics in so many areas of our lives, there is a common recognition of the importance of understanding statistical thinking.",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间数据探索与空间统计：spatial statistics / land”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l03_002",
+      "title": "空间数据探索与空间统计：spatial statistics / land",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间数据探索与空间统计：spatial statistics / land",
+      "summary": "• Since data come from distributions with different means and different degrees of variability, it is common to standardize observations. One way to do this is to transform each observation into a z-score by first subtracting the mean of all observations and then dividing the result by the standard deviation: z-scores may be interpreted as the number of standard deviations an observation is away from the mean In the commuting case, the z-score for individual 1 is (5-21.93)/14.3 = -1.17 0 0.2 0.4 0.6 0.8 1 1978 1980 1982 1984 1986 1988 1990 1992 1994 1996 1998 2000 2002 2004 2006 2008 2010 2012 2014 2016 2018 2020 2022 1978-2023各省人均GDP变异系数曲线 2 1 )(1 11  = − −− −−== n i iv xxnxx SC • A组数据的标准差",
+      "key_points": [
+        "spatial statistics",
+        "land",
+        "change",
+        "results",
+        "observations",
+        "mean",
+        "than",
+        "project"
+      ],
+      "teaching_narrative": "本节围绕“空间数据探索与空间统计：spatial statistics / land”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• Since data come from distributions with different means and different degrees of variability, it is common to standardize observations. One way to do this is to transform each observation into a z-score by first subtracting the mean of all observations and then dividing the result by the standard deviation: z-scores may be interpreted as the number of standard deviations an observation is away from the mean In the commuting case, the z-score for individual 1 is (5-21.93)/14.3 = -1.17 0 0.2 0.4 0.6 0.8 1 1978 1980 1982 1984 1986 1988 1990 1992 1994 1996 1998 2000 2002 2004 2006 2008 2010 2012 2014 2016 2018 2020 2022 1978-2023各省人均GDP变异系数曲线 2 1 )(1 11  = − −− −−== n i iv xxnxx SC • A组数据的标准差",
+      "knowledge_points": [
+        "spatial statistics",
+        "land",
+        "change",
+        "results",
+        "observations",
+        "mean",
+        "than",
+        "project",
+        "CORINE",
+        "consistent"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l03_002_01",
+          "text": "• Since data come from distributions with different means and different degrees of variability, it is common to standardize observations. One way to do this is to transform each observation into a z-score by first subtracting the mean of all observations and then dividing the result by the standard deviation: z-scores may be interpreted as the number of standard deviations an observation is away from the mean In the commuting case, the z-score for individual 1 is (5-21.93)/14.3 = -1.17",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0016",
+              "page_no": 16,
+              "text_span": "9a86369166f06027_p0016_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_002_02",
+          "text": "0 0.2 0.4 0.6 0.8 1 1978 1980 1982 1984 1986 1988 1990 1992 1994 1996 1998 2000 2002 2004 2006 2008 2010 2012 2014 2016 2018 2020 2022 1978-2023各省人均GDP变异系数曲线 2 1 )(1 11  = − −− −−== n i iv xxnxx SC • A组数据的标准差为5，平均值为50； • B组的标准差为10，平均值为200 • A组CV=5/50=0.1 • B组CV=10/200=0.05 • 尽管B组标准差较大，但B组的变异系数 较小，表明B组的相对离散程度较低。",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0017",
+              "page_no": 17,
+              "text_span": "9a86369166f06027_p0017_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_002_03",
+          "text": "• Skewness measures the degree of asymmetry exhibited by the data. • This figure reveals that there are more observations below the mean than above it – this is known as positive skewness. • Skewness is computed by first adding together the cubed deviations from the mean and then dividing by the product of the cubed standard deviation and the number of observations: 3 3 1 )( skewness nS xx n i i = − − =",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0018",
+              "page_no": 18,
+              "text_span": "9a86369166f06027_p0018_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_002_04",
+          "text": "• Kurtosis measures how peaked the histogram is. Its definition is similar to that for skewness, with the exception that the fourth power is used instead of the third: 𝑘𝑢𝑟to𝑠𝑖𝑠 = σ𝑖=1 𝑛 (𝑥𝑖 − 𝑥 − )4 𝑛𝑆4     =  = 0 0 0 2g Higher than normal distribution Standard normal distribution Lower than normal distribution 𝑔2 = 𝑘𝑢𝑟𝑡𝑜𝑠𝑖𝑠 − 3",
+          "type": "concept",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0020",
+              "page_no": 20,
+              "text_span": "9a86369166f06027_p0020_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_002_05",
+          "text": "Dynamic Landscapes in the UK Driven by Pressures from Energy Production and Forestry—Results of the CORINE Land Cover Map 2018. The CORINE Land Cover (CLC) map was established in 1985 and is now one of the most widely used products from the Copernicus Land Monitoring Service. As the world's longest consistent operational land cover monitoring product, CLC maps have been produced for reference years 1990, 2000, 2006, 2012 and now for 2018.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0024",
+              "page_no": 24,
+              "text_span": "9a86369166f06027_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 spatial statistics 为什么重要。",
+          "expected_answer": "学生应能说明 spatial statistics 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间数据探索与空间统计：spatial statistics / city”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0016",
+          "page_no": 16,
+          "text_span": "9a86369166f06027_p0016_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0017",
+          "page_no": 17,
+          "text_span": "9a86369166f06027_p0017_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0018",
+          "page_no": 18,
+          "text_span": "9a86369166f06027_p0018_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0020",
+          "page_no": 20,
+          "text_span": "9a86369166f06027_p0020_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0024",
+          "page_no": 24,
+          "text_span": "9a86369166f06027_p0024_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0024",
+          "page_no": 24,
+          "text_span": "9a86369166f06027_p0024_c02",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 16,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 17,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 18,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 20,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 24,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l03_002"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l03_002_01",
+          "question": "关于“spatial statistics”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 spatial statistics 的含义、适用条件或典型应用",
+            "只记住 spatial statistics 在课件中出现过",
+            "把 spatial statistics 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "spatial statistics",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0016",
+              "page_no": 16,
+              "text_span": "9a86369166f06027_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0017",
+              "page_no": 17,
+              "text_span": "9a86369166f06027_p0017_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0018",
+              "page_no": 18,
+              "text_span": "9a86369166f06027_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0020",
+              "page_no": 20,
+              "text_span": "9a86369166f06027_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0024",
+              "page_no": 24,
+              "text_span": "9a86369166f06027_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        16,
+        17,
+        18,
+        20,
+        24
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间数据探索与空间统计：spatial statistics / land”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• Since data come from distributions with different means and different degrees of variability, it is common to standardize observations. One way to do this is to transform each observation into a z-score by first subtracting the mean of all observations and then dividing the result by the standard deviation: z-scores may be interpreted as the number of standard deviations an observation is away from the mean In the commuting case, the z-score for individual 1 is (5-21.93)/14.3 = -1.17 0 0.2 0.4 0.6 0.8 1 1978 1980 1982 1984 1986 1988 1990 1992 1994 1996 1998 2000 2002 2004 2006 2008 2010 2012 2014 2016 2018 2020 2022 1978-2023各省人均GDP变异系数曲线 2 1 )(1 11  = − −− −−== n i iv xxnxx SC • A组数据的标准差",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间数据探索与空间统计：spatial statistics / city”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l03_003",
+      "title": "空间数据探索与空间统计：spatial statistics / city",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间数据探索与空间统计：spatial statistics / city",
+      "summary": "Analysis of spatial equity and access to urban parks in Ilam Iran. Journal of Environmental Management, 2020,260. • Adequate number of parks and amount of land allocated to those parks, to provide equal access for all city residences, are important factors in achieving cities to spatial equity.",
+      "key_points": [
+        "spatial statistics",
+        "city",
+        "parks",
+        "Ilam",
+        "park",
+        "Normal",
+        "distribution",
+        "mean"
+      ],
+      "teaching_narrative": "本节围绕“空间数据探索与空间统计：spatial statistics / city”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Analysis of spatial equity and access to urban parks in Ilam Iran. Journal of Environmental Management, 2020,260. • Adequate number of parks and amount of land allocated to those parks, to provide equal access for all city residences, are important factors in achieving cities to spatial equity.",
+      "knowledge_points": [
+        "spatial statistics",
+        "city",
+        "parks",
+        "Ilam",
+        "park",
+        "Normal",
+        "distribution",
+        "mean",
+        "Series",
+        "standard"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l03_003_01",
+          "text": "Analysis of spatial equity and access to urban parks in Ilam Iran. Journal of Environmental Management, 2020,260. • Adequate number of parks and amount of land allocated to those parks, to provide equal access for all city residences, are important factors in achieving cities to spatial equity.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0025",
+              "page_no": 25,
+              "text_span": "9a86369166f06027_p0025_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_003_02",
+          "text": "Two Different Normal Distributions with Means and Standard Deviations Normal Distribution (mean = 25, std dev = 12.9099) 0 0.005 0.01 0.015 0.02 0.025 0.03 0.035 0 5 10 15 20 25 30 35 40 45 50 x Relative Frequency Normal Distribution (mean = 45, std dev = 2.582) 0.0000 0.0200 0.0400 0.0600 0.0800 0.1000 0.1200 0.1400 0.1600 0.1800 40 41 42 43 44 45 46 47 48 49 50 x Relative Frequency Two data series: Series A: 5, 10, 15, 20, 25, 30, 35, 40, 45 (μ = 25, = 12.90994) Series B: 41, 42, 43, 44, 45,",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0027",
+              "page_no": 27,
+              "text_span": "9a86369166f06027_p0027_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_003_03",
+          "text": "• Because the standard deviation that defines how a normal distribution spread is a relative measure, sometimes it is difficult to compare those normal distributions with similar standard deviations. • As a result, a set of statistics, called z-scores, have been used to transform values of different numeric ranges in different distributions so that they can be compared. • The Z-score statistics can be computed as: x Where and S are the mean and standard deviation of the original data, xi, i=1,2,",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0028",
+              "page_no": 28,
+              "text_span": "9a86369166f06027_p0028_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_003_04",
+          "text": "• In this example, when both series (A and B) are transformed and standardized, their Z-scores become Series A: μ = 25,  = 12.90994 Series B: μ = 45,  = 2.582 5 -1.5492 41 -1.5492 10 -1.1619 42 -1.1619 15 -0.7746 43 -0.7746 20 -0.3873 44 -0.3873 25 0 45 0 30 0.3873 46 0.3873 35 0.7746 47 0.7746 40 1.1619 48 1.1619 45 1.5492 49 1.5492 μ = 0,  = 1",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0029",
+              "page_no": 29,
+              "text_span": "9a86369166f06027_p0029_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_003_05",
+          "text": "Standard Normal Distribution for the Data Series A and B Standard Normal Distribution 0 0.1 0.2 0.3 0.4 0.5 -2 -1.5 -1 -0.5 0 0.5 1 1.5 2 Z Likelihood of Observing X . For any distribution of continuous values, there are infinite possible outcomes of the likelihood of observing x.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0030",
+              "page_no": 30,
+              "text_span": "9a86369166f06027_p0030_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 spatial statistics 为什么重要。",
+          "expected_answer": "学生应能说明 spatial statistics 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间数据探索与空间统计：spatial statistics / mean”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0025",
+          "page_no": 25,
+          "text_span": "9a86369166f06027_p0025_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0027",
+          "page_no": 27,
+          "text_span": "9a86369166f06027_p0027_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0028",
+          "page_no": 28,
+          "text_span": "9a86369166f06027_p0028_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0029",
+          "page_no": 29,
+          "text_span": "9a86369166f06027_p0029_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0030",
+          "page_no": 30,
+          "text_span": "9a86369166f06027_p0030_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0031",
+          "page_no": 31,
+          "text_span": "9a86369166f06027_p0031_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 25,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 27,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 28,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 29,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 30,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 31,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l03_003"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l03_003_01",
+          "question": "关于“spatial statistics”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 spatial statistics 的含义、适用条件或典型应用",
+            "只记住 spatial statistics 在课件中出现过",
+            "把 spatial statistics 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "spatial statistics",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0025",
+              "page_no": 25,
+              "text_span": "9a86369166f06027_p0025_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0027",
+              "page_no": 27,
+              "text_span": "9a86369166f06027_p0027_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0028",
+              "page_no": 28,
+              "text_span": "9a86369166f06027_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0029",
+              "page_no": 29,
+              "text_span": "9a86369166f06027_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0030",
+              "page_no": 30,
+              "text_span": "9a86369166f06027_p0030_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        25,
+        27,
+        28,
+        29,
+        30,
+        31
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间数据探索与空间统计：spatial statistics / city”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Analysis of spatial equity and access to urban parks in Ilam Iran. Journal of Environmental Management, 2020,260. • Adequate number of parks and amount of land allocated to those parks, to provide equal access for all city residences, are important factors in achieving cities to spatial equity.",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间数据探索与空间统计：spatial statistics / mean”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l03_004",
+      "title": "空间数据探索与空间统计：spatial statistics / mean",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间数据探索与空间统计：spatial statistics / mean",
+      "summary": "What’s Under the Curve? -1—1 68.26% -2—2 95.44% -3—3, 99.74% • For all normal distributions… • Almost 100% of scores will fit between –3 and +3 standard deviations from the mean • So…distributions can be compared • Between different points on the x-axis, a certain percentage of cases will occur The Z-score • A standard score that is the result of dividing the amount that a raw score differs from the mean of the distribution by the standard deviation. • What about those symbols?",
+      "key_points": [
+        "spatial statistics",
+        "mean",
+        "standard",
+        "OLS",
+        "ESDA",
+        "distributions",
+        "distribution",
+        "range"
+      ],
+      "teaching_narrative": "本节围绕“空间数据探索与空间统计：spatial statistics / mean”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：What’s Under the Curve? -1—1 68.26% -2—2 95.44% -3—3, 99.74% • For all normal distributions… • Almost 100% of scores will fit between –3 and +3 standard deviations from the mean • So…distributions can be compared • Between different points on the x-axis, a certain percentage of cases will occur The Z-score • A standard score that is the result of dividing the amount that a raw score differs from the mean of the distribution by the standard deviation. • What about those symbols?",
+      "knowledge_points": [
+        "spatial statistics",
+        "mean",
+        "standard",
+        "OLS",
+        "ESDA",
+        "distributions",
+        "distribution",
+        "range",
+        "model",
+        "normal"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l03_004_01",
+          "text": "What’s Under the Curve? -1—1 68.26% -2—2 95.44% -3—3, 99.74% • For all normal distributions… • Almost 100% of scores will fit between –3 and +3 standard deviations from the mean • So…distributions can be compared • Between different points on the x-axis, a certain percentage of cases will occur",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0033",
+              "page_no": 33,
+              "text_span": "9a86369166f06027_p0033_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_004_02",
+          "text": "The Z-score • A standard score that is the result of dividing the amount that a raw score differs from the mean of the distribution by the standard deviation. • What about those symbols? • Scores below the mean are negative (left of the mean), and those above are positive (right of the mean).",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0034",
+              "page_no": 34,
+              "text_span": "9a86369166f06027_p0034_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_004_03",
+          "text": "• Note that the probability of observing x out of  is very, very close to zero. • Therefore, we often calculate Z-scores only within a given range, i.e., prob(a <Z< b), where a and b define a numeric range. • The standard normal distribution is symmetrical with respect to mean.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0035",
+              "page_no": 35,
+              "text_span": "9a86369166f06027_p0035_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_004_04",
+          "text": "Z-score table • From any of those table, we can verify the p(Z<-1) = p(Z>1) = 0.1587. • For the probability of Z-scores over a range, such as p(1<Z<2), we need the p(Z<2) – p(Z<1) = 0.997 – 0.841 = 0.156. • Some simple statistical tests are essentially using these probabilities to see how likely two parameters are different or if the difference can be attributed to sampling error.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0036",
+              "page_no": 36,
+              "text_span": "9a86369166f06027_p0036_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_004_05",
+          "text": "The Concepts of Exploratory Spatial Data Analysis (ESDA)： • ESDA is a step-by-step process which often starts with aspatial tools, such as choropleth maps and box plots that display the distribution of a variable and identify outliers. • ESDA is an extension of exploratory data analysis as it explicitly focuses on the particular characteristics of geographical data. • ESDA is an increasingly popular GIS-based technique that allows users to describe and visualize spatial distributions, identify a",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0040",
+              "page_no": 40,
+              "text_span": "9a86369166f06027_p0040_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 spatial statistics 为什么重要。",
+          "expected_answer": "学生应能说明 spatial statistics 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间数据探索与空间统计：spatial statistics / variable”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0033",
+          "page_no": 33,
+          "text_span": "9a86369166f06027_p0033_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0034",
+          "page_no": 34,
+          "text_span": "9a86369166f06027_p0034_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0035",
+          "page_no": 35,
+          "text_span": "9a86369166f06027_p0035_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0036",
+          "page_no": 36,
+          "text_span": "9a86369166f06027_p0036_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0040",
+          "page_no": 40,
+          "text_span": "9a86369166f06027_p0040_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0042",
+          "page_no": 42,
+          "text_span": "9a86369166f06027_p0042_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 33,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 34,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 35,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 36,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 40,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 42,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l03_004"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l03_004_01",
+          "question": "关于“spatial statistics”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 spatial statistics 的含义、适用条件或典型应用",
+            "只记住 spatial statistics 在课件中出现过",
+            "把 spatial statistics 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "spatial statistics",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0033",
+              "page_no": 33,
+              "text_span": "9a86369166f06027_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0034",
+              "page_no": 34,
+              "text_span": "9a86369166f06027_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0035",
+              "page_no": 35,
+              "text_span": "9a86369166f06027_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0036",
+              "page_no": 36,
+              "text_span": "9a86369166f06027_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0040",
+              "page_no": 40,
+              "text_span": "9a86369166f06027_p0040_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        33,
+        34,
+        35,
+        36,
+        40,
+        42
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间数据探索与空间统计：spatial statistics / mean”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：What’s Under the Curve? -1—1 68.26% -2—2 95.44% -3—3, 99.74% • For all normal distributions… • Almost 100% of scores will fit between –3 and +3 standard deviations from the mean • So…distributions can be compared • Between different points on the x-axis, a certain percentage of cases will occur The Z-score • A standard score that is the result of dividing the amount that a raw score differs from the mean of the distribution by the standard deviation. • What about those symbols?",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间数据探索与空间统计：spatial statistics / variable”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l03_005",
+      "title": "空间数据探索与空间统计：spatial statistics / variable",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间数据探索与空间统计：spatial statistics / variable",
+      "summary": "Pie charts show the breakdown of a whole into parts, using relative frequencies or percentages represented by degrees of a circle. ➢ Pie charts are often used to show relative magnitude, similar to bar charts. ➢ Pie charts are appropriate for all levels of measurement, provided that interval or ratio data are collapsed into categories.",
+      "key_points": [
+        "spatial statistics",
+        "variable",
+        "show",
+        "charts",
+        "time",
+        "graphs",
+        "points",
+        "line"
+      ],
+      "teaching_narrative": "本节围绕“空间数据探索与空间统计：spatial statistics / variable”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Pie charts show the breakdown of a whole into parts, using relative frequencies or percentages represented by degrees of a circle. ➢ Pie charts are often used to show relative magnitude, similar to bar charts. ➢ Pie charts are appropriate for all levels of measurement, provided that interval or ratio data are collapsed into categories.",
+      "knowledge_points": [
+        "spatial statistics",
+        "variable",
+        "show",
+        "charts",
+        "time",
+        "graphs",
+        "points",
+        "line",
+        "appropriate",
+        "interval"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l03_005_01",
+          "text": "Pie charts show the breakdown of a whole into parts, using relative frequencies or percentages represented by degrees of a circle. ➢ Pie charts are often used to show relative magnitude, similar to bar charts. ➢ Pie charts are appropriate for all levels of measurement, provided that interval or ratio data are collapsed into categories.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0043",
+              "page_no": 43,
+              "text_span": "9a86369166f06027_p0043_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_005_02",
+          "text": "Line graphs are used to show the changes in a variable over time. A point is marked at the intersection of time (on the horizontal x-axis) and the values of the variable (on the vertical y-axis). The points can then be linked by a line to show the trend over time.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0044",
+              "page_no": 44,
+              "text_span": "9a86369166f06027_p0044_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_005_03",
+          "text": "Line graphs are used to show the changes in a variable over time. A point is marked at the intersection of time (on the horizontal x-axis) and the values of the variable (on the vertical y-axis). The points can then be linked by a line to show the trend over time.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0045",
+              "page_no": 45,
+              "text_span": "9a86369166f06027_p0045_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_005_04",
+          "text": "Scatter plots are commonly used to illustrate the association, if any, between two variables. The pattern of points indicates the type (positive or negative) and strength (weak or strong) of the association. Scatter plots are appropriate for numeric data (interval or ratio).",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0046",
+              "page_no": 46,
+              "text_span": "9a86369166f06027_p0046_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_005_05",
+          "text": "A stem-and-leaf plot is an alternative way to show how common observations are. It is similar to a histogram tilted onto its side, with the actual digits of each observation's value used in place of bars. The leading digits constitute the ``stem,'' and the trailing digits make up the “leaf”.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0048",
+              "page_no": 48,
+              "text_span": "9a86369166f06027_p0048_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 spatial statistics 为什么重要。",
+          "expected_answer": "学生应能说明 spatial statistics 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间数据探索与空间统计：spatial statistics / points”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0043",
+          "page_no": 43,
+          "text_span": "9a86369166f06027_p0043_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0044",
+          "page_no": 44,
+          "text_span": "9a86369166f06027_p0044_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0045",
+          "page_no": 45,
+          "text_span": "9a86369166f06027_p0045_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0046",
+          "page_no": 46,
+          "text_span": "9a86369166f06027_p0046_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0048",
+          "page_no": 48,
+          "text_span": "9a86369166f06027_p0048_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0049",
+          "page_no": 49,
+          "text_span": "9a86369166f06027_p0049_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 43,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 44,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 45,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 46,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 48,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 49,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l03_005"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l03_005_01",
+          "question": "关于“spatial statistics”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 spatial statistics 的含义、适用条件或典型应用",
+            "只记住 spatial statistics 在课件中出现过",
+            "把 spatial statistics 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "spatial statistics",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0043",
+              "page_no": 43,
+              "text_span": "9a86369166f06027_p0043_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0044",
+              "page_no": 44,
+              "text_span": "9a86369166f06027_p0044_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0045",
+              "page_no": 45,
+              "text_span": "9a86369166f06027_p0045_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0046",
+              "page_no": 46,
+              "text_span": "9a86369166f06027_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0048",
+              "page_no": 48,
+              "text_span": "9a86369166f06027_p0048_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        43,
+        44,
+        45,
+        46,
+        48,
+        49
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间数据探索与空间统计：spatial statistics / variable”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Pie charts show the breakdown of a whole into parts, using relative frequencies or percentages represented by degrees of a circle. ➢ Pie charts are often used to show relative magnitude, similar to bar charts. ➢ Pie charts are appropriate for all levels of measurement, provided that interval or ratio data are collapsed into categories.",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间数据探索与空间统计：spatial statistics / points”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l03_006",
+      "title": "空间数据探索与空间统计：spatial statistics / points",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间数据探索与空间统计：spatial statistics / points",
+      "summary": "➢ Semivariance/Semivariogram zi, zj, scores of a certain variable of points i and j respectively h- fixed distance or lag dij -the distance between points i and j Δ - the width of a band whose center is at h N(h)-the number of samples within h. 53 Nugget 块金值 h间隔距离 Sill 基台值 Semivariance cloud can be used to explore spatial correlations or to find global/local and local outliers ➢ Voronoi map • Given a set of points in the plane, there exists an associated set of regions surrounding these points, such that all locations within any given region are closer to one of the points than to any other point. • These regions may be regarded as the dual of the point set, and are known as proximity polygo",
+      "key_points": [
+        "spatial statistics",
+        "points",
+        "mobility",
+        "Exploratory",
+        "model",
+        "spatial correlation",
+        "Voronoi",
+        "regions"
+      ],
+      "teaching_narrative": "本节围绕“空间数据探索与空间统计：spatial statistics / points”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：➢ Semivariance/Semivariogram zi, zj, scores of a certain variable of points i and j respectively h- fixed distance or lag dij -the distance between points i and j Δ - the width of a band whose center is at h N(h)-the number of samples within h. 53 Nugget 块金值 h间隔距离 Sill 基台值 Semivariance cloud can be used to explore spatial correlations or to find global/local and local outliers ➢ Voronoi map • Given a set of points in the plane, there exists an associated set of regions surrounding these points, such that all locations within any given region are closer to one of the points than to any other point. • These regions may be regarded as the dual of the point set, and are known as proximity polygo",
+      "knowledge_points": [
+        "spatial statistics",
+        "points",
+        "mobility",
+        "Exploratory",
+        "model",
+        "spatial correlation",
+        "Voronoi",
+        "regions",
+        "locations",
+        "point"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l03_006_01",
+          "text": "➢ Semivariance/Semivariogram zi, zj, scores of a certain variable of points i and j respectively h- fixed distance or lag dij -the distance between points i and j Δ - the width of a band whose center is at h N(h)-the number of samples within h. 53 Nugget 块金值 h间隔距离 Sill 基台值 Semivariance cloud can be used to explore spatial correlations or to find global/local and local outliers",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0053",
+              "page_no": 53,
+              "text_span": "9a86369166f06027_p0053_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_006_02",
+          "text": "➢ Voronoi map • Given a set of points in the plane, there exists an associated set of regions surrounding these points, such that all locations within any given region are closer to one of the points than to any other point. • These regions may be regarded as the dual of the point set, and are known as proximity polygons, Voronoi polygons or Thiessen regions. 54 • Voronoi Polygon and DelaunayTriangulation /Trianulated Irregular Network",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0054",
+              "page_no": 54,
+              "text_span": "9a86369166f06027_p0054_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_006_03",
+          "text": "➢ Mapped data Some alternative methods for exploring variations in mapped point-based datasets with associated weights or continuously variable attributes. In Fig. C, a semivariogram scatterplot of the dataset was generated (using ArcGIS Geostatistical Analyst) and the set of points on the scatterplot with the highest semivariance values were selected by brushing.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0055",
+              "page_no": 55,
+              "text_span": "9a86369166f06027_p0055_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_006_04",
+          "text": "➢ Others • Autocorrelation analysis • Hot spot analysis • Exploratory SpatioTemporal Data Analysis （ESTDA） • …… 60 Gurpreet S, et al. Exploratory Spatio-Temporal Data Analysis (ESTDA) of Dengue and its association with climatic, environmental, and sociodemographic factors in Punjab, India. Ecological Informatics, 2023,75,102020.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0060",
+              "page_no": 60,
+              "text_span": "9a86369166f06027_p0060_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l03_006_05",
+          "text": "Heterogeneous influences of urban compactness on air pollution: evidence from 285 prefecture-level cities in China. HUMANITIES & SOCIAL SCIENCES COMMUNICATIONS， 2025. • Liu et al.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0061",
+              "page_no": 61,
+              "text_span": "9a86369166f06027_p0061_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 spatial statistics 为什么重要。",
+          "expected_answer": "学生应能说明 spatial statistics 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": ""
+      },
+      "source_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0053",
+          "page_no": 53,
+          "text_span": "9a86369166f06027_p0053_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0054",
+          "page_no": 54,
+          "text_span": "9a86369166f06027_p0054_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0055",
+          "page_no": 55,
+          "text_span": "9a86369166f06027_p0055_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0060",
+          "page_no": 60,
+          "text_span": "9a86369166f06027_p0060_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0061",
+          "page_no": 61,
+          "text_span": "9a86369166f06027_p0061_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_id": "9a86369166f06027_p0062",
+          "page_no": 62,
+          "text_span": "9a86369166f06027_p0062_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 53,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 54,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 55,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 60,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 61,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "9a86369166f06027",
+          "page_no": 62,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l03_006"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l03_006_01",
+          "question": "关于“spatial statistics”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 spatial statistics 的含义、适用条件或典型应用",
+            "只记住 spatial statistics 在课件中出现过",
+            "把 spatial statistics 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "spatial statistics",
+          "source_refs": [
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0053",
+              "page_no": 53,
+              "text_span": "9a86369166f06027_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0054",
+              "page_no": 54,
+              "text_span": "9a86369166f06027_p0054_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0055",
+              "page_no": 55,
+              "text_span": "9a86369166f06027_p0055_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0060",
+              "page_no": 60,
+              "text_span": "9a86369166f06027_p0060_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "9a86369166f06027",
+              "page_id": "9a86369166f06027_p0061",
+              "page_no": 61,
+              "text_span": "9a86369166f06027_p0061_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        53,
+        54,
+        55,
+        60,
+        61,
+        62
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间数据探索与空间统计：spatial statistics / points”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：➢ Semivariance/Semivariogram zi, zj, scores of a certain variable of points i and j respectively h- fixed distance or lag dij -the distance between points i and j Δ - the width of a band whose center is at h N(h)-the number of samples within h. 53 Nugget 块金值 h间隔距离 Sill 基台值 Semivariance cloud can be used to explore spatial correlations or to find global/local and local outliers ➢ Voronoi map • Given a set of points in the plane, there exists an associated set of regions surrounding these points, such that all locations within any given region are closer to one of the points than to any other point. • These regions may be regarded as the dual of the point set, and are known as proximity polygo",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": ""
+    }
+  ],
+  "generation_guidance": {
+    "recommended_use": [
+      "Use sections as the main units for presentation or classroom-plan generation.",
+      "Use source_refs and page_refs for citations and source-page display.",
+      "Use quiz_items only as lightweight classroom checkpoints; review before formal assessment."
+    ],
+    "language": "Chinese teaching narrative with necessary English GIS terms preserved."
+  },
+  "quality": {
+    "coverage_score": 1.0,
+    "warnings": [
+      "Deterministic first-pass LearningContent; manual review is recommended.",
+      "Image-heavy or low-text pages are tracked separately in low_text_pages.csv."
+    ]
+  },
+  "version": 1,
+  "created_at": "2026-07-18T09:27:22.701607Z",
+  "updated_at": "2026-07-18T09:27:22.701607Z"
+}

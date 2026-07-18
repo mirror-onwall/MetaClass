@@ -1,0 +1,4247 @@
+{
+  "id": "content_spatial_analysis_lecture_12",
+  "material_id": "52a5116093eb62f3",
+  "material_ids": [
+    "52a5116093eb62f3"
+  ],
+  "collection_id": "col_spatial_analysis_kb",
+  "title": "第 12 讲：项目研究",
+  "subtitle": "Project Study 的章节级 LearningContent",
+  "audience": {
+    "level": "undergraduate",
+    "background": "GIS、地理信息科学、遥感或相关专业学生"
+  },
+  "teaching_intent": {
+    "goal": "把空间分析课件知识块组织为可直接进入课堂生成链路的 LearningContent。",
+    "boundary": "本文件不包含向量检索、RAG 编排或最终 PPT/ClassroomPlan 生成。"
+  },
+  "material_overview": {
+    "source": "spatial_analysis PDF knowledge base",
+    "lecture_count": 1,
+    "section_count": 6,
+    "knowledge_unit_count": 6
+  },
+  "global_concepts": [
+    {
+      "id": "global_concept_01",
+      "name": "project",
+      "definition": "",
+      "plain_explanation": "project 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_02",
+      "name": "GIS",
+      "definition": "",
+      "plain_explanation": "GIS 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_03",
+      "name": "https",
+      "definition": "",
+      "plain_explanation": "https 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_04",
+      "name": "model",
+      "definition": "",
+      "plain_explanation": "model 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_05",
+      "name": "flood",
+      "definition": "",
+      "plain_explanation": "flood 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_06",
+      "name": "SDOI",
+      "definition": "",
+      "plain_explanation": "SDOI 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_07",
+      "name": "capacity",
+      "definition": "",
+      "plain_explanation": "capacity 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_08",
+      "name": "resilience",
+      "definition": "",
+      "plain_explanation": "resilience 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_09",
+      "name": "were",
+      "definition": "",
+      "plain_explanation": "were 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_10",
+      "name": "Example",
+      "definition": "",
+      "plain_explanation": "Example 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_11",
+      "name": "urban",
+      "definition": "",
+      "plain_explanation": "urban 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_12",
+      "name": "Disparities",
+      "definition": "",
+      "plain_explanation": "Disparities 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    }
+  ],
+  "knowledge_units": [
+    {
+      "id": "ku_l12_001",
+      "title": "项目研究：project / Example",
+      "unit_type": "workflow",
+      "summary": "易智瑞GIS开发竞赛Examples 组别 作品名称 成果是否公开 遥感应用组 基于ENVI Deep Learning的多源SAR影像海带水淹区域提取与分析 11:26 https://mp.weixin.qq.com/s/wg8J6dCyuTfgkgDiy4vjqA 是 基于时空融合和水量平衡法的若尔盖高原水源涵养功能评价 是 基于风云四号卫星的小时级大气气溶胶和颗粒物监测 是 地理设计组 基于交通建设与生态敏感性耦合协调关系的生态廊道建设预测--以宁夏自治区为例 否 基于深度学习的城市公园游客情感时空分异特征及影响因素研究 ——以福州市区UGC数 据为例 否 基于多层网络的即时配送生活圈时空动态模式挖掘 否 基于空间智能（GeoAI）的地热资源分布预测模型——以华北克拉通为例（浙大） 否 基于机器学习的黄土高原地区滑坡灾害风险评估 14:33 是 2024年易智瑞GIS开发竞赛：https://contest.geoscene.cn A 地图故事组，B 地理设计组（5组一等奖，400余组），C GIS应用开发组，D遥感应用组（12组 一等奖，约350组） 2024地理设计组、遥感应用组一等奖 Example 1: 赵晓燕等.成渝双城经济圈生态环境质量时空演变 格局及其驱动力.生态学报, 2025, 45(1) • 成渝双城经济圈作为我国西部城镇化建设的重要示范区，探究其生态环境质量状况对推动区域社会经济高质量 发展和长江上游生态环境保护意义重大。 • 基于2000—2020年Landsat系列影像数据，运用绿度、湿度、热度、干度指标构建了遥感生态指数 (Remote Se",
+      "aliases": [
+        "project",
+        "Example",
+        "Disparities",
+        "access",
+        "sustainable"
+      ],
+      "keywords": [
+        "project",
+        "Example",
+        "Disparities",
+        "access",
+        "sustainable",
+        "dining",
+        "options",
+        "across",
+        "Tokyo",
+        "Metropolis"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l12_001_01",
+          "name": "project",
+          "definition": "",
+          "plain_explanation": "project 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0002",
+              "page_no": 2,
+              "text_span": "52a5116093eb62f3_p0002_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0007",
+              "page_no": 7,
+              "text_span": "52a5116093eb62f3_p0007_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0008",
+              "page_no": 8,
+              "text_span": "52a5116093eb62f3_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0009",
+              "page_no": 9,
+              "text_span": "52a5116093eb62f3_p0009_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0010",
+              "page_no": 10,
+              "text_span": "52a5116093eb62f3_p0010_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_001_02",
+          "name": "Example",
+          "definition": "",
+          "plain_explanation": "Example 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0002",
+              "page_no": 2,
+              "text_span": "52a5116093eb62f3_p0002_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0007",
+              "page_no": 7,
+              "text_span": "52a5116093eb62f3_p0007_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0008",
+              "page_no": 8,
+              "text_span": "52a5116093eb62f3_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0009",
+              "page_no": 9,
+              "text_span": "52a5116093eb62f3_p0009_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0010",
+              "page_no": 10,
+              "text_span": "52a5116093eb62f3_p0010_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_001_03",
+          "name": "Disparities",
+          "definition": "",
+          "plain_explanation": "Disparities 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0002",
+              "page_no": 2,
+              "text_span": "52a5116093eb62f3_p0002_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0007",
+              "page_no": 7,
+              "text_span": "52a5116093eb62f3_p0007_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0008",
+              "page_no": 8,
+              "text_span": "52a5116093eb62f3_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0009",
+              "page_no": 9,
+              "text_span": "52a5116093eb62f3_p0009_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0010",
+              "page_no": 10,
+              "text_span": "52a5116093eb62f3_p0010_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_001_04",
+          "name": "access",
+          "definition": "",
+          "plain_explanation": "access 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0002",
+              "page_no": 2,
+              "text_span": "52a5116093eb62f3_p0002_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0007",
+              "page_no": 7,
+              "text_span": "52a5116093eb62f3_p0007_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0008",
+              "page_no": 8,
+              "text_span": "52a5116093eb62f3_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0009",
+              "page_no": 9,
+              "text_span": "52a5116093eb62f3_p0009_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0010",
+              "page_no": 10,
+              "text_span": "52a5116093eb62f3_p0010_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_001_05",
+          "name": "sustainable",
+          "definition": "",
+          "plain_explanation": "sustainable 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0002",
+              "page_no": 2,
+              "text_span": "52a5116093eb62f3_p0002_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0007",
+              "page_no": 7,
+              "text_span": "52a5116093eb62f3_p0007_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0008",
+              "page_no": 8,
+              "text_span": "52a5116093eb62f3_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0009",
+              "page_no": 9,
+              "text_span": "52a5116093eb62f3_p0009_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0010",
+              "page_no": 10,
+              "text_span": "52a5116093eb62f3_p0010_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l12_001_01",
+          "text": "易智瑞GIS开发竞赛Examples 组别 作品名称 成果是否公开 遥感应用组 基于ENVI Deep Learning的多源SAR影像海带水淹区域提取与分析 11:26 https://mp.weixin.qq.com/s/wg8J6dCyuTfgkgDiy4vjqA 是 基于时空融合和水量平衡法的若尔盖高原水源涵养功能评价 是 基于风云四号卫星的小时级大气气溶胶和颗粒物监测 是 地理设计组 基于交通建设与生态敏感性耦合协调关系的生态廊道建设预测--以宁夏自治区为例 否 基于深度学习的城市公园游客情感时空分异特征及影响因素研究 ——以福州市区UGC数 据为例 否 基于多层网络的即时配送生活圈时空动态模式挖掘 否 基于空间智能（GeoAI）的地热资源分布预测模型——以华北克拉通为例（浙大） 否 基于机器学习的黄土高原地区滑坡灾害风险评估 14:33 是 2024年易智瑞GIS开发竞赛：https://contest.geoscene.cn A 地图故事组，B 地理设计组（5组一等奖，400余组），C GIS应用开发组，D遥感应用组（12组 一等奖，约350组） 2024地理设计组、遥感",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0002",
+              "page_no": 2,
+              "text_span": "52a5116093eb62f3_p0002_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_001_02",
+          "text": "Example 1: 赵晓燕等.成渝双城经济圈生态环境质量时空演变 格局及其驱动力.生态学报, 2025, 45(1) • 成渝双城经济圈作为我国西部城镇化建设的重要示范区，探究其生态环境质量状况对推动区域社会经济高质量 发展和长江上游生态环境保护意义重大。 • 基于2000—2020年Landsat系列影像数据，运用绿度、湿度、热度、干度指标构建了遥感生态指数 (Remote Sensing Ecological Index, RSEI),采用Sen(Theil-Sen median)斜率估计和MK(Mann-Kendall)检验相结合的趋势分析方 法开展了区域生态环境质量时空变化特征研究。采用最优参数地理探测器模型 (Optimal Parameters Geographic Detector, OPGD)优化了空间数据的尺度效应和分区效应，并对研究区生态环境质量的驱动力进行了分析。 • 结果表明：(1) 2000—2020年间，研究区生态环境质量整体较高，多年RSEI均值为0.63。生态环境质量以良和优为 主，面积占比为61.37%。生态环境质量具有显著的空间异质性。在空间上呈“",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0007",
+              "page_no": 7,
+              "text_span": "52a5116093eb62f3_p0007_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_001_03",
+          "text": "Disparities in access to sustainable dining options across the Tokyo Metropolis. Nature Cities,2025 东京都市圈可持续餐饮选择可及性的差异 东京大学龙吟课题组 摘要： 城市化进程与现代城市生活模式促进了全球城市餐饮格局的多样化。然而，社 会经济系统与个体行为间的复杂互动导致可持续餐饮选择的可及性呈现显著不均衡。 研究利用来自日本东京的 3,649 个菜单项与 112,892 家餐厅的数据，构建了一个评估 可持续餐饮可及性的综合框架。研究结果表明，餐厅显著聚集于火车站周边，证实了 公共交通导向型发展（TOD）对城市餐饮格局形成的重要影响。可持续餐饮选择通过 一个多维度方法进行评估，该方法整合了经济偏好、供应链环境影响及菜单营养质量 等因素。进一步分析揭示，在不同车站周边、铁路线路及行政区之间，可持续餐饮的 可及性存在显著不平等，每日或有多达 900 万乘客处于可持续性较低的餐饮环境中。",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0008",
+              "page_no": 8,
+              "text_span": "52a5116093eb62f3_p0008_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_001_04",
+          "text": "研究背景：城市化进程与现代生活节奏促进了全球城市餐饮格局的多样化 。然而，不健康的饮食模式 对公众健康、经济及环境构成了显著挑战 ，具体表现为慢性病发病率上升 、医疗负担加重 、土地与水资 源消耗增加以及温室气体排放增多 。在此背景下 ，可持续饮食概念应运而生并受到广泛关注 ，该概念强 调兼顾营养需求与环境足迹 。与此同时，工作时间延长 、双职工家庭比例上升及通勤耗时增加等因素 ， 使得外出就餐成为众多城市居民 （以东京为例 ）日常生活中不可或缺的一部分 ，并对居民饮食习惯产生 重要影响。东京作为典型特大城市，其餐饮行业规模庞大。该市以轨道交通为导向的发展模式（TOD）促 使餐厅在交通站点周边呈现集聚分布的特征。 问题动机：鉴于外出就餐在全球都市中的普遍性日益提高、其对可持续发展目标存在多方面影响，以 及现有研究在评估城市外出就餐可持续性方面存在局限 ，本研究的核心科学问题在于：如何构建一个综 合性框架，以全面评估城市环境中可持续外出就餐的可及性 ，并揭示其空间分布的不平等性 。本研究选 取东京作为案例研究区域 ，主要基于其庞大的人口基数 、高度依赖公共交通的出行方式 、普遍的外出就",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0009",
+              "page_no": 9,
+              "text_span": "52a5116093eb62f3_p0009_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_001_05",
+          "text": "研究目标：本研究旨在构建并应用一个多维度的综合评估框架 ，以衡量城市可持续外出 就餐的可及性。该框架整合了评价外出就餐可持续性的关键维度 ，涵盖菜单营养价值、价 格可负担性、餐厅拥挤程度、餐饮选择多样性及供应链环境足迹 。本研究将利用涵盖东京 市逾11万家餐厅及数千项菜单的大规模数据集 ，系统性地评估并揭示在不同空间尺度 （如 轨道交通站点周边、线路沿线、行政区）下，可持续外出就餐可及性存在的显著空间异质 性与不平等。基于评估结果，研究旨在提出针对性干预建议 ，例如通过优化餐厅空间布局， 改善服务欠缺区域的可持续餐饮环境。 Example2: Huang et al. Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0010",
+              "page_no": 10,
+              "text_span": "52a5116093eb62f3_p0010_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0002",
+          "page_no": 2,
+          "text_span": "52a5116093eb62f3_p0002_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0007",
+          "page_no": 7,
+          "text_span": "52a5116093eb62f3_p0007_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0008",
+          "page_no": 8,
+          "text_span": "52a5116093eb62f3_p0008_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0009",
+          "page_no": 9,
+          "text_span": "52a5116093eb62f3_p0009_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0010",
+          "page_no": 10,
+          "text_span": "52a5116093eb62f3_p0010_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0011",
+          "page_no": 11,
+          "text_span": "52a5116093eb62f3_p0011_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 2,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 7,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 8,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 9,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 10,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 11,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "52a5116093eb62f3_p0002_c01",
+        "52a5116093eb62f3_p0007_c01",
+        "52a5116093eb62f3_p0008_c01",
+        "52a5116093eb62f3_p0009_c01",
+        "52a5116093eb62f3_p0010_c01",
+        "52a5116093eb62f3_p0011_c01"
+      ],
+      "relations": [],
+      "importance": "supporting",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l12_002",
+      "title": "项目研究：project / SDOI",
+      "unit_type": "workflow",
+      "summary": "Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis. • 构建并应用五个维度的可持续外 出就餐指数（Sustainable Dining Out Index, SDOI） • 营养价值（基于推荐摄入量计算的 营养密度得分）、 • 环境影响（基于投入产出分析及3EID 数据计算的碳足迹）、 • 餐厅多样性（基于香农多样性指数 与餐厅数量）、 • 价格竞争力（基于POI数据的价格等 级） • 拥挤度（基于站点客流量与餐厅数 量的比值） • 研究亦采用蒙特卡洛模拟对营养 数据假设进行验证，并运用混合整 数线性规划（MILP）模型进行优化 分析 方法 结果1：东京餐厅的空间、经济、 营养及环境特征分析 • 对东京市112,892家餐厅的 分布、价格、营养价值及环 境影响进行了分析 • 结果表明，餐厅分布呈现向 铁路站点集中的趋势。中 心及副中心区域的餐厅密 度（平均306.5家/平方公里） 与平均价格均显著高于外 围区域（57.8家/平方公 里），高价位餐厅亦集中 于此区域。 • 不同类型餐厅的营养效率 与环境影响存在差异… Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+      "aliases": [
+        "project",
+        "SDOI",
+        "Example",
+        "Disparities",
+        "access"
+      ],
+      "keywords": [
+        "project",
+        "SDOI",
+        "Example",
+        "Disparities",
+        "access",
+        "sustainable",
+        "dining",
+        "options",
+        "across",
+        "Tokyo"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l12_002_01",
+          "name": "project",
+          "definition": "",
+          "plain_explanation": "project 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0012",
+              "page_no": 12,
+              "text_span": "52a5116093eb62f3_p0012_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0013",
+              "page_no": 13,
+              "text_span": "52a5116093eb62f3_p0013_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0014",
+              "page_no": 14,
+              "text_span": "52a5116093eb62f3_p0014_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0015",
+              "page_no": 15,
+              "text_span": "52a5116093eb62f3_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0016",
+              "page_no": 16,
+              "text_span": "52a5116093eb62f3_p0016_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_002_02",
+          "name": "SDOI",
+          "definition": "",
+          "plain_explanation": "SDOI 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0012",
+              "page_no": 12,
+              "text_span": "52a5116093eb62f3_p0012_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0013",
+              "page_no": 13,
+              "text_span": "52a5116093eb62f3_p0013_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0014",
+              "page_no": 14,
+              "text_span": "52a5116093eb62f3_p0014_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0015",
+              "page_no": 15,
+              "text_span": "52a5116093eb62f3_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0016",
+              "page_no": 16,
+              "text_span": "52a5116093eb62f3_p0016_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_002_03",
+          "name": "Example",
+          "definition": "",
+          "plain_explanation": "Example 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0012",
+              "page_no": 12,
+              "text_span": "52a5116093eb62f3_p0012_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0013",
+              "page_no": 13,
+              "text_span": "52a5116093eb62f3_p0013_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0014",
+              "page_no": 14,
+              "text_span": "52a5116093eb62f3_p0014_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0015",
+              "page_no": 15,
+              "text_span": "52a5116093eb62f3_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0016",
+              "page_no": 16,
+              "text_span": "52a5116093eb62f3_p0016_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_002_04",
+          "name": "Disparities",
+          "definition": "",
+          "plain_explanation": "Disparities 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0012",
+              "page_no": 12,
+              "text_span": "52a5116093eb62f3_p0012_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0013",
+              "page_no": 13,
+              "text_span": "52a5116093eb62f3_p0013_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0014",
+              "page_no": 14,
+              "text_span": "52a5116093eb62f3_p0014_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0015",
+              "page_no": 15,
+              "text_span": "52a5116093eb62f3_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0016",
+              "page_no": 16,
+              "text_span": "52a5116093eb62f3_p0016_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_002_05",
+          "name": "access",
+          "definition": "",
+          "plain_explanation": "access 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0012",
+              "page_no": 12,
+              "text_span": "52a5116093eb62f3_p0012_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0013",
+              "page_no": 13,
+              "text_span": "52a5116093eb62f3_p0013_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0014",
+              "page_no": 14,
+              "text_span": "52a5116093eb62f3_p0014_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0015",
+              "page_no": 15,
+              "text_span": "52a5116093eb62f3_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0016",
+              "page_no": 16,
+              "text_span": "52a5116093eb62f3_p0016_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l12_002_01",
+          "text": "Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis. • 构建并应用五个维度的可持续外 出就餐指数（Sustainable Dining Out Index, SDOI） • 营养价值（基于推荐摄入量计算的 营养密度得分）、 • 环境影响（基于投入产出分析及3EID 数据计算的碳足迹）、 • 餐厅多样性（基于香农多样性指数 与餐厅数量）、 • 价格竞争力（基于POI数据的价格等 级） • 拥挤度（基于站点客流量与餐厅数 量的比值） • 研究亦采用蒙特卡洛模拟对营养 数据假设进行验证，并运用混合整 数线性规划（MILP）模型进行优化 分析 方法",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0012",
+              "page_no": 12,
+              "text_span": "52a5116093eb62f3_p0012_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_002_02",
+          "text": "结果1：东京餐厅的空间、经济、 营养及环境特征分析 • 对东京市112,892家餐厅的 分布、价格、营养价值及环 境影响进行了分析 • 结果表明，餐厅分布呈现向 铁路站点集中的趋势。中 心及副中心区域的餐厅密 度（平均306.5家/平方公里） 与平均价格均显著高于外 围区域（57.8家/平方公 里），高价位餐厅亦集中 于此区域。 • 不同类型餐厅的营养效率 与环境影响存在差异… Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0013",
+              "page_no": 13,
+              "text_span": "52a5116093eb62f3_p0013_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_002_03",
+          "text": "结果1：东京餐厅的空间、经济、营 养及环境特征分析 结果2：基于可持续外出就餐指数 （SDOI）的东京铁路站点周边餐饮可 及性与不平等性评估 • 研究构建了包含拥挤度、多样性、 环境影响、营养价值和价格竞争力 五个维度的可持续外出就餐指数 （Sustainable Dining Out Index, SDOI)。 • 评估结果揭示了显著的可及性不平 等现象 Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0014",
+              "page_no": 14,
+              "text_span": "52a5116093eb62f3_p0014_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_002_04",
+          "text": "结果2：基于可持续外出就餐指数 （SDOI）的东京铁路站点周边餐饮可 及性与不平等性评估 结果3：东京铁路路线及行政区层面的 可持续外出就餐多尺度不平等性分析 • 该研究将SDOI分析扩展至55条铁路路 线及23个行政区两个空间尺度。线路 层面的分析显示，拥有更多站点或覆 盖主要枢纽的线路（如大江户线、山手线） 整体SDOI相对较高；部分线路（如银 座线）的站点平均SDOI表现突出，但 也存在整体表现欠佳的线路。 Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0015",
+              "page_no": 15,
+              "text_span": "52a5116093eb62f3_p0015_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_002_05",
+          "text": "结果3：东京铁路路线及行政区层 面的可持续外出就餐多尺度不平等 性分析 • 该研究将SDOI分析扩展至55条铁路路 线及23个行政区两个空间尺度。行政 区层面的分析，通过区域整体、站点 平均和面积归一化SDOI三个指标进行 评估，发现中心行政区（如千代田区） 通常表现更优，但也存在区内站点表 现不均衡的现象（如港区）。不同类型 行政区（如商业中心型、住宅区型等）在 SDOI各项指标及餐厅类型构成上呈现 出差异化特征，进一步证实了可持续 餐饮资源在不同空间尺度上分布的不 均衡性。 Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0016",
+              "page_no": 16,
+              "text_span": "52a5116093eb62f3_p0016_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0012",
+          "page_no": 12,
+          "text_span": "52a5116093eb62f3_p0012_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0013",
+          "page_no": 13,
+          "text_span": "52a5116093eb62f3_p0013_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0014",
+          "page_no": 14,
+          "text_span": "52a5116093eb62f3_p0014_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0015",
+          "page_no": 15,
+          "text_span": "52a5116093eb62f3_p0015_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0016",
+          "page_no": 16,
+          "text_span": "52a5116093eb62f3_p0016_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0017",
+          "page_no": 17,
+          "text_span": "52a5116093eb62f3_p0017_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 12,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 13,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 14,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 15,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 16,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 17,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "52a5116093eb62f3_p0012_c01",
+        "52a5116093eb62f3_p0013_c01",
+        "52a5116093eb62f3_p0014_c01",
+        "52a5116093eb62f3_p0015_c01",
+        "52a5116093eb62f3_p0016_c01",
+        "52a5116093eb62f3_p0017_c01"
+      ],
+      "relations": [],
+      "importance": "supporting",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l12_003",
+      "title": "项目研究：project / flood",
+      "unit_type": "workflow",
+      "summary": "Example3: Tayyab et al. GIS-Based Urban Flood Resilience Assessment Using Urban Flood Resilience Model: A Case Study of Peshawar City, Khyber Pakhtunkhwa, Pakistan. Remote Sensing, 2021 ➢ Background ➢ Study Area and Data ➢ Methods ➢ Results and Analysis ➢ Conclusions and Shortcomings Tayyab, M; Zhang, JQ; (...); Al-Shaibah, B..",
+      "aliases": [
+        "project",
+        "flood",
+        "capacity",
+        "model",
+        "resilience"
+      ],
+      "keywords": [
+        "project",
+        "flood",
+        "capacity",
+        "model",
+        "resilience",
+        "urban",
+        "coping",
+        "GIS",
+        "Pakistan",
+        "were"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l12_003_01",
+          "name": "project",
+          "definition": "",
+          "plain_explanation": "project 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0019",
+              "page_no": 19,
+              "text_span": "52a5116093eb62f3_p0019_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0020",
+              "page_no": 20,
+              "text_span": "52a5116093eb62f3_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0021",
+              "page_no": 21,
+              "text_span": "52a5116093eb62f3_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0023",
+              "page_no": 23,
+              "text_span": "52a5116093eb62f3_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0024",
+              "page_no": 24,
+              "text_span": "52a5116093eb62f3_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_003_02",
+          "name": "flood",
+          "definition": "",
+          "plain_explanation": "flood 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0019",
+              "page_no": 19,
+              "text_span": "52a5116093eb62f3_p0019_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0020",
+              "page_no": 20,
+              "text_span": "52a5116093eb62f3_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0021",
+              "page_no": 21,
+              "text_span": "52a5116093eb62f3_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0023",
+              "page_no": 23,
+              "text_span": "52a5116093eb62f3_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0024",
+              "page_no": 24,
+              "text_span": "52a5116093eb62f3_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_003_03",
+          "name": "capacity",
+          "definition": "",
+          "plain_explanation": "capacity 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0019",
+              "page_no": 19,
+              "text_span": "52a5116093eb62f3_p0019_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0020",
+              "page_no": 20,
+              "text_span": "52a5116093eb62f3_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0021",
+              "page_no": 21,
+              "text_span": "52a5116093eb62f3_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0023",
+              "page_no": 23,
+              "text_span": "52a5116093eb62f3_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0024",
+              "page_no": 24,
+              "text_span": "52a5116093eb62f3_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_003_04",
+          "name": "model",
+          "definition": "",
+          "plain_explanation": "model 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0019",
+              "page_no": 19,
+              "text_span": "52a5116093eb62f3_p0019_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0020",
+              "page_no": 20,
+              "text_span": "52a5116093eb62f3_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0021",
+              "page_no": 21,
+              "text_span": "52a5116093eb62f3_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0023",
+              "page_no": 23,
+              "text_span": "52a5116093eb62f3_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0024",
+              "page_no": 24,
+              "text_span": "52a5116093eb62f3_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_003_05",
+          "name": "resilience",
+          "definition": "",
+          "plain_explanation": "resilience 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0019",
+              "page_no": 19,
+              "text_span": "52a5116093eb62f3_p0019_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0020",
+              "page_no": 20,
+              "text_span": "52a5116093eb62f3_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0021",
+              "page_no": 21,
+              "text_span": "52a5116093eb62f3_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0023",
+              "page_no": 23,
+              "text_span": "52a5116093eb62f3_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0024",
+              "page_no": 24,
+              "text_span": "52a5116093eb62f3_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l12_003_01",
+          "text": "Example3: Tayyab et al. GIS-Based Urban Flood Resilience Assessment Using Urban Flood Resilience Model: A Case Study of Peshawar City, Khyber Pakhtunkhwa, Pakistan. Remote Sensing, 2021 ➢ Background ➢ Study Area and Data ➢ Methods ➢ Results and Analysis ➢ Conclusions and Shortcomings Tayyab, M; Zhang, JQ; (...); Al-Shaibah, B..",
+          "type": "case",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0019",
+              "page_no": 19,
+              "text_span": "52a5116093eb62f3_p0019_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_003_02",
+          "text": "Background • 城市韧性 ，是指城市面对冲击和扰动 （自然灾害 、公共卫生 、社会生态三 个主要层面）所具有的预警、抵抗和恢复能力。 • 《中华人民共和国国民经济和社会发展第十四个五年规划和 2035年远景目标纲要 》首 次以国家规划的形式提出建设“韧性城市” It is reported that more than half of the world population is living in urban areas where urban flooding is becoming an increasing public concern",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0020",
+              "page_no": 20,
+              "text_span": "52a5116093eb62f3_p0020_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_003_03",
+          "text": "Background https://public.emdat.be/mapping • Urban flooding has been an alarming issue in the past around the globe, particularly in South Asia. • Pakistan is no exception from this situation where urban floods with associated damages are frequently occurring phenomena. • 14 June 2022 - October 2022 floods in Pakistan killed 1,739 people, and caused ₨ 3.2 trillion ($14.9 billion) of damage and ₨ 3.3 trillion ($15.2 billion) of economic losses.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0021",
+              "page_no": 21,
+              "text_span": "52a5116093eb62f3_p0021_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_003_04",
+          "text": "Study Area and Data Data Acquisition •The questionnaire consists of questions related to past flood damages and coping capacity (economic capacity, institutional capacity, education level) of the respondents and local people. •The investigations were carried out on building material, population awareness level, dependent population, education level, community dependency, and external support for the coping capacity factor. • The coping capacity was measured by investigating the early warning mec",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0023",
+              "page_no": 23,
+              "text_span": "52a5116093eb62f3_p0023_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_003_05",
+          "text": "Methods ➢ The UFResi-M includes four main factors: flood hazard, exposure, susceptibility, and coping capacity. ➢ The model has five significant steps: • Step 1: Parameters are generated in raster layer • Step 2: Weightage is assigned through AHP (analytical hierarchy process) • Step 3: Focuses on the reclassification of all parameters and generates final maps of each criterion • Step 4: Urban flood resilience index (UFRI) is calculated using the Equation. • Step 5: the resultant urban flood res",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0024",
+              "page_no": 24,
+              "text_span": "52a5116093eb62f3_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [
+        {
+          "id": "example_ku_l12_003_01",
+          "title": "项目研究：project / flood 的应用案例",
+          "scenario": "从课件中的案例或应用页出发，让学生判断空间分析方法的适用场景。",
+          "explanation": "Example3: Tayyab et al. GIS-Based Urban Flood Resilience Assessment Using Urban Flood Resilience Model: A Case Study of Peshawar City, Khyber Pakhtunkhwa, Pakistan. Remote Sensing, 2021 ➢ Background ➢ Study Area and Data ➢ Methods ➢ Results and Analysis ➢ Conclusions and Shortcomings Tayyab, M; Zhang, JQ; (...); Al-Shaibah, B..",
+          "takeaway": "案例学习的重点是把方法、数据条件和结果解释连接起来。",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0019",
+              "page_no": 19,
+              "text_span": "52a5116093eb62f3_p0019_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0020",
+              "page_no": 20,
+              "text_span": "52a5116093eb62f3_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0021",
+              "page_no": 21,
+              "text_span": "52a5116093eb62f3_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0023",
+              "page_no": 23,
+              "text_span": "52a5116093eb62f3_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0024",
+              "page_no": 24,
+              "text_span": "52a5116093eb62f3_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0019",
+          "page_no": 19,
+          "text_span": "52a5116093eb62f3_p0019_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0020",
+          "page_no": 20,
+          "text_span": "52a5116093eb62f3_p0020_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0021",
+          "page_no": 21,
+          "text_span": "52a5116093eb62f3_p0021_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0023",
+          "page_no": 23,
+          "text_span": "52a5116093eb62f3_p0023_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0024",
+          "page_no": 24,
+          "text_span": "52a5116093eb62f3_p0024_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0025",
+          "page_no": 25,
+          "text_span": "52a5116093eb62f3_p0025_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 19,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 20,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 21,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 23,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 24,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 25,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "52a5116093eb62f3_p0019_c01",
+        "52a5116093eb62f3_p0020_c01",
+        "52a5116093eb62f3_p0021_c01",
+        "52a5116093eb62f3_p0023_c01",
+        "52a5116093eb62f3_p0024_c01",
+        "52a5116093eb62f3_p0025_c01"
+      ],
+      "relations": [],
+      "importance": "supporting",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l12_004",
+      "title": "项目研究：project / Flood",
+      "unit_type": "workflow",
+      "summary": "Methods Generation of Basic Parameters: Flood Hazard Measure flood hazards with the six subfactors: 1. Elevation 2.Land use and land cover (LULC) 3.Curve Number (CN) Grid 4. Slope 5.Rainfall Grid 6.Flood Damage Three Hydrological Soil Groups (B, C, D), as shown in Figure 3c, where group “B” has relatively moderate-low runoff potential, with 50–90% of sand and 10 to 20% of clay characteristics; group “C” consists of moderately high runoff potential, with <50% of sand and 20–40% clay.",
+      "aliases": [
+        "project",
+        "Flood",
+        "high",
+        "GIS",
+        "grid"
+      ],
+      "keywords": [
+        "project",
+        "Flood",
+        "high",
+        "GIS",
+        "grid",
+        "Methods",
+        "Generation",
+        "Basic",
+        "Parameters",
+        "runoff"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l12_004_01",
+          "name": "project",
+          "definition": "",
+          "plain_explanation": "project 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0028",
+              "page_no": 28,
+              "text_span": "52a5116093eb62f3_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0029",
+              "page_no": 29,
+              "text_span": "52a5116093eb62f3_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0030",
+              "page_no": 30,
+              "text_span": "52a5116093eb62f3_p0030_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0031",
+              "page_no": 31,
+              "text_span": "52a5116093eb62f3_p0031_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0032",
+              "page_no": 32,
+              "text_span": "52a5116093eb62f3_p0032_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_004_02",
+          "name": "Flood",
+          "definition": "",
+          "plain_explanation": "Flood 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0028",
+              "page_no": 28,
+              "text_span": "52a5116093eb62f3_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0029",
+              "page_no": 29,
+              "text_span": "52a5116093eb62f3_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0030",
+              "page_no": 30,
+              "text_span": "52a5116093eb62f3_p0030_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0031",
+              "page_no": 31,
+              "text_span": "52a5116093eb62f3_p0031_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0032",
+              "page_no": 32,
+              "text_span": "52a5116093eb62f3_p0032_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_004_03",
+          "name": "high",
+          "definition": "",
+          "plain_explanation": "high 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0028",
+              "page_no": 28,
+              "text_span": "52a5116093eb62f3_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0029",
+              "page_no": 29,
+              "text_span": "52a5116093eb62f3_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0030",
+              "page_no": 30,
+              "text_span": "52a5116093eb62f3_p0030_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0031",
+              "page_no": 31,
+              "text_span": "52a5116093eb62f3_p0031_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0032",
+              "page_no": 32,
+              "text_span": "52a5116093eb62f3_p0032_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_004_04",
+          "name": "GIS",
+          "definition": "",
+          "plain_explanation": "GIS 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0028",
+              "page_no": 28,
+              "text_span": "52a5116093eb62f3_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0029",
+              "page_no": 29,
+              "text_span": "52a5116093eb62f3_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0030",
+              "page_no": 30,
+              "text_span": "52a5116093eb62f3_p0030_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0031",
+              "page_no": 31,
+              "text_span": "52a5116093eb62f3_p0031_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0032",
+              "page_no": 32,
+              "text_span": "52a5116093eb62f3_p0032_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_004_05",
+          "name": "grid",
+          "definition": "",
+          "plain_explanation": "grid 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0028",
+              "page_no": 28,
+              "text_span": "52a5116093eb62f3_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0029",
+              "page_no": 29,
+              "text_span": "52a5116093eb62f3_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0030",
+              "page_no": 30,
+              "text_span": "52a5116093eb62f3_p0030_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0031",
+              "page_no": 31,
+              "text_span": "52a5116093eb62f3_p0031_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0032",
+              "page_no": 32,
+              "text_span": "52a5116093eb62f3_p0032_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l12_004_01",
+          "text": "Methods Generation of Basic Parameters: Flood Hazard Measure flood hazards with the six subfactors: 1. Elevation 2.Land use and land cover (LULC) 3.Curve Number (CN) Grid 4. Slope 5.Rainfall Grid 6.Flood Damage Three Hydrological Soil Groups (B, C, D), as shown in Figure 3c, where group “B” has relatively moderate-low runoff potential, with 50–90% of sand and 10 to 20% of clay characteristics; group “C” consists of moderately high runoff potential, with <50% of sand and 20–40% clay.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0028",
+              "page_no": 28,
+              "text_span": "52a5116093eb62f3_p0028_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_004_02",
+          "text": "Methods Measure flood hazards with the six subfactors: 1. Elevation 2.Land use and land cover (LULC) 3.Curve Number (CN) Grid 4. Slope 5.Rainfall Grid 6.Flood Damage The CN grid is a spatial grid used to identify the surface runoff potential of a region.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0029",
+              "page_no": 29,
+              "text_span": "52a5116093eb62f3_p0029_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_004_03",
+          "text": "Methods • Exposure can be defined as the proximity or closeness of the people, property, system or other elements to the hazard zones that are thereby subject to potential losses in case of any disasters. • The following four parameters were used for measuring the exposure: 1. Annual Income, ranking from 1 to 5, rank 1 shows the high annual income… 2.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0030",
+              "page_no": 30,
+              "text_span": "52a5116093eb62f3_p0030_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_004_04",
+          "text": "Methods • Commercial buildings, residential buildings, and other buildings (government infrastructure) are the elements that can be susceptible, revealing the urban flood susceptibility of the study area. • The data were collected from the Planning and Development Department of KP and analyzed in SPSS. Generation of Basic Parameters: Flood Susceptibility",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0031",
+              "page_no": 31,
+              "text_span": "52a5116093eb62f3_p0031_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_004_05",
+          "text": "Methods • The coping capacity or adaptive mechanism /capacity refer to the measures/actions taken by the local people using resources before, during, or after floods to minimize adverse effects. • Measure the coping capacity with the following three parameter: 1. Institutional Capacity The data for institutional capacity were collected through a structured questionnaire from the field.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0032",
+              "page_no": 32,
+              "text_span": "52a5116093eb62f3_p0032_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0028",
+          "page_no": 28,
+          "text_span": "52a5116093eb62f3_p0028_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0029",
+          "page_no": 29,
+          "text_span": "52a5116093eb62f3_p0029_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0030",
+          "page_no": 30,
+          "text_span": "52a5116093eb62f3_p0030_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0031",
+          "page_no": 31,
+          "text_span": "52a5116093eb62f3_p0031_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0032",
+          "page_no": 32,
+          "text_span": "52a5116093eb62f3_p0032_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0033",
+          "page_no": 33,
+          "text_span": "52a5116093eb62f3_p0033_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 28,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 29,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 30,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 31,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 32,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 33,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "52a5116093eb62f3_p0028_c01",
+        "52a5116093eb62f3_p0029_c01",
+        "52a5116093eb62f3_p0030_c01",
+        "52a5116093eb62f3_p0031_c01",
+        "52a5116093eb62f3_p0032_c01",
+        "52a5116093eb62f3_p0033_c01"
+      ],
+      "relations": [],
+      "importance": "supporting",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l12_005",
+      "title": "项目研究：project / model",
+      "unit_type": "workflow",
+      "summary": "Results and Analysis • The hazard-, exposure-, and susceptibility-weighted maps were reclassified into five classes through “Reclass” in the Spatial Analyst tool, with the help of the natural breaks (Jenks) method. • After reclassification, a raster calculator was used to obtain the final map, utilizing Equation (3). Urban Flood Resilience UFRI= [1-(IH IE  IS)]  m1 + [1- ICc]  m2 (3) Results and Analysis • The validation and performance evaluation of the proposed model was carried out through the receiver operating characteristic (ROC) curve and area under the curve (AUC) using historical damage locations [66,74].",
+      "aliases": [
+        "project",
+        "model",
+        "https",
+        "have",
+        "resilience"
+      ],
+      "keywords": [
+        "project",
+        "model",
+        "https",
+        "have",
+        "resilience",
+        "curve",
+        "area",
+        "parts",
+        "very",
+        "classification"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l12_005_01",
+          "name": "project",
+          "definition": "",
+          "plain_explanation": "project 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0034",
+              "page_no": 34,
+              "text_span": "52a5116093eb62f3_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0035",
+              "page_no": 35,
+              "text_span": "52a5116093eb62f3_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0037",
+              "page_no": 37,
+              "text_span": "52a5116093eb62f3_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0038",
+              "page_no": 38,
+              "text_span": "52a5116093eb62f3_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0039",
+              "page_no": 39,
+              "text_span": "52a5116093eb62f3_p0039_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_005_02",
+          "name": "model",
+          "definition": "",
+          "plain_explanation": "model 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0034",
+              "page_no": 34,
+              "text_span": "52a5116093eb62f3_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0035",
+              "page_no": 35,
+              "text_span": "52a5116093eb62f3_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0037",
+              "page_no": 37,
+              "text_span": "52a5116093eb62f3_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0038",
+              "page_no": 38,
+              "text_span": "52a5116093eb62f3_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0039",
+              "page_no": 39,
+              "text_span": "52a5116093eb62f3_p0039_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_005_03",
+          "name": "https",
+          "definition": "",
+          "plain_explanation": "https 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0034",
+              "page_no": 34,
+              "text_span": "52a5116093eb62f3_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0035",
+              "page_no": 35,
+              "text_span": "52a5116093eb62f3_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0037",
+              "page_no": 37,
+              "text_span": "52a5116093eb62f3_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0038",
+              "page_no": 38,
+              "text_span": "52a5116093eb62f3_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0039",
+              "page_no": 39,
+              "text_span": "52a5116093eb62f3_p0039_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_005_04",
+          "name": "have",
+          "definition": "",
+          "plain_explanation": "have 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0034",
+              "page_no": 34,
+              "text_span": "52a5116093eb62f3_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0035",
+              "page_no": 35,
+              "text_span": "52a5116093eb62f3_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0037",
+              "page_no": 37,
+              "text_span": "52a5116093eb62f3_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0038",
+              "page_no": 38,
+              "text_span": "52a5116093eb62f3_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0039",
+              "page_no": 39,
+              "text_span": "52a5116093eb62f3_p0039_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_005_05",
+          "name": "resilience",
+          "definition": "",
+          "plain_explanation": "resilience 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0034",
+              "page_no": 34,
+              "text_span": "52a5116093eb62f3_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0035",
+              "page_no": 35,
+              "text_span": "52a5116093eb62f3_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0037",
+              "page_no": 37,
+              "text_span": "52a5116093eb62f3_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0038",
+              "page_no": 38,
+              "text_span": "52a5116093eb62f3_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0039",
+              "page_no": 39,
+              "text_span": "52a5116093eb62f3_p0039_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l12_005_01",
+          "text": "Results and Analysis • The hazard-, exposure-, and susceptibility-weighted maps were reclassified into five classes through “Reclass” in the Spatial Analyst tool, with the help of the natural breaks (Jenks) method. • After reclassification, a raster calculator was used to obtain the final map, utilizing Equation (3). Urban Flood Resilience UFRI= [1-(IH IE  IS)]  m1 + [1- ICc]  m2 (3)",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0034",
+              "page_no": 34,
+              "text_span": "52a5116093eb62f3_p0034_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_005_02",
+          "text": "Results and Analysis • The validation and performance evaluation of the proposed model was carried out through the receiver operating characteristic (ROC) curve and area under the curve (AUC) using historical damage locations [66,74]. • For validation, 142 sites (71 flooddamaged locations and 71 nondamaged locations) were considered from historical flood reports. • The result shows that the AUC value for the proposed model was 0.904 Model Validation",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0035",
+              "page_no": 35,
+              "text_span": "52a5116093eb62f3_p0035_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_005_03",
+          "text": "Conclusions and Shortcomings • The result showed that in the Westzone of the study area, the northwestern and central parts have very high resilience, whereas the southern and southwestern parts have very low resilience. • Similarly, in the East zone of the study area, the northwest and southwest parts have very high resilience, while the northern and western parts have very low resilience. • The likelihood of the proposed model was also determined using the receiver operating characteristic (RO",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0037",
+              "page_no": 37,
+              "text_span": "52a5116093eb62f3_p0037_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_005_04",
+          "text": "Understanding tourists travel behavior before, during and after the trip with data from social media platforms. Transactions in GIS, 2023, 00, 1–25. https://doi.org/10.1111/tgis.13051 《利用社交媒体平台数据了解游客在旅行前、中、后的旅行行为 》 https://mp.weixin.qq.com/s/8zfNXVM1oI6Fl9s7hbh0mQ",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0038",
+              "page_no": 38,
+              "text_span": "52a5116093eb62f3_p0038_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_005_05",
+          "text": "More Examples • 中国市域尺度旅游安全事件集群强度的测度与演化态势，地理学报，2025 • 1843—2020年上海城市扩张时空过程及机理分析，地理学报，2024 • 广东省城乡居民用电不平等性的时空特征，地理学报，2025 • 美国对外援助的时空演化及其驱动路径，地理学报，2025 • 中国城市区域高质量发展时空分异及影响因素，地理学报，2024 • 东海海岸带县域城市韧性演化及影响因素，地理学报，2024 • 百度街景和GSENet模型相结合的兰州市绿视率时空变化分析，地球信息科学学报，2025 • 基于轨迹数据的出租车潜在充电需求估计及时空特征分解，地球信息科学学报，2024 • 基于手机画像数据的南京内城日夜间社会空间分异，地理学报，2024 • 宁夏荒漠草原带生态环境质量时空变化及其驱动机制，生态学报，2024 • 青藏高原各主要植被类型特征及环境差异，生态学报，2024 • 海峡两岸生态环境质量差异性评价及港口发展对其的影响，生态学报，2024 • 社交媒介驱动下城市游憩空间分布差异与形成机制——基于网红空间与实体空间的对比分析，经济地理，2025 • 全球体",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0039",
+              "page_no": 39,
+              "text_span": "52a5116093eb62f3_p0039_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0034",
+          "page_no": 34,
+          "text_span": "52a5116093eb62f3_p0034_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0035",
+          "page_no": 35,
+          "text_span": "52a5116093eb62f3_p0035_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0037",
+          "page_no": 37,
+          "text_span": "52a5116093eb62f3_p0037_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0038",
+          "page_no": 38,
+          "text_span": "52a5116093eb62f3_p0038_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0039",
+          "page_no": 39,
+          "text_span": "52a5116093eb62f3_p0039_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0043",
+          "page_no": 43,
+          "text_span": "52a5116093eb62f3_p0043_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 34,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 35,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 37,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 38,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 39,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 43,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "52a5116093eb62f3_p0034_c01",
+        "52a5116093eb62f3_p0035_c01",
+        "52a5116093eb62f3_p0037_c01",
+        "52a5116093eb62f3_p0038_c01",
+        "52a5116093eb62f3_p0039_c01",
+        "52a5116093eb62f3_p0043_c01"
+      ],
+      "relations": [],
+      "importance": "supporting",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l12_006",
+      "title": "项目研究：https / project",
+      "unit_type": "workflow",
+      "summary": " 武 装 冲 突 位 置 与 事 件 数 据 项 目 ： ACLED | Bringing Clarity to Crisis (acleddata.com) https://acleddata.com/data-export-tool/  全球自然灾害数据 https://public.emdat.be/  中国裁判文书网（https://wenshu.court.gov.cn/） 林火、偷猎等  全球行政区划边界数据： https://gadm.org/  OpenStreetMap数据：https://www.openstreetmap.org/  2020 年 1KM 分 辨 率 全 球 人 口 密 度 数 据 ： https://www.worldpop.org/geodata/summary?id=24777  百度地图数据  高德地图数据  ArcGIS Online数据 ……  《中国城市统计年鉴》：地级城市人口数、建成区面积及水资源总量、绿地面积、工业废气废水排放量、 GDP等  《中国城市建设统计年鉴》：按省和按城市分列的城市人口、建设用地、市政公共设施水平、公共供水、 煤气、天然气、液化石油气、城市集中供热、排水和污水处理、市容环境卫生、城市园林绿化  《中国农村统计年鉴》：各地区农作物受灾（旱灾、洪涝灾）面积，各地区农用化肥施用量，各地区主要 农用地面积（耕地、园地、林地、草地），各地区农用塑料薄膜、地膜、农药使用量、各地区地膜覆盖面 积，主要农村经济指标总产量与人均产量（粮食、棉花、油料、糖料、肉类、蔬菜、水果、奶类），国外 主",
+      "aliases": [
+        "https",
+        "project",
+        "GIS",
+        "acleddata",
+        "public"
+      ],
+      "keywords": [
+        "https",
+        "project",
+        "GIS",
+        "acleddata",
+        "public",
+        "emdat",
+        "ACLED",
+        "Bringing",
+        "Clarity",
+        "Crisis"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l12_006_01",
+          "name": "https",
+          "definition": "",
+          "plain_explanation": "https 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0044",
+              "page_no": 44,
+              "text_span": "52a5116093eb62f3_p0044_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0045",
+              "page_no": 45,
+              "text_span": "52a5116093eb62f3_p0045_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_006_02",
+          "name": "project",
+          "definition": "",
+          "plain_explanation": "project 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0044",
+              "page_no": 44,
+              "text_span": "52a5116093eb62f3_p0044_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0045",
+              "page_no": 45,
+              "text_span": "52a5116093eb62f3_p0045_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_006_03",
+          "name": "GIS",
+          "definition": "",
+          "plain_explanation": "GIS 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0044",
+              "page_no": 44,
+              "text_span": "52a5116093eb62f3_p0044_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0045",
+              "page_no": 45,
+              "text_span": "52a5116093eb62f3_p0045_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_006_04",
+          "name": "acleddata",
+          "definition": "",
+          "plain_explanation": "acleddata 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0044",
+              "page_no": 44,
+              "text_span": "52a5116093eb62f3_p0044_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0045",
+              "page_no": 45,
+              "text_span": "52a5116093eb62f3_p0045_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l12_006_05",
+          "name": "public",
+          "definition": "",
+          "plain_explanation": "public 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0044",
+              "page_no": 44,
+              "text_span": "52a5116093eb62f3_p0044_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0045",
+              "page_no": 45,
+              "text_span": "52a5116093eb62f3_p0045_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l12_006_01",
+          "text": " 武 装 冲 突 位 置 与 事 件 数 据 项 目 ： ACLED | Bringing Clarity to Crisis (acleddata.com) https://acleddata.com/data-export-tool/  全球自然灾害数据 https://public.emdat.be/  中国裁判文书网（https://wenshu.court.gov.cn/） 林火、偷猎等  全球行政区划边界数据： https://gadm.org/  OpenStreetMap数据：https://www.openstreetmap.org/  2020 年 1KM 分 辨 率 全 球 人 口 密 度 数 据 ： https://www.worldpop.org/geodata/summary?id=24777  百度地图数据  高德地图数据  ArcGIS Online数据 ……",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0044",
+              "page_no": 44,
+              "text_span": "52a5116093eb62f3_p0044_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_006_02",
+          "text": " 《中国城市统计年鉴》：地级城市人口数、建成区面积及水资源总量、绿地面积、工业废气废水排放量、 GDP等  《中国城市建设统计年鉴》：按省和按城市分列的城市人口、建设用地、市政公共设施水平、公共供水、 煤气、天然气、液化石油气、城市集中供热、排水和污水处理、市容环境卫生、城市园林绿化  《中国农村统计年鉴》：各地区农作物受灾（旱灾、洪涝灾）面积，各地区农用化肥施用量，各地区主要 农用地面积（耕地、园地、林地、草地），各地区农用塑料薄膜、地膜、农药使用量、各地区地膜覆盖面 积，主要农村经济指标总产量与人均产量（粮食、棉花、油料、糖料、肉类、蔬菜、水果、奶类），国外 主要农业指标  《中国投资领域统计年鉴》  《中国房地产统计年鉴》（35个大中城市房地产相关数据）  《中国零售和餐饮连锁企业统计年鉴》  《中国文物文化和旅游统计年鉴》  世界自然与文化 遗产保护区： http://whc.unesco.org/en/list  全球灾害数据 库：https://public.emdat.be/  世界银行数据： https://datacatalog.worldbank",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0045",
+              "page_no": 45,
+              "text_span": "52a5116093eb62f3_p0045_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0044",
+          "page_no": 44,
+          "text_span": "52a5116093eb62f3_p0044_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0045",
+          "page_no": 45,
+          "text_span": "52a5116093eb62f3_p0045_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 44,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 45,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "52a5116093eb62f3_p0044_c01",
+        "52a5116093eb62f3_p0045_c01"
+      ],
+      "relations": [],
+      "importance": "supporting",
+      "confidence": 0.82
+    }
+  ],
+  "knowledge_tree": {
+    "id": "tree_spatial_analysis_lecture_12",
+    "title": "第 12 讲：项目研究",
+    "nodes": [
+      {
+        "id": "node_lecture_12",
+        "title": "第 12 讲：项目研究",
+        "role": "chapter",
+        "summary": "易智瑞GIS开发竞赛Examples 组别 作品名称 成果是否公开 遥感应用组 基于ENVI Deep Learning的多源SAR影像海带水淹区域提取与分析 11:26 https://mp.weixin.qq.com/s/wg8J6dCyuTfgkgDiy4vjqA 是 基于时空融合和水量平衡法的若尔盖高原水源涵养功能评价 是 基于风云四号卫星的小时级大气气溶胶和颗粒物监测 是 地理设计组 基于交通建设与生态敏感性耦合协调关系的生态廊道建设预测--以宁夏自治区为例 否 基于深度学习的城市公园游客情感时空分异特征及影响因素研究 ——以福州市区UGC数 据为例 否 基于多层网络的即时配送生活圈时空动态模式挖掘 否 基于空间智能（GeoAI）的地热资源分布预测模型——以华北克拉通为例（浙大） 否 基于机器学习的黄土高原地区滑坡灾害风险评估 14:33 是 2024年易智瑞GIS开发竞赛：https://contest.geoscene.cn A 地图故事组，B 地理设计组（5组一等奖，400余组），C GIS应用开发组，D遥感应用组（12组 一等奖，约350组） 2024地理设计组、遥感应用组一等奖 Example 1: 赵晓燕等.成渝双城经济圈生态环境质量时空演变 格局及其驱动力.生态学报, 2025, 45(1) • 成渝双城经济圈作为我国西部城镇化建设的重要示范区，探究其生态环",
+        "parent_id": null,
+        "knowledge_unit_ids": [],
+        "order": 12,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l12_001",
+        "title": "项目研究：project / Example",
+        "role": "workflow",
+        "summary": "易智瑞GIS开发竞赛Examples 组别 作品名称 成果是否公开 遥感应用组 基于ENVI Deep Learning的多源SAR影像海带水淹区域提取与分析 11:26 https://mp.weixin.qq.com/s/wg8J6dCyuTfgkgDiy4vjqA 是 基于时空融合和水量平衡法的若尔盖高原水源涵养功能评价 是 基于风云四号卫星的小时级大气气溶胶和颗粒物监测 是 地理设计组 基于交通建设与生态敏感性耦合协调关系的生态廊道建设预测--以宁夏自治区为例 否 基于深度学习的城市公园游客情感时空分异特征及影响因素研究 ——以福州市区UGC数 据为例 否 基于多层网络的即时配送生活圈时空动态模式挖掘 否 基于空间智能（GeoAI）的地热资源分布预测模型——以华北克拉通为例（浙大） 否 基于机器学习的黄土高原地区滑坡灾害风险评估 14:33 是 2024年易智瑞GIS开发竞赛：https://contest.geoscene.cn A 地图故事组，B 地理设计组（5组一等奖，400余组），C GIS应用开发组，D遥感应用组（12组 一等奖，约350组） 2024地理设计组、遥感应用组一等奖 Example 1: 赵晓燕等.成渝双城经济圈生态环境质量时空演变 格局及其驱动力.生态学报, 2025, 45(1) • 成渝双城经济圈作为我国西部城镇化建设的重要示范区，探究其生态环境质量状况对推动区域社会经济高质量 发展和长江上游生态环境保护意义重大。 • 基于2000—2020年Landsat系列影像数据，运用绿度、湿度、热度、干度指标构建了遥感生态指数 (Remote Se",
+        "parent_id": "node_lecture_12",
+        "knowledge_unit_ids": [
+          "ku_l12_001"
+        ],
+        "order": 1,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l12_002",
+        "title": "项目研究：project / SDOI",
+        "role": "workflow",
+        "summary": "Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis. • 构建并应用五个维度的可持续外 出就餐指数（Sustainable Dining Out Index, SDOI） • 营养价值（基于推荐摄入量计算的 营养密度得分）、 • 环境影响（基于投入产出分析及3EID 数据计算的碳足迹）、 • 餐厅多样性（基于香农多样性指数 与餐厅数量）、 • 价格竞争力（基于POI数据的价格等 级） • 拥挤度（基于站点客流量与餐厅数 量的比值） • 研究亦采用蒙特卡洛模拟对营养 数据假设进行验证，并运用混合整 数线性规划（MILP）模型进行优化 分析 方法 结果1：东京餐厅的空间、经济、 营养及环境特征分析 • 对东京市112,892家餐厅的 分布、价格、营养价值及环 境影响进行了分析 • 结果表明，餐厅分布呈现向 铁路站点集中的趋势。中 心及副中心区域的餐厅密 度（平均306.5家/平方公里） 与平均价格均显著高于外 围区域（57.8家/平方公 里），高价位餐厅亦集中 于此区域。 • 不同类型餐厅的营养效率 与环境影响存在差异… Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+        "parent_id": "node_lecture_12",
+        "knowledge_unit_ids": [
+          "ku_l12_002"
+        ],
+        "order": 2,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l12_003",
+        "title": "项目研究：project / flood",
+        "role": "workflow",
+        "summary": "Example3: Tayyab et al. GIS-Based Urban Flood Resilience Assessment Using Urban Flood Resilience Model: A Case Study of Peshawar City, Khyber Pakhtunkhwa, Pakistan. Remote Sensing, 2021 ➢ Background ➢ Study Area and Data ➢ Methods ➢ Results and Analysis ➢ Conclusions and Shortcomings Tayyab, M; Zhang, JQ; (...); Al-Shaibah, B..",
+        "parent_id": "node_lecture_12",
+        "knowledge_unit_ids": [
+          "ku_l12_003"
+        ],
+        "order": 3,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l12_004",
+        "title": "项目研究：project / Flood",
+        "role": "workflow",
+        "summary": "Methods Generation of Basic Parameters: Flood Hazard Measure flood hazards with the six subfactors: 1. Elevation 2.Land use and land cover (LULC) 3.Curve Number (CN) Grid 4. Slope 5.Rainfall Grid 6.Flood Damage Three Hydrological Soil Groups (B, C, D), as shown in Figure 3c, where group “B” has relatively moderate-low runoff potential, with 50–90% of sand and 10 to 20% of clay characteristics; group “C” consists of moderately high runoff potential, with <50% of sand and 20–40% clay.",
+        "parent_id": "node_lecture_12",
+        "knowledge_unit_ids": [
+          "ku_l12_004"
+        ],
+        "order": 4,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l12_005",
+        "title": "项目研究：project / model",
+        "role": "workflow",
+        "summary": "Results and Analysis • The hazard-, exposure-, and susceptibility-weighted maps were reclassified into five classes through “Reclass” in the Spatial Analyst tool, with the help of the natural breaks (Jenks) method. • After reclassification, a raster calculator was used to obtain the final map, utilizing Equation (3). Urban Flood Resilience UFRI= [1-(IH IE  IS)]  m1 + [1- ICc]  m2 (3) Results and Analysis • The validation and performance evaluation of the proposed model was carried out through the receiver operating characteristic (ROC) curve and area under the curve (AUC) using historical damage locations [66,74].",
+        "parent_id": "node_lecture_12",
+        "knowledge_unit_ids": [
+          "ku_l12_005"
+        ],
+        "order": 5,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l12_006",
+        "title": "项目研究：https / project",
+        "role": "workflow",
+        "summary": " 武 装 冲 突 位 置 与 事 件 数 据 项 目 ： ACLED | Bringing Clarity to Crisis (acleddata.com) https://acleddata.com/data-export-tool/  全球自然灾害数据 https://public.emdat.be/  中国裁判文书网（https://wenshu.court.gov.cn/） 林火、偷猎等  全球行政区划边界数据： https://gadm.org/  OpenStreetMap数据：https://www.openstreetmap.org/  2020 年 1KM 分 辨 率 全 球 人 口 密 度 数 据 ： https://www.worldpop.org/geodata/summary?id=24777  百度地图数据  高德地图数据  ArcGIS Online数据 ……  《中国城市统计年鉴》：地级城市人口数、建成区面积及水资源总量、绿地面积、工业废气废水排放量、 GDP等  《中国城市建设统计年鉴》：按省和按城市分列的城市人口、建设用地、市政公共设施水平、公共供水、 煤气、天然气、液化石油气、城市集中供热、排水和污水处理、市容环境卫生、城市园林绿化  《中国农村统计年鉴》：各地区农作物受灾（旱灾、洪涝灾）面积，各地区农用化肥施用量，各地区主要 农用地面积（耕地、园地、林地、草地），各地区农用塑料薄膜、地膜、农药使用量、各地区地膜覆盖面 积，主要农村经济指标总产量与人均产量（粮食、棉花、油料、糖料、肉类、蔬菜、水果、奶类），国外 主",
+        "parent_id": "node_lecture_12",
+        "knowledge_unit_ids": [
+          "ku_l12_006"
+        ],
+        "order": 6,
+        "prerequisite_node_ids": []
+      }
+    ],
+    "root_node_ids": [
+      "node_lecture_12"
+    ],
+    "teaching_sequence": [
+      "node_l12_001",
+      "node_l12_002",
+      "node_l12_003",
+      "node_l12_004",
+      "node_l12_005",
+      "node_l12_006"
+    ],
+    "orphan_unit_ids": [],
+    "warnings": [
+      "This LearningContent was generated deterministically from the spatial_analysis knowledge-base chunks.",
+      "Review low-text pages and chunk labels before high-stakes classroom use."
+    ]
+  },
+  "objectives": [
+    "理解项目研究中的核心概念和方法。",
+    "能够解释关键术语、适用条件和典型应用。",
+    "能够基于来源页码组织课堂讲解和检查题。"
+  ],
+  "sections": [
+    {
+      "id": "section_l12_001",
+      "title": "项目研究：project / Example",
+      "role": "workflow",
+      "content_goal": "帮助学生理解并能应用：项目研究：project / Example",
+      "summary": "易智瑞GIS开发竞赛Examples 组别 作品名称 成果是否公开 遥感应用组 基于ENVI Deep Learning的多源SAR影像海带水淹区域提取与分析 11:26 https://mp.weixin.qq.com/s/wg8J6dCyuTfgkgDiy4vjqA 是 基于时空融合和水量平衡法的若尔盖高原水源涵养功能评价 是 基于风云四号卫星的小时级大气气溶胶和颗粒物监测 是 地理设计组 基于交通建设与生态敏感性耦合协调关系的生态廊道建设预测--以宁夏自治区为例 否 基于深度学习的城市公园游客情感时空分异特征及影响因素研究 ——以福州市区UGC数 据为例 否 基于多层网络的即时配送生活圈时空动态模式挖掘 否 基于空间智能（GeoAI）的地热资源分布预测模型——以华北克拉通为例（浙大） 否 基于机器学习的黄土高原地区滑坡灾害风险评估 14:33 是 2024年易智瑞GIS开发竞赛：https://contest.geoscene.cn A 地图故事组，B 地理设计组（5组一等奖，400余组），C GIS应用开发组，D遥感应用组（12组 一等奖，约350组） 2024地理设计组、遥感应用组一等奖 Example 1: 赵晓燕等.成渝双城经济圈生态环境质量时空演变 格局及其驱动力.生态学报, 2025, 45(1) • 成渝双城经济圈作为我国西部城镇化建设的重要示范区，探究其生态环境质量状况对推动区域社会经济高质量 发展和长江上游生态环境保护意义重大。 • 基于2000—2020年Landsat系列影像数据，运用绿度、湿度、热度、干度指标构建了遥感生态指数 (Remote Se",
+      "key_points": [
+        "project",
+        "Example",
+        "Disparities",
+        "access",
+        "sustainable",
+        "dining",
+        "options",
+        "across"
+      ],
+      "teaching_narrative": "本节围绕“项目研究：project / Example”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：易智瑞GIS开发竞赛Examples 组别 作品名称 成果是否公开 遥感应用组 基于ENVI Deep Learning的多源SAR影像海带水淹区域提取与分析 11:26 https://mp.weixin.qq.com/s/wg8J6dCyuTfgkgDiy4vjqA 是 基于时空融合和水量平衡法的若尔盖高原水源涵养功能评价 是 基于风云四号卫星的小时级大气气溶胶和颗粒物监测 是 地理设计组 基于交通建设与生态敏感性耦合协调关系的生态廊道建设预测--以宁夏自治区为例 否 基于深度学习的城市公园游客情感时空分异特征及影响因素研究 ——以福州市区UGC数 据为例 否 基于多层网络的即时配送生活圈时空动态模式挖掘 否 基于空间智能（GeoAI）的地热资源分布预测模型——以华北克拉通为例（浙大） 否 基于机器学习的黄土高原地区滑坡灾害风险评估 14:33 是 2024年易智瑞GIS开发竞赛：https://contest.geoscene.cn A 地图故事组，B 地理设计组（5组一等奖，400余组），C GIS应用开发组，D遥感应用组（12组 一等奖，约350组） 2024地理设计组、遥感应用组一等奖 Example 1: 赵晓燕等.成渝双城经济圈生态环境质量时空演变 格局及其驱动力.生态学报, 2025, 45(1) • 成渝双城经济圈作为我国西部城镇化建设的重要示范区，探究其生态环境质量状况对推动区域社会经济高质量 发展和长江上游生态环境保护意义重大。 • 基于2000—2020年Landsat系列影像数据，运用绿度、湿度、热度、干度指标构建了遥感生态指数 (Remote Se",
+      "knowledge_points": [
+        "project",
+        "Example",
+        "Disparities",
+        "access",
+        "sustainable",
+        "dining",
+        "options",
+        "across",
+        "Tokyo",
+        "Metropolis"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l12_001_01",
+          "text": "易智瑞GIS开发竞赛Examples 组别 作品名称 成果是否公开 遥感应用组 基于ENVI Deep Learning的多源SAR影像海带水淹区域提取与分析 11:26 https://mp.weixin.qq.com/s/wg8J6dCyuTfgkgDiy4vjqA 是 基于时空融合和水量平衡法的若尔盖高原水源涵养功能评价 是 基于风云四号卫星的小时级大气气溶胶和颗粒物监测 是 地理设计组 基于交通建设与生态敏感性耦合协调关系的生态廊道建设预测--以宁夏自治区为例 否 基于深度学习的城市公园游客情感时空分异特征及影响因素研究 ——以福州市区UGC数 据为例 否 基于多层网络的即时配送生活圈时空动态模式挖掘 否 基于空间智能（GeoAI）的地热资源分布预测模型——以华北克拉通为例（浙大） 否 基于机器学习的黄土高原地区滑坡灾害风险评估 14:33 是 2024年易智瑞GIS开发竞赛：https://contest.geoscene.cn A 地图故事组，B 地理设计组（5组一等奖，400余组），C GIS应用开发组，D遥感应用组（12组 一等奖，约350组） 2024地理设计组、遥感",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0002",
+              "page_no": 2,
+              "text_span": "52a5116093eb62f3_p0002_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_001_02",
+          "text": "Example 1: 赵晓燕等.成渝双城经济圈生态环境质量时空演变 格局及其驱动力.生态学报, 2025, 45(1) • 成渝双城经济圈作为我国西部城镇化建设的重要示范区，探究其生态环境质量状况对推动区域社会经济高质量 发展和长江上游生态环境保护意义重大。 • 基于2000—2020年Landsat系列影像数据，运用绿度、湿度、热度、干度指标构建了遥感生态指数 (Remote Sensing Ecological Index, RSEI),采用Sen(Theil-Sen median)斜率估计和MK(Mann-Kendall)检验相结合的趋势分析方 法开展了区域生态环境质量时空变化特征研究。采用最优参数地理探测器模型 (Optimal Parameters Geographic Detector, OPGD)优化了空间数据的尺度效应和分区效应，并对研究区生态环境质量的驱动力进行了分析。 • 结果表明：(1) 2000—2020年间，研究区生态环境质量整体较高，多年RSEI均值为0.63。生态环境质量以良和优为 主，面积占比为61.37%。生态环境质量具有显著的空间异质性。在空间上呈“",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0007",
+              "page_no": 7,
+              "text_span": "52a5116093eb62f3_p0007_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_001_03",
+          "text": "Disparities in access to sustainable dining options across the Tokyo Metropolis. Nature Cities,2025 东京都市圈可持续餐饮选择可及性的差异 东京大学龙吟课题组 摘要： 城市化进程与现代城市生活模式促进了全球城市餐饮格局的多样化。然而，社 会经济系统与个体行为间的复杂互动导致可持续餐饮选择的可及性呈现显著不均衡。 研究利用来自日本东京的 3,649 个菜单项与 112,892 家餐厅的数据，构建了一个评估 可持续餐饮可及性的综合框架。研究结果表明，餐厅显著聚集于火车站周边，证实了 公共交通导向型发展（TOD）对城市餐饮格局形成的重要影响。可持续餐饮选择通过 一个多维度方法进行评估，该方法整合了经济偏好、供应链环境影响及菜单营养质量 等因素。进一步分析揭示，在不同车站周边、铁路线路及行政区之间，可持续餐饮的 可及性存在显著不平等，每日或有多达 900 万乘客处于可持续性较低的餐饮环境中。",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0008",
+              "page_no": 8,
+              "text_span": "52a5116093eb62f3_p0008_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_001_04",
+          "text": "研究背景：城市化进程与现代生活节奏促进了全球城市餐饮格局的多样化 。然而，不健康的饮食模式 对公众健康、经济及环境构成了显著挑战 ，具体表现为慢性病发病率上升 、医疗负担加重 、土地与水资 源消耗增加以及温室气体排放增多 。在此背景下 ，可持续饮食概念应运而生并受到广泛关注 ，该概念强 调兼顾营养需求与环境足迹 。与此同时，工作时间延长 、双职工家庭比例上升及通勤耗时增加等因素 ， 使得外出就餐成为众多城市居民 （以东京为例 ）日常生活中不可或缺的一部分 ，并对居民饮食习惯产生 重要影响。东京作为典型特大城市，其餐饮行业规模庞大。该市以轨道交通为导向的发展模式（TOD）促 使餐厅在交通站点周边呈现集聚分布的特征。 问题动机：鉴于外出就餐在全球都市中的普遍性日益提高、其对可持续发展目标存在多方面影响，以 及现有研究在评估城市外出就餐可持续性方面存在局限 ，本研究的核心科学问题在于：如何构建一个综 合性框架，以全面评估城市环境中可持续外出就餐的可及性 ，并揭示其空间分布的不平等性 。本研究选 取东京作为案例研究区域 ，主要基于其庞大的人口基数 、高度依赖公共交通的出行方式 、普遍的外出就",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0009",
+              "page_no": 9,
+              "text_span": "52a5116093eb62f3_p0009_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_001_05",
+          "text": "研究目标：本研究旨在构建并应用一个多维度的综合评估框架 ，以衡量城市可持续外出 就餐的可及性。该框架整合了评价外出就餐可持续性的关键维度 ，涵盖菜单营养价值、价 格可负担性、餐厅拥挤程度、餐饮选择多样性及供应链环境足迹 。本研究将利用涵盖东京 市逾11万家餐厅及数千项菜单的大规模数据集 ，系统性地评估并揭示在不同空间尺度 （如 轨道交通站点周边、线路沿线、行政区）下，可持续外出就餐可及性存在的显著空间异质 性与不平等。基于评估结果，研究旨在提出针对性干预建议 ，例如通过优化餐厅空间布局， 改善服务欠缺区域的可持续餐饮环境。 Example2: Huang et al. Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0010",
+              "page_no": 10,
+              "text_span": "52a5116093eb62f3_p0010_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 project 为什么重要。",
+          "expected_answer": "学生应能说明 project 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“项目研究：project / SDOI”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0002",
+          "page_no": 2,
+          "text_span": "52a5116093eb62f3_p0002_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0007",
+          "page_no": 7,
+          "text_span": "52a5116093eb62f3_p0007_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0008",
+          "page_no": 8,
+          "text_span": "52a5116093eb62f3_p0008_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0009",
+          "page_no": 9,
+          "text_span": "52a5116093eb62f3_p0009_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0010",
+          "page_no": 10,
+          "text_span": "52a5116093eb62f3_p0010_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0011",
+          "page_no": 11,
+          "text_span": "52a5116093eb62f3_p0011_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 2,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 7,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 8,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 9,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 10,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 11,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l12_001"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l12_001_01",
+          "question": "关于“project”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 project 的含义、适用条件或典型应用",
+            "只记住 project 在课件中出现过",
+            "把 project 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "project",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0002",
+              "page_no": 2,
+              "text_span": "52a5116093eb62f3_p0002_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0007",
+              "page_no": 7,
+              "text_span": "52a5116093eb62f3_p0007_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0008",
+              "page_no": 8,
+              "text_span": "52a5116093eb62f3_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0009",
+              "page_no": 9,
+              "text_span": "52a5116093eb62f3_p0009_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0010",
+              "page_no": 10,
+              "text_span": "52a5116093eb62f3_p0010_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        2,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“项目研究：project / Example”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：易智瑞GIS开发竞赛Examples 组别 作品名称 成果是否公开 遥感应用组 基于ENVI Deep Learning的多源SAR影像海带水淹区域提取与分析 11:26 https://mp.weixin.qq.com/s/wg8J6dCyuTfgkgDiy4vjqA 是 基于时空融合和水量平衡法的若尔盖高原水源涵养功能评价 是 基于风云四号卫星的小时级大气气溶胶和颗粒物监测 是 地理设计组 基于交通建设与生态敏感性耦合协调关系的生态廊道建设预测--以宁夏自治区为例 否 基于深度学习的城市公园游客情感时空分异特征及影响因素研究 ——以福州市区UGC数 据为例 否 基于多层网络的即时配送生活圈时空动态模式挖掘 否 基于空间智能（GeoAI）的地热资源分布预测模型——以华北克拉通为例（浙大） 否 基于机器学习的黄土高原地区滑坡灾害风险评估 14:33 是 2024年易智瑞GIS开发竞赛：https://contest.geoscene.cn A 地图故事组，B 地理设计组（5组一等奖，400余组），C GIS应用开发组，D遥感应用组（12组 一等奖，约350组） 2024地理设计组、遥感应用组一等奖 Example 1: 赵晓燕等.成渝双城经济圈生态环境质量时空演变 格局及其驱动力.生态学报, 2025, 45(1) • 成渝双城经济圈作为我国西部城镇化建设的重要示范区，探究其生态环境质量状况对推动区域社会经济高质量 发展和长江上游生态环境保护意义重大。 • 基于2000—2020年Landsat系列影像数据，运用绿度、湿度、热度、干度指标构建了遥感生态指数 (Remote Se",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“项目研究：project / SDOI”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l12_002",
+      "title": "项目研究：project / SDOI",
+      "role": "workflow",
+      "content_goal": "帮助学生理解并能应用：项目研究：project / SDOI",
+      "summary": "Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis. • 构建并应用五个维度的可持续外 出就餐指数（Sustainable Dining Out Index, SDOI） • 营养价值（基于推荐摄入量计算的 营养密度得分）、 • 环境影响（基于投入产出分析及3EID 数据计算的碳足迹）、 • 餐厅多样性（基于香农多样性指数 与餐厅数量）、 • 价格竞争力（基于POI数据的价格等 级） • 拥挤度（基于站点客流量与餐厅数 量的比值） • 研究亦采用蒙特卡洛模拟对营养 数据假设进行验证，并运用混合整 数线性规划（MILP）模型进行优化 分析 方法 结果1：东京餐厅的空间、经济、 营养及环境特征分析 • 对东京市112,892家餐厅的 分布、价格、营养价值及环 境影响进行了分析 • 结果表明，餐厅分布呈现向 铁路站点集中的趋势。中 心及副中心区域的餐厅密 度（平均306.5家/平方公里） 与平均价格均显著高于外 围区域（57.8家/平方公 里），高价位餐厅亦集中 于此区域。 • 不同类型餐厅的营养效率 与环境影响存在差异… Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+      "key_points": [
+        "project",
+        "SDOI",
+        "Example",
+        "Disparities",
+        "access",
+        "sustainable",
+        "dining",
+        "options"
+      ],
+      "teaching_narrative": "本节围绕“项目研究：project / SDOI”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis. • 构建并应用五个维度的可持续外 出就餐指数（Sustainable Dining Out Index, SDOI） • 营养价值（基于推荐摄入量计算的 营养密度得分）、 • 环境影响（基于投入产出分析及3EID 数据计算的碳足迹）、 • 餐厅多样性（基于香农多样性指数 与餐厅数量）、 • 价格竞争力（基于POI数据的价格等 级） • 拥挤度（基于站点客流量与餐厅数 量的比值） • 研究亦采用蒙特卡洛模拟对营养 数据假设进行验证，并运用混合整 数线性规划（MILP）模型进行优化 分析 方法 结果1：东京餐厅的空间、经济、 营养及环境特征分析 • 对东京市112,892家餐厅的 分布、价格、营养价值及环 境影响进行了分析 • 结果表明，餐厅分布呈现向 铁路站点集中的趋势。中 心及副中心区域的餐厅密 度（平均306.5家/平方公里） 与平均价格均显著高于外 围区域（57.8家/平方公 里），高价位餐厅亦集中 于此区域。 • 不同类型餐厅的营养效率 与环境影响存在差异… Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+      "knowledge_points": [
+        "project",
+        "SDOI",
+        "Example",
+        "Disparities",
+        "access",
+        "sustainable",
+        "dining",
+        "options",
+        "across",
+        "Tokyo"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l12_002_01",
+          "text": "Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis. • 构建并应用五个维度的可持续外 出就餐指数（Sustainable Dining Out Index, SDOI） • 营养价值（基于推荐摄入量计算的 营养密度得分）、 • 环境影响（基于投入产出分析及3EID 数据计算的碳足迹）、 • 餐厅多样性（基于香农多样性指数 与餐厅数量）、 • 价格竞争力（基于POI数据的价格等 级） • 拥挤度（基于站点客流量与餐厅数 量的比值） • 研究亦采用蒙特卡洛模拟对营养 数据假设进行验证，并运用混合整 数线性规划（MILP）模型进行优化 分析 方法",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0012",
+              "page_no": 12,
+              "text_span": "52a5116093eb62f3_p0012_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_002_02",
+          "text": "结果1：东京餐厅的空间、经济、 营养及环境特征分析 • 对东京市112,892家餐厅的 分布、价格、营养价值及环 境影响进行了分析 • 结果表明，餐厅分布呈现向 铁路站点集中的趋势。中 心及副中心区域的餐厅密 度（平均306.5家/平方公里） 与平均价格均显著高于外 围区域（57.8家/平方公 里），高价位餐厅亦集中 于此区域。 • 不同类型餐厅的营养效率 与环境影响存在差异… Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0013",
+              "page_no": 13,
+              "text_span": "52a5116093eb62f3_p0013_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_002_03",
+          "text": "结果1：东京餐厅的空间、经济、营 养及环境特征分析 结果2：基于可持续外出就餐指数 （SDOI）的东京铁路站点周边餐饮可 及性与不平等性评估 • 研究构建了包含拥挤度、多样性、 环境影响、营养价值和价格竞争力 五个维度的可持续外出就餐指数 （Sustainable Dining Out Index, SDOI)。 • 评估结果揭示了显著的可及性不平 等现象 Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0014",
+              "page_no": 14,
+              "text_span": "52a5116093eb62f3_p0014_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_002_04",
+          "text": "结果2：基于可持续外出就餐指数 （SDOI）的东京铁路站点周边餐饮可 及性与不平等性评估 结果3：东京铁路路线及行政区层面的 可持续外出就餐多尺度不平等性分析 • 该研究将SDOI分析扩展至55条铁路路 线及23个行政区两个空间尺度。线路 层面的分析显示，拥有更多站点或覆 盖主要枢纽的线路（如大江户线、山手线） 整体SDOI相对较高；部分线路（如银 座线）的站点平均SDOI表现突出，但 也存在整体表现欠佳的线路。 Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0015",
+              "page_no": 15,
+              "text_span": "52a5116093eb62f3_p0015_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_002_05",
+          "text": "结果3：东京铁路路线及行政区层 面的可持续外出就餐多尺度不平等 性分析 • 该研究将SDOI分析扩展至55条铁路路 线及23个行政区两个空间尺度。行政 区层面的分析，通过区域整体、站点 平均和面积归一化SDOI三个指标进行 评估，发现中心行政区（如千代田区） 通常表现更优，但也存在区内站点表 现不均衡的现象（如港区）。不同类型 行政区（如商业中心型、住宅区型等）在 SDOI各项指标及餐厅类型构成上呈现 出差异化特征，进一步证实了可持续 餐饮资源在不同空间尺度上分布的不 均衡性。 Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0016",
+              "page_no": 16,
+              "text_span": "52a5116093eb62f3_p0016_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 project 为什么重要。",
+          "expected_answer": "学生应能说明 project 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“项目研究：project / flood”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0012",
+          "page_no": 12,
+          "text_span": "52a5116093eb62f3_p0012_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0013",
+          "page_no": 13,
+          "text_span": "52a5116093eb62f3_p0013_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0014",
+          "page_no": 14,
+          "text_span": "52a5116093eb62f3_p0014_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0015",
+          "page_no": 15,
+          "text_span": "52a5116093eb62f3_p0015_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0016",
+          "page_no": 16,
+          "text_span": "52a5116093eb62f3_p0016_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0017",
+          "page_no": 17,
+          "text_span": "52a5116093eb62f3_p0017_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 12,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 13,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 14,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 15,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 16,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 17,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l12_002"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l12_002_01",
+          "question": "关于“project”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 project 的含义、适用条件或典型应用",
+            "只记住 project 在课件中出现过",
+            "把 project 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "project",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0012",
+              "page_no": 12,
+              "text_span": "52a5116093eb62f3_p0012_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0013",
+              "page_no": 13,
+              "text_span": "52a5116093eb62f3_p0013_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0014",
+              "page_no": 14,
+              "text_span": "52a5116093eb62f3_p0014_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0015",
+              "page_no": 15,
+              "text_span": "52a5116093eb62f3_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0016",
+              "page_no": 16,
+              "text_span": "52a5116093eb62f3_p0016_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“项目研究：project / SDOI”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis. • 构建并应用五个维度的可持续外 出就餐指数（Sustainable Dining Out Index, SDOI） • 营养价值（基于推荐摄入量计算的 营养密度得分）、 • 环境影响（基于投入产出分析及3EID 数据计算的碳足迹）、 • 餐厅多样性（基于香农多样性指数 与餐厅数量）、 • 价格竞争力（基于POI数据的价格等 级） • 拥挤度（基于站点客流量与餐厅数 量的比值） • 研究亦采用蒙特卡洛模拟对营养 数据假设进行验证，并运用混合整 数线性规划（MILP）模型进行优化 分析 方法 结果1：东京餐厅的空间、经济、 营养及环境特征分析 • 对东京市112,892家餐厅的 分布、价格、营养价值及环 境影响进行了分析 • 结果表明，餐厅分布呈现向 铁路站点集中的趋势。中 心及副中心区域的餐厅密 度（平均306.5家/平方公里） 与平均价格均显著高于外 围区域（57.8家/平方公 里），高价位餐厅亦集中 于此区域。 • 不同类型餐厅的营养效率 与环境影响存在差异… Example2: Disparities in access to sustainable dining options across the Tokyo Metropolis.",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“项目研究：project / flood”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l12_003",
+      "title": "项目研究：project / flood",
+      "role": "workflow",
+      "content_goal": "帮助学生理解并能应用：项目研究：project / flood",
+      "summary": "Example3: Tayyab et al. GIS-Based Urban Flood Resilience Assessment Using Urban Flood Resilience Model: A Case Study of Peshawar City, Khyber Pakhtunkhwa, Pakistan. Remote Sensing, 2021 ➢ Background ➢ Study Area and Data ➢ Methods ➢ Results and Analysis ➢ Conclusions and Shortcomings Tayyab, M; Zhang, JQ; (...); Al-Shaibah, B..",
+      "key_points": [
+        "project",
+        "flood",
+        "capacity",
+        "model",
+        "resilience",
+        "urban",
+        "coping",
+        "GIS"
+      ],
+      "teaching_narrative": "本节围绕“项目研究：project / flood”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Example3: Tayyab et al. GIS-Based Urban Flood Resilience Assessment Using Urban Flood Resilience Model: A Case Study of Peshawar City, Khyber Pakhtunkhwa, Pakistan. Remote Sensing, 2021 ➢ Background ➢ Study Area and Data ➢ Methods ➢ Results and Analysis ➢ Conclusions and Shortcomings Tayyab, M; Zhang, JQ; (...); Al-Shaibah, B..",
+      "knowledge_points": [
+        "project",
+        "flood",
+        "capacity",
+        "model",
+        "resilience",
+        "urban",
+        "coping",
+        "GIS",
+        "Pakistan",
+        "were"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l12_003_01",
+          "text": "Example3: Tayyab et al. GIS-Based Urban Flood Resilience Assessment Using Urban Flood Resilience Model: A Case Study of Peshawar City, Khyber Pakhtunkhwa, Pakistan. Remote Sensing, 2021 ➢ Background ➢ Study Area and Data ➢ Methods ➢ Results and Analysis ➢ Conclusions and Shortcomings Tayyab, M; Zhang, JQ; (...); Al-Shaibah, B..",
+          "type": "case",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0019",
+              "page_no": 19,
+              "text_span": "52a5116093eb62f3_p0019_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_003_02",
+          "text": "Background • 城市韧性 ，是指城市面对冲击和扰动 （自然灾害 、公共卫生 、社会生态三 个主要层面）所具有的预警、抵抗和恢复能力。 • 《中华人民共和国国民经济和社会发展第十四个五年规划和 2035年远景目标纲要 》首 次以国家规划的形式提出建设“韧性城市” It is reported that more than half of the world population is living in urban areas where urban flooding is becoming an increasing public concern",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0020",
+              "page_no": 20,
+              "text_span": "52a5116093eb62f3_p0020_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_003_03",
+          "text": "Background https://public.emdat.be/mapping • Urban flooding has been an alarming issue in the past around the globe, particularly in South Asia. • Pakistan is no exception from this situation where urban floods with associated damages are frequently occurring phenomena. • 14 June 2022 - October 2022 floods in Pakistan killed 1,739 people, and caused ₨ 3.2 trillion ($14.9 billion) of damage and ₨ 3.3 trillion ($15.2 billion) of economic losses.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0021",
+              "page_no": 21,
+              "text_span": "52a5116093eb62f3_p0021_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_003_04",
+          "text": "Study Area and Data Data Acquisition •The questionnaire consists of questions related to past flood damages and coping capacity (economic capacity, institutional capacity, education level) of the respondents and local people. •The investigations were carried out on building material, population awareness level, dependent population, education level, community dependency, and external support for the coping capacity factor. • The coping capacity was measured by investigating the early warning mec",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0023",
+              "page_no": 23,
+              "text_span": "52a5116093eb62f3_p0023_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_003_05",
+          "text": "Methods ➢ The UFResi-M includes four main factors: flood hazard, exposure, susceptibility, and coping capacity. ➢ The model has five significant steps: • Step 1: Parameters are generated in raster layer • Step 2: Weightage is assigned through AHP (analytical hierarchy process) • Step 3: Focuses on the reclassification of all parameters and generates final maps of each criterion • Step 4: Urban flood resilience index (UFRI) is calculated using the Equation. • Step 5: the resultant urban flood res",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0024",
+              "page_no": 24,
+              "text_span": "52a5116093eb62f3_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [
+        {
+          "id": "example_ku_l12_003_01",
+          "title": "项目研究：project / flood 的应用案例",
+          "scenario": "从课件中的案例或应用页出发，让学生判断空间分析方法的适用场景。",
+          "explanation": "Example3: Tayyab et al. GIS-Based Urban Flood Resilience Assessment Using Urban Flood Resilience Model: A Case Study of Peshawar City, Khyber Pakhtunkhwa, Pakistan. Remote Sensing, 2021 ➢ Background ➢ Study Area and Data ➢ Methods ➢ Results and Analysis ➢ Conclusions and Shortcomings Tayyab, M; Zhang, JQ; (...); Al-Shaibah, B..",
+          "takeaway": "案例学习的重点是把方法、数据条件和结果解释连接起来。",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0019",
+              "page_no": 19,
+              "text_span": "52a5116093eb62f3_p0019_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0020",
+              "page_no": 20,
+              "text_span": "52a5116093eb62f3_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0021",
+              "page_no": 21,
+              "text_span": "52a5116093eb62f3_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0023",
+              "page_no": 23,
+              "text_span": "52a5116093eb62f3_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0024",
+              "page_no": 24,
+              "text_span": "52a5116093eb62f3_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 project 为什么重要。",
+          "expected_answer": "学生应能说明 project 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“项目研究：project / Flood”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0019",
+          "page_no": 19,
+          "text_span": "52a5116093eb62f3_p0019_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0020",
+          "page_no": 20,
+          "text_span": "52a5116093eb62f3_p0020_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0021",
+          "page_no": 21,
+          "text_span": "52a5116093eb62f3_p0021_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0023",
+          "page_no": 23,
+          "text_span": "52a5116093eb62f3_p0023_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0024",
+          "page_no": 24,
+          "text_span": "52a5116093eb62f3_p0024_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0025",
+          "page_no": 25,
+          "text_span": "52a5116093eb62f3_p0025_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 19,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 20,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 21,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 23,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 24,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 25,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l12_003"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l12_003_01",
+          "question": "关于“project”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 project 的含义、适用条件或典型应用",
+            "只记住 project 在课件中出现过",
+            "把 project 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "project",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0019",
+              "page_no": 19,
+              "text_span": "52a5116093eb62f3_p0019_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0020",
+              "page_no": 20,
+              "text_span": "52a5116093eb62f3_p0020_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0021",
+              "page_no": 21,
+              "text_span": "52a5116093eb62f3_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0023",
+              "page_no": 23,
+              "text_span": "52a5116093eb62f3_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0024",
+              "page_no": 24,
+              "text_span": "52a5116093eb62f3_p0024_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        19,
+        20,
+        21,
+        23,
+        24,
+        25
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“项目研究：project / flood”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Example3: Tayyab et al. GIS-Based Urban Flood Resilience Assessment Using Urban Flood Resilience Model: A Case Study of Peshawar City, Khyber Pakhtunkhwa, Pakistan. Remote Sensing, 2021 ➢ Background ➢ Study Area and Data ➢ Methods ➢ Results and Analysis ➢ Conclusions and Shortcomings Tayyab, M; Zhang, JQ; (...); Al-Shaibah, B..",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“项目研究：project / Flood”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l12_004",
+      "title": "项目研究：project / Flood",
+      "role": "workflow",
+      "content_goal": "帮助学生理解并能应用：项目研究：project / Flood",
+      "summary": "Methods Generation of Basic Parameters: Flood Hazard Measure flood hazards with the six subfactors: 1. Elevation 2.Land use and land cover (LULC) 3.Curve Number (CN) Grid 4. Slope 5.Rainfall Grid 6.Flood Damage Three Hydrological Soil Groups (B, C, D), as shown in Figure 3c, where group “B” has relatively moderate-low runoff potential, with 50–90% of sand and 10 to 20% of clay characteristics; group “C” consists of moderately high runoff potential, with <50% of sand and 20–40% clay.",
+      "key_points": [
+        "project",
+        "Flood",
+        "high",
+        "GIS",
+        "grid",
+        "Methods",
+        "Generation",
+        "Basic"
+      ],
+      "teaching_narrative": "本节围绕“项目研究：project / Flood”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Methods Generation of Basic Parameters: Flood Hazard Measure flood hazards with the six subfactors: 1. Elevation 2.Land use and land cover (LULC) 3.Curve Number (CN) Grid 4. Slope 5.Rainfall Grid 6.Flood Damage Three Hydrological Soil Groups (B, C, D), as shown in Figure 3c, where group “B” has relatively moderate-low runoff potential, with 50–90% of sand and 10 to 20% of clay characteristics; group “C” consists of moderately high runoff potential, with <50% of sand and 20–40% clay.",
+      "knowledge_points": [
+        "project",
+        "Flood",
+        "high",
+        "GIS",
+        "grid",
+        "Methods",
+        "Generation",
+        "Basic",
+        "Parameters",
+        "runoff"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l12_004_01",
+          "text": "Methods Generation of Basic Parameters: Flood Hazard Measure flood hazards with the six subfactors: 1. Elevation 2.Land use and land cover (LULC) 3.Curve Number (CN) Grid 4. Slope 5.Rainfall Grid 6.Flood Damage Three Hydrological Soil Groups (B, C, D), as shown in Figure 3c, where group “B” has relatively moderate-low runoff potential, with 50–90% of sand and 10 to 20% of clay characteristics; group “C” consists of moderately high runoff potential, with <50% of sand and 20–40% clay.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0028",
+              "page_no": 28,
+              "text_span": "52a5116093eb62f3_p0028_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_004_02",
+          "text": "Methods Measure flood hazards with the six subfactors: 1. Elevation 2.Land use and land cover (LULC) 3.Curve Number (CN) Grid 4. Slope 5.Rainfall Grid 6.Flood Damage The CN grid is a spatial grid used to identify the surface runoff potential of a region.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0029",
+              "page_no": 29,
+              "text_span": "52a5116093eb62f3_p0029_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_004_03",
+          "text": "Methods • Exposure can be defined as the proximity or closeness of the people, property, system or other elements to the hazard zones that are thereby subject to potential losses in case of any disasters. • The following four parameters were used for measuring the exposure: 1. Annual Income, ranking from 1 to 5, rank 1 shows the high annual income… 2.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0030",
+              "page_no": 30,
+              "text_span": "52a5116093eb62f3_p0030_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_004_04",
+          "text": "Methods • Commercial buildings, residential buildings, and other buildings (government infrastructure) are the elements that can be susceptible, revealing the urban flood susceptibility of the study area. • The data were collected from the Planning and Development Department of KP and analyzed in SPSS. Generation of Basic Parameters: Flood Susceptibility",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0031",
+              "page_no": 31,
+              "text_span": "52a5116093eb62f3_p0031_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_004_05",
+          "text": "Methods • The coping capacity or adaptive mechanism /capacity refer to the measures/actions taken by the local people using resources before, during, or after floods to minimize adverse effects. • Measure the coping capacity with the following three parameter: 1. Institutional Capacity The data for institutional capacity were collected through a structured questionnaire from the field.",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0032",
+              "page_no": 32,
+              "text_span": "52a5116093eb62f3_p0032_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 project 为什么重要。",
+          "expected_answer": "学生应能说明 project 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“项目研究：project / model”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0028",
+          "page_no": 28,
+          "text_span": "52a5116093eb62f3_p0028_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0029",
+          "page_no": 29,
+          "text_span": "52a5116093eb62f3_p0029_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0030",
+          "page_no": 30,
+          "text_span": "52a5116093eb62f3_p0030_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0031",
+          "page_no": 31,
+          "text_span": "52a5116093eb62f3_p0031_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0032",
+          "page_no": 32,
+          "text_span": "52a5116093eb62f3_p0032_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0033",
+          "page_no": 33,
+          "text_span": "52a5116093eb62f3_p0033_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 28,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 29,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 30,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 31,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 32,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 33,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l12_004"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l12_004_01",
+          "question": "关于“project”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 project 的含义、适用条件或典型应用",
+            "只记住 project 在课件中出现过",
+            "把 project 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "project",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0028",
+              "page_no": 28,
+              "text_span": "52a5116093eb62f3_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0029",
+              "page_no": 29,
+              "text_span": "52a5116093eb62f3_p0029_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0030",
+              "page_no": 30,
+              "text_span": "52a5116093eb62f3_p0030_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0031",
+              "page_no": 31,
+              "text_span": "52a5116093eb62f3_p0031_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0032",
+              "page_no": 32,
+              "text_span": "52a5116093eb62f3_p0032_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        28,
+        29,
+        30,
+        31,
+        32,
+        33
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“项目研究：project / Flood”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Methods Generation of Basic Parameters: Flood Hazard Measure flood hazards with the six subfactors: 1. Elevation 2.Land use and land cover (LULC) 3.Curve Number (CN) Grid 4. Slope 5.Rainfall Grid 6.Flood Damage Three Hydrological Soil Groups (B, C, D), as shown in Figure 3c, where group “B” has relatively moderate-low runoff potential, with 50–90% of sand and 10 to 20% of clay characteristics; group “C” consists of moderately high runoff potential, with <50% of sand and 20–40% clay.",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“项目研究：project / model”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l12_005",
+      "title": "项目研究：project / model",
+      "role": "workflow",
+      "content_goal": "帮助学生理解并能应用：项目研究：project / model",
+      "summary": "Results and Analysis • The hazard-, exposure-, and susceptibility-weighted maps were reclassified into five classes through “Reclass” in the Spatial Analyst tool, with the help of the natural breaks (Jenks) method. • After reclassification, a raster calculator was used to obtain the final map, utilizing Equation (3). Urban Flood Resilience UFRI= [1-(IH IE  IS)]  m1 + [1- ICc]  m2 (3) Results and Analysis • The validation and performance evaluation of the proposed model was carried out through the receiver operating characteristic (ROC) curve and area under the curve (AUC) using historical damage locations [66,74].",
+      "key_points": [
+        "project",
+        "model",
+        "https",
+        "have",
+        "resilience",
+        "curve",
+        "area",
+        "parts"
+      ],
+      "teaching_narrative": "本节围绕“项目研究：project / model”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Results and Analysis • The hazard-, exposure-, and susceptibility-weighted maps were reclassified into five classes through “Reclass” in the Spatial Analyst tool, with the help of the natural breaks (Jenks) method. • After reclassification, a raster calculator was used to obtain the final map, utilizing Equation (3). Urban Flood Resilience UFRI= [1-(IH IE  IS)]  m1 + [1- ICc]  m2 (3) Results and Analysis • The validation and performance evaluation of the proposed model was carried out through the receiver operating characteristic (ROC) curve and area under the curve (AUC) using historical damage locations [66,74].",
+      "knowledge_points": [
+        "project",
+        "model",
+        "https",
+        "have",
+        "resilience",
+        "curve",
+        "area",
+        "parts",
+        "very",
+        "classification"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l12_005_01",
+          "text": "Results and Analysis • The hazard-, exposure-, and susceptibility-weighted maps were reclassified into five classes through “Reclass” in the Spatial Analyst tool, with the help of the natural breaks (Jenks) method. • After reclassification, a raster calculator was used to obtain the final map, utilizing Equation (3). Urban Flood Resilience UFRI= [1-(IH IE  IS)]  m1 + [1- ICc]  m2 (3)",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0034",
+              "page_no": 34,
+              "text_span": "52a5116093eb62f3_p0034_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_005_02",
+          "text": "Results and Analysis • The validation and performance evaluation of the proposed model was carried out through the receiver operating characteristic (ROC) curve and area under the curve (AUC) using historical damage locations [66,74]. • For validation, 142 sites (71 flooddamaged locations and 71 nondamaged locations) were considered from historical flood reports. • The result shows that the AUC value for the proposed model was 0.904 Model Validation",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0035",
+              "page_no": 35,
+              "text_span": "52a5116093eb62f3_p0035_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_005_03",
+          "text": "Conclusions and Shortcomings • The result showed that in the Westzone of the study area, the northwestern and central parts have very high resilience, whereas the southern and southwestern parts have very low resilience. • Similarly, in the East zone of the study area, the northwest and southwest parts have very high resilience, while the northern and western parts have very low resilience. • The likelihood of the proposed model was also determined using the receiver operating characteristic (RO",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0037",
+              "page_no": 37,
+              "text_span": "52a5116093eb62f3_p0037_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_005_04",
+          "text": "Understanding tourists travel behavior before, during and after the trip with data from social media platforms. Transactions in GIS, 2023, 00, 1–25. https://doi.org/10.1111/tgis.13051 《利用社交媒体平台数据了解游客在旅行前、中、后的旅行行为 》 https://mp.weixin.qq.com/s/8zfNXVM1oI6Fl9s7hbh0mQ",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0038",
+              "page_no": 38,
+              "text_span": "52a5116093eb62f3_p0038_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_005_05",
+          "text": "More Examples • 中国市域尺度旅游安全事件集群强度的测度与演化态势，地理学报，2025 • 1843—2020年上海城市扩张时空过程及机理分析，地理学报，2024 • 广东省城乡居民用电不平等性的时空特征，地理学报，2025 • 美国对外援助的时空演化及其驱动路径，地理学报，2025 • 中国城市区域高质量发展时空分异及影响因素，地理学报，2024 • 东海海岸带县域城市韧性演化及影响因素，地理学报，2024 • 百度街景和GSENet模型相结合的兰州市绿视率时空变化分析，地球信息科学学报，2025 • 基于轨迹数据的出租车潜在充电需求估计及时空特征分解，地球信息科学学报，2024 • 基于手机画像数据的南京内城日夜间社会空间分异，地理学报，2024 • 宁夏荒漠草原带生态环境质量时空变化及其驱动机制，生态学报，2024 • 青藏高原各主要植被类型特征及环境差异，生态学报，2024 • 海峡两岸生态环境质量差异性评价及港口发展对其的影响，生态学报，2024 • 社交媒介驱动下城市游憩空间分布差异与形成机制——基于网红空间与实体空间的对比分析，经济地理，2025 • 全球体",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0039",
+              "page_no": 39,
+              "text_span": "52a5116093eb62f3_p0039_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 project 为什么重要。",
+          "expected_answer": "学生应能说明 project 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“项目研究：https / project”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0034",
+          "page_no": 34,
+          "text_span": "52a5116093eb62f3_p0034_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0035",
+          "page_no": 35,
+          "text_span": "52a5116093eb62f3_p0035_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0037",
+          "page_no": 37,
+          "text_span": "52a5116093eb62f3_p0037_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0038",
+          "page_no": 38,
+          "text_span": "52a5116093eb62f3_p0038_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0039",
+          "page_no": 39,
+          "text_span": "52a5116093eb62f3_p0039_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0043",
+          "page_no": 43,
+          "text_span": "52a5116093eb62f3_p0043_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 34,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 35,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 37,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 38,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 39,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 43,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l12_005"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l12_005_01",
+          "question": "关于“project”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 project 的含义、适用条件或典型应用",
+            "只记住 project 在课件中出现过",
+            "把 project 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "project",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0034",
+              "page_no": 34,
+              "text_span": "52a5116093eb62f3_p0034_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0035",
+              "page_no": 35,
+              "text_span": "52a5116093eb62f3_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0037",
+              "page_no": 37,
+              "text_span": "52a5116093eb62f3_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0038",
+              "page_no": 38,
+              "text_span": "52a5116093eb62f3_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0039",
+              "page_no": 39,
+              "text_span": "52a5116093eb62f3_p0039_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        34,
+        35,
+        37,
+        38,
+        39,
+        43
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“项目研究：project / model”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Results and Analysis • The hazard-, exposure-, and susceptibility-weighted maps were reclassified into five classes through “Reclass” in the Spatial Analyst tool, with the help of the natural breaks (Jenks) method. • After reclassification, a raster calculator was used to obtain the final map, utilizing Equation (3). Urban Flood Resilience UFRI= [1-(IH IE  IS)]  m1 + [1- ICc]  m2 (3) Results and Analysis • The validation and performance evaluation of the proposed model was carried out through the receiver operating characteristic (ROC) curve and area under the curve (AUC) using historical damage locations [66,74].",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“项目研究：https / project”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l12_006",
+      "title": "项目研究：https / project",
+      "role": "workflow",
+      "content_goal": "帮助学生理解并能应用：项目研究：https / project",
+      "summary": " 武 装 冲 突 位 置 与 事 件 数 据 项 目 ： ACLED | Bringing Clarity to Crisis (acleddata.com) https://acleddata.com/data-export-tool/  全球自然灾害数据 https://public.emdat.be/  中国裁判文书网（https://wenshu.court.gov.cn/） 林火、偷猎等  全球行政区划边界数据： https://gadm.org/  OpenStreetMap数据：https://www.openstreetmap.org/  2020 年 1KM 分 辨 率 全 球 人 口 密 度 数 据 ： https://www.worldpop.org/geodata/summary?id=24777  百度地图数据  高德地图数据  ArcGIS Online数据 ……  《中国城市统计年鉴》：地级城市人口数、建成区面积及水资源总量、绿地面积、工业废气废水排放量、 GDP等  《中国城市建设统计年鉴》：按省和按城市分列的城市人口、建设用地、市政公共设施水平、公共供水、 煤气、天然气、液化石油气、城市集中供热、排水和污水处理、市容环境卫生、城市园林绿化  《中国农村统计年鉴》：各地区农作物受灾（旱灾、洪涝灾）面积，各地区农用化肥施用量，各地区主要 农用地面积（耕地、园地、林地、草地），各地区农用塑料薄膜、地膜、农药使用量、各地区地膜覆盖面 积，主要农村经济指标总产量与人均产量（粮食、棉花、油料、糖料、肉类、蔬菜、水果、奶类），国外 主",
+      "key_points": [
+        "https",
+        "project",
+        "GIS",
+        "acleddata",
+        "public",
+        "emdat",
+        "ACLED",
+        "Bringing"
+      ],
+      "teaching_narrative": "本节围绕“项目研究：https / project”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据： 武 装 冲 突 位 置 与 事 件 数 据 项 目 ： ACLED | Bringing Clarity to Crisis (acleddata.com) https://acleddata.com/data-export-tool/  全球自然灾害数据 https://public.emdat.be/  中国裁判文书网（https://wenshu.court.gov.cn/） 林火、偷猎等  全球行政区划边界数据： https://gadm.org/  OpenStreetMap数据：https://www.openstreetmap.org/  2020 年 1KM 分 辨 率 全 球 人 口 密 度 数 据 ： https://www.worldpop.org/geodata/summary?id=24777  百度地图数据  高德地图数据  ArcGIS Online数据 ……  《中国城市统计年鉴》：地级城市人口数、建成区面积及水资源总量、绿地面积、工业废气废水排放量、 GDP等  《中国城市建设统计年鉴》：按省和按城市分列的城市人口、建设用地、市政公共设施水平、公共供水、 煤气、天然气、液化石油气、城市集中供热、排水和污水处理、市容环境卫生、城市园林绿化  《中国农村统计年鉴》：各地区农作物受灾（旱灾、洪涝灾）面积，各地区农用化肥施用量，各地区主要 农用地面积（耕地、园地、林地、草地），各地区农用塑料薄膜、地膜、农药使用量、各地区地膜覆盖面 积，主要农村经济指标总产量与人均产量（粮食、棉花、油料、糖料、肉类、蔬菜、水果、奶类），国外 主",
+      "knowledge_points": [
+        "https",
+        "project",
+        "GIS",
+        "acleddata",
+        "public",
+        "emdat",
+        "ACLED",
+        "Bringing",
+        "Clarity",
+        "Crisis"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l12_006_01",
+          "text": " 武 装 冲 突 位 置 与 事 件 数 据 项 目 ： ACLED | Bringing Clarity to Crisis (acleddata.com) https://acleddata.com/data-export-tool/  全球自然灾害数据 https://public.emdat.be/  中国裁判文书网（https://wenshu.court.gov.cn/） 林火、偷猎等  全球行政区划边界数据： https://gadm.org/  OpenStreetMap数据：https://www.openstreetmap.org/  2020 年 1KM 分 辨 率 全 球 人 口 密 度 数 据 ： https://www.worldpop.org/geodata/summary?id=24777  百度地图数据  高德地图数据  ArcGIS Online数据 ……",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0044",
+              "page_no": 44,
+              "text_span": "52a5116093eb62f3_p0044_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l12_006_02",
+          "text": " 《中国城市统计年鉴》：地级城市人口数、建成区面积及水资源总量、绿地面积、工业废气废水排放量、 GDP等  《中国城市建设统计年鉴》：按省和按城市分列的城市人口、建设用地、市政公共设施水平、公共供水、 煤气、天然气、液化石油气、城市集中供热、排水和污水处理、市容环境卫生、城市园林绿化  《中国农村统计年鉴》：各地区农作物受灾（旱灾、洪涝灾）面积，各地区农用化肥施用量，各地区主要 农用地面积（耕地、园地、林地、草地），各地区农用塑料薄膜、地膜、农药使用量、各地区地膜覆盖面 积，主要农村经济指标总产量与人均产量（粮食、棉花、油料、糖料、肉类、蔬菜、水果、奶类），国外 主要农业指标  《中国投资领域统计年鉴》  《中国房地产统计年鉴》（35个大中城市房地产相关数据）  《中国零售和餐饮连锁企业统计年鉴》  《中国文物文化和旅游统计年鉴》  世界自然与文化 遗产保护区： http://whc.unesco.org/en/list  全球灾害数据 库：https://public.emdat.be/  世界银行数据： https://datacatalog.worldbank",
+          "type": "workflow",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0045",
+              "page_no": 45,
+              "text_span": "52a5116093eb62f3_p0045_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 https 为什么重要。",
+          "expected_answer": "学生应能说明 https 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": ""
+      },
+      "source_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0044",
+          "page_no": 44,
+          "text_span": "52a5116093eb62f3_p0044_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_id": "52a5116093eb62f3_p0045",
+          "page_no": 45,
+          "text_span": "52a5116093eb62f3_p0045_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 44,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "52a5116093eb62f3",
+          "page_no": 45,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l12_006"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l12_006_01",
+          "question": "关于“https”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 https 的含义、适用条件或典型应用",
+            "只记住 https 在课件中出现过",
+            "把 https 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "https",
+          "source_refs": [
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0044",
+              "page_no": 44,
+              "text_span": "52a5116093eb62f3_p0044_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "52a5116093eb62f3",
+              "page_id": "52a5116093eb62f3_p0045",
+              "page_no": 45,
+              "text_span": "52a5116093eb62f3_p0045_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        44,
+        45
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“项目研究：https / project”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据： 武 装 冲 突 位 置 与 事 件 数 据 项 目 ： ACLED | Bringing Clarity to Crisis (acleddata.com) https://acleddata.com/data-export-tool/  全球自然灾害数据 https://public.emdat.be/  中国裁判文书网（https://wenshu.court.gov.cn/） 林火、偷猎等  全球行政区划边界数据： https://gadm.org/  OpenStreetMap数据：https://www.openstreetmap.org/  2020 年 1KM 分 辨 率 全 球 人 口 密 度 数 据 ： https://www.worldpop.org/geodata/summary?id=24777  百度地图数据  高德地图数据  ArcGIS Online数据 ……  《中国城市统计年鉴》：地级城市人口数、建成区面积及水资源总量、绿地面积、工业废气废水排放量、 GDP等  《中国城市建设统计年鉴》：按省和按城市分列的城市人口、建设用地、市政公共设施水平、公共供水、 煤气、天然气、液化石油气、城市集中供热、排水和污水处理、市容环境卫生、城市园林绿化  《中国农村统计年鉴》：各地区农作物受灾（旱灾、洪涝灾）面积，各地区农用化肥施用量，各地区主要 农用地面积（耕地、园地、林地、草地），各地区农用塑料薄膜、地膜、农药使用量、各地区地膜覆盖面 积，主要农村经济指标总产量与人均产量（粮食、棉花、油料、糖料、肉类、蔬菜、水果、奶类），国外 主",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": ""
+    }
+  ],
+  "generation_guidance": {
+    "recommended_use": [
+      "Use sections as the main units for presentation or classroom-plan generation.",
+      "Use source_refs and page_refs for citations and source-page display.",
+      "Use quiz_items only as lightweight classroom checkpoints; review before formal assessment."
+    ],
+    "language": "Chinese teaching narrative with necessary English GIS terms preserved."
+  },
+  "quality": {
+    "coverage_score": 1.0,
+    "warnings": [
+      "Deterministic first-pass LearningContent; manual review is recommended.",
+      "Image-heavy or low-text pages are tracked separately in low_text_pages.csv."
+    ]
+  },
+  "version": 1,
+  "created_at": "2026-07-18T09:27:23.481340Z",
+  "updated_at": "2026-07-18T09:27:23.483361Z"
+}

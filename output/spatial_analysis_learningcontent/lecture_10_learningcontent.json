@@ -1,0 +1,4735 @@
+{
+  "id": "content_spatial_analysis_lecture_10",
+  "material_id": "f4dd0c64c6159a6b",
+  "material_ids": [
+    "f4dd0c64c6159a6b"
+  ],
+  "collection_id": "col_spatial_analysis_kb",
+  "title": "第 10 讲：时间序列分析",
+  "subtitle": "Time Series Analysis 的章节级 LearningContent",
+  "audience": {
+    "level": "undergraduate",
+    "background": "GIS、地理信息科学、遥感或相关专业学生"
+  },
+  "teaching_intent": {
+    "goal": "把空间分析课件知识块组织为可直接进入课堂生成链路的 LearningContent。",
+    "boundary": "本文件不包含向量检索、RAG 编排或最终 PPT/ClassroomPlan 生成。"
+  },
+  "material_overview": {
+    "source": "spatial_analysis PDF knowledge base",
+    "lecture_count": 1,
+    "section_count": 6,
+    "knowledge_unit_count": 6
+  },
+  "global_concepts": [
+    {
+      "id": "global_concept_01",
+      "name": "time series",
+      "definition": "",
+      "plain_explanation": "time series 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_02",
+      "name": "model",
+      "definition": "",
+      "plain_explanation": "model 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_03",
+      "name": "series",
+      "definition": "",
+      "plain_explanation": "series 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_04",
+      "name": "time",
+      "definition": "",
+      "plain_explanation": "time 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_05",
+      "name": "ARIMA",
+      "definition": "",
+      "plain_explanation": "ARIMA 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_06",
+      "name": "average",
+      "definition": "",
+      "plain_explanation": "average 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_07",
+      "name": "values",
+      "definition": "",
+      "plain_explanation": "values 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_08",
+      "name": "moving",
+      "definition": "",
+      "plain_explanation": "moving 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_09",
+      "name": "period",
+      "definition": "",
+      "plain_explanation": "period 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_10",
+      "name": "regression",
+      "definition": "",
+      "plain_explanation": "regression 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_11",
+      "name": "trend",
+      "definition": "",
+      "plain_explanation": "trend 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_12",
+      "name": "test",
+      "definition": "",
+      "plain_explanation": "test 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    }
+  ],
+  "knowledge_units": [
+    {
+      "id": "ku_l10_001",
+      "title": "时间序列分析：time series / trend",
+      "unit_type": "method",
+      "summary": "文明 两河文明 古埃及 古印度 中国 发源地 两河流域 尼罗河流域 印度河流域 黄河流域 文明名称 美索不达米亚文明 古埃及文明 印度河文明 华夏文明 文明形成时间 约公元前4000年 约公元前4000年 约公元前3100年 约公元前3000年 统一政权时间 约公元前2371阿卡德王国 约公元前3100年埃及第一王朝 考古缺失 约公元前2070年夏朝 国家灭亡时间 公元前539年新巴比伦王国 被波斯帝国灭亡 公元前343年被波斯帝国灭亡 公元前1750年左右雅利安 人入侵，印度河城邦消失 多次改朝换代，文明未灭亡 文明灭亡时间 中世纪两河流域伊斯兰化 公元3世纪年古埃及文化与宗教 没落并消失 公元前1750年左右灭亡 未灭亡 Example 2: Climate Change and Human Civilization 2000年 Example 4 Seamless and automated rapeseed mapping for large cloudy regions using time-series optical satellite imagery • Step 1: 时序 WRI (Winter Rapeseed Index)自 动 提 取 无 云 区 域油菜，为RF分类器提 供训练样本 • Step 2:采用多种波段输 入，多时相输入的 RF分 类器，获取多时态油菜 概率图 • Step 3: 整合多时态概 率图，计算平均概率 Concepts of Time Series Analysis • A time series is an ordered se",
+      "aliases": [
+        "time series",
+        "trend",
+        "seasonal",
+        "Time",
+        "series"
+      ],
+      "keywords": [
+        "time series",
+        "trend",
+        "seasonal",
+        "Time",
+        "series",
+        "Component",
+        "Average",
+        "period",
+        "seasonality",
+        "Step"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l10_001_01",
+          "name": "time series",
+          "definition": "",
+          "plain_explanation": "time series 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0008",
+              "page_no": 8,
+              "text_span": "f4dd0c64c6159a6b_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0013",
+              "page_no": 13,
+              "text_span": "f4dd0c64c6159a6b_p0013_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0015",
+              "page_no": 15,
+              "text_span": "f4dd0c64c6159a6b_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0018",
+              "page_no": 18,
+              "text_span": "f4dd0c64c6159a6b_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0019",
+              "page_no": 19,
+              "text_span": "f4dd0c64c6159a6b_p0019_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_001_02",
+          "name": "trend",
+          "definition": "",
+          "plain_explanation": "trend 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0008",
+              "page_no": 8,
+              "text_span": "f4dd0c64c6159a6b_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0013",
+              "page_no": 13,
+              "text_span": "f4dd0c64c6159a6b_p0013_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0015",
+              "page_no": 15,
+              "text_span": "f4dd0c64c6159a6b_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0018",
+              "page_no": 18,
+              "text_span": "f4dd0c64c6159a6b_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0019",
+              "page_no": 19,
+              "text_span": "f4dd0c64c6159a6b_p0019_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_001_03",
+          "name": "seasonal",
+          "definition": "",
+          "plain_explanation": "seasonal 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0008",
+              "page_no": 8,
+              "text_span": "f4dd0c64c6159a6b_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0013",
+              "page_no": 13,
+              "text_span": "f4dd0c64c6159a6b_p0013_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0015",
+              "page_no": 15,
+              "text_span": "f4dd0c64c6159a6b_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0018",
+              "page_no": 18,
+              "text_span": "f4dd0c64c6159a6b_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0019",
+              "page_no": 19,
+              "text_span": "f4dd0c64c6159a6b_p0019_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_001_04",
+          "name": "Time",
+          "definition": "",
+          "plain_explanation": "Time 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0008",
+              "page_no": 8,
+              "text_span": "f4dd0c64c6159a6b_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0013",
+              "page_no": 13,
+              "text_span": "f4dd0c64c6159a6b_p0013_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0015",
+              "page_no": 15,
+              "text_span": "f4dd0c64c6159a6b_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0018",
+              "page_no": 18,
+              "text_span": "f4dd0c64c6159a6b_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0019",
+              "page_no": 19,
+              "text_span": "f4dd0c64c6159a6b_p0019_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_001_05",
+          "name": "series",
+          "definition": "",
+          "plain_explanation": "series 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0008",
+              "page_no": 8,
+              "text_span": "f4dd0c64c6159a6b_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0013",
+              "page_no": 13,
+              "text_span": "f4dd0c64c6159a6b_p0013_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0015",
+              "page_no": 15,
+              "text_span": "f4dd0c64c6159a6b_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0018",
+              "page_no": 18,
+              "text_span": "f4dd0c64c6159a6b_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0019",
+              "page_no": 19,
+              "text_span": "f4dd0c64c6159a6b_p0019_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l10_001_01",
+          "text": "文明 两河文明 古埃及 古印度 中国 发源地 两河流域 尼罗河流域 印度河流域 黄河流域 文明名称 美索不达米亚文明 古埃及文明 印度河文明 华夏文明 文明形成时间 约公元前4000年 约公元前4000年 约公元前3100年 约公元前3000年 统一政权时间 约公元前2371阿卡德王国 约公元前3100年埃及第一王朝 考古缺失 约公元前2070年夏朝 国家灭亡时间 公元前539年新巴比伦王国 被波斯帝国灭亡 公元前343年被波斯帝国灭亡 公元前1750年左右雅利安 人入侵，印度河城邦消失 多次改朝换代，文明未灭亡 文明灭亡时间 中世纪两河流域伊斯兰化 公元3世纪年古埃及文化与宗教 没落并消失 公元前1750年左右灭亡 未灭亡 Example 2: Climate Change and Human Civilization 2000年",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0008",
+              "page_no": 8,
+              "text_span": "f4dd0c64c6159a6b_p0008_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_001_02",
+          "text": "Example 4 Seamless and automated rapeseed mapping for large cloudy regions using time-series optical satellite imagery • Step 1: 时序 WRI (Winter Rapeseed Index)自 动 提 取 无 云 区 域油菜，为RF分类器提 供训练样本 • Step 2:采用多种波段输 入，多时相输入的 RF分 类器，获取多时态油菜 概率图 • Step 3: 整合多时态概 率图，计算平均概率",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0013",
+              "page_no": 13,
+              "text_span": "f4dd0c64c6159a6b_p0013_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_001_03",
+          "text": "Concepts of Time Series Analysis • A time series is an ordered sequence of values of a variable at equally spaced time intervals. • Time series analysis accounts for the fact that data points taken over time may have an internal structure (such as autocorrelation, trend, cyclical or seasonal variation) that should be measured.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0015",
+              "page_no": 15,
+              "text_span": "f4dd0c64c6159a6b_p0015_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_001_04",
+          "text": "Seasonal Component (S) Climate in Hangzhou Season Average sunshine hours (h) Average air temperature(℃) Average precipitation(mm) Average number of rainy days (d) Spring(Apr.) 120-150 15.5-16.5 120-190 15-17 Summer(July) 210-240 27.5-29 140-190 10-13 Autumn(Oct.) 140-180 17-19.5 50-60 7-9 Winter(Jan.) 90-120 4-5.5 70-90 12-14 • Seasonal Component (S): the component that shows a periodic pattern over one year, month, day, or week….",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0018",
+              "page_no": 18,
+              "text_span": "f4dd0c64c6159a6b_p0018_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_001_05",
+          "text": "Cyclical Component (C) • Cyclical Component (C): the component exists when data exhibit rises and falls that are not of fixed period. 0 时间 观测值（y) 循环曲线 趋势线 A B 趋势与循环 • Many people confuse cyclic behaviour with seasonal behaviour, but they are really quite different. • If the fluctuations are not of fixed period then they are cyclic; if the period is unchanging and associated with some aspect of the calendar, then the pattern is seasonal.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0019",
+              "page_no": 19,
+              "text_span": "f4dd0c64c6159a6b_p0019_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0008",
+          "page_no": 8,
+          "text_span": "f4dd0c64c6159a6b_p0008_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0013",
+          "page_no": 13,
+          "text_span": "f4dd0c64c6159a6b_p0013_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0015",
+          "page_no": 15,
+          "text_span": "f4dd0c64c6159a6b_p0015_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0018",
+          "page_no": 18,
+          "text_span": "f4dd0c64c6159a6b_p0018_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0019",
+          "page_no": 19,
+          "text_span": "f4dd0c64c6159a6b_p0019_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0021",
+          "page_no": 21,
+          "text_span": "f4dd0c64c6159a6b_p0021_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0022",
+          "page_no": 22,
+          "text_span": "f4dd0c64c6159a6b_p0022_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 8,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 13,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 15,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 18,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 19,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 21,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 22,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "f4dd0c64c6159a6b_p0008_c01",
+        "f4dd0c64c6159a6b_p0013_c01",
+        "f4dd0c64c6159a6b_p0015_c01",
+        "f4dd0c64c6159a6b_p0018_c01",
+        "f4dd0c64c6159a6b_p0019_c01",
+        "f4dd0c64c6159a6b_p0021_c01",
+        "f4dd0c64c6159a6b_p0022_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l10_002",
+      "title": "时间序列分析：time series / model",
+      "unit_type": "method",
+      "summary": "0 3000 6000 9000 12000 15000 1990 1992 1994 1996 1998 2000 2002 2004 人均GDP 0 50 100 150 200 250 300 1990 1992 1994 1996 1998 2000 2002 2004 轿车产量 0 10 20 30 40 50 60 1990 1992 1994 1996 1998 2000 2002 2004 机床产量 0 100 200 300 400 500 600 700 1990 1992 1994 1996 1998 2000 2002 2004 棉花产量 GDP per capita series Car production series Production of metal cutting machine tools Time series with different components Cotton production series Time Series Models Additive Model: Y t = T t + S t + C t + I t Multiplicative Model： Y t = T t × S t × C t × I t where Yt is the data at period t, St is the seasonal component at period t, Tt is the trend component at period t , Ct is the cycle component at period t",
+      "aliases": [
+        "time series",
+        "model",
+        "series",
+        "average",
+        "period"
+      ],
+      "keywords": [
+        "time series",
+        "model",
+        "series",
+        "average",
+        "period",
+        "time",
+        "moving",
+        "component",
+        "variation",
+        "accuracy"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l10_002_01",
+          "name": "time series",
+          "definition": "",
+          "plain_explanation": "time series 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0023",
+              "page_no": 23,
+              "text_span": "f4dd0c64c6159a6b_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0025",
+              "page_no": 25,
+              "text_span": "f4dd0c64c6159a6b_p0025_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0026",
+              "page_no": 26,
+              "text_span": "f4dd0c64c6159a6b_p0026_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0028",
+              "page_no": 28,
+              "text_span": "f4dd0c64c6159a6b_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0031",
+              "page_no": 31,
+              "text_span": "f4dd0c64c6159a6b_p0031_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_002_02",
+          "name": "model",
+          "definition": "",
+          "plain_explanation": "model 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0023",
+              "page_no": 23,
+              "text_span": "f4dd0c64c6159a6b_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0025",
+              "page_no": 25,
+              "text_span": "f4dd0c64c6159a6b_p0025_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0026",
+              "page_no": 26,
+              "text_span": "f4dd0c64c6159a6b_p0026_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0028",
+              "page_no": 28,
+              "text_span": "f4dd0c64c6159a6b_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0031",
+              "page_no": 31,
+              "text_span": "f4dd0c64c6159a6b_p0031_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_002_03",
+          "name": "series",
+          "definition": "",
+          "plain_explanation": "series 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0023",
+              "page_no": 23,
+              "text_span": "f4dd0c64c6159a6b_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0025",
+              "page_no": 25,
+              "text_span": "f4dd0c64c6159a6b_p0025_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0026",
+              "page_no": 26,
+              "text_span": "f4dd0c64c6159a6b_p0026_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0028",
+              "page_no": 28,
+              "text_span": "f4dd0c64c6159a6b_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0031",
+              "page_no": 31,
+              "text_span": "f4dd0c64c6159a6b_p0031_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_002_04",
+          "name": "average",
+          "definition": "",
+          "plain_explanation": "average 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0023",
+              "page_no": 23,
+              "text_span": "f4dd0c64c6159a6b_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0025",
+              "page_no": 25,
+              "text_span": "f4dd0c64c6159a6b_p0025_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0026",
+              "page_no": 26,
+              "text_span": "f4dd0c64c6159a6b_p0026_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0028",
+              "page_no": 28,
+              "text_span": "f4dd0c64c6159a6b_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0031",
+              "page_no": 31,
+              "text_span": "f4dd0c64c6159a6b_p0031_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_002_05",
+          "name": "period",
+          "definition": "",
+          "plain_explanation": "period 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0023",
+              "page_no": 23,
+              "text_span": "f4dd0c64c6159a6b_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0025",
+              "page_no": 25,
+              "text_span": "f4dd0c64c6159a6b_p0025_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0026",
+              "page_no": 26,
+              "text_span": "f4dd0c64c6159a6b_p0026_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0028",
+              "page_no": 28,
+              "text_span": "f4dd0c64c6159a6b_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0031",
+              "page_no": 31,
+              "text_span": "f4dd0c64c6159a6b_p0031_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l10_002_01",
+          "text": "0 3000 6000 9000 12000 15000 1990 1992 1994 1996 1998 2000 2002 2004 人均GDP 0 50 100 150 200 250 300 1990 1992 1994 1996 1998 2000 2002 2004 轿车产量 0 10 20 30 40 50 60 1990 1992 1994 1996 1998 2000 2002 2004 机床产量 0 100 200 300 400 500 600 700 1990 1992 1994 1996 1998 2000 2002 2004 棉花产量 GDP per capita series Car production series Production of metal cutting machine tools Time series with different components Cotton production series",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0023",
+              "page_no": 23,
+              "text_span": "f4dd0c64c6159a6b_p0023_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_002_02",
+          "text": "Time Series Models Additive Model: Y t = T t + S t + C t + I t Multiplicative Model： Y t = T t × S t × C t × I t where Yt is the data at period t, St is the seasonal component at period t, Tt is the trend component at period t , Ct is the cycle component at period t and It is the remainder (or irregular or error) component at period t.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0025",
+              "page_no": 25,
+              "text_span": "f4dd0c64c6159a6b_p0025_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_002_03",
+          "text": "Time Series Models Y t = T t × S t × C t × I t log Y t = log T t + log S t +log C t + log I t is equivalent to • An alternative to using a multiplicative model, is to first transform the data until the variation in the series appears to be stable over time, and then use an additive model. • When a log transformation has been used, this is equivalent to using a multiplicative decomposition because",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0026",
+              "page_no": 26,
+              "text_span": "f4dd0c64c6159a6b_p0026_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_002_04",
+          "text": "Time Series Models Additive Model: Y t = T t + S t + C t + I t Multiplicative Model： Y t = T t × S t × C t × I t • The additive model is most appropriate if the magnitude of the seasonal fluctuations or the variation around the trend and cycle does not vary with the level of the time series. • When the variation in the seasonal pattern, or the variation around the trend and cycle, appears to be proportional to the level of the time series, then a multiplicative model is more appropriate.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0028",
+              "page_no": 28,
+              "text_span": "f4dd0c64c6159a6b_p0028_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_002_05",
+          "text": "• The moving average method uses the most recent n data values in the time series as the forecast for the next period. It includes simple moving average and weighted moving average . • “Moving” is used because every time a new observation becomes available for the time series, it replace the oldest observation in formula and a new average is computed.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0031",
+              "page_no": 31,
+              "text_span": "f4dd0c64c6159a6b_p0031_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0023",
+          "page_no": 23,
+          "text_span": "f4dd0c64c6159a6b_p0023_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0025",
+          "page_no": 25,
+          "text_span": "f4dd0c64c6159a6b_p0025_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0026",
+          "page_no": 26,
+          "text_span": "f4dd0c64c6159a6b_p0026_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0028",
+          "page_no": 28,
+          "text_span": "f4dd0c64c6159a6b_p0028_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0031",
+          "page_no": 31,
+          "text_span": "f4dd0c64c6159a6b_p0031_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0033",
+          "page_no": 33,
+          "text_span": "f4dd0c64c6159a6b_p0033_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0034",
+          "page_no": 34,
+          "text_span": "f4dd0c64c6159a6b_p0034_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 23,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 25,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 26,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 28,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 31,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 33,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 34,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "f4dd0c64c6159a6b_p0023_c01",
+        "f4dd0c64c6159a6b_p0025_c01",
+        "f4dd0c64c6159a6b_p0026_c01",
+        "f4dd0c64c6159a6b_p0028_c01",
+        "f4dd0c64c6159a6b_p0031_c01",
+        "f4dd0c64c6159a6b_p0033_c01",
+        "f4dd0c64c6159a6b_p0034_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l10_003",
+      "title": "时间序列分析：time series / average",
+      "unit_type": "method",
+      "summary": "2007.1-2008.9 CPI in China - 2 Months of the year Consumer price index(%) the moving average k=3 the moving average k=5 2007.12 106.5 106.633 106.52 2008.1 107.1 106.833 106.64 2008.2 108.7 107.433 107.14 2008.3 108.3 108.033 107.50 2008.4 108.5 108.500 107.82 2008.5 107.7 108.167 108.06 2008.6 107.1 107.767 108.06 2008.7 106.3 107.033 107.58 2008.8 104.9 106.100 2008.9 104.9 - Example Analysis Example Analysis Consumer price index(%) 98 100 102 104 106 108 110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 2008.8 Consumer price index(%) the moving average k=3 98100102104106108110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 the moving av",
+      "aliases": [
+        "time series",
+        "average",
+        "moving",
+        "series",
+        "time"
+      ],
+      "keywords": [
+        "time series",
+        "average",
+        "moving",
+        "series",
+        "time",
+        "forecast",
+        "model",
+        "regression",
+        "Example",
+        "consumption"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l10_003_01",
+          "name": "time series",
+          "definition": "",
+          "plain_explanation": "time series 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0035",
+              "page_no": 35,
+              "text_span": "f4dd0c64c6159a6b_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0036",
+              "page_no": 36,
+              "text_span": "f4dd0c64c6159a6b_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0037",
+              "page_no": 37,
+              "text_span": "f4dd0c64c6159a6b_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0038",
+              "page_no": 38,
+              "text_span": "f4dd0c64c6159a6b_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0039",
+              "page_no": 39,
+              "text_span": "f4dd0c64c6159a6b_p0039_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_003_02",
+          "name": "average",
+          "definition": "",
+          "plain_explanation": "average 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0035",
+              "page_no": 35,
+              "text_span": "f4dd0c64c6159a6b_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0036",
+              "page_no": 36,
+              "text_span": "f4dd0c64c6159a6b_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0037",
+              "page_no": 37,
+              "text_span": "f4dd0c64c6159a6b_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0038",
+              "page_no": 38,
+              "text_span": "f4dd0c64c6159a6b_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0039",
+              "page_no": 39,
+              "text_span": "f4dd0c64c6159a6b_p0039_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_003_03",
+          "name": "moving",
+          "definition": "",
+          "plain_explanation": "moving 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0035",
+              "page_no": 35,
+              "text_span": "f4dd0c64c6159a6b_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0036",
+              "page_no": 36,
+              "text_span": "f4dd0c64c6159a6b_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0037",
+              "page_no": 37,
+              "text_span": "f4dd0c64c6159a6b_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0038",
+              "page_no": 38,
+              "text_span": "f4dd0c64c6159a6b_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0039",
+              "page_no": 39,
+              "text_span": "f4dd0c64c6159a6b_p0039_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_003_04",
+          "name": "series",
+          "definition": "",
+          "plain_explanation": "series 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0035",
+              "page_no": 35,
+              "text_span": "f4dd0c64c6159a6b_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0036",
+              "page_no": 36,
+              "text_span": "f4dd0c64c6159a6b_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0037",
+              "page_no": 37,
+              "text_span": "f4dd0c64c6159a6b_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0038",
+              "page_no": 38,
+              "text_span": "f4dd0c64c6159a6b_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0039",
+              "page_no": 39,
+              "text_span": "f4dd0c64c6159a6b_p0039_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_003_05",
+          "name": "time",
+          "definition": "",
+          "plain_explanation": "time 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0035",
+              "page_no": 35,
+              "text_span": "f4dd0c64c6159a6b_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0036",
+              "page_no": 36,
+              "text_span": "f4dd0c64c6159a6b_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0037",
+              "page_no": 37,
+              "text_span": "f4dd0c64c6159a6b_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0038",
+              "page_no": 38,
+              "text_span": "f4dd0c64c6159a6b_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0039",
+              "page_no": 39,
+              "text_span": "f4dd0c64c6159a6b_p0039_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l10_003_01",
+          "text": "2007.1-2008.9 CPI in China - 2 Months of the year Consumer price index(%) the moving average k=3 the moving average k=5 2007.12 106.5 106.633 106.52 2008.1 107.1 106.833 106.64 2008.2 108.7 107.433 107.14 2008.3 108.3 108.033 107.50 2008.4 108.5 108.500 107.82 2008.5 107.7 108.167 108.06 2008.6 107.1 107.767 108.06 2008.7 106.3 107.033 107.58 2008.8 104.9 106.100 2008.9 104.9 - Example Analysis",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0035",
+              "page_no": 35,
+              "text_span": "f4dd0c64c6159a6b_p0035_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_003_02",
+          "text": "Example Analysis Consumer price index(%) 98 100 102 104 106 108 110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 2008.8 Consumer price index(%) the moving average k=3 98100102104106108110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 the moving average k=3 the moving average k=5 100 102104 106108 110 Monthsof 2007.1 2007.2 2007.3 2007.4 2007.5 2007.6 2007.7 2007.8 2007.9 2007.1 2007.11 2007.12 2008.1 2008.2 2008.3 2008.4 the moving average k",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0036",
+              "page_no": 36,
+              "text_span": "f4dd0c64c6159a6b_p0036_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_003_03",
+          "text": "• Exponential smoothing uses a weighted average of past time series values as the forecast; it is a special case of the weighted moving average method in which we select only one weight-the weight for the most recent observation. 2. Exponential smoothing--simple ttjt j n t yyyy ˆ)1()1(ˆ 1 0j 1  −+=−= − − = +  • Where α (0≤ α ≤1) is the smoothing constant (parameter), • yt is the actual value of the time series in period t, • ො𝑦t , ො𝑦t+1 is the forecasting values of the time series in period",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0037",
+              "page_no": 37,
+              "text_span": "f4dd0c64c6159a6b_p0037_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_003_04",
+          "text": "α determination • Different α produce different forecasting results. • In general, when the time series of random fluctuations in the larger, α election should be larger in order to be able to quickly catch up with recent changes. • When the time series is stationary series, α election should be smaller data.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0038",
+              "page_no": 38,
+              "text_span": "f4dd0c64c6159a6b_p0038_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_003_05",
+          "text": "Example Analysis Try to estimate water consumption in 2023 by exponential smoothing method. Water consumption in city A in 2025 is 240.85（107t） 2019-2024 Water consumption table in City A (107t ) ො𝑦 2025= 𝛼y2024 + 𝛼(1 − 𝛼)𝑦2023 + 𝛼(1 − 𝛼)2𝑦2022 + 𝛼(1 − 𝛼)3𝑦2021 + 𝛼(1 − 𝛼)4𝑦2020 + 𝛼(1 − 𝛼)5𝑦2019 = 0.5 × 250.00 + 0.5 × 0.5 × 241.00 + 0.5 × 0. 52 × 248.79 +0.5 × 0.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0039",
+              "page_no": 39,
+              "text_span": "f4dd0c64c6159a6b_p0039_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0035",
+          "page_no": 35,
+          "text_span": "f4dd0c64c6159a6b_p0035_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0036",
+          "page_no": 36,
+          "text_span": "f4dd0c64c6159a6b_p0036_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0037",
+          "page_no": 37,
+          "text_span": "f4dd0c64c6159a6b_p0037_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0038",
+          "page_no": 38,
+          "text_span": "f4dd0c64c6159a6b_p0038_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0039",
+          "page_no": 39,
+          "text_span": "f4dd0c64c6159a6b_p0039_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0040",
+          "page_no": 40,
+          "text_span": "f4dd0c64c6159a6b_p0040_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0045",
+          "page_no": 45,
+          "text_span": "f4dd0c64c6159a6b_p0045_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 35,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 36,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 37,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 38,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 39,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 40,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 45,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "f4dd0c64c6159a6b_p0035_c01",
+        "f4dd0c64c6159a6b_p0036_c01",
+        "f4dd0c64c6159a6b_p0037_c01",
+        "f4dd0c64c6159a6b_p0038_c01",
+        "f4dd0c64c6159a6b_p0039_c01",
+        "f4dd0c64c6159a6b_p0040_c01",
+        "f4dd0c64c6159a6b_p0045_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l10_004",
+      "title": "时间序列分析：model / time series",
+      "unit_type": "method",
+      "summary": "Auto-Regressive Model Auto-correlation coefficient • Suppose n is the number of variable y observations, we have time series: y1，y2，…， yt，…，yn . • We can construct n-1 pairs of variable y observations : ( y1,y2), （y2,y3）, …， (yt,yt+1) ， …，(yn-1,yn); • n-k pairs of variable y observations : ( y1,yk), （y2,yk+1）, …，(yt,yt+k-1) ， …，(yn-1,yn-k-1); auto-correlation coefficient for order k: 𝑟𝑘 = σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 (𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘) σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 2 σ𝑡=1 𝑛−𝑘 𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘 2 ത𝑦𝑡 = 1 𝑛−𝑘 σ𝑡=1 𝑛−𝑘 𝑦𝑡 ത𝑦𝑡 + 𝑘 = 1 𝑛−𝑘 σ𝑡=1 𝑛−𝑘 𝑦𝑡 + 𝑘 Auto-Regressive Model An autoregressive model of order p can be written as yt=c+ϕ1yt−1+ϕ2yt−2+⋯+ϕpyt−p+εt, where c is a constant and εt is white noise. This is like a",
+      "aliases": [
+        "model",
+        "time series",
+        "ARIMA",
+        "regression",
+        "values"
+      ],
+      "keywords": [
+        "model",
+        "time series",
+        "ARIMA",
+        "regression",
+        "values",
+        "time",
+        "series",
+        "coefficient",
+        "number",
+        "variable"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l10_004_01",
+          "name": "model",
+          "definition": "",
+          "plain_explanation": "model 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0046",
+              "page_no": 46,
+              "text_span": "f4dd0c64c6159a6b_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0047",
+              "page_no": 47,
+              "text_span": "f4dd0c64c6159a6b_p0047_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0048",
+              "page_no": 48,
+              "text_span": "f4dd0c64c6159a6b_p0048_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0050",
+              "page_no": 50,
+              "text_span": "f4dd0c64c6159a6b_p0050_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0052",
+              "page_no": 52,
+              "text_span": "f4dd0c64c6159a6b_p0052_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_004_02",
+          "name": "time series",
+          "definition": "",
+          "plain_explanation": "time series 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0046",
+              "page_no": 46,
+              "text_span": "f4dd0c64c6159a6b_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0047",
+              "page_no": 47,
+              "text_span": "f4dd0c64c6159a6b_p0047_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0048",
+              "page_no": 48,
+              "text_span": "f4dd0c64c6159a6b_p0048_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0050",
+              "page_no": 50,
+              "text_span": "f4dd0c64c6159a6b_p0050_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0052",
+              "page_no": 52,
+              "text_span": "f4dd0c64c6159a6b_p0052_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_004_03",
+          "name": "ARIMA",
+          "definition": "",
+          "plain_explanation": "ARIMA 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0046",
+              "page_no": 46,
+              "text_span": "f4dd0c64c6159a6b_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0047",
+              "page_no": 47,
+              "text_span": "f4dd0c64c6159a6b_p0047_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0048",
+              "page_no": 48,
+              "text_span": "f4dd0c64c6159a6b_p0048_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0050",
+              "page_no": 50,
+              "text_span": "f4dd0c64c6159a6b_p0050_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0052",
+              "page_no": 52,
+              "text_span": "f4dd0c64c6159a6b_p0052_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_004_04",
+          "name": "regression",
+          "definition": "",
+          "plain_explanation": "regression 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0046",
+              "page_no": 46,
+              "text_span": "f4dd0c64c6159a6b_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0047",
+              "page_no": 47,
+              "text_span": "f4dd0c64c6159a6b_p0047_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0048",
+              "page_no": 48,
+              "text_span": "f4dd0c64c6159a6b_p0048_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0050",
+              "page_no": 50,
+              "text_span": "f4dd0c64c6159a6b_p0050_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0052",
+              "page_no": 52,
+              "text_span": "f4dd0c64c6159a6b_p0052_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_004_05",
+          "name": "values",
+          "definition": "",
+          "plain_explanation": "values 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0046",
+              "page_no": 46,
+              "text_span": "f4dd0c64c6159a6b_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0047",
+              "page_no": 47,
+              "text_span": "f4dd0c64c6159a6b_p0047_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0048",
+              "page_no": 48,
+              "text_span": "f4dd0c64c6159a6b_p0048_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0050",
+              "page_no": 50,
+              "text_span": "f4dd0c64c6159a6b_p0050_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0052",
+              "page_no": 52,
+              "text_span": "f4dd0c64c6159a6b_p0052_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l10_004_01",
+          "text": "Auto-Regressive Model Auto-correlation coefficient • Suppose n is the number of variable y observations, we have time series: y1，y2，…， yt，…，yn . • We can construct n-1 pairs of variable y observations : ( y1,y2), （y2,y3）, …， (yt,yt+1) ， …，(yn-1,yn); • n-k pairs of variable y observations : ( y1,yk), （y2,yk+1）, …，(yt,yt+k-1) ， …，(yn-1,yn-k-1); auto-correlation coefficient for order k: 𝑟𝑘 = σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 (𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘) σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 2 σ𝑡=1 𝑛−𝑘 𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘 2 ത𝑦𝑡 = 1 𝑛−𝑘 σ𝑡=1 𝑛−𝑘 𝑦𝑡",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0046",
+              "page_no": 46,
+              "text_span": "f4dd0c64c6159a6b_p0046_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_004_02",
+          "text": "Auto-Regressive Model An autoregressive model of order p can be written as yt=c+ϕ1yt−1+ϕ2yt−2+⋯+ϕpyt−p+εt, where c is a constant and εt is white noise. This is like a multiple regression but with lagged values of yt as predictors. We refer to this as an AR(p) model.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0047",
+              "page_no": 47,
+              "text_span": "f4dd0c64c6159a6b_p0047_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_004_03",
+          "text": "Example Analysis • 某地区2014-2024年11年自然灾害造成的成灾面积的时间序列数据见表。 试计算该时间序列的一阶自相关系数r1和二阶自相关系数r2，并用自回归 模型预测2025年的成灾面积。 年份 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024 成灾 面积 50 52 53 55 56 58 59 60 61 61 62 yt+1 52 53 55 56 58 59 60 61 61 62 yt+2 53 55 56 58 59 60 61 61 62 某地区2014-2024年自然灾害成灾面积（102ha)",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0048",
+              "page_no": 48,
+              "text_span": "f4dd0c64c6159a6b_p0048_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_004_04",
+          "text": "Example Analysis (2) Significance test for auto-correlation coefficient the number of observation is 11, the degrees of freedom for auto-correlation coefficient r1 is f = 11-2=9 given significance level α=0.001, we can get r0.001,9=0.8471 r1 = 0.9761 > r0.001,9=0.8471, thus r1 is significant",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0050",
+              "page_no": 50,
+              "text_span": "f4dd0c64c6159a6b_p0050_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_004_05",
+          "text": "Auto Regressive Integrated Moving Average Model (ARIMA) 自回归求和移动平均模型 • ARIMA time series model was employed in this study, which was pioneered by Box and Jenkins in 1970. Box, G.E.P ., Jenkins, G.M., 1970. Time Series Analysis: Forecasting and Control.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0052",
+              "page_no": 52,
+              "text_span": "f4dd0c64c6159a6b_p0052_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0046",
+          "page_no": 46,
+          "text_span": "f4dd0c64c6159a6b_p0046_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0047",
+          "page_no": 47,
+          "text_span": "f4dd0c64c6159a6b_p0047_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0048",
+          "page_no": 48,
+          "text_span": "f4dd0c64c6159a6b_p0048_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0050",
+          "page_no": 50,
+          "text_span": "f4dd0c64c6159a6b_p0050_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0052",
+          "page_no": 52,
+          "text_span": "f4dd0c64c6159a6b_p0052_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0053",
+          "page_no": 53,
+          "text_span": "f4dd0c64c6159a6b_p0053_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0054",
+          "page_no": 54,
+          "text_span": "f4dd0c64c6159a6b_p0054_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 46,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 47,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 48,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 50,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 52,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 53,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 54,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "f4dd0c64c6159a6b_p0046_c01",
+        "f4dd0c64c6159a6b_p0047_c01",
+        "f4dd0c64c6159a6b_p0048_c01",
+        "f4dd0c64c6159a6b_p0050_c01",
+        "f4dd0c64c6159a6b_p0052_c01",
+        "f4dd0c64c6159a6b_p0053_c01",
+        "f4dd0c64c6159a6b_p0054_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l10_005",
+      "title": "时间序列分析：time series / model",
+      "unit_type": "method",
+      "summary": "5. ARIMA: Box-Jenkins 1) Model Identification: Combing stationarity test, Auto-correlation Function (ACF) and Partial Auto-correlation Function (PACF) analysis to determine the parameters of ARIMA (p,d,q) 若时间序列存在季节性，则需扩展为SARIMA模型，即在ARIMA中加入季节性参数 2) Parameter Estimation: Using MLE or OLS to determine parameters, R and Matlab provide ARIMA function. 3) Model Diagnostics： Applying Ljung-Box, residual ACF plot, or QQ plot to validate if the residuals are white noise.",
+      "aliases": [
+        "time series",
+        "model",
+        "time",
+        "series",
+        "ARIMA"
+      ],
+      "keywords": [
+        "time series",
+        "model",
+        "time",
+        "series",
+        "ARIMA",
+        "test",
+        "noise",
+        "values",
+        "Auto-correlation",
+        "Function"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l10_005_01",
+          "name": "time series",
+          "definition": "",
+          "plain_explanation": "time series 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0055",
+              "page_no": 55,
+              "text_span": "f4dd0c64c6159a6b_p0055_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0056",
+              "page_no": 56,
+              "text_span": "f4dd0c64c6159a6b_p0056_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0057",
+              "page_no": 57,
+              "text_span": "f4dd0c64c6159a6b_p0057_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0058",
+              "page_no": 58,
+              "text_span": "f4dd0c64c6159a6b_p0058_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0059",
+              "page_no": 59,
+              "text_span": "f4dd0c64c6159a6b_p0059_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_005_02",
+          "name": "model",
+          "definition": "",
+          "plain_explanation": "model 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0055",
+              "page_no": 55,
+              "text_span": "f4dd0c64c6159a6b_p0055_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0056",
+              "page_no": 56,
+              "text_span": "f4dd0c64c6159a6b_p0056_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0057",
+              "page_no": 57,
+              "text_span": "f4dd0c64c6159a6b_p0057_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0058",
+              "page_no": 58,
+              "text_span": "f4dd0c64c6159a6b_p0058_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0059",
+              "page_no": 59,
+              "text_span": "f4dd0c64c6159a6b_p0059_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_005_03",
+          "name": "time",
+          "definition": "",
+          "plain_explanation": "time 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0055",
+              "page_no": 55,
+              "text_span": "f4dd0c64c6159a6b_p0055_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0056",
+              "page_no": 56,
+              "text_span": "f4dd0c64c6159a6b_p0056_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0057",
+              "page_no": 57,
+              "text_span": "f4dd0c64c6159a6b_p0057_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0058",
+              "page_no": 58,
+              "text_span": "f4dd0c64c6159a6b_p0058_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0059",
+              "page_no": 59,
+              "text_span": "f4dd0c64c6159a6b_p0059_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_005_04",
+          "name": "series",
+          "definition": "",
+          "plain_explanation": "series 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0055",
+              "page_no": 55,
+              "text_span": "f4dd0c64c6159a6b_p0055_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0056",
+              "page_no": 56,
+              "text_span": "f4dd0c64c6159a6b_p0056_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0057",
+              "page_no": 57,
+              "text_span": "f4dd0c64c6159a6b_p0057_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0058",
+              "page_no": 58,
+              "text_span": "f4dd0c64c6159a6b_p0058_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0059",
+              "page_no": 59,
+              "text_span": "f4dd0c64c6159a6b_p0059_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_005_05",
+          "name": "ARIMA",
+          "definition": "",
+          "plain_explanation": "ARIMA 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0055",
+              "page_no": 55,
+              "text_span": "f4dd0c64c6159a6b_p0055_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0056",
+              "page_no": 56,
+              "text_span": "f4dd0c64c6159a6b_p0056_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0057",
+              "page_no": 57,
+              "text_span": "f4dd0c64c6159a6b_p0057_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0058",
+              "page_no": 58,
+              "text_span": "f4dd0c64c6159a6b_p0058_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0059",
+              "page_no": 59,
+              "text_span": "f4dd0c64c6159a6b_p0059_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l10_005_01",
+          "text": "5. ARIMA: Box-Jenkins 1) Model Identification: Combing stationarity test, Auto-correlation Function (ACF) and Partial Auto-correlation Function (PACF) analysis to determine the parameters of ARIMA (p,d,q) 若时间序列存在季节性，则需扩展为SARIMA模型，即在ARIMA中加入季节性参数 2) Parameter Estimation: Using MLE or OLS to determine parameters, R and Matlab provide ARIMA function. 3) Model Diagnostics： Applying Ljung-Box, residual ACF plot, or QQ plot to validate if the residuals are white noise.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0055",
+              "page_no": 55,
+              "text_span": "f4dd0c64c6159a6b_p0055_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_005_02",
+          "text": "Stationarity test Stationarity means that the statistical properties of a process generating a time series do not change over time. ARIMA model is applicable only when a time series is stationary. • If the stationary criterion is not met, transforming data is necessary via detrending, differencing, decomposition, etc., with a purpose to stationarize the time series.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0056",
+              "page_no": 56,
+              "text_span": "f4dd0c64c6159a6b_p0056_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_005_03",
+          "text": "Stationarity test • Practical time series is often non-stationary. • For example, the declining oil production trend represents the mean decreases over time; the extremely low temperature at wintertime may indicate production loss due to mechanical failures or less routine maintenance. • Therefore, it is necessary to eliminate trend and seasonality so that the transformed series is stationary for forecasting, and then the forecasted values should be converted to the original scale by applying th",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0057",
+              "page_no": 57,
+              "text_span": "f4dd0c64c6159a6b_p0057_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_005_04",
+          "text": "White Noise Test Introduce the concept of ‘white noise’ for two reasons (Brownlee, 2017)： • White noise means a sequence of randomly independent numbers that cannot be predicted. A time series can be reasonably modeled only when it is not white noise. • The forecasted residuals should be white noise if good predictions are made by a forecast model.",
+          "type": "concept",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0058",
+              "page_no": 58,
+              "text_span": "f4dd0c64c6159a6b_p0058_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_005_05",
+          "text": "• The parameters p and q are initially determined using PACF (Partial Auto-correlation Function) and ACF (Auto-correlation Function) plots specifically • The blue bands are significance confidence bands, within which the function value is regarded as 0. • The ACF plot has two non-zero values, cutting off after 2nd lag, meaning it is mostly a MA (q = 2) process. • The PACF plot has a cut-off after the 3rd lag, suggesting an AR (p = 3) process.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0059",
+              "page_no": 59,
+              "text_span": "f4dd0c64c6159a6b_p0059_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0055",
+          "page_no": 55,
+          "text_span": "f4dd0c64c6159a6b_p0055_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0056",
+          "page_no": 56,
+          "text_span": "f4dd0c64c6159a6b_p0056_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0057",
+          "page_no": 57,
+          "text_span": "f4dd0c64c6159a6b_p0057_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0058",
+          "page_no": 58,
+          "text_span": "f4dd0c64c6159a6b_p0058_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0059",
+          "page_no": 59,
+          "text_span": "f4dd0c64c6159a6b_p0059_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0060",
+          "page_no": 60,
+          "text_span": "f4dd0c64c6159a6b_p0060_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0061",
+          "page_no": 61,
+          "text_span": "f4dd0c64c6159a6b_p0061_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 55,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 56,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 57,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 58,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 59,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 60,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 61,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "f4dd0c64c6159a6b_p0055_c01",
+        "f4dd0c64c6159a6b_p0056_c01",
+        "f4dd0c64c6159a6b_p0057_c01",
+        "f4dd0c64c6159a6b_p0058_c01",
+        "f4dd0c64c6159a6b_p0059_c01",
+        "f4dd0c64c6159a6b_p0060_c01",
+        "f4dd0c64c6159a6b_p0061_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l10_006",
+      "title": "时间序列分析：time series / model",
+      "unit_type": "method",
+      "summary": "Yanrui Ning, et al. A comparative machine learning study for time series oil production forecasting ARIMA, LSTM, and Prophet. Computers & Geosciences, 2022,5.",
+      "aliases": [
+        "time series",
+        "model",
+        "ARIMA",
+        "machine learning",
+        "LSTM"
+      ],
+      "keywords": [
+        "time series",
+        "model",
+        "ARIMA",
+        "machine learning",
+        "LSTM",
+        "time",
+        "series",
+        "production",
+        "forecasting",
+        "Prophet"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l10_006_01",
+          "name": "time series",
+          "definition": "",
+          "plain_explanation": "time series 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0062",
+              "page_no": 62,
+              "text_span": "f4dd0c64c6159a6b_p0062_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0063",
+              "page_no": 63,
+              "text_span": "f4dd0c64c6159a6b_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0064",
+              "page_no": 64,
+              "text_span": "f4dd0c64c6159a6b_p0064_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0065",
+              "page_no": 65,
+              "text_span": "f4dd0c64c6159a6b_p0065_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0067",
+              "page_no": 67,
+              "text_span": "f4dd0c64c6159a6b_p0067_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_006_02",
+          "name": "model",
+          "definition": "",
+          "plain_explanation": "model 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0062",
+              "page_no": 62,
+              "text_span": "f4dd0c64c6159a6b_p0062_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0063",
+              "page_no": 63,
+              "text_span": "f4dd0c64c6159a6b_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0064",
+              "page_no": 64,
+              "text_span": "f4dd0c64c6159a6b_p0064_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0065",
+              "page_no": 65,
+              "text_span": "f4dd0c64c6159a6b_p0065_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0067",
+              "page_no": 67,
+              "text_span": "f4dd0c64c6159a6b_p0067_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_006_03",
+          "name": "ARIMA",
+          "definition": "",
+          "plain_explanation": "ARIMA 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0062",
+              "page_no": 62,
+              "text_span": "f4dd0c64c6159a6b_p0062_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0063",
+              "page_no": 63,
+              "text_span": "f4dd0c64c6159a6b_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0064",
+              "page_no": 64,
+              "text_span": "f4dd0c64c6159a6b_p0064_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0065",
+              "page_no": 65,
+              "text_span": "f4dd0c64c6159a6b_p0065_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0067",
+              "page_no": 67,
+              "text_span": "f4dd0c64c6159a6b_p0067_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_006_04",
+          "name": "machine learning",
+          "definition": "",
+          "plain_explanation": "machine learning 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0062",
+              "page_no": 62,
+              "text_span": "f4dd0c64c6159a6b_p0062_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0063",
+              "page_no": 63,
+              "text_span": "f4dd0c64c6159a6b_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0064",
+              "page_no": 64,
+              "text_span": "f4dd0c64c6159a6b_p0064_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0065",
+              "page_no": 65,
+              "text_span": "f4dd0c64c6159a6b_p0065_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0067",
+              "page_no": 67,
+              "text_span": "f4dd0c64c6159a6b_p0067_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l10_006_05",
+          "name": "LSTM",
+          "definition": "",
+          "plain_explanation": "LSTM 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0062",
+              "page_no": 62,
+              "text_span": "f4dd0c64c6159a6b_p0062_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0063",
+              "page_no": 63,
+              "text_span": "f4dd0c64c6159a6b_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0064",
+              "page_no": 64,
+              "text_span": "f4dd0c64c6159a6b_p0064_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0065",
+              "page_no": 65,
+              "text_span": "f4dd0c64c6159a6b_p0065_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0067",
+              "page_no": 67,
+              "text_span": "f4dd0c64c6159a6b_p0067_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l10_006_01",
+          "text": "Yanrui Ning, et al. A comparative machine learning study for time series oil production forecasting ARIMA, LSTM, and Prophet. Computers & Geosciences, 2022,5.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0062",
+              "page_no": 62,
+              "text_span": "f4dd0c64c6159a6b_p0062_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_006_02",
+          "text": "• Weak Seasonal Handling: Basic ARIMA cannot model seasonality; extensions like SARIMA are limited to simple, fixed seasonal patterns (e.g., no support for multiple or irregular cycles). • Poor Long-Term Forecasts : Forecast errors compound over time due to the reliance on recursive predictions, leading to rapid accuracy decay for long horizons. • Sensitive to Missing Data : Gaps or irregularly spaced data require imputation (e.g., interpolation), which can distort patterns and introduce bias.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0063",
+              "page_no": 63,
+              "text_span": "f4dd0c64c6159a6b_p0063_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_006_03",
+          "text": "• Model fusion: Combine ARIMA with ANN, SVM etc. • Panigrahi, S. , H.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0064",
+              "page_no": 64,
+              "text_span": "f4dd0c64c6159a6b_p0064_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_006_04",
+          "text": "1. 循环变动或季节变化特征明显的时间序列，也可用谐波分析、小波分析等方法，如《九寨沟世界遗产地旅游流时间特征分析》 2. 时间序列的概率预测：马尔可夫预测方法 3.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0065",
+              "page_no": 65,
+              "text_span": "f4dd0c64c6159a6b_p0065_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_006_05",
+          "text": "Cases • Time-series analysis of Sentinel-2 satellite images for sunflower yield estimation • Sustainable futures in agricultural heritage: Geospatial exploration and predicting groundwater-level variations in Barind tract of Bangladesh-2023 • How does urbanization affect energy carbon emissions under the background of carbon neutrality?-2023",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0067",
+              "page_no": 67,
+              "text_span": "f4dd0c64c6159a6b_p0067_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [
+        {
+          "id": "example_ku_l10_006_01",
+          "title": "时间序列分析：time series / model 的应用案例",
+          "scenario": "从课件中的案例或应用页出发，让学生判断空间分析方法的适用场景。",
+          "explanation": "Yanrui Ning, et al. A comparative machine learning study for time series oil production forecasting ARIMA, LSTM, and Prophet. Computers & Geosciences, 2022,5.",
+          "takeaway": "案例学习的重点是把方法、数据条件和结果解释连接起来。",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0062",
+              "page_no": 62,
+              "text_span": "f4dd0c64c6159a6b_p0062_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0063",
+              "page_no": 63,
+              "text_span": "f4dd0c64c6159a6b_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0064",
+              "page_no": 64,
+              "text_span": "f4dd0c64c6159a6b_p0064_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0065",
+              "page_no": 65,
+              "text_span": "f4dd0c64c6159a6b_p0065_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0067",
+              "page_no": 67,
+              "text_span": "f4dd0c64c6159a6b_p0067_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0062",
+          "page_no": 62,
+          "text_span": "f4dd0c64c6159a6b_p0062_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0063",
+          "page_no": 63,
+          "text_span": "f4dd0c64c6159a6b_p0063_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0064",
+          "page_no": 64,
+          "text_span": "f4dd0c64c6159a6b_p0064_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0065",
+          "page_no": 65,
+          "text_span": "f4dd0c64c6159a6b_p0065_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0067",
+          "page_no": 67,
+          "text_span": "f4dd0c64c6159a6b_p0067_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0068",
+          "page_no": 68,
+          "text_span": "f4dd0c64c6159a6b_p0068_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0069",
+          "page_no": 69,
+          "text_span": "f4dd0c64c6159a6b_p0069_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 62,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 63,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 64,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 65,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 67,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 68,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 69,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "f4dd0c64c6159a6b_p0062_c01",
+        "f4dd0c64c6159a6b_p0063_c01",
+        "f4dd0c64c6159a6b_p0064_c01",
+        "f4dd0c64c6159a6b_p0065_c01",
+        "f4dd0c64c6159a6b_p0067_c01",
+        "f4dd0c64c6159a6b_p0068_c01",
+        "f4dd0c64c6159a6b_p0069_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    }
+  ],
+  "knowledge_tree": {
+    "id": "tree_spatial_analysis_lecture_10",
+    "title": "第 10 讲：时间序列分析",
+    "nodes": [
+      {
+        "id": "node_lecture_10",
+        "title": "第 10 讲：时间序列分析",
+        "role": "chapter",
+        "summary": "文明 两河文明 古埃及 古印度 中国 发源地 两河流域 尼罗河流域 印度河流域 黄河流域 文明名称 美索不达米亚文明 古埃及文明 印度河文明 华夏文明 文明形成时间 约公元前4000年 约公元前4000年 约公元前3100年 约公元前3000年 统一政权时间 约公元前2371阿卡德王国 约公元前3100年埃及第一王朝 考古缺失 约公元前2070年夏朝 国家灭亡时间 公元前539年新巴比伦王国 被波斯帝国灭亡 公元前343年被波斯帝国灭亡 公元前1750年左右雅利安 人入侵，印度河城邦消失 多次改朝换代，文明未灭亡 文明灭亡时间 中世纪两河流域伊斯兰化 公元3世纪年古埃及文化与宗教 没落并消失 公元前1750年左右灭亡 未灭亡 Example 2: Climate Change and Human Civilization 2000年 Example 4 Seamless and automated rapeseed mapping for large cloudy regions using time-series optical satellite imagery • Step 1: 时序 WRI (Winter Rapeseed Index)自 动 提 取 无 云 区 域油菜，为RF分类器提 供训练样本 • Step 2:采用多种波段输 入，多时相输入的 RF分 类器，获取多时",
+        "parent_id": null,
+        "knowledge_unit_ids": [],
+        "order": 10,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l10_001",
+        "title": "时间序列分析：time series / trend",
+        "role": "method",
+        "summary": "文明 两河文明 古埃及 古印度 中国 发源地 两河流域 尼罗河流域 印度河流域 黄河流域 文明名称 美索不达米亚文明 古埃及文明 印度河文明 华夏文明 文明形成时间 约公元前4000年 约公元前4000年 约公元前3100年 约公元前3000年 统一政权时间 约公元前2371阿卡德王国 约公元前3100年埃及第一王朝 考古缺失 约公元前2070年夏朝 国家灭亡时间 公元前539年新巴比伦王国 被波斯帝国灭亡 公元前343年被波斯帝国灭亡 公元前1750年左右雅利安 人入侵，印度河城邦消失 多次改朝换代，文明未灭亡 文明灭亡时间 中世纪两河流域伊斯兰化 公元3世纪年古埃及文化与宗教 没落并消失 公元前1750年左右灭亡 未灭亡 Example 2: Climate Change and Human Civilization 2000年 Example 4 Seamless and automated rapeseed mapping for large cloudy regions using time-series optical satellite imagery • Step 1: 时序 WRI (Winter Rapeseed Index)自 动 提 取 无 云 区 域油菜，为RF分类器提 供训练样本 • Step 2:采用多种波段输 入，多时相输入的 RF分 类器，获取多时态油菜 概率图 • Step 3: 整合多时态概 率图，计算平均概率 Concepts of Time Series Analysis • A time series is an ordered se",
+        "parent_id": "node_lecture_10",
+        "knowledge_unit_ids": [
+          "ku_l10_001"
+        ],
+        "order": 1,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l10_002",
+        "title": "时间序列分析：time series / model",
+        "role": "method",
+        "summary": "0 3000 6000 9000 12000 15000 1990 1992 1994 1996 1998 2000 2002 2004 人均GDP 0 50 100 150 200 250 300 1990 1992 1994 1996 1998 2000 2002 2004 轿车产量 0 10 20 30 40 50 60 1990 1992 1994 1996 1998 2000 2002 2004 机床产量 0 100 200 300 400 500 600 700 1990 1992 1994 1996 1998 2000 2002 2004 棉花产量 GDP per capita series Car production series Production of metal cutting machine tools Time series with different components Cotton production series Time Series Models Additive Model: Y t = T t + S t + C t + I t Multiplicative Model： Y t = T t × S t × C t × I t where Yt is the data at period t, St is the seasonal component at period t, Tt is the trend component at period t , Ct is the cycle component at period t",
+        "parent_id": "node_lecture_10",
+        "knowledge_unit_ids": [
+          "ku_l10_002"
+        ],
+        "order": 2,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l10_003",
+        "title": "时间序列分析：time series / average",
+        "role": "method",
+        "summary": "2007.1-2008.9 CPI in China - 2 Months of the year Consumer price index(%) the moving average k=3 the moving average k=5 2007.12 106.5 106.633 106.52 2008.1 107.1 106.833 106.64 2008.2 108.7 107.433 107.14 2008.3 108.3 108.033 107.50 2008.4 108.5 108.500 107.82 2008.5 107.7 108.167 108.06 2008.6 107.1 107.767 108.06 2008.7 106.3 107.033 107.58 2008.8 104.9 106.100 2008.9 104.9 - Example Analysis Example Analysis Consumer price index(%) 98 100 102 104 106 108 110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 2008.8 Consumer price index(%) the moving average k=3 98100102104106108110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 the moving av",
+        "parent_id": "node_lecture_10",
+        "knowledge_unit_ids": [
+          "ku_l10_003"
+        ],
+        "order": 3,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l10_004",
+        "title": "时间序列分析：model / time series",
+        "role": "method",
+        "summary": "Auto-Regressive Model Auto-correlation coefficient • Suppose n is the number of variable y observations, we have time series: y1，y2，…， yt，…，yn . • We can construct n-1 pairs of variable y observations : ( y1,y2), （y2,y3）, …， (yt,yt+1) ， …，(yn-1,yn); • n-k pairs of variable y observations : ( y1,yk), （y2,yk+1）, …，(yt,yt+k-1) ， …，(yn-1,yn-k-1); auto-correlation coefficient for order k: 𝑟𝑘 = σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 (𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘) σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 2 σ𝑡=1 𝑛−𝑘 𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘 2 ത𝑦𝑡 = 1 𝑛−𝑘 σ𝑡=1 𝑛−𝑘 𝑦𝑡 ത𝑦𝑡 + 𝑘 = 1 𝑛−𝑘 σ𝑡=1 𝑛−𝑘 𝑦𝑡 + 𝑘 Auto-Regressive Model An autoregressive model of order p can be written as yt=c+ϕ1yt−1+ϕ2yt−2+⋯+ϕpyt−p+εt, where c is a constant and εt is white noise. This is like a",
+        "parent_id": "node_lecture_10",
+        "knowledge_unit_ids": [
+          "ku_l10_004"
+        ],
+        "order": 4,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l10_005",
+        "title": "时间序列分析：time series / model",
+        "role": "method",
+        "summary": "5. ARIMA: Box-Jenkins 1) Model Identification: Combing stationarity test, Auto-correlation Function (ACF) and Partial Auto-correlation Function (PACF) analysis to determine the parameters of ARIMA (p,d,q) 若时间序列存在季节性，则需扩展为SARIMA模型，即在ARIMA中加入季节性参数 2) Parameter Estimation: Using MLE or OLS to determine parameters, R and Matlab provide ARIMA function. 3) Model Diagnostics： Applying Ljung-Box, residual ACF plot, or QQ plot to validate if the residuals are white noise.",
+        "parent_id": "node_lecture_10",
+        "knowledge_unit_ids": [
+          "ku_l10_005"
+        ],
+        "order": 5,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l10_006",
+        "title": "时间序列分析：time series / model",
+        "role": "method",
+        "summary": "Yanrui Ning, et al. A comparative machine learning study for time series oil production forecasting ARIMA, LSTM, and Prophet. Computers & Geosciences, 2022,5.",
+        "parent_id": "node_lecture_10",
+        "knowledge_unit_ids": [
+          "ku_l10_006"
+        ],
+        "order": 6,
+        "prerequisite_node_ids": []
+      }
+    ],
+    "root_node_ids": [
+      "node_lecture_10"
+    ],
+    "teaching_sequence": [
+      "node_l10_001",
+      "node_l10_002",
+      "node_l10_003",
+      "node_l10_004",
+      "node_l10_005",
+      "node_l10_006"
+    ],
+    "orphan_unit_ids": [],
+    "warnings": [
+      "This LearningContent was generated deterministically from the spatial_analysis knowledge-base chunks.",
+      "Review low-text pages and chunk labels before high-stakes classroom use."
+    ]
+  },
+  "objectives": [
+    "理解时间序列分析中的核心概念和方法。",
+    "能够解释关键术语、适用条件和典型应用。",
+    "能够基于来源页码组织课堂讲解和检查题。"
+  ],
+  "sections": [
+    {
+      "id": "section_l10_001",
+      "title": "时间序列分析：time series / trend",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：时间序列分析：time series / trend",
+      "summary": "文明 两河文明 古埃及 古印度 中国 发源地 两河流域 尼罗河流域 印度河流域 黄河流域 文明名称 美索不达米亚文明 古埃及文明 印度河文明 华夏文明 文明形成时间 约公元前4000年 约公元前4000年 约公元前3100年 约公元前3000年 统一政权时间 约公元前2371阿卡德王国 约公元前3100年埃及第一王朝 考古缺失 约公元前2070年夏朝 国家灭亡时间 公元前539年新巴比伦王国 被波斯帝国灭亡 公元前343年被波斯帝国灭亡 公元前1750年左右雅利安 人入侵，印度河城邦消失 多次改朝换代，文明未灭亡 文明灭亡时间 中世纪两河流域伊斯兰化 公元3世纪年古埃及文化与宗教 没落并消失 公元前1750年左右灭亡 未灭亡 Example 2: Climate Change and Human Civilization 2000年 Example 4 Seamless and automated rapeseed mapping for large cloudy regions using time-series optical satellite imagery • Step 1: 时序 WRI (Winter Rapeseed Index)自 动 提 取 无 云 区 域油菜，为RF分类器提 供训练样本 • Step 2:采用多种波段输 入，多时相输入的 RF分 类器，获取多时态油菜 概率图 • Step 3: 整合多时态概 率图，计算平均概率 Concepts of Time Series Analysis • A time series is an ordered se",
+      "key_points": [
+        "time series",
+        "trend",
+        "seasonal",
+        "Time",
+        "series",
+        "Component",
+        "Average",
+        "period"
+      ],
+      "teaching_narrative": "本节围绕“时间序列分析：time series / trend”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：文明 两河文明 古埃及 古印度 中国 发源地 两河流域 尼罗河流域 印度河流域 黄河流域 文明名称 美索不达米亚文明 古埃及文明 印度河文明 华夏文明 文明形成时间 约公元前4000年 约公元前4000年 约公元前3100年 约公元前3000年 统一政权时间 约公元前2371阿卡德王国 约公元前3100年埃及第一王朝 考古缺失 约公元前2070年夏朝 国家灭亡时间 公元前539年新巴比伦王国 被波斯帝国灭亡 公元前343年被波斯帝国灭亡 公元前1750年左右雅利安 人入侵，印度河城邦消失 多次改朝换代，文明未灭亡 文明灭亡时间 中世纪两河流域伊斯兰化 公元3世纪年古埃及文化与宗教 没落并消失 公元前1750年左右灭亡 未灭亡 Example 2: Climate Change and Human Civilization 2000年 Example 4 Seamless and automated rapeseed mapping for large cloudy regions using time-series optical satellite imagery • Step 1: 时序 WRI (Winter Rapeseed Index)自 动 提 取 无 云 区 域油菜，为RF分类器提 供训练样本 • Step 2:采用多种波段输 入，多时相输入的 RF分 类器，获取多时态油菜 概率图 • Step 3: 整合多时态概 率图，计算平均概率 Concepts of Time Series Analysis • A time series is an ordered se",
+      "knowledge_points": [
+        "time series",
+        "trend",
+        "seasonal",
+        "Time",
+        "series",
+        "Component",
+        "Average",
+        "period",
+        "seasonality",
+        "Step"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l10_001_01",
+          "text": "文明 两河文明 古埃及 古印度 中国 发源地 两河流域 尼罗河流域 印度河流域 黄河流域 文明名称 美索不达米亚文明 古埃及文明 印度河文明 华夏文明 文明形成时间 约公元前4000年 约公元前4000年 约公元前3100年 约公元前3000年 统一政权时间 约公元前2371阿卡德王国 约公元前3100年埃及第一王朝 考古缺失 约公元前2070年夏朝 国家灭亡时间 公元前539年新巴比伦王国 被波斯帝国灭亡 公元前343年被波斯帝国灭亡 公元前1750年左右雅利安 人入侵，印度河城邦消失 多次改朝换代，文明未灭亡 文明灭亡时间 中世纪两河流域伊斯兰化 公元3世纪年古埃及文化与宗教 没落并消失 公元前1750年左右灭亡 未灭亡 Example 2: Climate Change and Human Civilization 2000年",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0008",
+              "page_no": 8,
+              "text_span": "f4dd0c64c6159a6b_p0008_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_001_02",
+          "text": "Example 4 Seamless and automated rapeseed mapping for large cloudy regions using time-series optical satellite imagery • Step 1: 时序 WRI (Winter Rapeseed Index)自 动 提 取 无 云 区 域油菜，为RF分类器提 供训练样本 • Step 2:采用多种波段输 入，多时相输入的 RF分 类器，获取多时态油菜 概率图 • Step 3: 整合多时态概 率图，计算平均概率",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0013",
+              "page_no": 13,
+              "text_span": "f4dd0c64c6159a6b_p0013_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_001_03",
+          "text": "Concepts of Time Series Analysis • A time series is an ordered sequence of values of a variable at equally spaced time intervals. • Time series analysis accounts for the fact that data points taken over time may have an internal structure (such as autocorrelation, trend, cyclical or seasonal variation) that should be measured.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0015",
+              "page_no": 15,
+              "text_span": "f4dd0c64c6159a6b_p0015_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_001_04",
+          "text": "Seasonal Component (S) Climate in Hangzhou Season Average sunshine hours (h) Average air temperature(℃) Average precipitation(mm) Average number of rainy days (d) Spring(Apr.) 120-150 15.5-16.5 120-190 15-17 Summer(July) 210-240 27.5-29 140-190 10-13 Autumn(Oct.) 140-180 17-19.5 50-60 7-9 Winter(Jan.) 90-120 4-5.5 70-90 12-14 • Seasonal Component (S): the component that shows a periodic pattern over one year, month, day, or week….",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0018",
+              "page_no": 18,
+              "text_span": "f4dd0c64c6159a6b_p0018_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_001_05",
+          "text": "Cyclical Component (C) • Cyclical Component (C): the component exists when data exhibit rises and falls that are not of fixed period. 0 时间 观测值（y) 循环曲线 趋势线 A B 趋势与循环 • Many people confuse cyclic behaviour with seasonal behaviour, but they are really quite different. • If the fluctuations are not of fixed period then they are cyclic; if the period is unchanging and associated with some aspect of the calendar, then the pattern is seasonal.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0019",
+              "page_no": 19,
+              "text_span": "f4dd0c64c6159a6b_p0019_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 time series 为什么重要。",
+          "expected_answer": "学生应能说明 time series 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“时间序列分析：time series / model”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0008",
+          "page_no": 8,
+          "text_span": "f4dd0c64c6159a6b_p0008_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0013",
+          "page_no": 13,
+          "text_span": "f4dd0c64c6159a6b_p0013_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0015",
+          "page_no": 15,
+          "text_span": "f4dd0c64c6159a6b_p0015_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0018",
+          "page_no": 18,
+          "text_span": "f4dd0c64c6159a6b_p0018_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0019",
+          "page_no": 19,
+          "text_span": "f4dd0c64c6159a6b_p0019_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0021",
+          "page_no": 21,
+          "text_span": "f4dd0c64c6159a6b_p0021_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0022",
+          "page_no": 22,
+          "text_span": "f4dd0c64c6159a6b_p0022_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 8,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 13,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 15,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 18,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 19,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 21,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 22,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l10_001"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l10_001_01",
+          "question": "关于“time series”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 time series 的含义、适用条件或典型应用",
+            "只记住 time series 在课件中出现过",
+            "把 time series 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "time series",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0008",
+              "page_no": 8,
+              "text_span": "f4dd0c64c6159a6b_p0008_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0013",
+              "page_no": 13,
+              "text_span": "f4dd0c64c6159a6b_p0013_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0015",
+              "page_no": 15,
+              "text_span": "f4dd0c64c6159a6b_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0018",
+              "page_no": 18,
+              "text_span": "f4dd0c64c6159a6b_p0018_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0019",
+              "page_no": 19,
+              "text_span": "f4dd0c64c6159a6b_p0019_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        8,
+        13,
+        15,
+        18,
+        19,
+        21,
+        22
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“时间序列分析：time series / trend”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：文明 两河文明 古埃及 古印度 中国 发源地 两河流域 尼罗河流域 印度河流域 黄河流域 文明名称 美索不达米亚文明 古埃及文明 印度河文明 华夏文明 文明形成时间 约公元前4000年 约公元前4000年 约公元前3100年 约公元前3000年 统一政权时间 约公元前2371阿卡德王国 约公元前3100年埃及第一王朝 考古缺失 约公元前2070年夏朝 国家灭亡时间 公元前539年新巴比伦王国 被波斯帝国灭亡 公元前343年被波斯帝国灭亡 公元前1750年左右雅利安 人入侵，印度河城邦消失 多次改朝换代，文明未灭亡 文明灭亡时间 中世纪两河流域伊斯兰化 公元3世纪年古埃及文化与宗教 没落并消失 公元前1750年左右灭亡 未灭亡 Example 2: Climate Change and Human Civilization 2000年 Example 4 Seamless and automated rapeseed mapping for large cloudy regions using time-series optical satellite imagery • Step 1: 时序 WRI (Winter Rapeseed Index)自 动 提 取 无 云 区 域油菜，为RF分类器提 供训练样本 • Step 2:采用多种波段输 入，多时相输入的 RF分 类器，获取多时态油菜 概率图 • Step 3: 整合多时态概 率图，计算平均概率 Concepts of Time Series Analysis • A time series is an ordered se",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“时间序列分析：time series / model”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l10_002",
+      "title": "时间序列分析：time series / model",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：时间序列分析：time series / model",
+      "summary": "0 3000 6000 9000 12000 15000 1990 1992 1994 1996 1998 2000 2002 2004 人均GDP 0 50 100 150 200 250 300 1990 1992 1994 1996 1998 2000 2002 2004 轿车产量 0 10 20 30 40 50 60 1990 1992 1994 1996 1998 2000 2002 2004 机床产量 0 100 200 300 400 500 600 700 1990 1992 1994 1996 1998 2000 2002 2004 棉花产量 GDP per capita series Car production series Production of metal cutting machine tools Time series with different components Cotton production series Time Series Models Additive Model: Y t = T t + S t + C t + I t Multiplicative Model： Y t = T t × S t × C t × I t where Yt is the data at period t, St is the seasonal component at period t, Tt is the trend component at period t , Ct is the cycle component at period t",
+      "key_points": [
+        "time series",
+        "model",
+        "series",
+        "average",
+        "period",
+        "time",
+        "moving",
+        "component"
+      ],
+      "teaching_narrative": "本节围绕“时间序列分析：time series / model”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：0 3000 6000 9000 12000 15000 1990 1992 1994 1996 1998 2000 2002 2004 人均GDP 0 50 100 150 200 250 300 1990 1992 1994 1996 1998 2000 2002 2004 轿车产量 0 10 20 30 40 50 60 1990 1992 1994 1996 1998 2000 2002 2004 机床产量 0 100 200 300 400 500 600 700 1990 1992 1994 1996 1998 2000 2002 2004 棉花产量 GDP per capita series Car production series Production of metal cutting machine tools Time series with different components Cotton production series Time Series Models Additive Model: Y t = T t + S t + C t + I t Multiplicative Model： Y t = T t × S t × C t × I t where Yt is the data at period t, St is the seasonal component at period t, Tt is the trend component at period t , Ct is the cycle component at period t",
+      "knowledge_points": [
+        "time series",
+        "model",
+        "series",
+        "average",
+        "period",
+        "time",
+        "moving",
+        "component",
+        "variation",
+        "accuracy"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l10_002_01",
+          "text": "0 3000 6000 9000 12000 15000 1990 1992 1994 1996 1998 2000 2002 2004 人均GDP 0 50 100 150 200 250 300 1990 1992 1994 1996 1998 2000 2002 2004 轿车产量 0 10 20 30 40 50 60 1990 1992 1994 1996 1998 2000 2002 2004 机床产量 0 100 200 300 400 500 600 700 1990 1992 1994 1996 1998 2000 2002 2004 棉花产量 GDP per capita series Car production series Production of metal cutting machine tools Time series with different components Cotton production series",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0023",
+              "page_no": 23,
+              "text_span": "f4dd0c64c6159a6b_p0023_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_002_02",
+          "text": "Time Series Models Additive Model: Y t = T t + S t + C t + I t Multiplicative Model： Y t = T t × S t × C t × I t where Yt is the data at period t, St is the seasonal component at period t, Tt is the trend component at period t , Ct is the cycle component at period t and It is the remainder (or irregular or error) component at period t.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0025",
+              "page_no": 25,
+              "text_span": "f4dd0c64c6159a6b_p0025_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_002_03",
+          "text": "Time Series Models Y t = T t × S t × C t × I t log Y t = log T t + log S t +log C t + log I t is equivalent to • An alternative to using a multiplicative model, is to first transform the data until the variation in the series appears to be stable over time, and then use an additive model. • When a log transformation has been used, this is equivalent to using a multiplicative decomposition because",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0026",
+              "page_no": 26,
+              "text_span": "f4dd0c64c6159a6b_p0026_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_002_04",
+          "text": "Time Series Models Additive Model: Y t = T t + S t + C t + I t Multiplicative Model： Y t = T t × S t × C t × I t • The additive model is most appropriate if the magnitude of the seasonal fluctuations or the variation around the trend and cycle does not vary with the level of the time series. • When the variation in the seasonal pattern, or the variation around the trend and cycle, appears to be proportional to the level of the time series, then a multiplicative model is more appropriate.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0028",
+              "page_no": 28,
+              "text_span": "f4dd0c64c6159a6b_p0028_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_002_05",
+          "text": "• The moving average method uses the most recent n data values in the time series as the forecast for the next period. It includes simple moving average and weighted moving average . • “Moving” is used because every time a new observation becomes available for the time series, it replace the oldest observation in formula and a new average is computed.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0031",
+              "page_no": 31,
+              "text_span": "f4dd0c64c6159a6b_p0031_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 time series 为什么重要。",
+          "expected_answer": "学生应能说明 time series 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“时间序列分析：time series / average”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0023",
+          "page_no": 23,
+          "text_span": "f4dd0c64c6159a6b_p0023_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0025",
+          "page_no": 25,
+          "text_span": "f4dd0c64c6159a6b_p0025_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0026",
+          "page_no": 26,
+          "text_span": "f4dd0c64c6159a6b_p0026_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0028",
+          "page_no": 28,
+          "text_span": "f4dd0c64c6159a6b_p0028_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0031",
+          "page_no": 31,
+          "text_span": "f4dd0c64c6159a6b_p0031_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0033",
+          "page_no": 33,
+          "text_span": "f4dd0c64c6159a6b_p0033_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0034",
+          "page_no": 34,
+          "text_span": "f4dd0c64c6159a6b_p0034_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 23,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 25,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 26,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 28,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 31,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 33,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 34,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l10_002"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l10_002_01",
+          "question": "关于“time series”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 time series 的含义、适用条件或典型应用",
+            "只记住 time series 在课件中出现过",
+            "把 time series 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "time series",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0023",
+              "page_no": 23,
+              "text_span": "f4dd0c64c6159a6b_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0025",
+              "page_no": 25,
+              "text_span": "f4dd0c64c6159a6b_p0025_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0026",
+              "page_no": 26,
+              "text_span": "f4dd0c64c6159a6b_p0026_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0028",
+              "page_no": 28,
+              "text_span": "f4dd0c64c6159a6b_p0028_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0031",
+              "page_no": 31,
+              "text_span": "f4dd0c64c6159a6b_p0031_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        23,
+        25,
+        26,
+        28,
+        31,
+        33,
+        34
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“时间序列分析：time series / model”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：0 3000 6000 9000 12000 15000 1990 1992 1994 1996 1998 2000 2002 2004 人均GDP 0 50 100 150 200 250 300 1990 1992 1994 1996 1998 2000 2002 2004 轿车产量 0 10 20 30 40 50 60 1990 1992 1994 1996 1998 2000 2002 2004 机床产量 0 100 200 300 400 500 600 700 1990 1992 1994 1996 1998 2000 2002 2004 棉花产量 GDP per capita series Car production series Production of metal cutting machine tools Time series with different components Cotton production series Time Series Models Additive Model: Y t = T t + S t + C t + I t Multiplicative Model： Y t = T t × S t × C t × I t where Yt is the data at period t, St is the seasonal component at period t, Tt is the trend component at period t , Ct is the cycle component at period t",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“时间序列分析：time series / average”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l10_003",
+      "title": "时间序列分析：time series / average",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：时间序列分析：time series / average",
+      "summary": "2007.1-2008.9 CPI in China - 2 Months of the year Consumer price index(%) the moving average k=3 the moving average k=5 2007.12 106.5 106.633 106.52 2008.1 107.1 106.833 106.64 2008.2 108.7 107.433 107.14 2008.3 108.3 108.033 107.50 2008.4 108.5 108.500 107.82 2008.5 107.7 108.167 108.06 2008.6 107.1 107.767 108.06 2008.7 106.3 107.033 107.58 2008.8 104.9 106.100 2008.9 104.9 - Example Analysis Example Analysis Consumer price index(%) 98 100 102 104 106 108 110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 2008.8 Consumer price index(%) the moving average k=3 98100102104106108110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 the moving av",
+      "key_points": [
+        "time series",
+        "average",
+        "moving",
+        "series",
+        "time",
+        "forecast",
+        "model",
+        "regression"
+      ],
+      "teaching_narrative": "本节围绕“时间序列分析：time series / average”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：2007.1-2008.9 CPI in China - 2 Months of the year Consumer price index(%) the moving average k=3 the moving average k=5 2007.12 106.5 106.633 106.52 2008.1 107.1 106.833 106.64 2008.2 108.7 107.433 107.14 2008.3 108.3 108.033 107.50 2008.4 108.5 108.500 107.82 2008.5 107.7 108.167 108.06 2008.6 107.1 107.767 108.06 2008.7 106.3 107.033 107.58 2008.8 104.9 106.100 2008.9 104.9 - Example Analysis Example Analysis Consumer price index(%) 98 100 102 104 106 108 110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 2008.8 Consumer price index(%) the moving average k=3 98100102104106108110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 the moving av",
+      "knowledge_points": [
+        "time series",
+        "average",
+        "moving",
+        "series",
+        "time",
+        "forecast",
+        "model",
+        "regression",
+        "Example",
+        "consumption"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l10_003_01",
+          "text": "2007.1-2008.9 CPI in China - 2 Months of the year Consumer price index(%) the moving average k=3 the moving average k=5 2007.12 106.5 106.633 106.52 2008.1 107.1 106.833 106.64 2008.2 108.7 107.433 107.14 2008.3 108.3 108.033 107.50 2008.4 108.5 108.500 107.82 2008.5 107.7 108.167 108.06 2008.6 107.1 107.767 108.06 2008.7 106.3 107.033 107.58 2008.8 104.9 106.100 2008.9 104.9 - Example Analysis",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0035",
+              "page_no": 35,
+              "text_span": "f4dd0c64c6159a6b_p0035_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_003_02",
+          "text": "Example Analysis Consumer price index(%) 98 100 102 104 106 108 110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 2008.8 Consumer price index(%) the moving average k=3 98100102104106108110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 the moving average k=3 the moving average k=5 100 102104 106108 110 Monthsof 2007.1 2007.2 2007.3 2007.4 2007.5 2007.6 2007.7 2007.8 2007.9 2007.1 2007.11 2007.12 2008.1 2008.2 2008.3 2008.4 the moving average k",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0036",
+              "page_no": 36,
+              "text_span": "f4dd0c64c6159a6b_p0036_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_003_03",
+          "text": "• Exponential smoothing uses a weighted average of past time series values as the forecast; it is a special case of the weighted moving average method in which we select only one weight-the weight for the most recent observation. 2. Exponential smoothing--simple ttjt j n t yyyy ˆ)1()1(ˆ 1 0j 1  −+=−= − − = +  • Where α (0≤ α ≤1) is the smoothing constant (parameter), • yt is the actual value of the time series in period t, • ො𝑦t , ො𝑦t+1 is the forecasting values of the time series in period",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0037",
+              "page_no": 37,
+              "text_span": "f4dd0c64c6159a6b_p0037_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_003_04",
+          "text": "α determination • Different α produce different forecasting results. • In general, when the time series of random fluctuations in the larger, α election should be larger in order to be able to quickly catch up with recent changes. • When the time series is stationary series, α election should be smaller data.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0038",
+              "page_no": 38,
+              "text_span": "f4dd0c64c6159a6b_p0038_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_003_05",
+          "text": "Example Analysis Try to estimate water consumption in 2023 by exponential smoothing method. Water consumption in city A in 2025 is 240.85（107t） 2019-2024 Water consumption table in City A (107t ) ො𝑦 2025= 𝛼y2024 + 𝛼(1 − 𝛼)𝑦2023 + 𝛼(1 − 𝛼)2𝑦2022 + 𝛼(1 − 𝛼)3𝑦2021 + 𝛼(1 − 𝛼)4𝑦2020 + 𝛼(1 − 𝛼)5𝑦2019 = 0.5 × 250.00 + 0.5 × 0.5 × 241.00 + 0.5 × 0. 52 × 248.79 +0.5 × 0.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0039",
+              "page_no": 39,
+              "text_span": "f4dd0c64c6159a6b_p0039_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 time series 为什么重要。",
+          "expected_answer": "学生应能说明 time series 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“时间序列分析：model / time series”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0035",
+          "page_no": 35,
+          "text_span": "f4dd0c64c6159a6b_p0035_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0036",
+          "page_no": 36,
+          "text_span": "f4dd0c64c6159a6b_p0036_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0037",
+          "page_no": 37,
+          "text_span": "f4dd0c64c6159a6b_p0037_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0038",
+          "page_no": 38,
+          "text_span": "f4dd0c64c6159a6b_p0038_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0039",
+          "page_no": 39,
+          "text_span": "f4dd0c64c6159a6b_p0039_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0040",
+          "page_no": 40,
+          "text_span": "f4dd0c64c6159a6b_p0040_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0045",
+          "page_no": 45,
+          "text_span": "f4dd0c64c6159a6b_p0045_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 35,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 36,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 37,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 38,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 39,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 40,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 45,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l10_003"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l10_003_01",
+          "question": "关于“time series”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 time series 的含义、适用条件或典型应用",
+            "只记住 time series 在课件中出现过",
+            "把 time series 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "time series",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0035",
+              "page_no": 35,
+              "text_span": "f4dd0c64c6159a6b_p0035_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0036",
+              "page_no": 36,
+              "text_span": "f4dd0c64c6159a6b_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0037",
+              "page_no": 37,
+              "text_span": "f4dd0c64c6159a6b_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0038",
+              "page_no": 38,
+              "text_span": "f4dd0c64c6159a6b_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0039",
+              "page_no": 39,
+              "text_span": "f4dd0c64c6159a6b_p0039_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        45
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“时间序列分析：time series / average”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：2007.1-2008.9 CPI in China - 2 Months of the year Consumer price index(%) the moving average k=3 the moving average k=5 2007.12 106.5 106.633 106.52 2008.1 107.1 106.833 106.64 2008.2 108.7 107.433 107.14 2008.3 108.3 108.033 107.50 2008.4 108.5 108.500 107.82 2008.5 107.7 108.167 108.06 2008.6 107.1 107.767 108.06 2008.7 106.3 107.033 107.58 2008.8 104.9 106.100 2008.9 104.9 - Example Analysis Example Analysis Consumer price index(%) 98 100 102 104 106 108 110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 2008.8 Consumer price index(%) the moving average k=3 98100102104106108110 Monthsof 2007.2 2007.4 2007.6 2007.8 2007.1 2007.12 2008.2 2008.4 2008.6 the moving av",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“时间序列分析：model / time series”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l10_004",
+      "title": "时间序列分析：model / time series",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：时间序列分析：model / time series",
+      "summary": "Auto-Regressive Model Auto-correlation coefficient • Suppose n is the number of variable y observations, we have time series: y1，y2，…， yt，…，yn . • We can construct n-1 pairs of variable y observations : ( y1,y2), （y2,y3）, …， (yt,yt+1) ， …，(yn-1,yn); • n-k pairs of variable y observations : ( y1,yk), （y2,yk+1）, …，(yt,yt+k-1) ， …，(yn-1,yn-k-1); auto-correlation coefficient for order k: 𝑟𝑘 = σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 (𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘) σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 2 σ𝑡=1 𝑛−𝑘 𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘 2 ത𝑦𝑡 = 1 𝑛−𝑘 σ𝑡=1 𝑛−𝑘 𝑦𝑡 ത𝑦𝑡 + 𝑘 = 1 𝑛−𝑘 σ𝑡=1 𝑛−𝑘 𝑦𝑡 + 𝑘 Auto-Regressive Model An autoregressive model of order p can be written as yt=c+ϕ1yt−1+ϕ2yt−2+⋯+ϕpyt−p+εt, where c is a constant and εt is white noise. This is like a",
+      "key_points": [
+        "model",
+        "time series",
+        "ARIMA",
+        "regression",
+        "values",
+        "time",
+        "series",
+        "coefficient"
+      ],
+      "teaching_narrative": "本节围绕“时间序列分析：model / time series”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Auto-Regressive Model Auto-correlation coefficient • Suppose n is the number of variable y observations, we have time series: y1，y2，…， yt，…，yn . • We can construct n-1 pairs of variable y observations : ( y1,y2), （y2,y3）, …， (yt,yt+1) ， …，(yn-1,yn); • n-k pairs of variable y observations : ( y1,yk), （y2,yk+1）, …，(yt,yt+k-1) ， …，(yn-1,yn-k-1); auto-correlation coefficient for order k: 𝑟𝑘 = σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 (𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘) σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 2 σ𝑡=1 𝑛−𝑘 𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘 2 ത𝑦𝑡 = 1 𝑛−𝑘 σ𝑡=1 𝑛−𝑘 𝑦𝑡 ത𝑦𝑡 + 𝑘 = 1 𝑛−𝑘 σ𝑡=1 𝑛−𝑘 𝑦𝑡 + 𝑘 Auto-Regressive Model An autoregressive model of order p can be written as yt=c+ϕ1yt−1+ϕ2yt−2+⋯+ϕpyt−p+εt, where c is a constant and εt is white noise. This is like a",
+      "knowledge_points": [
+        "model",
+        "time series",
+        "ARIMA",
+        "regression",
+        "values",
+        "time",
+        "series",
+        "coefficient",
+        "number",
+        "variable"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l10_004_01",
+          "text": "Auto-Regressive Model Auto-correlation coefficient • Suppose n is the number of variable y observations, we have time series: y1，y2，…， yt，…，yn . • We can construct n-1 pairs of variable y observations : ( y1,y2), （y2,y3）, …， (yt,yt+1) ， …，(yn-1,yn); • n-k pairs of variable y observations : ( y1,yk), （y2,yk+1）, …，(yt,yt+k-1) ， …，(yn-1,yn-k-1); auto-correlation coefficient for order k: 𝑟𝑘 = σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 (𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘) σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 2 σ𝑡=1 𝑛−𝑘 𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘 2 ത𝑦𝑡 = 1 𝑛−𝑘 σ𝑡=1 𝑛−𝑘 𝑦𝑡",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0046",
+              "page_no": 46,
+              "text_span": "f4dd0c64c6159a6b_p0046_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_004_02",
+          "text": "Auto-Regressive Model An autoregressive model of order p can be written as yt=c+ϕ1yt−1+ϕ2yt−2+⋯+ϕpyt−p+εt, where c is a constant and εt is white noise. This is like a multiple regression but with lagged values of yt as predictors. We refer to this as an AR(p) model.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0047",
+              "page_no": 47,
+              "text_span": "f4dd0c64c6159a6b_p0047_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_004_03",
+          "text": "Example Analysis • 某地区2014-2024年11年自然灾害造成的成灾面积的时间序列数据见表。 试计算该时间序列的一阶自相关系数r1和二阶自相关系数r2，并用自回归 模型预测2025年的成灾面积。 年份 2014 2015 2016 2017 2018 2019 2020 2021 2022 2023 2024 成灾 面积 50 52 53 55 56 58 59 60 61 61 62 yt+1 52 53 55 56 58 59 60 61 61 62 yt+2 53 55 56 58 59 60 61 61 62 某地区2014-2024年自然灾害成灾面积（102ha)",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0048",
+              "page_no": 48,
+              "text_span": "f4dd0c64c6159a6b_p0048_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_004_04",
+          "text": "Example Analysis (2) Significance test for auto-correlation coefficient the number of observation is 11, the degrees of freedom for auto-correlation coefficient r1 is f = 11-2=9 given significance level α=0.001, we can get r0.001,9=0.8471 r1 = 0.9761 > r0.001,9=0.8471, thus r1 is significant",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0050",
+              "page_no": 50,
+              "text_span": "f4dd0c64c6159a6b_p0050_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_004_05",
+          "text": "Auto Regressive Integrated Moving Average Model (ARIMA) 自回归求和移动平均模型 • ARIMA time series model was employed in this study, which was pioneered by Box and Jenkins in 1970. Box, G.E.P ., Jenkins, G.M., 1970. Time Series Analysis: Forecasting and Control.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0052",
+              "page_no": 52,
+              "text_span": "f4dd0c64c6159a6b_p0052_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 model 为什么重要。",
+          "expected_answer": "学生应能说明 model 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“时间序列分析：time series / model”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0046",
+          "page_no": 46,
+          "text_span": "f4dd0c64c6159a6b_p0046_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0047",
+          "page_no": 47,
+          "text_span": "f4dd0c64c6159a6b_p0047_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0048",
+          "page_no": 48,
+          "text_span": "f4dd0c64c6159a6b_p0048_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0050",
+          "page_no": 50,
+          "text_span": "f4dd0c64c6159a6b_p0050_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0052",
+          "page_no": 52,
+          "text_span": "f4dd0c64c6159a6b_p0052_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0053",
+          "page_no": 53,
+          "text_span": "f4dd0c64c6159a6b_p0053_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0054",
+          "page_no": 54,
+          "text_span": "f4dd0c64c6159a6b_p0054_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 46,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 47,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 48,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 50,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 52,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 53,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 54,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l10_004"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l10_004_01",
+          "question": "关于“model”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 model 的含义、适用条件或典型应用",
+            "只记住 model 在课件中出现过",
+            "把 model 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "model",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0046",
+              "page_no": 46,
+              "text_span": "f4dd0c64c6159a6b_p0046_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0047",
+              "page_no": 47,
+              "text_span": "f4dd0c64c6159a6b_p0047_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0048",
+              "page_no": 48,
+              "text_span": "f4dd0c64c6159a6b_p0048_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0050",
+              "page_no": 50,
+              "text_span": "f4dd0c64c6159a6b_p0050_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0052",
+              "page_no": 52,
+              "text_span": "f4dd0c64c6159a6b_p0052_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        46,
+        47,
+        48,
+        50,
+        52,
+        53,
+        54
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“时间序列分析：model / time series”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Auto-Regressive Model Auto-correlation coefficient • Suppose n is the number of variable y observations, we have time series: y1，y2，…， yt，…，yn . • We can construct n-1 pairs of variable y observations : ( y1,y2), （y2,y3）, …， (yt,yt+1) ， …，(yn-1,yn); • n-k pairs of variable y observations : ( y1,yk), （y2,yk+1）, …，(yt,yt+k-1) ， …，(yn-1,yn-k-1); auto-correlation coefficient for order k: 𝑟𝑘 = σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 (𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘) σ𝑡=1 𝑛−𝑘 𝑦𝑡 − ത𝑦𝑡 2 σ𝑡=1 𝑛−𝑘 𝑦𝑡 + 𝑘 − ത𝑦𝑡 + 𝑘 2 ത𝑦𝑡 = 1 𝑛−𝑘 σ𝑡=1 𝑛−𝑘 𝑦𝑡 ത𝑦𝑡 + 𝑘 = 1 𝑛−𝑘 σ𝑡=1 𝑛−𝑘 𝑦𝑡 + 𝑘 Auto-Regressive Model An autoregressive model of order p can be written as yt=c+ϕ1yt−1+ϕ2yt−2+⋯+ϕpyt−p+εt, where c is a constant and εt is white noise. This is like a",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“时间序列分析：time series / model”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l10_005",
+      "title": "时间序列分析：time series / model",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：时间序列分析：time series / model",
+      "summary": "5. ARIMA: Box-Jenkins 1) Model Identification: Combing stationarity test, Auto-correlation Function (ACF) and Partial Auto-correlation Function (PACF) analysis to determine the parameters of ARIMA (p,d,q) 若时间序列存在季节性，则需扩展为SARIMA模型，即在ARIMA中加入季节性参数 2) Parameter Estimation: Using MLE or OLS to determine parameters, R and Matlab provide ARIMA function. 3) Model Diagnostics： Applying Ljung-Box, residual ACF plot, or QQ plot to validate if the residuals are white noise.",
+      "key_points": [
+        "time series",
+        "model",
+        "time",
+        "series",
+        "ARIMA",
+        "test",
+        "noise",
+        "values"
+      ],
+      "teaching_narrative": "本节围绕“时间序列分析：time series / model”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：5. ARIMA: Box-Jenkins 1) Model Identification: Combing stationarity test, Auto-correlation Function (ACF) and Partial Auto-correlation Function (PACF) analysis to determine the parameters of ARIMA (p,d,q) 若时间序列存在季节性，则需扩展为SARIMA模型，即在ARIMA中加入季节性参数 2) Parameter Estimation: Using MLE or OLS to determine parameters, R and Matlab provide ARIMA function. 3) Model Diagnostics： Applying Ljung-Box, residual ACF plot, or QQ plot to validate if the residuals are white noise.",
+      "knowledge_points": [
+        "time series",
+        "model",
+        "time",
+        "series",
+        "ARIMA",
+        "test",
+        "noise",
+        "values",
+        "Auto-correlation",
+        "Function"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l10_005_01",
+          "text": "5. ARIMA: Box-Jenkins 1) Model Identification: Combing stationarity test, Auto-correlation Function (ACF) and Partial Auto-correlation Function (PACF) analysis to determine the parameters of ARIMA (p,d,q) 若时间序列存在季节性，则需扩展为SARIMA模型，即在ARIMA中加入季节性参数 2) Parameter Estimation: Using MLE or OLS to determine parameters, R and Matlab provide ARIMA function. 3) Model Diagnostics： Applying Ljung-Box, residual ACF plot, or QQ plot to validate if the residuals are white noise.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0055",
+              "page_no": 55,
+              "text_span": "f4dd0c64c6159a6b_p0055_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_005_02",
+          "text": "Stationarity test Stationarity means that the statistical properties of a process generating a time series do not change over time. ARIMA model is applicable only when a time series is stationary. • If the stationary criterion is not met, transforming data is necessary via detrending, differencing, decomposition, etc., with a purpose to stationarize the time series.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0056",
+              "page_no": 56,
+              "text_span": "f4dd0c64c6159a6b_p0056_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_005_03",
+          "text": "Stationarity test • Practical time series is often non-stationary. • For example, the declining oil production trend represents the mean decreases over time; the extremely low temperature at wintertime may indicate production loss due to mechanical failures or less routine maintenance. • Therefore, it is necessary to eliminate trend and seasonality so that the transformed series is stationary for forecasting, and then the forecasted values should be converted to the original scale by applying th",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0057",
+              "page_no": 57,
+              "text_span": "f4dd0c64c6159a6b_p0057_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_005_04",
+          "text": "White Noise Test Introduce the concept of ‘white noise’ for two reasons (Brownlee, 2017)： • White noise means a sequence of randomly independent numbers that cannot be predicted. A time series can be reasonably modeled only when it is not white noise. • The forecasted residuals should be white noise if good predictions are made by a forecast model.",
+          "type": "concept",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0058",
+              "page_no": 58,
+              "text_span": "f4dd0c64c6159a6b_p0058_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_005_05",
+          "text": "• The parameters p and q are initially determined using PACF (Partial Auto-correlation Function) and ACF (Auto-correlation Function) plots specifically • The blue bands are significance confidence bands, within which the function value is regarded as 0. • The ACF plot has two non-zero values, cutting off after 2nd lag, meaning it is mostly a MA (q = 2) process. • The PACF plot has a cut-off after the 3rd lag, suggesting an AR (p = 3) process.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0059",
+              "page_no": 59,
+              "text_span": "f4dd0c64c6159a6b_p0059_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 time series 为什么重要。",
+          "expected_answer": "学生应能说明 time series 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“时间序列分析：time series / model”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0055",
+          "page_no": 55,
+          "text_span": "f4dd0c64c6159a6b_p0055_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0056",
+          "page_no": 56,
+          "text_span": "f4dd0c64c6159a6b_p0056_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0057",
+          "page_no": 57,
+          "text_span": "f4dd0c64c6159a6b_p0057_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0058",
+          "page_no": 58,
+          "text_span": "f4dd0c64c6159a6b_p0058_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0059",
+          "page_no": 59,
+          "text_span": "f4dd0c64c6159a6b_p0059_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0060",
+          "page_no": 60,
+          "text_span": "f4dd0c64c6159a6b_p0060_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0061",
+          "page_no": 61,
+          "text_span": "f4dd0c64c6159a6b_p0061_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 55,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 56,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 57,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 58,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 59,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 60,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 61,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l10_005"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l10_005_01",
+          "question": "关于“time series”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 time series 的含义、适用条件或典型应用",
+            "只记住 time series 在课件中出现过",
+            "把 time series 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "time series",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0055",
+              "page_no": 55,
+              "text_span": "f4dd0c64c6159a6b_p0055_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0056",
+              "page_no": 56,
+              "text_span": "f4dd0c64c6159a6b_p0056_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0057",
+              "page_no": 57,
+              "text_span": "f4dd0c64c6159a6b_p0057_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0058",
+              "page_no": 58,
+              "text_span": "f4dd0c64c6159a6b_p0058_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0059",
+              "page_no": 59,
+              "text_span": "f4dd0c64c6159a6b_p0059_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“时间序列分析：time series / model”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：5. ARIMA: Box-Jenkins 1) Model Identification: Combing stationarity test, Auto-correlation Function (ACF) and Partial Auto-correlation Function (PACF) analysis to determine the parameters of ARIMA (p,d,q) 若时间序列存在季节性，则需扩展为SARIMA模型，即在ARIMA中加入季节性参数 2) Parameter Estimation: Using MLE or OLS to determine parameters, R and Matlab provide ARIMA function. 3) Model Diagnostics： Applying Ljung-Box, residual ACF plot, or QQ plot to validate if the residuals are white noise.",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“时间序列分析：time series / model”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l10_006",
+      "title": "时间序列分析：time series / model",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：时间序列分析：time series / model",
+      "summary": "Yanrui Ning, et al. A comparative machine learning study for time series oil production forecasting ARIMA, LSTM, and Prophet. Computers & Geosciences, 2022,5.",
+      "key_points": [
+        "time series",
+        "model",
+        "ARIMA",
+        "machine learning",
+        "LSTM",
+        "time",
+        "series",
+        "production"
+      ],
+      "teaching_narrative": "本节围绕“时间序列分析：time series / model”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Yanrui Ning, et al. A comparative machine learning study for time series oil production forecasting ARIMA, LSTM, and Prophet. Computers & Geosciences, 2022,5.",
+      "knowledge_points": [
+        "time series",
+        "model",
+        "ARIMA",
+        "machine learning",
+        "LSTM",
+        "time",
+        "series",
+        "production",
+        "forecasting",
+        "Prophet"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l10_006_01",
+          "text": "Yanrui Ning, et al. A comparative machine learning study for time series oil production forecasting ARIMA, LSTM, and Prophet. Computers & Geosciences, 2022,5.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0062",
+              "page_no": 62,
+              "text_span": "f4dd0c64c6159a6b_p0062_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_006_02",
+          "text": "• Weak Seasonal Handling: Basic ARIMA cannot model seasonality; extensions like SARIMA are limited to simple, fixed seasonal patterns (e.g., no support for multiple or irregular cycles). • Poor Long-Term Forecasts : Forecast errors compound over time due to the reliance on recursive predictions, leading to rapid accuracy decay for long horizons. • Sensitive to Missing Data : Gaps or irregularly spaced data require imputation (e.g., interpolation), which can distort patterns and introduce bias.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0063",
+              "page_no": 63,
+              "text_span": "f4dd0c64c6159a6b_p0063_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_006_03",
+          "text": "• Model fusion: Combine ARIMA with ANN, SVM etc. • Panigrahi, S. , H.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0064",
+              "page_no": 64,
+              "text_span": "f4dd0c64c6159a6b_p0064_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_006_04",
+          "text": "1. 循环变动或季节变化特征明显的时间序列，也可用谐波分析、小波分析等方法，如《九寨沟世界遗产地旅游流时间特征分析》 2. 时间序列的概率预测：马尔可夫预测方法 3.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0065",
+              "page_no": 65,
+              "text_span": "f4dd0c64c6159a6b_p0065_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l10_006_05",
+          "text": "Cases • Time-series analysis of Sentinel-2 satellite images for sunflower yield estimation • Sustainable futures in agricultural heritage: Geospatial exploration and predicting groundwater-level variations in Barind tract of Bangladesh-2023 • How does urbanization affect energy carbon emissions under the background of carbon neutrality?-2023",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0067",
+              "page_no": 67,
+              "text_span": "f4dd0c64c6159a6b_p0067_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [
+        {
+          "id": "example_ku_l10_006_01",
+          "title": "时间序列分析：time series / model 的应用案例",
+          "scenario": "从课件中的案例或应用页出发，让学生判断空间分析方法的适用场景。",
+          "explanation": "Yanrui Ning, et al. A comparative machine learning study for time series oil production forecasting ARIMA, LSTM, and Prophet. Computers & Geosciences, 2022,5.",
+          "takeaway": "案例学习的重点是把方法、数据条件和结果解释连接起来。",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0062",
+              "page_no": 62,
+              "text_span": "f4dd0c64c6159a6b_p0062_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0063",
+              "page_no": 63,
+              "text_span": "f4dd0c64c6159a6b_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0064",
+              "page_no": 64,
+              "text_span": "f4dd0c64c6159a6b_p0064_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0065",
+              "page_no": 65,
+              "text_span": "f4dd0c64c6159a6b_p0065_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0067",
+              "page_no": 67,
+              "text_span": "f4dd0c64c6159a6b_p0067_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 time series 为什么重要。",
+          "expected_answer": "学生应能说明 time series 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": ""
+      },
+      "source_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0062",
+          "page_no": 62,
+          "text_span": "f4dd0c64c6159a6b_p0062_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0063",
+          "page_no": 63,
+          "text_span": "f4dd0c64c6159a6b_p0063_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0064",
+          "page_no": 64,
+          "text_span": "f4dd0c64c6159a6b_p0064_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0065",
+          "page_no": 65,
+          "text_span": "f4dd0c64c6159a6b_p0065_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0067",
+          "page_no": 67,
+          "text_span": "f4dd0c64c6159a6b_p0067_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0068",
+          "page_no": 68,
+          "text_span": "f4dd0c64c6159a6b_p0068_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_id": "f4dd0c64c6159a6b_p0069",
+          "page_no": 69,
+          "text_span": "f4dd0c64c6159a6b_p0069_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 62,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 63,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 64,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 65,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 67,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 68,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "f4dd0c64c6159a6b",
+          "page_no": 69,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l10_006"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l10_006_01",
+          "question": "关于“time series”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 time series 的含义、适用条件或典型应用",
+            "只记住 time series 在课件中出现过",
+            "把 time series 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "time series",
+          "source_refs": [
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0062",
+              "page_no": 62,
+              "text_span": "f4dd0c64c6159a6b_p0062_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0063",
+              "page_no": 63,
+              "text_span": "f4dd0c64c6159a6b_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0064",
+              "page_no": 64,
+              "text_span": "f4dd0c64c6159a6b_p0064_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0065",
+              "page_no": 65,
+              "text_span": "f4dd0c64c6159a6b_p0065_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "f4dd0c64c6159a6b",
+              "page_id": "f4dd0c64c6159a6b_p0067",
+              "page_no": 67,
+              "text_span": "f4dd0c64c6159a6b_p0067_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        62,
+        63,
+        64,
+        65,
+        67,
+        68,
+        69
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“时间序列分析：time series / model”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Yanrui Ning, et al. A comparative machine learning study for time series oil production forecasting ARIMA, LSTM, and Prophet. Computers & Geosciences, 2022,5.",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": ""
+    }
+  ],
+  "generation_guidance": {
+    "recommended_use": [
+      "Use sections as the main units for presentation or classroom-plan generation.",
+      "Use source_refs and page_refs for citations and source-page display.",
+      "Use quiz_items only as lightweight classroom checkpoints; review before formal assessment."
+    ],
+    "language": "Chinese teaching narrative with necessary English GIS terms preserved."
+  },
+  "quality": {
+    "coverage_score": 1.0,
+    "warnings": [
+      "Deterministic first-pass LearningContent; manual review is recommended.",
+      "Image-heavy or low-text pages are tracked separately in low_text_pages.csv."
+    ]
+  },
+  "version": 1,
+  "created_at": "2026-07-18T09:27:23.346973Z",
+  "updated_at": "2026-07-18T09:27:23.346973Z"
+}

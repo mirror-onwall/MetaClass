@@ -1,0 +1,19 @@
+{
+  "pages": [
+    {
+      "page_no": 1,
+      "title": "Spatial Clustering Analysis",
+      "raw_text": "This lecture introduces spatial clustering analysis in GIS. Students should understand how clusters, hot spots, and spatial patterns can be detected from geographic data."
+    },
+    {
+      "page_no": 2,
+      "title": "Hot Spot Detection",
+      "raw_text": "Hot spot analysis identifies statistically significant spatial concentrations. It is often discussed together with spatial autocorrelation, Getis-Ord statistics, and interpretation of mapped results."
+    },
+    {
+      "page_no": 3,
+      "title": "Classroom Case",
+      "raw_text": "A city analyst wants to detect where incidents are concentrated and explain whether the observed pattern is random, clustered, or dispersed."
+    }
+  ]
+}

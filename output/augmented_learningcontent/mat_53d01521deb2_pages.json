@@ -1,0 +1,1211 @@
+{
+  "pages": [
+    {
+      "id": "mat_53d01521deb2_page_001",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 1,
+      "title": "Lect. 5 Spatial Correlation Analysis",
+      "raw_text": "Lect. 5 Spatial Correlation Analysis\nTraditional Correlation  Analysis in Geography\n1. Person’s Correlation Coefficient\n2. Spearman’s Rank Correlation Coefficient\n3. Partial Correlation Coefficient\n4. Multiple Correlation Coefficient\nSpatial Autocorrelation Analysis\n1. The Concept of Spatial Autocorrelation\n2. Spatial Weights Matrix\n3. Global Spatial Autocorrelation\n4. Local Indicators of Spatial Association",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_001.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_001",
+          "page_no": 1,
+          "text_span": "Lect. 5 Spatial Correlation Analysis\nTraditional Correlation  Analysis in Geography\n1. Person’s Correlation Coefficient",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_001.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_002",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 2,
+      "title": "Geographical correlation types:",
+      "raw_text": "Geographical correlation types: \n•\nComplete correlation\n•\nNo correlation\n•\nStatistical correlation\n0\n0.5\n1\n1.5\n2\n2.5\n3\n3.5\n0\n1\n2\n3\ny\nx\n0\n1\n2\n3\n4\n0\n2\n4\ny\nx\n0\n0.5\n1\n1.5\n2\n2.5\n3\n3.5\n0\n1\n2\n3\ny\nx\n2",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_002.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_002",
+          "page_no": 2,
+          "text_span": "Geographical correlation types: \n•\nComplete correlation\n•\nNo correlation\n•\nStatistical correlation\n0\n0.5\n1\n1.5\n2\n2.5\n3\n3",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_002.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_003",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 3,
+      "title": "2",
+      "raw_text": "2\n1\n2\n1\n1\n)\n(\n)\n(\n)\n)(\n(\ny\ny\nx\nx\ny\ny\nx\nx\nr\nn\ni\ni\nn\ni\ni\ni\nn\ni\ni\n\n\n\n=\n=\n=\n−\n−\n−\n−\n=\n\n=\n=\nn\ni\nix\nn\nx\n1\n1\n\n=\n=\nn\ni\niy\nn\ny\n1\n1\nPearson’s correlation coefficient:\n3",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_003.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_003",
+          "page_no": 3,
+          "text_span": "2\n1\n2\n1\n1\n)\n(\n)\n(\n)\n)(\n(\ny\ny\nx\nx\ny\ny\nx\nx\nr\nn\ni\ni\nn\ni\ni\ni\nn\ni\ni\n\n\n\n=\n=\n=\n−\n−\n−\n−\n=\n\n=\n=\nn\ni\nix\nn\nx\n1\n1\n\n=\n=\nn\ni\niy\nn",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_003.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_004",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 4,
+      "title": ")]",
+      "raw_text": ")]\n)(\n[(\n]\n,\n[\nCo\nY\nX\nY\nX\nE\nY\nX\nv\n\n\n−\n−\n=\nCovariance (协方差)：\n•\nThe concept of covariance is a straightforward extension of the concept of \nvariance. Whereas the variance is the expected or  average value of the \nsquared deviation of observations on a single variable from their mean, the \ncovariance is the expected or average value of the product of the two \nvariables' (say X and Y ) respective deviations from their means:\n)\n()\n(\n1\n1\n]\n,\n[\nCo\n1\ny\ny\nx\nx\nn\nY\nX\nv\ni\nn\ni\ni\n−\n−\n−\n=\n\n=\nSample \ncovariance: \n•\nNote that the covariance of a variable x with itself, Cov(X, X ), is \nequal to the variance of X.\n4",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_004.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_004",
+          "page_no": 4,
+          "text_span": ")]\n)(\n[(\n]\n,\n[\nCo\nY\nX\nY\nX\nE\nY\nX\nv\n\n\n−\n−\n=\nCovariance (协方差)：\n•\nThe concept of covariance is a straightforward extension",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_004.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_005",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 5,
+      "title": "The covariance of X and Y may be negative or positive.",
+      "raw_text": "The covariance of X and Y may be negative or positive. \n•\nThe covariance will be positive if most of the points (x, y) lie along a \nline with positive slope when they are plotted. \n•\nThe covariance will be negative when the plotted points lie along a line \nwith negative slope.\n5\nNegative\nPositive",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_005.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_005",
+          "page_no": 5,
+          "text_span": "The covariance of X and Y may be negative or positive. \n•\nThe covariance will be positive if most of the points (x, y) l",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_005.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_006",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 6,
+      "title": "The magnitude of the covariance will depend upon the units of",
+      "raw_text": "The magnitude of the covariance will depend upon the units of \nmeasurement. \n•\nThe covariance may be standardized, so that its values lie in the \nrange from -1 to +1, by dividing by the product of the standard \ndeviations. \n•\nThis standardized covariance is known as Pearson's correlation \ncoefficient. \n•\nThe correlation coefficient provides a standardized measure of \nthe linear association between two variables. \ny\nx\n)]\n)(\n[(\n\n\n\n\n\nY\nX\nY\nX\nE\n−\n−\n=\n6",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_006.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_006",
+          "page_no": 6,
+          "text_span": "The magnitude of the covariance will depend upon the units of \nmeasurement. \n•\nThe covariance may be standardized, so th",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_006.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_007",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 7,
+      "title": "2",
+      "raw_text": "2\n1\n2\n1\n1\n)\n(\n)\n(\n)\n)(\n(\ny\ny\nx\nx\ny\ny\nx\nx\nr\nn\ni\ni\nn\ni\ni\ni\nn\ni\ni\n\n\n\n=\n=\n=\n−\n−\n−\n−\n=\nThe sample correlation coefficient:\ny\nx\ni\nn\ni\ni\ns\ns\ny\ny\nx\nx\nr\n)\n1\nn\n（\n)\n)(\n(\n1\n−\n−\n−\n= \n=\nWhere sx and sy are the sample standard deviations of variables x and y, respectively\nPearson’s correlation coefficient\n7\n)\n1\nn\n（\nz\n1\n−\n= \n=\nn\ni\ny\nxz\nr\nNote that r is \nalso equal to \nWhere zx and zy are z-scores associated \nwith variables x and y, respectively",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_007.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_007",
+          "page_no": 7,
+          "text_span": "2\n1\n2\n1\n1\n)\n(\n)\n(\n)\n)(\n(\ny\ny\nx\nx\ny\ny\nx\nx\nr\nn\ni\ni\nn\ni\ni\ni\nn\ni\ni\n\n\n\n=\n=\n=\n−\n−\n−\n−\n=\nThe sample correlation coefficient:",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_007.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_008",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 8,
+      "title": "It is important to note that the correlation coefficient is a measure",
+      "raw_text": "It is important to note that the correlation coefficient is a measure \nof the strength of the linear association between variables. \n]\n1,\n1\n[−\n\nr\n•\nAs the right figure demonstrates, it is \npossible to have a strong, nonlinear \nassociation between two variables and \nyet have a correlation coefficient close to \nzero. \n•\nOne implication of this is that it is \nimportant to plot data since potential \nassociations between the variables might \nbe revealed in those cases where the \nvalue of r is low.\n8",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_008.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_008",
+          "page_no": 8,
+          "text_span": "It is important to note that the correlation coefficient is a measure \nof the strength of the linear association between",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_008.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_009",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 9,
+      "title": "R is symmetrical matrix,",
+      "raw_text": "R is symmetrical matrix, \nthe catercorner elements’values are all equal to 1.\nrij\n𝑹=\n𝒓𝟏𝟏\n⋯\n𝒓𝟏𝒏\n⋮\n⋱\n⋮\n𝒓𝒏𝟏\n⋯\n𝒓𝒏𝒏\nrepresents the correlation coefficient between  two \nrandom variables\n9",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_009.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_009",
+          "page_no": 9,
+          "text_span": "R is symmetrical matrix, \nthe catercorner elements’values are all equal to 1.\nrij\n𝑹=\n𝒓𝟏𝟏\n⋯\n𝒓𝟏𝒏\n⋮\n⋱\n⋮\n𝒓𝒏𝟏\n⋯\n𝒓𝒏𝒏\nrepresent",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_009.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_010",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 10,
+      "title": "The  existence of a strong linear association does not necessarily",
+      "raw_text": "The  existence of a strong linear association does not necessarily \nimply that there is a causal connection (因果关系) between the two \nvariables. \n•\nFor example, strong correlation was once found between British coal \nproduction and the death rate of penguins (企鹅) in the Antarctic, but it \nwould be a stretch of the imagination to connect the two in any direct \nway.\n•\nAnother article once pointed out the strong connection between the \nannual number of tornados and the volume of automobile traffic in the \nUnited States. The claim - presumably in jest - was that both the number \nof tornados and the volume of automobile traffic had steadily increased \nin the United States throughout the twentieth century.\n10",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_010.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_010",
+          "page_no": 10,
+          "text_span": "The  existence of a strong linear association does not necessarily \nimply that there is a causal connection (因果关系) betwe",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_010.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_011",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 11,
+      "title": "Mobility and Cohort Size",
+      "raw_text": "Mobility and Cohort Size\n•\nEasterlin (1980) has suggested that young adults who are members of a large\ncohort (like the baby boom) will face a more difficult time in labor and housing\nmarkets. For these cohorts, the supply of people relative to the number of job\nand housing opportunities is relatively high. Consequently, there will be a\ntendency for mortgage rates and unemployment to be higher when large\ncohorts\npass\nthrough\ntheir\nyoung\nadult\nyears.\nSimilarly,\nmortgage\nand\nunemployment rates will tend to be lower when small cohorts reach their\ntwenties and thirties.\n•\nRogerson (1987) has extended this argument to hypothesize that large cohorts\nof young adults will exhibit lower mobility rates, since the cohort's opportunities\nfor changing residence will be limited by the relatively inferior state of the labor\nand housing markets.\n•\nThe mobility rate is measured as the percentage of individuals changing\nresidence during a one-year period, and the size of the young adult cohort is\nmeasured by the fraction of the total population in a specified young adult age\ngroup. Data on these variables for the period 1948-84 are presented in Table 2.1.\n11",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_011.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_011",
+          "page_no": 11,
+          "text_span": "Mobility and Cohort Size\n•\nEasterlin (1980) has suggested that young adults who are members of a large\ncohort (like the",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_011.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_012",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 12,
+      "title": "Mobility and Cohort Size",
+      "raw_text": "Mobility and Cohort Size\n747\n.\n0\n-\n)\n1\nn\n（\n)\n)(\n(\n1\n=\n−\n−\n−\n= \n=\ny\nx\ni\nn\ni\ni\ns\ns\ny\ny\nx\nx\nr\n12\nFor 25-29 year olds:",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_012.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_012",
+          "page_no": 12,
+          "text_span": "Mobility and Cohort Size\n747\n.\n0\n-\n)\n1\nn\n（\n)\n)(\n(\n1\n=\n−\n−\n−\n= \n=\ny\nx\ni\nn\ni\ni\ns\ns\ny\ny\nx\nx\nr\n12\nFor 25-29 year olds:",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_012.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_013",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 13,
+      "title": "To test the null hypothesis that the true correlation coefficient,",
+      "raw_text": "To test the null hypothesis that the true correlation coefficient, \nρ, is equal to zero, the data for each variable are assumed to \ncome from normal distributions. \nIf this assumption is satisfied, the test may be carried out by \nforming the t-statistic:\n2\n1\n2\nr\nn\nr\nt\n−\n−\n=\nIf the null hypothesis is true, this statistic has a t-\ndistribution, with n-2 degrees of freedom.\n13",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_013.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_013",
+          "page_no": 13,
+          "text_span": "To test the null hypothesis that the true correlation coefficient, \nρ, is equal to zero, the data for each variable are",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_013.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_014",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 14,
+      "title": "Mobility and Cohort Size",
+      "raw_text": "Mobility and Cohort Size\nn = 28 \nr = -0.747\nFor the null hypothesis     H0:  ρ = 0\n•\nwith a two-tailed test with  α = 0.05 \n•\nthe t-statistic is\nSince the critical values of t, using  α = \n0.05 in a two-tailed test with 26 degrees \nof freedom are ± 2.056, we rejected the \nnull hypothesis \n14",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_014.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_014",
+          "page_no": 14,
+          "text_span": "Mobility and Cohort Size\nn = 28 \nr = -0.747\nFor the null hypothesis     H0:  ρ = 0\n•\nwith a two-tailed test with  α =",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_014.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_015",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 15,
+      "title": "•",
+      "raw_text": "•\nAn extremely important point : the correlation coefficient is influenced by \nsample size. \n•\nIt is far easier to reject the null hypothesis that ρ = 0 with a  large \nsample size than it is with a small sample size. \n•\nTo see this, compare the situation where r = 0.4 with a sample size \nof 11, and the situation where r = 0.4 with a sample size of 38. \n• In the former case, the observed t-statistic is 1.3, which is less \nthan the critical value t0.05,9 = 2.262, and the null hypothesis is \naccepted.\n•\nIn the latter case, when n = 38, the t-statistic is 2.0, and the null \nhypothesis is rejected since the t-statistic is greater than the \ncritical value, t 0.05,36 = 1.96.\n15",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_015.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_015",
+          "page_no": 15,
+          "text_span": "•\nAn extremely important point : the correlation coefficient is influenced by \nsample size. \n•\nIt is far easier to rejec",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_015.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_016",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 16,
+      "title": "•",
+      "raw_text": "•\nAn extremely important point : the correlation coefficient \nis influenced by sample size. \n16\n•\nIt implies that  there really should be no popular rules of thumb that are \ninvoked to decide whether r is sufficiently high to make the researcher \nhappy about the level of correlation.",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_016.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_016",
+          "page_no": 16,
+          "text_span": "•\nAn extremely important point : the correlation coefficient \nis influenced by sample size. \n16\n•\nIt implies that  there",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_016.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_017",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 17,
+      "title": "•",
+      "raw_text": "•\nSuch rules of thumb do seem to exist -- for instance, an r value of 0.7 or 0.8 may \nbe taken as important or significant. \n•\nWhether a correlation coefficient is truly significant depends upon the sample size. \n•\nThus, when data set is large, a relatively low value of r should not be as \ndisappointing as that same value of r when the sample size is smaller. \n•\nA value of r 0.4 could be quite meaningful if n is 1000, and we should not \nnecessarily throw the results out the window just because the r-value is noticeably \nless than 1 and perhaps less than some arbitrary, rule-of-thumb value such as r 0.8. \n•\nMeehl (1990) has noted that with many data sets there is a strong tendency to find \nthat “everything correlates to some extent with everything else”.\n•\nThere is no particular reason for believing that the correlation  between any two \nvariables chosen from most data sets should be exactly zero, and therefore, if the \nsample size is large enough, we will be able to reject the null hypothesis that they \nare unrelated.\n17",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_017.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_017",
+          "page_no": 17,
+          "text_span": "•\nSuch rules of thumb do seem to exist -- for instance, an r value of 0.7 or 0.8 may \nbe taken as important or significa",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_017.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_018",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 18,
+      "title": "•",
+      "raw_text": "•\nIn the situations where only ranked data are available, or where the\nassumption of normality required for the test H0: ρ = 0\nis not satisfied, it\nis appropriate to use Spearman's rank correlation coefficient.\n•\nTwo separate sets of ranks are developed, one for each variable. A rank of \n1 is assigned to the lowest value and a rank of n to the highest \nobservation in each column.\nn\nr\nn\ni\ni\n−\n−\n=\n\n=\n3\n1\n2\ns\nn\nd\n6\n1\nWhere         is the squared difference between the ranks for \nobservation i, and n is the sample size.\n2\ni\nd\n18",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_018.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_018",
+          "page_no": 18,
+          "text_span": "•\nIn the situations where only ranked data are available, or where the\nassumption of normality required for the test H0:",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_018.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_019",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 19,
+      "title": "The mobility example",
+      "raw_text": "The mobility example\nrs = -0.725\n•\nTo test hypothesis, we may \nuse the fact that                     \nhas a t-distribution with n-1 \ndegrees of freedom.\n1\ns\n−\nn\nr\n•\nThe observed value of t is -3.70, \nit is less than the critical value \nt0.05,25 = - 2.06, so we rejected \nthe null hypothesis\n19",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_019.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_019",
+          "page_no": 19,
+          "text_span": "The mobility example\nrs = -0.725\n•\nTo test hypothesis, we may \nuse the fact that                     \nhas a t-distributi",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_019.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_020",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 20,
+      "title": "•",
+      "raw_text": "•\nThe effect of spatial dependence on significance tests for \ncorrelation coefficient\n•\nThe tests of significance outlined for both Pearson's r and\nSpearman's rS assume that the observations of x and y are\nindependent.\n•\nWhen the x and y variables come from spatial locations, this\nassumption of independence may not be satisfied. Indeed, one\nof the most important points in our course is that spatial data\noften exhibit dependence – the value of x in one location is\noften related to the value of x in nearby locations.\n•\nIn turn, spatial dependence affect the outcome of statistical\ntests, and we should always keep\nthis point in mind when\ninterpreting statistical results.\n20",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_020.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_020",
+          "page_no": 20,
+          "text_span": "•\nThe effect of spatial dependence on significance tests for \ncorrelation coefficient\n•\nThe tests of significance outlin",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_020.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_021",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 21,
+      "title": "The effect of spatial dependence on significance tests for correlation coefficient.",
+      "raw_text": "The effect of spatial dependence on significance tests for correlation coefficient.\n•\nThe critical values associated with\nthe standard statistical tests (b and c)\nare lower in absolute value than\nthose which should be used (a and\nd ).\n•\nWhen sample values of r fall in the\nshaded\nregion,\nthe\nstandard\nstatistical tests will incorrectly imply\nthat\nthe\ncorrelation\ncoefficient\nis\nsignificantly different from zero.\n•\nCorrelation coefficient falling in the\nshaded\nregion\nare\nlikely\nnot\nsignificant, and may be the result of\nthe underlying spatial dependence\nexhibited by the x and y variables.\n21",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_021.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_021",
+          "page_no": 21,
+          "text_span": "The effect of spatial dependence on significance tests for correlation coefficient.\n•\nThe critical values associated wit",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_021.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_022",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 22,
+      "title": "•",
+      "raw_text": "•\nPartial correlation coefficient is used to\nmeasure the degree\nof association between two random variables, with the effect of a\nset of controlling random variables removed.\n•\nIf we are interested in finding whether or to what extent there is a\nnumerical relationship between two variables of interest, using\ntheir correlation coefficient will give misleading results if there is\nanother variable that is numerically related to both variables of\ninterest.\n•\nThis misleading information can be avoided by controlling for the\nconfounding variable, which is done by computing the partial\ncorrelation coefficient.\n•\nThis is precisely the motivation for including other right-side\nvariables in a multiple regression.\n22",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_022.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_022",
+          "page_no": 22,
+          "text_span": "•\nPartial correlation coefficient is used to\nmeasure the degree\nof association between two random variables, with the ef",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_022.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_023",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 23,
+      "title": "Example : 4 variables, 24 cases",
+      "raw_text": "Example : 4 variables, 24 cases\nCase#\nx1\nx2\nx3\nx4\n1\n679\n342.9\n141.8\n194.3\n2\n824\n378\n192.5\n253.5\n3\n859\n392\n211.7\n252.2\n4\n910\n421\n222.2\n266.8\n．．．\n．．．\n．．．\n．．．\n．．．\n24\n81910.9\n14457.2\n40417.9\n27035.8\n23",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_023.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_023",
+          "page_no": 23,
+          "text_span": "Example : 4 variables, 24 cases\nCase#\nx1\nx2\nx3\nx4\n1\n679\n342.9\n141.8\n194.3\n2\n824\n378\n192.5\n253.5\n3\n859\n392\n211.7\n252.2\n4",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_023.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_024",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 24,
+      "title": ")",
+      "raw_text": ")\n1\n)(\n1\n(\n2\n2\n.\nyz\nxz\nyz\nxz\nxy\nz\nxy\nr\nr\nr\nr\nr\nr\n−\n−\n−\n=\n𝑅=\n𝑟11\n𝑟12\n𝑟13\n𝑟21\n𝑟22\n𝑟23\n𝑟31\n𝑟32\n𝑟33\n=\n1\n𝑟12\n𝑟13\n𝑟21\n1\n𝑟23\n𝑟31\n𝑟32\n1\n)\n1\n)(\n1\n(\n2\n23\n2\n13\n23\n13\n12\n3\n.\n12\nr\nr\nr\nr\nr\nr\n−\n−\n−\n=\n)\n1\n)(\n1\n(\n2\n23\n2\n12\n23\n12\n13\n2\n.\n13\nr\nr\nr\nr\nr\nr\n−\n−\n−\n=\n)\n1\n)(\n1\n(\n2\n13\n2\n12\n13\n12\n23\n1\n.\n23\nr\nr\nr\nr\nr\nr\n−\n−\n−\n=\n24",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_024.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_024",
+          "page_no": 24,
+          "text_span": ")\n1\n)(\n1\n(\n2\n2\n.\nyz\nxz\nyz\nxz\nxy\nz\nxy\nr\nr\nr\nr\nr\nr\n−\n−\n−\n=\n𝑅=\n𝑟11\n𝑟12\n𝑟13\n𝑟21\n𝑟22\n𝑟23\n𝑟31\n𝑟32\n𝑟33\n=\n1\n𝑟12\n𝑟13\n𝑟21\n1\n𝑟23\n𝑟3",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_024.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_025",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 25,
+      "title": "r12·3",
+      "raw_text": "r12·3\nr13·2\nr14·2\nr14·3\nr23·1\nr24·1\nr24·3\nr24·1\nr34·2\n0.821\n0.808\n0.647\n0.895\n-0.863\n0.956\n0.945\n-0.875\n0.371\n𝑅=\n𝑟11\n𝑟12\n𝑟13\n𝑟21\n𝑟22\n𝑟23\n𝑟31\n𝑟41\n𝑟32\n𝑟42\n𝑟33\n𝑟43\n𝑟14\n𝑟24\n𝑟34\n𝑟44\n=\n1\n0.416\n0.346\n0.416\n1\n−0.592\n0.346\n0.579\n−0.592\n0.950\n1\n−0.469\n0.579\n0.950\n−0.469\n1\nr12·34\nr13·24\nr14·23\nr23·14\nr24·13\nr34·12\n-0.170\n0.802\n0.635\n-0.187\n0.821\n-0.337\nRefer to “郑培根, 刘梓修. 偏相关系数的定义及计算[J]. 江西财经学院学报, 1986(01):79-83” get more information about partial correlation.",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_025.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_025",
+          "page_no": 25,
+          "text_span": "r12·3\nr13·2\nr14·2\nr14·3\nr23·1\nr24·1\nr24·3\nr24·1\nr34·2\n0.821\n0.808\n0.647\n0.895\n-0.863\n0.956\n0.945\n-0.875\n0.371\n𝑅=\n𝑟11\n𝑟12",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_025.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_026",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 26,
+      "title": "Significance test:",
+      "raw_text": "Significance test:\nr12·34\nr13·24\nr14·23\nr23·14\nr24·13\nr34·12\n-0.170\n0.802\n0.635\n-0.187\n0.821\n-0.337\n𝑡=\n𝑟12•34⋯𝑚\n1 −𝑟212•34⋅⋅⋅𝑚\n𝑛−𝑚−2\nt0.05, 19 = 1.729\nFor r24·13 = 0.821,  t = 22.432 \n]\n1,\n1\n[−\n\n•z\nxy\nr\nCharacteristic:",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_026.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_026",
+          "page_no": 26,
+          "text_span": "Significance test:\nr12·34\nr13·24\nr14·23\nr23·14\nr24·13\nr34·12\n-0.170\n0.802\n0.635\n-0.187\n0.821\n-0.337\n𝑡=\n𝑟12•34⋯𝑚\n1 −𝑟212•",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_026.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_027",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 27,
+      "title": "•",
+      "raw_text": "•\nThe coefficient of multiple correlation is a measure of how well a given \nvariable can be predicted using a linear function of a set of other variables.\nR ∈[0,1]\n𝑅=\n𝑟𝑦𝑥\n𝑇R𝑥𝑥\n−1𝑟𝑦𝑥\n•\n决定系数：表示在多元线性回归中，自变量x1,x2,…, xm 共同解释的因变量y 的方差比例\n（第6讲）\n其中𝑟𝑦𝑥为m × 1的列向量，其中每个元素是y与每个自变量𝑥𝑖的皮尔逊P𝑒𝑟𝑠𝑜𝑛相关系数\n𝑟𝑦𝑥\n𝑇是𝑟𝑦𝑥的转置\n𝑅x𝑥为m × 𝑚的自变量之间的相关系数矩阵\nR𝑥𝑥\n−1是自变量相关系数矩阵的逆矩阵\nR2= 𝑟𝑦𝑥\n𝑇R𝑥𝑥\n−1𝑟𝑦𝑥=回归平方和/总平方和",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_027.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_027",
+          "page_no": 27,
+          "text_span": "•\nThe coefficient of multiple correlation is a measure of how well a given \nvariable can be predicted using a linear fun",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_027.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_028",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 28,
+      "title": "Example:",
+      "raw_text": "Example:\n∴R is significant !\nSum of \nSquares \nfor Error \nSum of Squares \nfor Regression\nThe number of total \nvariables  k=m+1\n𝐹=\n𝑆𝑆𝑅/(𝑘−1)\n𝑆𝑆𝐸/(𝑛−𝑘−1)=\n0.9742\n1−0.9742 ×\n23−3−1\n3\n=117.0657\n𝐹= 117.0657 > 𝐹0.01 = 5.01\n𝑅= 0.974，n=23, m=3,",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_028.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_028",
+          "page_no": 28,
+          "text_span": "Example:\n∴R is significant !\nSum of \nSquares \nfor Error \nSum of Squares \nfor Regression\nThe number of total \nvariables",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_028.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_029",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 29,
+      "title": "第 29 页",
+      "raw_text": "",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_029.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_029",
+          "page_no": 29,
+          "text_span": null,
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_029.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_030",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 30,
+      "title": "Lect. 5 Spatial Correlation Analysis",
+      "raw_text": "Lect. 5 Spatial Correlation Analysis\nTraditional Correlation  Analysis in Geography\n1. Person’s Correlation Coefficient\n2. Spearman’s Rank Correlation Coefficient\n3. Partial Correlation Coefficient\n4. Multiple Correlation Coefficient\nSpatial Autocorrelation Analysis\n1. The Concept of Spatial Autocorrelation\n2. Spatial Weights Matrix\n3. Global Spatial Autocorrelation\n4. Local Indicators of Spatial Association",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_030.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_030",
+          "page_no": 30,
+          "text_span": "Lect. 5 Spatial Correlation Analysis\nTraditional Correlation  Analysis in Geography\n1. Person’s Correlation Coefficient",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_030.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_031",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 31,
+      "title": "The first law of geography：Everything is related to everything else,",
+      "raw_text": "The first law of geography：Everything is related to everything else, \nbut near things are more related than distant things--Waldo Tobler.\n•\nOne of the most common objectives of researchers is to determine whether \ntwo variables are associated with one another. \n•\nFor examples: Does interaction vary with distance? Do housing prices \nvary with accessibility to major highways?  \n•\nResearchers are interested in how variables covary(共变）.\n•\nThis first law is the foundation of the fundamental concepts of spatial \ndependence and spatial autocorrelation（空间自相关）and is utilized \nspecifically for the inverse distance weighting method for spatial \ninterpolation and to support the regionalized variable theory for kriging.\n31",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_031.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_031",
+          "page_no": 31,
+          "text_span": "The first law of geography：Everything is related to everything else, \nbut near things are more related than distant thin",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_031.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_032",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 32,
+      "title": "Spatial autocorrelation is the use of spatial statistics to study",
+      "raw_text": "Spatial autocorrelation is the use of spatial statistics to study \nthe spatial correlation between spatial units and their \nsurrounding units, so as to analyze the spatial distribution \ncharacteristics of these spatial units. \n•\nIf the degree of spatial autocorrelation is high, the spatial \nphenomena with the same characteristics will gather together. \n•\nOn the contrary, if the degree of spatial autocorrelation is low, the \nspatial phenomena may be scattered throughout the space.\nSpatial Correlation Analysis  means applying  the methods \nof correlation analysis  to study spatial distributed data. \n32",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_032.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_032",
+          "page_no": 32,
+          "text_span": "Spatial autocorrelation is the use of spatial statistics to study \nthe spatial correlation between spatial units and the",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_032.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_033",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 33,
+      "title": "•",
+      "raw_text": "•\nSpatial statistics does not mean applying traditional (non-spatial) statistical \nmethods to data that just happens to be spatial (having x- and y-\ncoordinates). \n•\nSpatial statistics integrate space and spatial relationships directly into their \nmathematics (area, distance, length, and so on). For many spatial statistics, these \nspatial relationships are specified formally through a spatial weights matrix file or table.\n•\nA spatial weights matrix is a representation of the spatial relationships \namong features in a dataset. It is a quantification of the spatial relationships \nthat exist among the features in a dataset (or, at least, a quantification of the \nway you conceptualize those relationships). \n•\nBecause the spatial weights matrix imposes a structure on your data, we\nshould select a conceptualization that best reflects how features actually\ninteract with each other (giving thought, of course, to what it is you are\ntrying to measure).\n33",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_033.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_033",
+          "page_no": 33,
+          "text_span": "•\nSpatial statistics does not mean applying traditional (non-spatial) statistical \nmethods to data that just happens to",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_033.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_034",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 34,
+      "title": "The Conceptualization of",
+      "raw_text": "The Conceptualization of \nSpatial  Relationship\nDistance\nInverse Distance\nThreshold Distance\ni.e, Distance Band\nPolygon \nContinuity\nContiguity edges only  \ni,e, Rook’s case\nNeighbor\nK nearest neighbors\nDelaunay triangulation\ni.e, Natural neighbors\nOthers\nThe conceptualization of Spatial relationships \nin ArcGIS Pro\n34\nContiguity edges corners\ni.e, Queen’s Case\nSpatio-temporal Window, \nCovert table\nThe Convert table option can be used to convert an ASCII spatial weights matrix file to a SWM formatted \nspatial weights matrix file.",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_034.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_034",
+          "page_no": 34,
+          "text_span": "The Conceptualization of \nSpatial  Relationship\nDistance\nInverse Distance\nThreshold Distance\ni.e, Distance Band\nPolygon",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_034.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_035",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 35,
+      "title": "𝑤𝑖𝑗= ቊ1, 𝑑< 𝐷",
+      "raw_text": "𝑤𝑖𝑗= ቊ1, 𝑑< 𝐷\n0, 𝑜𝑡ℎ𝑒𝑟𝑤𝑖𝑠𝑒, 𝐷𝑖s the determined distance.\n𝑤𝑖𝑗= 1\n𝑑𝑖𝑗\n2\nThreshold distance (Distance band):\nInverse distance:\n35",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_035.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_035",
+          "page_no": 35,
+          "text_span": "𝑤𝑖𝑗= ቊ1, 𝑑< 𝐷\n0, 𝑜𝑡ℎ𝑒𝑟𝑤𝑖𝑠𝑒, 𝐷𝑖s the determined distance.\n𝑤𝑖𝑗= 1\n𝑑𝑖𝑗\n2\nThreshold distance (Distance band):\nInverse distan",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_035.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_036",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 36,
+      "title": "Spatial relationships based on polygon contiguity, Queen's",
+      "raw_text": "Spatial relationships based on polygon contiguity, Queen's \ncase: shared edges or nodes\nW =\n𝑤11\n⋯\n𝑤1𝑛\n⋮\n⋱\n⋮\n𝑤𝑛1\n…\n𝑤𝑛𝑛\nWhere 𝑤𝑖𝑗indicates spatial weight index \nbetween regions i and j.\nThe construction of spatial \nweights matrix is generally \nbased on two characteristics: \ncontinuity and distance.\nIt can also be constructed by \narea and accessibility.\n36",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_036.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_036",
+          "page_no": 36,
+          "text_span": "Spatial relationships based on polygon contiguity, Queen's \ncase: shared edges or nodes\nW =\n𝑤11\n⋯\n𝑤1𝑛\n⋮\n⋱\n⋮\n𝑤𝑛1\n…\n𝑤𝑛𝑛\nWh",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_036.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_037",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 37,
+      "title": "W =",
+      "raw_text": "W =\nw11\n⋯\n𝑤1𝑛\n⋮\n⋱\n⋮\n𝑤𝑛1\n…\n𝑤𝑛𝑛\nSpatial weights matrix based on continuity can be used for 𝐯𝐞𝐜𝐭𝐨𝐫𝐨𝐫𝐫𝐚𝐬𝐭𝐞𝐫𝐝𝐚𝐭𝐚.\nIf it is used raster 𝑜𝑟𝑙𝑎𝑡𝑡𝑖𝑐𝑒data, the 𝐜𝐨𝐧𝐭𝐢𝐧𝐮𝐢𝐭𝐲can be represented by\nthe following ways:\nContiguity edges only  \ni,e, Rook’s case\nContiguity Corners\ni.e, Bishop’s Case\nContiguity edges corners\ni.e, Queen’s Case\n37\n𝑤𝑖𝑗= ቊ1, ℎas 𝑐𝑜𝑚𝑚𝑜𝑛𝑒𝑑𝑔𝑒\n0, 𝑛𝑜𝑐𝑜𝑚𝑚𝑜𝑛𝑒𝑑𝑔𝑒\n𝑤𝑖𝑗= ቊ1, ℎas 𝑐𝑜𝑚𝑚𝑜𝑛𝑒𝑑𝑔𝑒𝑜𝑟𝑣𝑒𝑟𝑡𝑒𝑥\n0, 𝑛𝑜𝑐𝑜𝑚𝑚𝑜𝑛𝑒𝑑𝑔𝑒𝑎𝑛𝑑𝑣𝑒𝑟𝑡𝑒𝑥\n𝑤𝑖𝑗= ቊ1, ℎas 𝑐𝑜𝑚𝑚𝑜𝑛ver𝑡𝑒𝑥\n0, 𝑛𝑜𝑐𝑜𝑚𝑚𝑜𝑛𝑣𝑒𝑟𝑡𝑒𝑥",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_037.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_037",
+          "page_no": 37,
+          "text_span": "W =\nw11\n⋯\n𝑤1𝑛\n⋮\n⋱\n⋮\n𝑤𝑛1\n…\n𝑤𝑛𝑛\nSpatial weights matrix based on continuity can be used for 𝐯𝐞𝐜𝐭𝐨𝐫𝐨𝐫𝐫𝐚𝐬𝐭𝐞𝐫𝐝𝐚𝐭𝐚.\nIf it is us",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_037.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_038",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 38,
+      "title": "K nearest neighbors：",
+      "raw_text": "K nearest neighbors：\nIf K (the number of neighbors) is 8, the eight closest neighbors to the target feature will be\nincluded in computations for that feature. In locations where feature density is high, the spatial\ncontext of the analysis will be smaller. Similarly, in locations where feature density is sparse, the\nspatial context for the analysis will be larger. An advantage to this model of spatial relationships is\nthat it ensures there will be some neighbors for every target feature, even when feature densities\nvary widely across the study area.\n38\nDelaunay triangulation\nThe\nDelaunay\nTriangulation\noption\nconstructs\nneighbors\nby\ncreating\nVoronoi\ntriangles\nfrom\npoint\nfeatures or from feature centroids such that each point or\ncentroid is a triangle node. Nodes connected by a\ntriangle edge are considered neighbors. Using Delaunay\ntriangulation ensures every feature will have at least one\nneighbor even when data includes islands or widely\nvarying feature densities.",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_038.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_038",
+          "page_no": 38,
+          "text_span": "K nearest neighbors：\nIf K (the number of neighbors) is 8, the eight closest neighbors to the target feature will be\nincl",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_038.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_039",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 39,
+      "title": "Connectivity Graph",
+      "raw_text": "Connectivity Graph\nQueen’s   Contiguity\n39\nContiguity edges corners\nDelaunay triangulation",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_039.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_039",
+          "page_no": 39,
+          "text_span": "Connectivity Graph\nQueen’s   Contiguity\n39\nContiguity edges corners\nDelaunay triangulation",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_039.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_040",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 40,
+      "title": "Connectivity Graph Using 500000 m as threshold distance",
+      "raw_text": "Connectivity Graph Using 500000 m as threshold distance\n40",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_040.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_040",
+          "page_no": 40,
+          "text_span": "Connectivity Graph Using 500000 m as threshold distance\n40",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_040.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_041",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 41,
+      "title": "W =",
+      "raw_text": "W =\n0\n⋯\n𝑤1𝑛\n⋮\n⋱\n⋮\n𝑤𝑛1\n…\n0\nGenerally, there are non-adjacent \nrelationship between space units and \nthemselves.\n“生成空间权重矩阵” Tool in ArcGIS Pro \n41",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_041.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_041",
+          "page_no": 41,
+          "text_span": "W =\n0\n⋯\n𝑤1𝑛\n⋮\n⋱\n⋮\n𝑤𝑛1\n…\n0\nGenerally, there are non-adjacent \nrelationship between space units and \nthemselves.\n“生成空间权重矩阵",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_041.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_042",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 42,
+      "title": "• Moran’s I",
+      "raw_text": "• Moran’s I\n• General G\n•\nJoin Count \nhttps://spatialanalysisonline.com/HTML/index.html\n•\nBivariate Moran’s I  （Geoda）\n•\n……\n42\nGlobal Spatial Autocorrelation",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_042.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_042",
+          "page_no": 42,
+          "text_span": "• Moran’s I\n• General G\n•\nJoin Count \nhttps://spatialanalysisonline.com/HTML/index.html\n•\nBivariate Moran’s I  （Geoda）\n•",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_042.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_043",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 43,
+      "title": "Moran’s I, which was firstly proposed by Patrick Alfred Pierce Moran in",
+      "raw_text": "Moran’s I, which was firstly proposed by Patrick Alfred Pierce Moran in \n1950, is used to measure spatial autocorrelation based on feature \nlocation and attribution values.\n43",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_043.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_043",
+          "page_no": 43,
+          "text_span": "Moran’s I, which was firstly proposed by Patrick Alfred Pierce Moran in \n1950, is used to measure spatial autocorrelatio",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_043.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_044",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 44,
+      "title": "•",
+      "raw_text": "•\nSpatial autocorrelation is characterized by a correlation that\noccurs among samples that are geographically close.\n•\nE.g. If we find a given type of bush in an area, we are more\nlikely to find a second specimen of that same type of bush\ncloser rather than farther away.\n•\nThe main idea behind spatially autocorrelation data is that\nvalues are not independent over space.\n•\nThis concept is based on the first law of geography proposed\nby Waldo Tobler: “Everything is related to everything else, but\nnear things are more related than distant things.”\n•\nBy measuring spatial autocorrelation, we can determine how\nspatial patterns occur in our dataset or study area.\n44",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_044.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_044",
+          "page_no": 44,
+          "text_span": "•\nSpatial autocorrelation is characterized by a correlation that\noccurs among samples that are geographically close.\n•\nE",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_044.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_045",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 45,
+      "title": "•",
+      "raw_text": "•\nWhere xi , xj are values of variable x for regions/features  i and j \nrespectively, wij is the spatial weight between regions/features i and j; \nn is equal to the total number of regions/features. \n•\nThe weights wij can be defined in a number of ways\n•\nThe most common definition is one of binary connectivity:\n•\nwij = 1, if regions i and j are contiguous, \n•\nwij = 0, otherwise\n2\n1\n2\n1\n1\n)\n(\n)\n(\n)\n)(\n(\ny\ny\nx\nx\ny\ny\nx\nx\nr\nn\ni\ni\nn\ni\ni\ni\nn\ni\ni\n\n\n\n=\n=\n=\n−\n−\n−\n−\n=\n45\n𝐼=\n𝑛\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n𝑤𝑖𝑗×\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n൯\n𝑤𝑖𝑗(x𝑖−ҧ𝑥)(𝑥𝑗−ҧ𝑥\nσ𝑖=1\n𝑛\n(𝑥𝑖−ҧ𝑥)2\nMoran’s I will be in [-1, 1] if the variable values  \nare standardized before inputting the tool.",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_045.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_045",
+          "page_no": 45,
+          "text_span": "•\nWhere xi , xj are values of variable x for regions/features  i and j \nrespectively, wij is the spatial weight between",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_045.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_046",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 46,
+      "title": "The sum of the weights in the",
+      "raw_text": "The sum of the weights in the \nabove matrix is 18\n46\n𝐼=\n𝑛\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n𝑤𝑖𝑗×\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n൯\n𝑤𝑖𝑗(x𝑖−ҧ𝑥)(𝑥𝑗−ҧ𝑥\nσ𝑖=1\n𝑛\n(𝑥𝑖−ҧ𝑥)2\n=0.1488\nҧ𝑥=21",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_046.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_046",
+          "page_no": 46,
+          "text_span": "The sum of the weights in the \nabove matrix is 18\n46\n𝐼=\n𝑛\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n𝑤𝑖𝑗×\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n൯\n𝑤𝑖𝑗(x𝑖−ҧ𝑥)(𝑥𝑗−ҧ𝑥\nσ𝑖=1\n𝑛\n(𝑥𝑖",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_046.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_047",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 47,
+      "title": "47",
+      "raw_text": "47\n𝐼=\n𝑛\n𝑆0 ×\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n𝑤𝑖𝑗𝑧𝑖𝑧𝑗\nσ𝑖=1\n𝑛\n𝑧𝑖\n2\n𝑆0 = ෍\n𝑖=1\n𝑛\n෍\n𝑗=1\n𝑛\n𝑤𝑖𝑗\nCalculate Moran’s I using standardized variables",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_047.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_047",
+          "page_no": 47,
+          "text_span": "47\n𝐼=\n𝑛\n𝑆0 ×\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n𝑤𝑖𝑗𝑧𝑖𝑧𝑗\nσ𝑖=1\n𝑛\n𝑧𝑖\n2\n𝑆0 = ෍\n𝑖=1\n𝑛\n෍\n𝑗=1\n𝑛\n𝑤𝑖𝑗\nCalculate Moran’s I using standardized variables",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_047.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_048",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 48,
+      "title": "•",
+      "raw_text": "•\nIf the number of regions (features) is large, the sampling distribution\nof I, under the hypothesis of no spatial pattern, approaches a normal\ndistribution, and the mean and variance of I can be used to create a\nZ-statistic in the usual way:\n48\nZ(𝐼) = I −E[𝐼]\n𝑉𝑎𝑟(𝐼)\nE[𝐼] = −1\n𝑛−1\nɑ=0.05\n•\nIf Z(I) > 1.96, Positively Spatial autocorrelation\n•\nIf Z(I) < -1.96, Negatively Spatial autocorrelation\n•\nIf -1.96<=Z(I) <=1.96, not significant\n𝑉𝑎𝑟(𝐼)=E[I2]-E[I]2",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_048.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_048",
+          "page_no": 48,
+          "text_span": "•\nIf the number of regions (features) is large, the sampling distribution\nof I, under the hypothesis of no spatial patte",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_048.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_049",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 49,
+      "title": "Arctoolbox-> Spatail Statistics Tools-",
+      "raw_text": "Arctoolbox-> Spatail Statistics Tools-\n>Analyzing Patterns-> Spatial \nAutocorrelation  Moran's I\n•\nThe p-value is a probability. For the pattern \nanalysis tools, it is the probability that the \nobserved spatial pattern was created by \nsome random process. When the p-value is \nvery small, it means it is very unlikely (small \nprobability) that the observed spatial pattern \nis the result of random processes, so you can \nreject the null hypothesis. While how small is \nsmall enough? \n•\nZ-scores are standard deviations. If, for \nexample, a tool returns a z-score of +1.099, \nyou would say that the result is 1.099 \nstandard deviations. Both z-scores and p-\nvalues are associated with the standard \nnormal distribution.\n49",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_049.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_049",
+          "page_no": 49,
+          "text_span": "Arctoolbox-> Spatail Statistics Tools-\n>Analyzing Patterns-> Spatial \nAutocorrelation  Moran's I\n•\nThe p-value is a prob",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_049.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_050",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 50,
+      "title": "Conclusion:",
+      "raw_text": "Conclusion: \n•\nMoran’s I = 0.295\n•\nClustered Spatial \ndistribution\nRandom\n50\nMoran’s I",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_050.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_050",
+          "page_no": 50,
+          "text_span": "Conclusion: \n•\nMoran’s I = 0.295\n•\nClustered Spatial \ndistribution\nRandom\n50\nMoran’s I",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_050.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_051",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 51,
+      "title": "•",
+      "raw_text": "•\nHelp identify an appropriate neighborhood distance for a variety \nof spatial analysis methods by finding the distance where spatial \nautocorrelation is strongest.\n•\nMeasure broad trends in ethnic or racial segregation over time—is \nsegregation increasing or decreasing?\n•\nSummarize the diffusion of an idea, disease, or trend over space \nand time—is the idea, disease, or trend remaining isolated and \nconcentrated, or spreading and becoming more diffuse?\n•\n……\n51",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_051.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_051",
+          "page_no": 51,
+          "text_span": "•\nHelp identify an appropriate neighborhood distance for a variety \nof spatial analysis methods by finding the distance",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_051.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_052",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 52,
+      "title": "• Moran’s I",
+      "raw_text": "• Moran’s I\n• General G\n•\nJoin Count \nhttps://spatialanalysisonline.com/HTML/index.html\n•\nBivariate Moran’s I  （Geoda）\n•\n……\n52\nGlobal Spatial Autocorrelation",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_052.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_052",
+          "page_no": 52,
+          "text_span": "• Moran’s I\n• General G\n•\nJoin Count \nhttps://spatialanalysisonline.com/HTML/index.html\n•\nBivariate Moran’s I  （Geoda）\n•",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_052.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_053",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 53,
+      "title": "•",
+      "raw_text": "•\nUnder null hypothesis or random distribution,  the expected \nmean value of  General G : \n𝐺(𝑑) =\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n𝑤𝑖𝑗(𝑑)𝑥𝑖𝑥𝑗\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n𝑥𝑖𝑥𝑗\nWhere 𝑤𝑖𝑗(𝑑) are spatial weights. \n𝐸[𝐺] =\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n𝑤𝑖𝑗(𝑑)\n𝑛(𝑛−1)\nIf G(d) > E(G) and Z value is significant, high-high cluster \nIf G(d) < E(G) and Z value is significant, low-low cluster \nIf G(d) ≈E(G) , random distribution\n53\nZ(𝐺) = 𝐺−𝐸[𝐺]\nV𝑎𝑟[𝐺]\n•\nGeneral G is a statistic which measures the degree of clustering for \neither high or low values.",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_053.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_053",
+          "page_no": 53,
+          "text_span": "•\nUnder null hypothesis or random distribution,  the expected \nmean value of  General G : \n𝐺(𝑑) =\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n𝑤𝑖𝑗(𝑑)𝑥𝑖",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_053.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_054",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 54,
+      "title": "54",
+      "raw_text": "54",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_054.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_054",
+          "page_no": 54,
+          "text_span": "54",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_054.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_055",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 55,
+      "title": "55",
+      "raw_text": "55\n•\nLook for unexpected spikes in the number of emergency room visits, \nwhich may indicate an outbreak of a local or regional health problem.\n•\nCompare the spatial pattern of different types of retail within a city \nto see which types cluster with competition to take advantage of \ncomparison shopping (automobile dealerships, for example) and which \ntypes repel competition (fitness centers or gyms, for example).\n•\nSummarize the level at which spatial phenomena cluster to examine \nchanges at different times or in different locations. For example, it is \nknown that cities and their populations cluster. Using High/Low \nClustering (Getis-Ord General G), you can compare the level of \npopulation clustering within a single city over time (analysis of urban \ngrowth and density).\n•\n……",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_055.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_055",
+          "page_no": 55,
+          "text_span": "55\n•\nLook for unexpected spikes in the number of emergency room visits, \nwhich may indicate an outbreak of a local or re",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_055.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_056",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 56,
+      "title": "•",
+      "raw_text": "•\nLocal Moran’s I\n• Getis-Ord Gi*\n56\nLocal Indicators of Spatial Association (LISA)",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_056.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_056",
+          "page_no": 56,
+          "text_span": "•\nLocal Moran’s I\n• Getis-Ord Gi*\n56\nLocal Indicators of Spatial Association (LISA)",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_056.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_057",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 57,
+      "title": "Local Moran’s I , which was proposed by Luc Anselin in 1995, identifies spatial",
+      "raw_text": "Local Moran’s I , which was proposed by Luc Anselin in 1995, identifies spatial \nclusters of features with high or low values for a given set of features \n(Input Feature Class) and an analysis field (Input Field).\nAnselin L. Local Indicators of Spatial Association—LISA[J]. Geographical Analysis, 1995, \n27(2):93-115.\n57",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_057.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_057",
+          "page_no": 57,
+          "text_span": "Local Moran’s I , which was proposed by Luc Anselin in 1995, identifies spatial \nclusters of features with high or low v",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_057.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_058",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 58,
+      "title": "•",
+      "raw_text": "•\nThe sum of local Moran’s I is equal to, up to a constant of \nproportionality, the global Moran’s I ：ΣIi = I\nThe local Moran’s I statistic:\nZ statistic of 𝑰𝒊:\nWhere\n𝑰𝒊= 𝑥𝒊−ഥ𝒙\n𝑆i\n2\n෍\n𝒋≠𝒊\n𝒘𝒊𝒋(𝒙𝒋−ҧ𝑥)\n58\n𝐼=\n𝑛\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n𝑤𝑖𝑗×\nσ𝑖=1\n𝑛\nσ𝑗=1\n𝑛\n൯\n𝑤𝑖𝑗(x𝑖−ҧ𝑥)(𝑥𝑗−ҧ𝑥\nσ𝑖=1\n𝑛\n(𝑥𝑖−ҧ𝑥)2\nGlobal Moran’s I statistic:\n𝑆i\n2 =\nσ𝒋≠𝒊(𝒙𝒋−ҧ𝑥) 2\n𝑛−1",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_058.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_058",
+          "page_no": 58,
+          "text_span": "•\nThe sum of local Moran’s I is equal to, up to a constant of \nproportionality, the global Moran’s I ：ΣIi = I\nThe local",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_058.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_059",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 59,
+      "title": "59",
+      "raw_text": "59\n𝑰𝒊= 𝑥𝒊−ഥ𝒙\n𝑆i\n2\n෍\n𝒋≠𝒊\n𝒘𝒊𝒋(𝒙𝒋−ҧ𝑥)\n𝑆i\n2 =\nσ𝒋≠𝒊(𝒙𝒋−ҧ𝑥) 2\n𝑛−1",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_059.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_059",
+          "page_no": 59,
+          "text_span": "59\n𝑰𝒊= 𝑥𝒊−ഥ𝒙\n𝑆i\n2\n෍\n𝒋≠𝒊\n𝒘𝒊𝒋(𝒙𝒋−ҧ𝑥)\n𝑆i\n2 =\nσ𝒋≠𝒊(𝒙𝒋−ҧ𝑥) 2\n𝑛−1",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_059.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_060",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 60,
+      "title": "60",
+      "raw_text": "60",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_060.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_060",
+          "page_no": 60,
+          "text_span": "60",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_060.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_061",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 61,
+      "title": "61",
+      "raw_text": "61\n•\nApplications can be found in many fields including economics, \nresource management, biogeography, political geography, and \ndemographics.\n•\nWhere are the sharpest boundaries between affluence and poverty \nin a study area?\n•\nAre there locations in a study area with anomalous spending \npatterns?\n•\nWhere are the unexpectedly high rates of diabetes across the \nstudy area?\n•\n……",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_061.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_061",
+          "page_no": 61,
+          "text_span": "61\n•\nApplications can be found in many fields including economics, \nresource management, biogeography, political geograp",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_061.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_062",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 62,
+      "title": "•",
+      "raw_text": "•\nLocal Moran’s I\n• Getis-Ord Gi* \n62\nLocal Indicators of Spatial Association (LISA)",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_062.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_062",
+          "page_no": 62,
+          "text_span": "•\nLocal Moran’s I\n• Getis-Ord Gi* \n62\nLocal Indicators of Spatial Association (LISA)",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_062.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_063",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 63,
+      "title": "Getis and Ord  Gi* statistic using the following equation:",
+      "raw_text": "Getis and Ord  Gi* statistic using the following equation:\nGetis A, Ord J K. The Analysis of Spatial Association by Use of Distance Statistics[J]. Geographical Analysis, 1992, \n24(3):189–206.\nOrd J K, Getis A. Local Spatial Autocorrelation Statistics: Distributional Issues and an Application[J]. \nGeographical Analysis, 1995, 27(4):286-306.\n𝐺𝑖\n∗=\nσ𝑗=1\n𝑛\n𝑤𝑖𝑗x𝑗−ҧ𝑥σ𝑗=1\n𝑛\n𝑤𝑖𝑗\n𝑆\n𝑛σ𝑗=1\n𝑛\n𝑤𝑖𝑗\n2 −ቀσ𝑗=1\n𝑛\n൯\n𝑤𝑖𝑗\n2\n𝑛−1\n63\n𝑤𝑖𝑗(𝑑) can be  0, \n1 or other values.",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_063.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_063",
+          "page_no": 63,
+          "text_span": "Getis and Ord  Gi* statistic using the following equation:\nGetis A, Ord J K. The Analysis of Spatial Association by Use",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_063.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_064",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 64,
+      "title": "Use weights equal to 1 for regions 1, 2, and",
+      "raw_text": "Use weights equal to 1 for regions 1, 2, and \n3, and weights equal to 0 for other regions\n1\n]\n)\n(\n[n\ns\nG\n1\n2\n1\n,\n2\n,\n1\n1\n,\n,\n*\ni\n−\n−\n−\n=\n\n\n\n\n=\n=\n=\n=\nn\nw\nw\nw\nx\nx\nw\nn\nj\nn\nj\nj\ni\nj\ni\nn\nj\nn\nj\nj\ni\nj\nj\ni\n64",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_064.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_064",
+          "page_no": 64,
+          "text_span": "Use weights equal to 1 for regions 1, 2, and \n3, and weights equal to 0 for other regions\n1\n]\n)\n(\n[n\ns\nG\n1\n2\n1\n,\n2\n,\n1\n1",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_064.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_065",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 65,
+      "title": "ArcGIS Pro Tool:",
+      "raw_text": "ArcGIS Pro Tool:   \nHot Spot Analysis (Getis-Ord Gi*)\nThe spatial distribution map of Getis-Ord Gi* \n65",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_065.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_065",
+          "page_no": 65,
+          "text_span": "ArcGIS Pro Tool:   \nHot Spot Analysis (Getis-Ord Gi*)\nThe spatial distribution map of Getis-Ord Gi* \n65",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_065.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_066",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 66,
+      "title": "66",
+      "raw_text": "66\nSignificance Test: Each Feature \nhas its Z-Score, p-value and \nnumber of neighbors of",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_066.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_066",
+          "page_no": 66,
+          "text_span": "66\nSignificance Test: Each Feature \nhas its Z-Score, p-value and \nnumber of neighbors of",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_066.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_067",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 67,
+      "title": "67",
+      "raw_text": "67\n•\nApplications can be found in crime analysis, epidemiology, voting \npattern analysis, economic geography, retail analysis, traffic incident \nanalysis, and demographics. Some examples include the following:\n•\nWhere is the disease outbreak concentrated?\n•\nWhere are kitchen fires a larger than expected proportion of all \nresidential fires?\n•\nWhere should the evacuation sites be located?\n•\nWhere/When do peak intensities occur?\n•\nWhich locations and at during what time periods should we \nallocate more of our resources?\n•\n……",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_067.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_067",
+          "page_no": 67,
+          "text_span": "67\n•\nApplications can be found in crime analysis, epidemiology, voting \npattern analysis, economic geography, retail ana",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_067.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_068",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 68,
+      "title": "Lect. 5 Spatial Correlation Analysis",
+      "raw_text": "Lect. 5 Spatial Correlation Analysis\nTraditional Correlation  Analysis in Geography\n1. Person’s Correlation Coefficient\n2. Spearman’s Rank Correlation Coefficient\n3. Partial Correlation Coefficient\n4. Multiple Correlation Coefficient\nSpatial Autocorrelation Analysis\n1. The Concept of Spatial Autocorrelation\n2. Spatial Weights Matrix\n3. Global Spatial Autocorrelation\n4. Local Indicators of Spatial Association",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_068.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_068",
+          "page_no": 68,
+          "text_span": "Lect. 5 Spatial Correlation Analysis\nTraditional Correlation  Analysis in Geography\n1. Person’s Correlation Coefficient",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_068.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_069",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 69,
+      "title": "69",
+      "raw_text": "69\n•\nMeasuring the spatiotemporal variations of vegetation net primary \nproductivity in Inner Mongolia using spatial autocorrelation\n•\nSpatial and temporal distribution characteristics of haze and \npollution particles in China based on spatial statistics\n•\nSpatial equity analysis of urban public services for electric vehicle \ncharging-Implications of Chinese cities\n•\nSpatiotemporal influencing factors of energy efficiency in 43 \neuropean countries: A spatial econometric analysis-2024\n•\nLandscape ecological risk assessment and its driving factors of \nmulti-mountainous city-2023\nStudy Cases",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_069.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_069",
+          "page_no": 69,
+          "text_span": "69\n•\nMeasuring the spatiotemporal variations of vegetation net primary \nproductivity in Inner Mongolia using spatial aut",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_069.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_070",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 70,
+      "title": "1.",
+      "raw_text": "1.\nChapter 5 & 8 in  Rogerson’s 《Statistical methods for geography》.\n2.\nSection 2.5 in 《Geospatial Analysis 6th Edition, 2020 update》\nhttps://spatialanalysisonline.com/HTML/index.html.\n3.\nAnselin L. Local Indicators of Spatial Association—LISA[J]. Geographical Analysis, \n1995, 27(2):93-115.\n4.\n相关论文.\n70\nReferences",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_070.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_070",
+          "page_no": 70,
+          "text_span": "1.\nChapter 5 & 8 in  Rogerson’s 《Statistical methods for geography》.\n2.\nSection 2.5 in 《Geospatial Analysis 6th Edition,",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_070.png"
+        }
+      ]
+    },
+    {
+      "id": "mat_53d01521deb2_page_071",
+      "material_id": "mat_53d01521deb2",
+      "page_no": 71,
+      "title": "1. Read the references.",
+      "raw_text": "1. Read the references.\n2. What is the basic idea of spatial autocorrelation？What are the \ntypical applications of spatial autocorrelation？\n3. Do exercises 1-3 (pages 102 and 103 in textbook of Statistical \nMethods for Geography ) . \n4. Do Lab 5.  \nThe report of Lab 5 should be  submitted before\n20:00, March 26.\n71\nReading and Assignments",
+      "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_071.png",
+      "source_refs": [
+        {
+          "material_id": "mat_53d01521deb2",
+          "page_id": "mat_53d01521deb2_page_071",
+          "page_no": 71,
+          "text_span": "1. Read the references.\n2. What is the basic idea of spatial autocorrelation？What are the \ntypical applications of spati",
+          "image_path": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\data\\processed\\mat_53d01521deb2\\pages\\page_071.png"
+        }
+      ]
+    }
+  ]
+}
