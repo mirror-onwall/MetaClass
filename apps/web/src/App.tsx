@@ -264,6 +264,11 @@ function App() {
   const [presentationSlideImages, setPresentationSlideImages] = useState<Record<number, string>>({});
   const [session, setSession] = useState<ClassroomSession | null>(null);
   const [action, setAction] = useState<TeachingAction | null>(null);
+  const [quizResult, setQuizResult] = useState<{
+    actionId: string;
+    selectedIndex: number;
+    correct: boolean;
+  } | null>(null);
   const [currentSlide, setCurrentSlide] = useState<{
     src: string;
     pageNo: number;
@@ -483,7 +488,11 @@ function App() {
 
   useEffect(() => {
     if (!action || action.type !== "SHOW_PAGE") return;
-    const pageNo = action.payload.slide_no ?? action.payload.source_ref.page_no;
+    displayPage(action);
+  }, [action, material, presentationSlideImages]);
+
+  function displayPage(pageAction: Extract<TeachingAction, { type: "SHOW_PAGE" }>) {
+    const pageNo = pageAction.payload.slide_no ?? pageAction.payload.source_ref.page_no;
     const generatedImage = presentationSlideImages[pageNo];
     const generatedPages = Object.keys(presentationSlideImages)
       .map(Number)
@@ -510,7 +519,7 @@ function App() {
       pageNo,
       generated: Boolean(generatedImage),
     });
-  }, [action, material, presentationSlideImages]);
+  }
 
   async function run<T>(label: string, task: () => Promise<T>): Promise<T | undefined> {
     setBusy(label);
@@ -769,22 +778,28 @@ function App() {
     }
   }
 
-  async function nextAction() {
+  async function navigateClassroom(direction: "previous" | "next") {
     if (!session) return;
-    const result = await run("Controller 正在决策", () => api.next(session.id));
+    playbackVersionRef.current += 1;
+    autoPlayingRef.current = false;
+    narration.stop();
+    setAutoPlaying(false);
+    const result = await run(direction === "next" ? "正在跳到下一段" : "正在返回上一段", () =>
+      api.navigate(session.id, direction),
+    );
     if (!result) return;
     setSession(result.session);
+    if (result.page_action) displayPage(result.page_action);
     setAction(result.action);
+    if (result.action?.type === "ASK_QUIZ") setQuizResult(null);
     setAgentTurn(null);
-    setFeedback(result.status === "completed" ? "本次课堂已经完成。" : "");
-  }
-
-  async function nextAgentTurn() {
-    if (!session || session.mode !== "interactive") return;
-    const result = await run("LLM Controller 正在调度智能体", () => api.nextAgentTurn(session.id));
-    if (!result) return;
-    setAgentTurn(result);
-    setFeedback(result.turns.length ? "" : result.decision.reason);
+    narratedStepRef.current = null;
+    setFeedback(result.feedback ?? "");
+    if (result.action && result.session.status !== "completed") {
+      autoPlayingRef.current = true;
+      setAutoPlaying(true);
+      setPlaybackTrigger((value) => value + 1);
+    }
   }
 
   async function answer(selectedIndex: number) {
@@ -796,7 +811,16 @@ function App() {
     const result = await run("Evaluator 正在评估", () => api.answer(session.id, selectedIndex));
     if (!result) return;
     setSession(result.session);
-    setAction(null);
+    // Keep the quiz card projected while the teacher reads the evaluation.
+    // The following autoStep replaces it only after feedback narration ends.
+    setAction((currentAction) => currentAction?.type === "ASK_QUIZ" ? currentAction : null);
+    if (action?.type === "ASK_QUIZ" && typeof result.correct === "boolean") {
+      setQuizResult({
+        actionId: action.id,
+        selectedIndex,
+        correct: result.correct,
+      });
+    }
     setAgentTurn(null);
     narratedStepRef.current = null;
     const feedbackText = result.feedback ?? "";
@@ -1014,6 +1038,7 @@ function App() {
                   <ActionView
                     action={action}
                     answerDisabled={!!busy || session.waiting_for !== "quiz_answer"}
+                    quizResult={quizResult}
                     presentationSlideImages={presentationSlideImages}
                     currentSlide={currentSlide}
                     onAnswer={answer}
@@ -1063,19 +1088,17 @@ function App() {
 
           <div className="teacher-desk">
             <div className="desk-status"><span>{session?.mode === "interactive" ? "AGENT CLASS" : "LECTURE MODE"}</span><b>{session?.status === "completed" ? "课堂已结束" : session ? "课堂进行中" : "等待课堂"}</b></div>
-            <button
-              className="next-button"
-              disabled={!session || !!busy || session.status === "completed"}
-              onClick={toggleAutoPlaying}
-            >
-              {autoPlaying ? "暂停自动课堂" : "开始自动课堂"} <span>{autoPlaying ? "Ⅱ" : "▶"}</span>
-            </button>
-            <button className="next-button secondary" disabled={!session || !!busy || autoPlaying || session.waiting_for === "quiz_answer" || session.status === "completed"} onClick={nextAction}>单步推进 <span>→</span></button>
-            {session?.mode === "interactive" && (
-              <button className="agent-button" disabled={!!busy || autoPlaying || session.status === "completed"} onClick={nextAgentTurn}>
-                智能体下一轮 <span>✦</span>
+            <div className="desk-actions">
+              <button
+                className="next-button"
+                disabled={!session || !!busy || session.status === "completed"}
+                onClick={toggleAutoPlaying}
+              >
+                {autoPlaying ? "暂停自动课堂" : "开始自动课堂"} <span>{autoPlaying ? "Ⅱ" : "▶"}</span>
               </button>
-            )}
+              <button className="next-button secondary" disabled={!session || !!busy} onClick={() => navigateClassroom("previous")}><span>←</span> 上一页</button>
+              <button className="next-button secondary" disabled={!session || !!busy || session.waiting_for === "quiz_answer" || session.status === "completed"} onClick={() => navigateClassroom("next")}>下一页 <span>→</span></button>
+            </div>
             <form onSubmit={ask}>
               <label htmlFor="student-question">用户提问</label>
               <input

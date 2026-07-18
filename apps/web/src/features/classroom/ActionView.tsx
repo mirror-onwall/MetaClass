@@ -6,12 +6,14 @@ export function ActionView({
   currentSlide,
   onAnswer,
   answerDisabled = false,
+  quizResult = null,
 }: {
   action: TeachingAction | null;
   presentationSlideImages?: Record<number, string>;
   currentSlide?: { src: string; pageNo: number; generated: boolean } | null;
   onAnswer: (index: number) => void;
   answerDisabled?: boolean;
+  quizResult?: { actionId: string; selectedIndex: number; correct: boolean } | null;
 }) {
   function renderSlide(slide: { src: string; pageNo: number; generated: boolean }) {
     return (
@@ -60,7 +62,18 @@ export function ActionView({
         <h3>{quiz.question}</h3>
         <div>
           {quiz.options.map((option, index) => (
-            <button disabled={answerDisabled} onClick={() => onAnswer(index)} key={option}>
+            <button
+              className={
+                quizResult?.actionId === action.id
+                && quizResult.selectedIndex === index
+                && !quizResult.correct
+                  ? "selected-incorrect"
+                  : undefined
+              }
+              disabled={answerDisabled}
+              onClick={() => onAnswer(index)}
+              key={option}
+            >
               <span>{String.fromCharCode(65 + index)}</span>
               {option}
             </button>

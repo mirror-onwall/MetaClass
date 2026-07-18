@@ -180,17 +180,18 @@ button { color: inherit; }
 .board-tray span:nth-child(2) { background: #d28b6f; }
 .board-tray i { font: 7px "DM Mono", monospace; color: #b49770; }
 
-.teacher-desk { min-height: 82px; margin: 34px 3% 0; padding: 13px; display: grid; grid-template-columns: 145px auto auto 1fr; gap: 12px; align-items: center; background: linear-gradient(#765538, #5d402b); border-top: 4px solid #9b7149; box-shadow: 0 18px 28px rgba(0,0,0,.26); }
+.teacher-desk { min-height: 82px; margin: 34px 3% 0; padding: 13px; display: grid; grid-template-columns: 145px minmax(0, 1fr); gap: 10px 14px; align-items: center; background: linear-gradient(#765538, #5d402b); border-top: 4px solid #9b7149; box-shadow: 0 18px 28px rgba(0,0,0,.26); }
 .desk-status { padding-left: 8px; }
 .desk-status span, .desk-status b { display: block; }
 .desk-status span { color: #c7ab86; font: 7px "DM Mono", monospace; letter-spacing: .12em; }
 .desk-status b { margin-top: 6px; font-size: 11px; }
-.next-button { min-height: 48px; padding: 0 17px; border: 0; display: flex; align-items: center; gap: 18px; background: var(--amber); color: #1c2b25; font-size: 11px; font-weight: 700; cursor: pointer; }
+.desk-actions { min-width: 0; display: grid; grid-template-columns: minmax(160px, 1.25fr) repeat(2, minmax(118px, 1fr)); gap: 10px; }
+.next-button { width: 100%; min-height: 48px; padding: 0 17px; border: 0; display: flex; align-items: center; justify-content: space-between; gap: 18px; background: var(--amber); color: #1c2b25; font-size: 11px; font-weight: 700; cursor: pointer; }
 .next-button:disabled { opacity: .35; cursor: not-allowed; }
 .agent-button { min-height: 48px; padding: 0 15px; border: 1px solid rgba(233,169,74,.45); display: flex; align-items: center; gap: 12px; background: rgba(12,23,20,.72); color: var(--amber-soft); font-size: 11px; font-weight: 700; cursor: pointer; }
 .agent-button:hover:not(:disabled) { background: rgba(233,169,74,.12); transform: translateY(-1px); }
 .agent-button:disabled { opacity: .35; cursor: not-allowed; }
-.teacher-desk form { height: 48px; display: grid; grid-template-columns: auto 1fr auto; align-items: center; padding-left: 14px; background: rgba(20,27,23,.73); }
+.teacher-desk form { grid-column: 2; width: 100%; height: 48px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; padding-left: 14px; background: rgba(20,27,23,.73); }
 .teacher-desk form label { color: #b2b8b2; font-size: 9px; padding-right: 12px; border-right: 1px solid var(--line); }
 .teacher-desk input { min-width: 0; border: 0; background: transparent; color: white; padding: 0 12px; font-size: 10px; }
 .teacher-desk form button { height: 100%; padding: 0 14px; border: 0; border-left: 1px solid var(--line); background: transparent; color: var(--amber-soft); font-size: 9px; cursor: pointer; }
@@ -213,6 +214,15 @@ button { color: inherit; }
 .quiz-action button { min-height: 56px; padding: 12px 16px; border: 1px solid #c8c1b1; background: rgba(255,255,255,.55); color: var(--ink); text-align: left; cursor: pointer; transition: .2s; }
 .quiz-action button:hover { transform: translateX(4px); border-color: #ae713a; background: white; }
 .quiz-action button span { margin-right: 12px; color: #a6632b; font: 500 10px "DM Mono", monospace; }
+.quiz-action button.selected-incorrect,
+.quiz-action button.selected-incorrect:disabled {
+  border-color: #91aa8d;
+  background: #dce8d7;
+  color: #304539;
+  box-shadow: inset 4px 0 0 #708f70, 0 4px 12px rgba(56, 83, 61, .12);
+  opacity: 1;
+}
+.quiz-action button.selected-incorrect span { color: #58765e; }
 
 .lesson-outline h2 { margin: 18px 0 10px; font-size: 19px; line-height: 1.35; letter-spacing: -.02em; }
 .objective-tags { display: flex; flex-wrap: wrap; gap: 5px; }
@@ -314,7 +324,9 @@ button { color: inherit; }
   .narration-controls { grid-template-columns: 1fr; }
   .teacher-desk { margin: 27px 0 0; grid-template-columns: 1fr; }
   .desk-status { display: none; }
-  .teacher-desk form { min-width: 0; }
+  .desk-actions { grid-template-columns: 1fr 1fr; }
+  .desk-actions .next-button:first-child { grid-column: 1 / -1; }
+  .teacher-desk form { grid-column: 1; min-width: 0; }
   .teacher-desk form label { display: none; }
   .quiz-action > div { grid-template-columns: 1fr; }
   .board-stage { grid-template-columns: 1fr; }

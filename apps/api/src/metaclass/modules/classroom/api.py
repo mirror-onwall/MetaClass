@@ -8,6 +8,7 @@ from metaclass.modules.classroom.schemas import (
     ClassroomPlan,
     ClassroomPlanGenerationMeta,
     ClassroomPlanJob,
+    ClassroomNavigationResult,
     ClassroomSession,
     ClassroomState,
     ControllerResult,
@@ -87,6 +88,13 @@ def create_router(classrooms: ClassroomService) -> APIRouter:
     )
     async def next_action(session_id: str) -> ControllerResult:
         return classrooms.next(session_id)
+
+    @router.post(
+        "/classroom-sessions/{session_id}/navigation/{direction}",
+        response_model=ClassroomNavigationResult,
+    )
+    async def navigate_classroom(session_id: str, direction: str) -> ClassroomNavigationResult:
+        return classrooms.navigate(session_id, direction)
 
     @router.post(
         "/classroom-sessions/{session_id}/auto-step",

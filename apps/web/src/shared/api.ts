@@ -1,10 +1,10 @@
 import type {
   ClassroomPlanJob,
+  ClassroomNavigationResult,
   ClassroomSession,
   AutoClassroomStep,
   ContentGenerationJob,
   ControllerResult,
-  DirectedAgentTurn,
   LearningContent,
   LearningContentDiagnostics,
   LearningMode,
@@ -271,15 +271,16 @@ export const api = {
       await wait(1500);
     }
   },
-  nextAgentTurn(sessionId: string) {
-    return request<DirectedAgentTurn>(`/api/v1/classroom-sessions/${sessionId}/agent-turns/next`, {
-      method: "POST",
-    });
-  },
   next(sessionId: string) {
     return request<ControllerResult>(`/api/v1/classroom-sessions/${sessionId}/next`, {
       method: "POST",
     });
+  },
+  navigate(sessionId: string, direction: "previous" | "next") {
+    return request<ClassroomNavigationResult>(
+      `/api/v1/classroom-sessions/${sessionId}/navigation/${direction}`,
+      { method: "POST" },
+    );
   },
   autoStep(sessionId: string) {
     return request<AutoClassroomStep>(`/api/v1/classroom-sessions/${sessionId}/auto-step`, {
