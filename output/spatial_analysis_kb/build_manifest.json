@@ -1,0 +1,28 @@
+{
+  "built_at": "2026-07-18T08:38:59.742883+00:00",
+  "input_dir": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\spatial_analysis",
+  "output_dir": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\output\\spatial_analysis_kb",
+  "pdf_count": 17,
+  "document_count": 17,
+  "page_count": 1335,
+  "chunk_count": 1725,
+  "failure_count": 0,
+  "duplicate_hash_count": 0,
+  "extract_tables": false,
+  "engine": "pypdf",
+  "low_text_threshold": 80,
+  "knowledge_types": {
+    "concept": 69,
+    "method": 1492,
+    "workflow": 31,
+    "case": 29,
+    "formula": 6,
+    "summary": 98
+  },
+  "categories": {
+    "lecture": 14,
+    "review": 2,
+    "reference_book": 1
+  },
+  "failures": []
+}

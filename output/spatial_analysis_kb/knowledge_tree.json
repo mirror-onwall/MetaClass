@@ -1,0 +1,103 @@
+{
+  "id": "gis_spatial_analysis",
+  "title_en": "GIS Spatial Analysis Knowledge Base",
+  "title_zh": "GIS空间分析知识库",
+  "children": [
+    {
+      "id": "lecture_01",
+      "title_en": "Introduction to GIS Spatial Analysis",
+      "title_zh": "空间分析导论",
+      "lecture_no": 1
+    },
+    {
+      "id": "lecture_02",
+      "title_en": "Conceptual Frameworks for Spatial Analysis",
+      "title_zh": "空间分析概念框架",
+      "lecture_no": 2
+    },
+    {
+      "id": "lecture_03",
+      "title_en": "Data Exploration and Spatial Statistics",
+      "title_zh": "空间数据探索与空间统计",
+      "lecture_no": 3
+    },
+    {
+      "id": "lecture_04",
+      "title_en": "Spatial Pattern Analysis",
+      "title_zh": "空间模式分析",
+      "lecture_no": 4
+    },
+    {
+      "id": "lecture_05",
+      "title_en": "Spatial Correlation Analysis",
+      "title_zh": "空间相关性分析",
+      "lecture_no": 5
+    },
+    {
+      "id": "lecture_06",
+      "title_en": "Regression Analysis in Geography",
+      "title_zh": "地理回归分析",
+      "lecture_no": 6
+    },
+    {
+      "id": "lecture_07",
+      "title_en": "Spatial Regression Analysis",
+      "title_zh": "空间回归分析",
+      "lecture_no": 7
+    },
+    {
+      "id": "lecture_08",
+      "title_en": "Spatial Clustering Analysis",
+      "title_zh": "空间聚类分析",
+      "lecture_no": 8
+    },
+    {
+      "id": "lecture_09",
+      "title_en": "Machine Learning Classification",
+      "title_zh": "机器学习分类",
+      "lecture_no": 9
+    },
+    {
+      "id": "lecture_10",
+      "title_en": "Time Series Analysis",
+      "title_zh": "时间序列分析",
+      "lecture_no": 10
+    },
+    {
+      "id": "lecture_11",
+      "title_en": "Spatio-Temporal Analysis",
+      "title_zh": "时空分析",
+      "lecture_no": 11
+    },
+    {
+      "id": "lecture_12",
+      "title_en": "Project Study",
+      "title_zh": "项目研究",
+      "lecture_no": 12
+    },
+    {
+      "id": "lecture_13",
+      "title_en": "Deep Learning for Remote Sensing Data",
+      "title_zh": "遥感深度学习",
+      "lecture_no": 13
+    },
+    {
+      "id": "lecture_14",
+      "title_en": "Geospatial Big Data Analysis",
+      "title_zh": "地理空间大数据分析",
+      "lecture_no": 14
+    },
+    {
+      "id": "course_review",
+      "title_en": "Course Review",
+      "title_zh": "课程复习",
+      "lecture_no": null
+    },
+    {
+      "id": "reference_book",
+      "title_en": "Statistical Methods for Geography",
+      "title_zh": "地理统计方法参考教材",
+      "lecture_no": null
+    }
+  ]
+}
