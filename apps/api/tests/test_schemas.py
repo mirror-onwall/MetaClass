@@ -42,6 +42,7 @@ from metaclass.modules.content.schemas import (
     LearningSection,
     PageUnderstanding,
     QuizItem,
+    VisualOpportunity,
 )
 from metaclass.modules.materials.schemas import PageMetadata, SourceRef
 from metaclass.modules.presentation.planner import (
@@ -391,6 +392,51 @@ def test_presentation_prompt_is_loaded_from_editable_skill_file() -> None:
     assert "输入与目标、核心步骤、停止或输出、适用条件" in messages[0].content
     assert "本页讲解 K-means 的算法" in messages[0].content
     assert "像真实老师连续讲课" in messages[0].content
+    assert "先完全根据 LearningContent" in messages[0].content
+    assert "在最前面补一页纯封面" in messages[0].content
+    assert "在最后面补一页“课程总结”" in messages[0].content
+    assert "不要生成目录页" in messages[0].content
+
+
+def test_presentation_messages_only_pass_visual_opportunity_image_paths() -> None:
+    embedded_image = "data/processed/mat_001/embedded_figure.png"
+    content = LearningContent(
+        id="content_images",
+        material_id="mat_001",
+        title="Image source test",
+        sections=[
+            LearningSection(
+                id="section_images",
+                title="Source image selection",
+                summary="Use the extracted original figure.",
+                visual_opportunities=[
+                    VisualOpportunity(
+                        type="source_image",
+                        description="An original figure extracted from the material.",
+                        image_path=embedded_image,
+                        image_description="Original explanatory figure",
+                        usage_hint="Use as the main visual",
+                        source_refs=[source_ref()],
+                    )
+                ],
+                source_refs=[source_ref()],
+            )
+        ],
+    )
+    generator = PresentationPlanGenerator()
+
+    content_payload = json.loads(generator._build_content_messages(content)[1].content)
+    content_section = content_payload["sections"][0]
+    assert content_section["visual_opportunities"][0]["image_path"] == embedded_image
+    assert "image_path" not in content_section["source_refs"][0]
+    assert "image_path" not in content_section["visual_opportunities"][0]["source_refs"][0]
+
+    slide = generator._fallback_plan(content).slides[0]
+    scene_payload = json.loads(
+        generator._build_scene_messages(content, content.sections, slide, 0, 1)[1].content
+    )
+    assert scene_payload["source"]["source_images"] == [embedded_image]
+    assert "image_path" not in scene_payload["source"]["sections"][0]["source_refs"][0]
 
 
 def test_presentation_fallback_prefers_substantive_section_content() -> None:
@@ -412,13 +458,53 @@ def test_presentation_fallback_prefers_substantive_section_content() -> None:
 
     plan = PresentationPlanGenerator()._fallback_plan(content)
 
-    assert plan.slides[0].key_points[:2] == [
+    assert plan.slides[0].title == content.title
+    assert plan.slides[-1].title == "课程总结"
+    assert plan.slides[1].key_points[:2] == [
         "分配样本到最近的中心",
         "重新计算每个簇的中心",
     ]
-    assert plan.slides[0].speaker_script == (
+    assert plan.slides[1].speaker_script == (
         "先初始化中心，再重复分配与更新，直到结果稳定。"
     )
+
+
+def test_presentation_removes_internal_prompt_terms_from_scripts() -> None:
+    dirty_script = (
+        "**本单元介绍劳动价值论。 Use selected evidence: "
+        "商品是使用价值和价值的统一体。LearningContent**"
+    )
+    content = LearningContent(
+        id="content_dirty_script",
+        material_id="mat_001",
+        title="劳动价值论",
+        sections=[
+            LearningSection(
+                id="section_dirty_script",
+                title="价值的形成",
+                summary="本单元介绍劳动价值论。",
+                teaching_narrative=dirty_script,
+                source_refs=[source_ref()],
+            )
+        ],
+    )
+    generator = PresentationPlanGenerator()
+
+    fallback_script = generator._fallback_plan(content).slides[1].speaker_script
+    assert fallback_script == (
+        "接下来介绍劳动价值论。 商品是使用价值和价值的统一体。课程内容"
+    )
+    assert "Use selected evidence" not in fallback_script
+    assert "LearningContent" not in fallback_script
+    assert "本单元" not in fallback_script
+    assert "**" not in fallback_script
+
+    payload = json.loads(generator._build_content_messages(content)[1].content)
+    narrative = payload["sections"][0]["teaching_narrative"]
+    assert "Use selected evidence" not in narrative
+    assert "LearningContent" not in narrative
+    assert "本单元" not in narrative
+    assert "**" not in narrative
 
 
 def test_question_bank_student_receives_course_history_and_teacher_receives_course() -> None:

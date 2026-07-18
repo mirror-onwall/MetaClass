@@ -87,6 +87,9 @@ class TeacherAgent:
         session: ClassroomSession,
         question: str,
         classroom_state: ClassroomState | None = None,
+        retrieved_question: str | None = None,
+        retrieved_answer: str | None = None,
+        retrieved_source_refs: list | None = None,
     ) -> TeacherAnswerPayload:
         scene_index = min(session.scene_index, max(len(plan.scenes) - 1, 0))
         explain_action = next(
@@ -101,17 +104,28 @@ class TeacherAgent:
                         classroom_state=classroom_state,
                         question=question,
                         current_explanation=explain_action.payload.text,
+                        retrieved_question=retrieved_question,
+                        retrieved_answer=retrieved_answer,
                     ),
                     temperature=0.2,
                 )
                 answer = parse_teacher_answer_json(raw)
                 return TeacherAnswerPayload(
                     answer=answer,
-                    source_refs=explain_action.payload.source_refs,
+                    source_refs=(
+                        retrieved_source_refs
+                        if retrieved_answer and retrieved_source_refs
+                        else explain_action.payload.source_refs
+                    ),
                 )
             except RuntimeError:
                 pass
 
+        if retrieved_answer:
+            return TeacherAnswerPayload(
+                answer=f"关于你问的“{question}”，可以这样理解：{retrieved_answer}",
+                source_refs=retrieved_source_refs or explain_action.payload.source_refs,
+            )
         return TeacherAnswerPayload(
             answer=(
                 f"你问的是“{question}”。结合当前材料，这里可以这样理解："
@@ -122,7 +136,7 @@ class TeacherAgent:
 
     def generate_turn(self, classroom_state: ClassroomState, topic: str) -> AgentTurn:
         if not self.llm:
-            if "学生刚刚说" in topic:
+            if "学生刚刚说" in topic or "学生说" in topic:
                 if any(keyword in topic for keyword in ["走神", "无聊", "上厕所"]):
                     return AgentTurn(
                         agent_id="teacher",

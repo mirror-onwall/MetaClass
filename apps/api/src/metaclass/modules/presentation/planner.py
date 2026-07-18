@@ -171,19 +171,38 @@ class PresentationPlanGenerator:
         )
 
     def _fallback_plan(self, content: LearningContent) -> PresentationPlan:
-        slides = []
-        for index, section in enumerate(content.sections, start=1):
+        first_section = content.sections[0]
+        last_section = content.sections[-1]
+        cover_subtitle = content.subtitle.strip() or "课程学习与核心内容讲解"
+        slides = [
+            SlidePlan(
+                id="slide_001",
+                order=1,
+                source_section_ids=[first_section.id],
+                title=content.title,
+                key_points=[cover_subtitle],
+                speaker_script=(
+                    f"欢迎进入《{content.title}》。接下来我们将围绕课程核心内容展开学习，"
+                    "逐步建立概念、方法与应用之间的联系。"
+                ),
+                suggested_visual="简洁课程封面，突出主标题与副标题，不展示目录。",
+                layout="hero",
+                visual_payload=[cover_subtitle],
+                background="F7F9F7",
+            )
+        ]
+        for section in content.sections:
             points = self._fallback_key_points(section)
             script_parts = [
-                section.teaching_script.strip(),
-                section.teaching_narrative.strip(),
-                section.summary.strip(),
+                self._clean_internal_meta_text(section.teaching_script),
+                self._clean_internal_meta_text(section.teaching_narrative),
+                self._clean_internal_meta_text(section.summary),
             ]
             speaker_script = next((item for item in script_parts if item), section.title)
             slides.append(
                 SlidePlan(
-                    id=f"slide_{index:03d}",
-                    order=index,
+                    id=f"slide_{len(slides) + 1:03d}",
+                    order=len(slides) + 1,
                     source_section_ids=[section.id],
                     title=section.title,
                     key_points=points,
@@ -196,6 +215,32 @@ class PresentationPlanGenerator:
                     background="F7F9F7",
                 )
             )
+        summary_points = []
+        for section in content.sections:
+            for point in self._fallback_key_points(section)[:2]:
+                if point not in summary_points:
+                    summary_points.append(point)
+                if len(summary_points) == 5:
+                    break
+            if len(summary_points) == 5:
+                break
+        slides.append(
+            SlidePlan(
+                id=f"slide_{len(slides) + 1:03d}",
+                order=len(slides) + 1,
+                source_section_ids=[last_section.id],
+                title="课程总结",
+                key_points=summary_points,
+                speaker_script=(
+                    "最后把本次课程的核心结论串联起来，并回到学习目标检查已经建立的"
+                    "关键认识，以及后续可以继续思考和迁移应用的方向。"
+                ),
+                suggested_visual="用结构化总结图串联课程核心结论与迁移方向。",
+                layout="cards",
+                visual_payload=summary_points,
+                background="F7F9F7",
+            )
+        )
         return PresentationPlan(
             id=f"presentation_plan_{uuid4().hex[:12]}",
             content_id=content.id,
@@ -258,10 +303,17 @@ class PresentationPlanGenerator:
                     id=f"slide_{index:03d}",
                     order=index,
                     source_section_ids=source_section_ids,
-                    title=slide.title,
-                    key_points=slide.key_points[:6],
-                    speaker_script=slide.speaker_script,
-                    suggested_visual=slide.suggested_visual,
+                    title=self._clean_internal_meta_text(slide.title),
+                    key_points=[
+                        self._clean_internal_meta_text(point)
+                        for point in slide.key_points[:6]
+                    ],
+                    speaker_script=self._clean_internal_meta_text(
+                        slide.speaker_script
+                    ),
+                    suggested_visual=self._clean_internal_meta_text(
+                        slide.suggested_visual
+                    ),
                     layout=(
                         slide.layout
                         if slide.elements
@@ -308,6 +360,15 @@ PPT_CONTENT_ONLY
 本次只做整套演示文稿的内容策划，不生成画布 elements。输出仍为 title/slides，
 每页只需包含 source_section_ids、title、key_points、speaker_script、
 suggested_visual、visual_payload；layout 固定写 freeform。不要输出 background 和 elements。
+先完全根据 LearningContent 的结构、已有材料以及必要的可靠扩充内容规划所有正文页；
+正文的拆分、合并和教学顺序不得受封面或总结页影响。正文规划完成后，再补充以下首尾页：
+- 在最前面补一页纯封面：title 使用课程标题，key_points 最多放一个简短副标题；
+  source_section_ids 只填写第一个 section 的 id，
+  speaker_script 只做自然简短的课程开场。
+- 在最后面补一页“课程总结”：综合前面正文的核心结论、知识联系、迁移方向或反思问题，
+  不能只是重复标题；source_section_ids 只填写最后一个 section 的 id。
+- 最终输出顺序必须是：纯封面、全部正文页、课程总结。
+- 不要生成目录页。
 不要按 section 数量机械决定页数。先把输入拆成连续的教学功能单元，再决定 slide：
 1. 概念页：一个核心概念、必要定义、与相邻概念的关系；
 2. 例子页：一个完整情境及其如何解释概念；
@@ -326,6 +387,10 @@ suggested_visual、visual_payload；layout 固定写 freeform。不要输出 bac
 页面上必须出现实质性内容。例如不能只写“本页讲解 K-means 的算法”，而应写清初始化中心、按最近中心分配样本、重算簇中心、迭代至稳定等实际过程。
 把定义、关键公式、算法步骤、对比条件和案例结论放在页面；把完整推理、补充例子、自然过渡放进 speaker_script。页面不能像讲稿一样堆满段落，也不能只剩空泛标签。
 speaker_script 必须像真实老师连续讲课：承接上下文、解释本页核心、讲清原因或步骤、给出恰当例子或辨析、自然引向后续；不要逐字朗读 key_points，也不要反复使用机械的“这一页我们讲……”。讲稿中不要输出“本页要点：……”这种格式。
+讲稿是课堂现场口语，不是教材章节摘要。不要用“本章”“本单元”“本文”“本节”等书面化自指开头；
+直接从问题、现象、概念或与上一页的联系切入，并让相邻页面的开头句式有所变化。
+LearningContent、section、source_refs、source_excerpts、selected evidence、prompt 等都是系统内部术语，
+绝对不能出现在标题、页面文字或 speaker_script 中。不要输出 Markdown 加粗符号 **。
 优先使用 source_excerpts、source_refs、公式、案例和题目中的具体证据；不要把不相干内容压进同一页。
 """
         )
@@ -335,11 +400,18 @@ speaker_script 必须像真实老师连续讲课：承接上下文、解释本�
                 "title": section.title,
                 "role": section.role,
                 "content_goal": section.content_goal,
-                "summary": section.summary[:900],
-                "key_points": section.key_points[:8],
+                "summary": self._clean_internal_meta_text(section.summary)[:900],
+                "key_points": [
+                    self._clean_internal_meta_text(point)
+                    for point in section.key_points[:8]
+                ],
                 "knowledge_points": section.knowledge_points[:10],
-                "teaching_narrative": section.teaching_narrative[:1200],
-                "teaching_script": section.teaching_script[:1500],
+                "teaching_narrative": self._clean_internal_meta_text(
+                    section.teaching_narrative
+                )[:1200],
+                "teaching_script": self._clean_internal_meta_text(
+                    section.teaching_script
+                )[:1500],
                 "source_excerpts": [
                     {
                         "id": item.id,
@@ -385,6 +457,9 @@ speaker_script 必须像真实老师连续讲课：承接上下文、解释本�
                     {
                         "type": item.type,
                         "description": item.description[:500],
+                        "image_path": item.image_path,
+                        "image_description": item.image_description[:500],
+                        "usage_hint": item.usage_hint[:300],
                         "priority": item.priority,
                         "source_refs": [
                             self._source_ref_payload(ref) for ref in item.source_refs[:4]
@@ -505,7 +580,8 @@ PPT_SCENE_ONLY
 只输出 {"background":"六位十六进制颜色","elements":[...]}。
 elements 必须满足上文自由画布契约，并依据本页语义构图。标题也必须作为 text 元素出现。
 优先使用 6–14 个清晰的大元素；不要套用固定模板，不要与相邻页机械重复。
-除输入 source_images 外不得虚构图片路径；没有可靠数字就不要生成 chart。
+除 visual_opportunities.image_path 汇总得到的 source_images 外不得虚构图片路径；
+不要使用 source_refs.image_path；没有可靠数字就不要生成 chart。
 不要把“图标”“插画”“示意图”等占位说明写进 text；如果需要图标感，
 请用 oval/rectangle/line/chevron 等 shape 直接画出来。
 text 元素必须给足高度：标题 h >= 0.11，正文 h >= 0.075；
@@ -538,10 +614,14 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                     {
                         "section_id": section.id,
                         "section_title": section.title,
-                        "summary": section.summary[:1200],
+                        "summary": self._clean_internal_meta_text(section.summary)[:1200],
                         "knowledge_points": section.knowledge_points[:10],
-                        "teaching_narrative": section.teaching_narrative[:1200],
-                        "teaching_script": section.teaching_script[:1500],
+                        "teaching_narrative": self._clean_internal_meta_text(
+                            section.teaching_narrative
+                        )[:1200],
+                        "teaching_script": self._clean_internal_meta_text(
+                            section.teaching_script
+                        )[:1500],
                         "source_excerpts": [
                             excerpt.model_dump(mode="json")
                             for excerpt in section.source_excerpts[:12]
@@ -575,10 +655,10 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                 ],
                 "source_images": list(
                     dict.fromkeys(
-                        ref.image_path
+                        opportunity.image_path
                         for section in sections
-                        for ref in section.source_refs
-                        if ref.image_path
+                        for opportunity in section.visual_opportunities
+                        if opportunity.image_path
                     )
                 )[:4],
             },
@@ -595,8 +675,23 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
             "page_id": ref.page_id,
             "page_no": ref.page_no,
             "text_span": ref.text_span,
-            "image_path": ref.image_path,
         }
+
+    @staticmethod
+    def _clean_internal_meta_text(value: str) -> str:
+        text = re.sub(r"Use selected evidence\s*:\s*", "", value, flags=re.IGNORECASE)
+        text = re.sub(r"\bLearning\s*Content\b", "课程内容", text, flags=re.IGNORECASE)
+        text = re.sub(r"\bLearningContent\b", "课程内容", text, flags=re.IGNORECASE)
+        text = re.sub(r"本(?:章|单元)\s*从", "我们从", text)
+        text = re.sub(r"本(?:章|单元)\s*将", "接下来将", text)
+        text = re.sub(r"本(?:章|单元)\s*(?:主要|重点)", "这里重点", text)
+        text = re.sub(
+            r"本(?:章|单元)\s*(介绍|讲解|讨论|分析|探讨)",
+            r"接下来\1",
+            text,
+        )
+        text = re.sub(r"本(?:章|单元)", "这部分内容", text)
+        return re.sub(r"\*\*", "", text).strip()
 
     def _normalize_scene(
         self,

@@ -77,6 +77,8 @@ def build_teacher_answer_messages(
     classroom_state: ClassroomState,
     question: str,
     current_explanation: str,
+    retrieved_question: str | None = None,
+    retrieved_answer: str | None = None,
 ) -> list[LLMMessage]:
     system = """你是 MetaClass 互动课堂里的老师，正在回答真实用户刚刚输入的问题。
 
@@ -86,6 +88,9 @@ def build_teacher_answer_messages(
 - 如果问题超出当前材料，可以简短说明材料里没有完全覆盖，再给出基于当前内容的合理解释或者额外知识补充。
 - 回答要自然，像老师课堂即时答疑，不要写成论文。
 - 不要编造页码、实验结果或材料没有的信息。
+- 如果提供了 QA 库命中结果，以 retrieved_answer 为事实依据，针对用户的实际问法重新组织成自然回答；
+  不要提到“QA 库”“检索”“命中”或机械照抄预生成措辞。
+- 如果没有 QA 库命中结果，结合课堂上下文和你掌握的可靠通用知识回答；区分材料明确给出的内容与额外知识，无法可靠判断时坦诚说明。
 
 # 输出格式
 你必须只输出一个 JSON object，不要 markdown，不要代码块，不要额外解释。
@@ -97,6 +102,11 @@ def build_teacher_answer_messages(
     user = {
         "user_question": question,
         "current_explanation": current_explanation,
+        "retrieved_qa": (
+            {"question": retrieved_question, "answer": retrieved_answer}
+            if retrieved_answer
+            else None
+        ),
         "classroom_state": classroom_state.model_dump(mode="json"),
     }
     return [
@@ -123,6 +133,11 @@ def build_teacher_messages(
 - 优先帮助学生“想明白”，而不是替学生完成所有思考。
 - 当学生可能没听懂时，用更简单的例子或类比解释。
 - 当学生发出真实课堂式插话、走神、吐槽、想休息时，先简短接住情绪，再自然拉回当前页内容。
+- 回应具体学生时，只使用 ClassroomState 中该学生的 display_name（例如“浩浩同学”）；
+  禁止把 deep_thinker、深度思考者、基础薄弱者、研究型同学等画像类型当作学生称呼。
+- 当你要发起 PROBE 让学生回答时，先用一句自然的课堂邀请，例如
+  “那么现在，我想问大家一个问题，哪位同学能来回答一下呢？”，再说具体问题；
+  不要只生硬地抛出题目。
 - 回应学生时要引用当前课堂上下文，不要泛泛地说“这个问题很好”。
 - 当进入总结阶段时，提炼 1 个核心结论。
 - 当进入回顾/补救阶段时，聚焦最可能薄弱或混淆的点。

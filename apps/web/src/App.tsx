@@ -191,6 +191,7 @@ function actionNarrationCue(
   };
   if (
     action.type === "SHOW_PAGE"
+    || action.type === "END"
     || action.type === "GIVE_FEEDBACK"
     || action.type === "STUDENT_QUESTION"
     || action.type === "TEACHER_QA_RESPONSE"
@@ -208,7 +209,7 @@ function actionNarrationCue(
   if (action.type === "ASK_QUIZ") {
     return {
       id: `action:${action.id}`,
-      text: action.payload.quiz.question,
+      text: `下面我们来进行一个随堂小测验，检验一下大家有没有好好听讲。${action.payload.quiz.question}`,
       scope: "quiz_prompt",
       refId: action.id,
       ...teacher,
@@ -217,7 +218,7 @@ function actionNarrationCue(
   if (action.type === "PROBE") {
     return {
       id: `action:${action.id}`,
-      text: action.payload.question,
+      text: `那么现在，我想问大家一个问题，哪位同学能来回答一下呢？${action.payload.question}`,
       scope: "teacher_turn",
       refId: action.id,
       ...teacher,
@@ -232,10 +233,9 @@ function actionNarrationCue(
       ...teacher,
     };
   }
-  const text = action.type === "END" ? action.payload.summary : action.payload.text;
   return {
     id: `action:${action.id}`,
-    text,
+    text: action.payload.text,
     scope: action.type === "REMEDIATE" ? "quiz_feedback" : "teacher_action",
     refId: action.id,
     ...teacher,
@@ -287,6 +287,7 @@ function App() {
   const autoPlayingRef = useRef(false);
   const playbackVersionRef = useRef(0);
   const narratedStepRef = useRef<string | null>(null);
+  const interruptedTeacherCueRef = useRef<NarrationCue | null>(null);
   const narration = useTTSNarration();
 
   useEffect(() => {
@@ -325,6 +326,14 @@ function App() {
   const coverageScore = typeof content?.quality?.coverage_score === "number"
     ? Math.round(content.quality.coverage_score * 100)
     : null;
+  const activeAgentSpeech = agentTurn?.turns.at(-1);
+  const userQuestionBlockedByAgentExchange = Boolean(
+    activeAgentSpeech?.role === "student"
+    || (
+      activeAgentSpeech?.role === "teacher"
+      && ["scripted_qa_answer", "teacher_reply_to_student"].includes(activeAgentSpeech.intent)
+    ),
+  );
   function displayAgentName(agentId: string, role: DirectedAgentTurn["turns"][number]["role"]) {
     if (role === "teacher") return "芊芊老师";
     const studentState = session?.student_states.find((student) => student.id === agentId);
@@ -657,6 +666,45 @@ function App() {
 
     autoPlayingRef.current = true;
     setAutoPlaying(true);
+    const interruptedCue = interruptedTeacherCueRef.current;
+    if (interruptedCue) {
+      interruptedTeacherCueRef.current = null;
+      narration.unlock();
+      playbackVersionRef.current += 1;
+      const playbackVersion = playbackVersionRef.current;
+      narratedStepRef.current = agentTurn?.turns.length
+        ? `turn:${agentTurn.turns.map((turn) => `${turn.agent_id}:${turn.intent}:${turn.speech}`).join("|")}`
+        : action
+          ? `action:${action.id}`
+          : interruptedCue.id;
+      const transitionResult = await narration.play({
+        id: `resume-after-user-question:${session?.id ?? "classroom"}:${Date.now()}`,
+        text: "好的，我们现在重新回到刚刚没讲完的地方。",
+        scope: "teacher_resume_after_user_question",
+        refId: `${session?.id ?? "classroom"}:resume-after-user-question`,
+        voice: "teacher",
+        speaker: "芊芊老师",
+        agentId: "teacher",
+        role: "teacher",
+      });
+      if (transitionResult === "blocked" || transitionResult === "cancelled") return;
+      const replayResult = await narration.play({
+        ...interruptedCue,
+        id: `${interruptedCue.id}:replay:${Date.now()}`,
+      });
+      if (replayResult === "blocked" || replayResult === "cancelled") return;
+      if (replayResult === "failed") {
+        setError("被打断的讲解语音暂时无法重播，课堂将继续推进");
+      }
+      if (
+        session
+        && autoPlayingRef.current
+        && playbackVersion === playbackVersionRef.current
+      ) {
+        await autoStep(playbackVersion);
+      }
+      return;
+    }
     if (narration.status === "paused") {
       await narration.resume();
       return;
@@ -741,27 +789,84 @@ function App() {
 
   async function answer(selectedIndex: number) {
     if (!session || busy || session.waiting_for !== "quiz_answer") return;
+    playbackVersionRef.current += 1;
+    autoPlayingRef.current = false;
+    narration.stop();
+    setAutoPlaying(false);
     const result = await run("Evaluator 正在评估", () => api.answer(session.id, selectedIndex));
     if (!result) return;
     setSession(result.session);
     setAction(null);
     setAgentTurn(null);
     narratedStepRef.current = null;
-    playbackVersionRef.current += 1;
-    autoPlayingRef.current = result.session.status !== "completed";
-    setAutoPlaying(autoPlayingRef.current);
-    setFeedback(result.feedback ?? "");
+    const feedbackText = result.feedback ?? "";
+    setFeedback(feedbackText);
+    let feedbackNarrationFinished = !feedbackText;
+    if (feedbackText) {
+      const narrationResult = await narration.play({
+        id: `quiz-feedback:${session.id}:${Date.now()}`,
+        text: feedbackText,
+        scope: "quiz_feedback",
+        refId: `${session.id}:quiz-feedback:${Date.now()}`,
+        voice: "teacher",
+        speaker: "芊芊老师",
+        agentId: "teacher",
+        role: "teacher",
+      });
+      if (narrationResult === "failed") {
+        setError("小测反馈文字已显示，但老师语音暂时不可用");
+      }
+      feedbackNarrationFinished = narrationResult === "ended";
+    }
+    // Never turn the page while quiz feedback is still speaking. If playback is
+    // blocked or fails, keep the class stopped so the learner can read the full
+    // feedback and explicitly continue instead of silently skipping ahead.
+    if (result.session.status !== "completed" && feedbackNarrationFinished) {
+      playbackVersionRef.current += 1;
+      const playbackVersion = playbackVersionRef.current;
+      autoPlayingRef.current = true;
+      await autoStep(playbackVersion);
+      setAutoPlaying(autoPlayingRef.current);
+    }
   }
 
   async function ask(event: FormEvent) {
     event.preventDefault();
-    if (!session || !question.trim()) return;
+    if (!session || !question.trim() || userQuestionBlockedByAgentExchange) return;
+    playbackVersionRef.current += 1;
+    autoPlayingRef.current = false;
+    if (
+      narration.cue?.role === "teacher"
+      && ["playing", "loading", "paused"].includes(narration.status)
+    ) {
+      interruptedTeacherCueRef.current = narration.cue;
+    } else {
+      interruptedTeacherCueRef.current = null;
+    }
+    narration.stop();
+    setAutoPlaying(false);
     const result = await run("Teacher 正在回答", () => api.ask(session.id, question.trim()));
     if (!result) return;
     setSession(result.session);
     setAgentTurn(null);
-    setFeedback(result.feedback ?? "");
+    const answerText = result.feedback ?? "";
+    setFeedback(answerText);
     setQuestion("");
+    if (answerText) {
+      const narrationResult = await narration.play({
+        id: `user-question-answer:${session.id}:${Date.now()}`,
+        text: answerText,
+        scope: "teacher_user_question_answer",
+        refId: `${session.id}:user-question:${Date.now()}`,
+        voice: "teacher",
+        speaker: "芊芊老师",
+        agentId: "teacher",
+        role: "teacher",
+      });
+      if (narrationResult === "failed") {
+        setError("老师的文字回答已显示，但语音播放暂时不可用");
+      }
+    }
   }
 
   async function createVideo() {
@@ -972,9 +1077,15 @@ function App() {
               </button>
             )}
             <form onSubmit={ask}>
-              <label htmlFor="student-question">学生提问</label>
-              <input id="student-question" value={question} onChange={(event) => setQuestion(event.target.value)} disabled={!session} placeholder="输入关于当前内容的问题…" />
-              <button disabled={!question.trim() || !session || !!busy}>发送</button>
+              <label htmlFor="student-question">用户提问</label>
+              <input
+                id="student-question"
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                disabled={!session || userQuestionBlockedByAgentExchange}
+                placeholder={userQuestionBlockedByAgentExchange ? "请等待当前师生问答结束…" : "输入关于当前内容的问题…"}
+              />
+              <button disabled={!question.trim() || !session || !!busy || userQuestionBlockedByAgentExchange}>发送</button>
             </form>
           </div>
 

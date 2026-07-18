@@ -325,6 +325,18 @@ def test_complete_mvp_flow(client: TestClient) -> None:
     assert "How does it work?" in question.json()["feedback"]
     assert question.json()["source_refs"][0]["page_no"] == 1
 
+    services = client.app.state.services
+    services.classrooms.repository.save_session(
+        services.classrooms.get_session(session_id).model_copy(update={"status": "completed"})
+    )
+    after_class_question = client.post(
+        f"/api/v1/classroom-sessions/{session_id}/questions",
+        json={"question": "Can I still ask after class?"},
+    )
+    assert after_class_question.status_code == 200
+    assert after_class_question.json()["status"] == "answered"
+    assert after_class_question.json()["session"]["status"] == "completed"
+
     teacher_turn = client.post(
         f"/api/v1/classroom-sessions/{session_id}/teacher-turn",
         json={"prompt": "请追问一下这个知识点"},
@@ -585,7 +597,19 @@ def test_prepared_question_bank_runs_as_classroom_script(client: TestClient) -> 
 
     first = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
     second = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+    user_question = client.post(
+        f"/api/v1/classroom-sessions/{session_id}/questions",
+        json={"question": prepared["canonical_question"]},
+    )
+    assert user_question.status_code == 200
+    assert user_question.json()["status"] == "answered"
+    assert user_question.json()["source_refs"] == prepared["source_refs"]
     student_step = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+    blocked_question = client.post(
+        f"/api/v1/classroom-sessions/{session_id}/questions",
+        json={"question": "这里可以再解释一下吗？"},
+    )
+    assert blocked_question.status_code == 409
     teacher_step = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
 
     assert first.json()["action"]["type"] == "SHOW_PAGE"
@@ -753,6 +777,7 @@ def test_auto_classroom_waits_for_user_quiz_after_agent_turn(client: TestClient)
         f"/api/v1/classroom-sessions/{session_id}/answers", json={"selected_index": 0}
     )
     assert answer.json()["correct"] is True
+    assert answer.json()["feedback"].startswith("很棒！回答正确了！")
     assert answer.json()["session"]["waiting_for"] is None
     assert answer.json()["session"]["mastery"][0]["value"] == 1.0
 
