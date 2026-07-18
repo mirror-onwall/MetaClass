@@ -1225,7 +1225,7 @@ class ContentService:
     def _teaching_narrative_from_unit(unit: KnowledgeUnit) -> str:
         evidence = " ".join(excerpt.text for excerpt in unit.source_excerpts[:2])
         if evidence:
-            return f"{unit.summary}\n\nUse selected evidence: {evidence}"[:2000]
+            return f"{unit.summary}\n\n{evidence}"[:2000]
         return unit.summary
 
     def _build_with_global_organizer(

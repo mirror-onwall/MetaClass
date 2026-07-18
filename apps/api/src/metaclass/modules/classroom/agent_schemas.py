@@ -18,6 +18,22 @@ class StudentAgentType(StrEnum):
     PRACTICAL_APPLIER = "practical_applier"
 
 
+STUDENT_AGENT_NAMES: dict[StudentAgentType, str] = {
+    StudentAgentType.ATMOSPHERE_REGULATOR: "凡凡",
+    StudentAgentType.DEEP_THINKER: "浩浩",
+    StudentAgentType.NOTE_TAKER: "婧婧",
+    StudentAgentType.RESEARCHER: "涵涵",
+    StudentAgentType.FOUNDATION_WEAK: "琪琪",
+    StudentAgentType.SILENT_OBSERVER: "跳跳",
+    StudentAgentType.CONCEPT_CONFUSED: "昊昊",
+    StudentAgentType.PRACTICAL_APPLIER: "包包",
+}
+
+
+def student_name_for_type(agent_type: StudentAgentType) -> str:
+    return STUDENT_AGENT_NAMES[agent_type]
+
+
 class StudentAgentProfile(SchemaModel):
     id: str = Field(min_length=1)
     type: StudentAgentType

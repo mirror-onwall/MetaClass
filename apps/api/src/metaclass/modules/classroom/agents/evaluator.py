@@ -32,9 +32,15 @@ class EvaluatorAgent:
             confidence=1.0,
             note=f"selected={selected_index}, correct={quiz.correct_index}",
         )
-        feedback = (
-            "回答正确。"
-            if correct
-            else f"回答不正确，正确答案是：{quiz.options[quiz.correct_index]}"
+        explanation = quiz.explanation.strip() or (
+            f"本题考查的是“{quiz.knowledge_point}”，符合要求的是“"
+            f"{quiz.options[quiz.correct_index]}”。"
         )
+        if correct:
+            feedback = f"很棒！回答正确了！这是因为：{explanation}"
+        else:
+            feedback = (
+                f"回答错了。正确答案是：{quiz.options[quiz.correct_index]}。"
+                f"这是因为：{explanation}"
+            )
         return QuizEvaluation(correct=correct, feedback=feedback, evidence=evidence)

@@ -226,7 +226,10 @@ Quiz design rules:
                         "visual_opportunities because it is a full-page render. "
                         "Each quiz item must contain question, options, correct_index, "
                         "explanation, knowledge_point. The teaching_script should connect pages "
-                        "logically and explain image-heavy pages using visual_description."
+                        "logically and explain image-heavy pages using visual_description. "
+                        "Write teaching_script as natural spoken classroom language, not a textbook "
+                        "chapter abstract. Do not repeatedly begin with 本章, 本单元, 本节, or 本文; "
+                        "start directly from the idea, question, evidence, or prior-page connection."
                         + LANGUAGE_RULE
                     ),
                 ),
@@ -317,7 +320,10 @@ Quiz design rules:
                         "image_description, usage_hint, priority, and source_refs/page refs when "
                         "possible. Do not invent image paths and do not use page_image_path, "
                         "which is only the full-page render. "
-                        "Do not create one section per page unless pedagogically necessary."
+                        "Do not create one section per page unless pedagogically necessary. "
+                        "Write teaching_narrative and teaching_script as natural spoken classroom "
+                        "language, not chapter summaries. Do not repeatedly use 本章, 本单元, 本节, "
+                        "or 本文 as sentence openings; vary transitions and enter the substance directly."
                         + LANGUAGE_RULE
                     ),
                 ),

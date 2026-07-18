@@ -9,6 +9,7 @@ from metaclass.modules.classroom.agent_schemas import (
     ControllerDecision,
     DirectedAgentTurn,
     StudentAgentType,
+    student_name_for_type,
 )
 from metaclass.modules.classroom.agents import EvaluatorAgent, StudentRosterAgent, TeacherAgent
 from metaclass.modules.classroom.controller import ClassroomController
@@ -466,8 +467,27 @@ class ClassroomService:
     def answer_question(self, session_id: str, question: str) -> ControllerResult:
         session = self.get_session(session_id)
         plan = self.get_plan(session.plan_id)
+        self._ensure_user_question_allowed(session, plan)
         state = self._build_state(session)
-        teacher_answer = self.teacher.answer_question(plan, session, question, state)
+        matched_qa = None
+        if self.question_banks and self.presentations:
+            try:
+                presentation = self.presentations.get_plan_for_content(plan.content_id)
+                matches = self.question_banks.search(presentation.id, question, limit=1)
+                if matches and matches[0].score >= 3.0:
+                    matched_qa = matches[0].item
+            except HTTPException as exc:
+                if exc.status_code != 404:
+                    raise
+        teacher_answer = self.teacher.answer_question(
+            plan,
+            session,
+            question,
+            state,
+            retrieved_question=matched_qa.canonical_question if matched_qa else None,
+            retrieved_answer=matched_qa.canonical_answer if matched_qa else None,
+            retrieved_source_refs=matched_qa.source_refs if matched_qa else None,
+        )
         session.events.extend(
             [
                 UserQuestionEvent(
@@ -491,6 +511,25 @@ class ClassroomService:
             source_refs=teacher_answer.source_refs,
             session=session,
         )
+
+    def _ensure_user_question_allowed(
+        self, session: ClassroomSession, plan: ClassroomPlan
+    ) -> None:
+        """Reject user interruptions while a student/teacher QA exchange is in flight."""
+        if session.status == "completed":
+            return
+        self._normalize_cursor(session, plan)
+        if session.status == "completed":
+            return
+        current_action = plan.scenes[session.scene_index].actions[session.action_index]
+        last_turn = self._last_agent_turn(session)
+        if isinstance(current_action, TeacherQAResponseAction) or (
+            last_turn and last_turn.role == "student"
+        ):
+            raise HTTPException(
+                409,
+                "User questions are unavailable while a student question is being answered",
+            )
 
     def generate_teacher_turn(self, session_id: str, prompt: str) -> AgentTurn:
         state = self.get_state(session_id)
@@ -632,10 +671,21 @@ class ClassroomService:
             )
 
         if last_turn.role == "student":
+            student_state = next(
+                (student for student in state.students if student.id == last_turn.agent_id),
+                None,
+            )
+            student_name = (
+                student_name_for_type(student_state.agent_type)
+                if student_state
+                else "这位"
+            )
             teacher_turn = self.teacher.generate_turn(
                 state,
                 (
-                    f"学生刚刚说：{last_turn.speech}。请老师先自然回应这位学生，"
+                    f"刚刚发言的学生姓名是“{student_name}”，学生说：{last_turn.speech}。"
+                    f"请老师先自然回应，并称呼“{student_name}同学”；"
+                    "禁止用深度思考者、基础薄弱者、研究型同学等画像或智能体类型称呼学生。"
                     "如果是问题就回答，如果是回答就做简短反馈，然后把课堂拉回主线。"
                 ),
             )
