@@ -1,0 +1,557 @@
+{
+  "content_id": "content_53d01521deb2_augmented_check",
+  "retrieval_enabled": true,
+  "spatial_decision": {
+    "is_spatial_analysis": true,
+    "score": 0.843,
+    "threshold": 0.5,
+    "strong_hit_count": 10,
+    "decision_rule": "score_threshold_or_3_strong_terms",
+    "matched_terms": [
+      {
+        "term": "spatial analysis",
+        "count": 2,
+        "weight": 5
+      },
+      {
+        "term": "spatial statistics",
+        "count": 6,
+        "weight": 5
+      },
+      {
+        "term": "moran",
+        "count": 23,
+        "weight": 5
+      },
+      {
+        "term": "spatio-temporal",
+        "count": 1,
+        "weight": 5
+      },
+      {
+        "term": "空间自相关",
+        "count": 1,
+        "weight": 5
+      },
+      {
+        "term": "gis",
+        "count": 4,
+        "weight": 4
+      },
+      {
+        "term": "geospatial",
+        "count": 1,
+        "weight": 4
+      },
+      {
+        "term": "autocorrelation",
+        "count": 28,
+        "weight": 4
+      },
+      {
+        "term": "hot spot",
+        "count": 1,
+        "weight": 4
+      },
+      {
+        "term": "getis",
+        "count": 9,
+        "weight": 4
+      },
+      {
+        "term": "raster",
+        "count": 1,
+        "weight": 3
+      },
+      {
+        "term": "clustering",
+        "count": 3,
+        "weight": 3
+      },
+      {
+        "term": "spatial",
+        "count": 109,
+        "weight": 2
+      },
+      {
+        "term": "map",
+        "count": 1,
+        "weight": 2
+      },
+      {
+        "term": "coordinate",
+        "count": 1,
+        "weight": 2
+      }
+    ]
+  },
+  "section_reports": [
+    {
+      "section_id": "section_53d01521deb2_augmented_check_001",
+      "title": "Lect. 5 Spatial Correlation Analysis",
+      "user_pages": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0004_c01",
+        "8271ea381679ebe4_p0030_c01",
+        "b14658087f324bf6_p0030_c01",
+        "0fd67661c2c7ce9b_p0001_c01",
+        "0fd67661c2c7ce9b_p0030_c01",
+        "0fd67661c2c7ce9b_p0068_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        459.207,
+        355.972,
+        355.972,
+        352.396,
+        352.396
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_002",
+      "title": "The covariance of X and Y may be negative or positive.",
+      "user_pages": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0006_c01",
+        "0fd67661c2c7ce9b_p0005_c01",
+        "0fd67661c2c7ce9b_p0008_c01",
+        "0fd67661c2c7ce9b_p0022_c01",
+        "0fd67661c2c7ce9b_p0007_c01",
+        "9a86369166f06027_p0046_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        565.902,
+        518.33,
+        472.827,
+        314.614,
+        301.936
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_003",
+      "title": "R is symmetrical matrix,",
+      "user_pages": [
+        9,
+        10,
+        11,
+        12
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0011_c01",
+        "0fd67661c2c7ce9b_p0010_c01",
+        "0fd67661c2c7ce9b_p0017_c01",
+        "fd7c65822fc23770_p0048_c01",
+        "0fd67661c2c7ce9b_p0022_c01",
+        "9a86369166f06027_p0004_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        1402.34,
+        690.909,
+        282.463,
+        203.41,
+        199.476
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_004",
+      "title": "教学单元 4：null",
+      "user_pages": [
+        13,
+        14,
+        15,
+        16
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0015_c01",
+        "0fd67661c2c7ce9b_p0017_c01",
+        "0fd67661c2c7ce9b_p0013_c01",
+        "0fd67661c2c7ce9b_p0014_c01",
+        "afa9eb8f3527fce9_p0023_c01",
+        "0fd67661c2c7ce9b_p0016_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        768.89,
+        450.849,
+        449.667,
+        433.855,
+        321.137
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_005",
+      "title": "•",
+      "user_pages": [
+        17,
+        18,
+        19,
+        20
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0017_c01",
+        "0fd67661c2c7ce9b_p0020_c01",
+        "0fd67661c2c7ce9b_p0018_c01",
+        "0fd67661c2c7ce9b_p0015_c01",
+        "0fd67661c2c7ce9b_p0021_c01",
+        "afa9eb8f3527fce9_p0023_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        979.976,
+        584.441,
+        474.457,
+        379.432,
+        351.331
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_006",
+      "title": "教学单元 6：variables",
+      "user_pages": [
+        21,
+        22,
+        23,
+        24
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0022_c01",
+        "0fd67661c2c7ce9b_p0021_c01",
+        "0fd67661c2c7ce9b_p0020_c01",
+        "0fd67661c2c7ce9b_p0017_c01",
+        "6dc4b98df43b590d_p0062_c01",
+        "0fd67661c2c7ce9b_p0008_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        636.72,
+        540.665,
+        313.616,
+        276.431,
+        266.89
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_007",
+      "title": "r12·3",
+      "user_pages": [
+        25,
+        26,
+        27,
+        28
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0025_c01",
+        "0fd67661c2c7ce9b_p0027_c01",
+        "0fd67661c2c7ce9b_p0022_c01",
+        "6dc4b98df43b590d_p0068_c01",
+        "6dc4b98df43b590d_p0036_c01",
+        "6dc4b98df43b590d_p0062_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        441.46,
+        217.057,
+        108.644,
+        101.526,
+        76.113
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_008",
+      "title": "第 29 页",
+      "user_pages": [
+        29,
+        30,
+        31,
+        32
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0031_c01",
+        "0fd67661c2c7ce9b_p0032_c01",
+        "8271ea381679ebe4_p0032_c01",
+        "b14658087f324bf6_p0032_c01",
+        "0fd67661c2c7ce9b_p0044_c01",
+        "8271ea381679ebe4_p0030_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        665.852,
+        466.861,
+        457.586,
+        457.586,
+        416.451
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_009",
+      "title": "•",
+      "user_pages": [
+        33,
+        34,
+        35,
+        36
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0033_c01",
+        "0fd67661c2c7ce9b_p0034_c01",
+        "ecc7112de3860fb0_p0061_c01",
+        "0fd67661c2c7ce9b_p0036_c01",
+        "0fd67661c2c7ce9b_p0037_c01",
+        "7385dea3761f8ced_p0045_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        780.347,
+        737.618,
+        597.298,
+        381.383,
+        265.071
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_010",
+      "title": "W =",
+      "user_pages": [
+        37,
+        38,
+        39,
+        40
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0038_c01",
+        "ecc7112de3860fb0_p0061_c01",
+        "0fd67661c2c7ce9b_p0034_c01",
+        "ecc7112de3860fb0_p0060_c01",
+        "0fd67661c2c7ce9b_p0037_c01",
+        "8271ea381679ebe4_p0053_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        929.957,
+        626.572,
+        379.524,
+        291.367,
+        271.946
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_011",
+      "title": "W =",
+      "user_pages": [
+        41,
+        42,
+        43,
+        44
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0044_c01",
+        "8271ea381679ebe4_p0013_c01",
+        "b14658087f324bf6_p0013_c01",
+        "0fd67661c2c7ce9b_p0031_c01",
+        "717b20ba6ea39784_p0061_c01",
+        "7385dea3761f8ced_p0033_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        559.931,
+        231.257,
+        231.257,
+        213.22,
+        210.512
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_012",
+      "title": "•",
+      "user_pages": [
+        45,
+        46,
+        47,
+        48
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0045_c01",
+        "0fd67661c2c7ce9b_p0048_c01",
+        "ecc7112de3860fb0_p0061_c01",
+        "4c378d9d10ead631_p0035_c01",
+        "afa9eb8f3527fce9_p0048_c01",
+        "47393fc528dc9827_p0059_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        423.436,
+        213.148,
+        191.488,
+        132.793,
+        120.286
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_013",
+      "title": "Arctoolbox-> Spatail Statistics Tools-",
+      "user_pages": [
+        49,
+        50,
+        51,
+        52
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0049_c01",
+        "0fd67661c2c7ce9b_p0051_c01",
+        "717b20ba6ea39784_p0054_c01",
+        "717b20ba6ea39784_p0061_c01",
+        "9a86369166f06027_p0028_c01",
+        "9a86369166f06027_p0004_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        615.633,
+        306.727,
+        202.369,
+        157.086,
+        153.757
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_014",
+      "title": "•",
+      "user_pages": [
+        53,
+        54,
+        55,
+        56
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0055_c01",
+        "0fd67661c2c7ce9b_p0053_c01",
+        "717b20ba6ea39784_p0066_c01",
+        "717b20ba6ea39784_p0061_c01",
+        "ecc7112de3860fb0_p0053_c01",
+        "64a6ace21075e3f9_p0018_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        620.288,
+        270.26,
+        161.338,
+        153.13,
+        133.565
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_015",
+      "title": "教学单元 15：moran",
+      "user_pages": [
+        57,
+        58,
+        59,
+        60
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0057_c01",
+        "0fd67661c2c7ce9b_p0058_c01",
+        "717b20ba6ea39784_p0061_c01",
+        "64a6ace21075e3f9_p0046_c01",
+        "64a6ace21075e3f9_p0022_c01",
+        "64a6ace21075e3f9_p0018_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        293.692,
+        220.762,
+        216.327,
+        145.603,
+        136.462
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_016",
+      "title": "61",
+      "user_pages": [
+        61,
+        62,
+        63,
+        64
+      ],
+      "retrieved_chunk_ids": [
+        "717b20ba6ea39784_p0062_c01",
+        "0fd67661c2c7ce9b_p0063_c01",
+        "0fd67661c2c7ce9b_p0061_c01",
+        "7385dea3761f8ced_p0067_c01",
+        "0fd67661c2c7ce9b_p0045_c01",
+        "7385dea3761f8ced_p0066_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        265.735,
+        256.968,
+        247.573,
+        130.624,
+        129.144
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_017",
+      "title": "ArcGIS Pro Tool:",
+      "user_pages": [
+        65,
+        66,
+        67,
+        68
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0067_c01",
+        "8271ea381679ebe4_p0030_c01",
+        "b14658087f324bf6_p0030_c01",
+        "0fd67661c2c7ce9b_p0001_c01",
+        "0fd67661c2c7ce9b_p0030_c01",
+        "0fd67661c2c7ce9b_p0068_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        346.261,
+        260.777,
+        260.777,
+        253.871,
+        253.871
+      ]
+    },
+    {
+      "section_id": "section_53d01521deb2_augmented_check_018",
+      "title": "69",
+      "user_pages": [
+        69,
+        70,
+        71
+      ],
+      "retrieved_chunk_ids": [
+        "0fd67661c2c7ce9b_p0069_c01",
+        "0fd67661c2c7ce9b_p0070_c01",
+        "6dc4b98df43b590d_p0074_c01",
+        "8271ea381679ebe4_p0035_c01",
+        "b14658087f324bf6_p0035_c01",
+        "0fd67661c2c7ce9b_p0071_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        354.54,
+        140.309,
+        139.019,
+        138.879,
+        138.879
+      ]
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "content_id": "content_example_spatial_clustering",
+  "retrieval_enabled": true,
+  "spatial_decision": {
+    "is_spatial_analysis": true,
+    "score": 1.2,
+    "threshold": 1.0,
+    "matched_terms": [
+      {
+        "term": "gis",
+        "count": 1,
+        "weight": 4
+      },
+      {
+        "term": "autocorrelation",
+        "count": 1,
+        "weight": 4
+      },
+      {
+        "term": "hot spot",
+        "count": 3,
+        "weight": 4
+      },
+      {
+        "term": "getis",
+        "count": 1,
+        "weight": 4
+      },
+      {
+        "term": "clustering",
+        "count": 2,
+        "weight": 3
+      },
+      {
+        "term": "spatial",
+        "count": 5,
+        "weight": 2
+      },
+      {
+        "term": "map",
+        "count": 1,
+        "weight": 2
+      }
+    ]
+  },
+  "section_reports": [
+    {
+      "section_id": "section_example_spatial_clustering_001",
+      "title": "Spatial Clustering Analysis",
+      "user_pages": [
+        1,
+        2,
+        3
+      ],
+      "retrieved_chunk_ids": [
+        "717b20ba6ea39784_p0053_c01",
+        "717b20ba6ea39784_p0052_c01",
+        "64a6ace21075e3f9_p0018_c01",
+        "717b20ba6ea39784_p0046_c01",
+        "717b20ba6ea39784_p0066_c01",
+        "9a86369166f06027_p0040_c01"
+      ],
+      "retrieved_count": 6,
+      "top_scores": [
+        101.539,
+        97.78,
+        92.768,
+        76.637,
+        68.687
+      ]
+    }
+  ]
+}

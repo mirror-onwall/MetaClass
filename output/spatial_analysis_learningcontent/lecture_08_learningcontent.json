@@ -1,0 +1,4775 @@
+{
+  "id": "content_spatial_analysis_lecture_08",
+  "material_id": "ecc7112de3860fb0",
+  "material_ids": [
+    "ecc7112de3860fb0"
+  ],
+  "collection_id": "col_spatial_analysis_kb",
+  "title": "第 8 讲：空间聚类分析",
+  "subtitle": "Spatial Clustering Analysis 的章节级 LearningContent",
+  "audience": {
+    "level": "undergraduate",
+    "background": "GIS、地理信息科学、遥感或相关专业学生"
+  },
+  "teaching_intent": {
+    "goal": "把空间分析课件知识块组织为可直接进入课堂生成链路的 LearningContent。",
+    "boundary": "本文件不包含向量检索、RAG 编排或最终 PPT/ClassroomPlan 生成。"
+  },
+  "material_overview": {
+    "source": "spatial_analysis PDF knowledge base",
+    "lecture_count": 1,
+    "section_count": 6,
+    "knowledge_unit_count": 6
+  },
+  "global_concepts": [
+    {
+      "id": "global_concept_01",
+      "name": "clustering",
+      "definition": "",
+      "plain_explanation": "clustering 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_02",
+      "name": "cluster",
+      "definition": "",
+      "plain_explanation": "cluster 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_03",
+      "name": "clusters",
+      "definition": "",
+      "plain_explanation": "clusters 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_04",
+      "name": "distance",
+      "definition": "",
+      "plain_explanation": "distance 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_05",
+      "name": "into",
+      "definition": "",
+      "plain_explanation": "into 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_06",
+      "name": "point",
+      "definition": "",
+      "plain_explanation": "point 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_07",
+      "name": "Step",
+      "definition": "",
+      "plain_explanation": "Step 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_08",
+      "name": "between",
+      "definition": "",
+      "plain_explanation": "between 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_09",
+      "name": "objects",
+      "definition": "",
+      "plain_explanation": "objects 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_10",
+      "name": "features",
+      "definition": "",
+      "plain_explanation": "features 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_11",
+      "name": "areas",
+      "definition": "",
+      "plain_explanation": "areas 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    },
+    {
+      "id": "global_concept_12",
+      "name": "methods",
+      "definition": "",
+      "plain_explanation": "methods 是 GIS 空间分析课程中的高频知识点。",
+      "why_it_matters": "后续课堂生成可以围绕这些概念组织讲解、提问和练习。",
+      "related_concept_ids": [],
+      "source_refs": []
+    }
+  ],
+  "knowledge_units": [
+    {
+      "id": "ku_l08_001",
+      "title": "空间聚类分析：clustering / distance",
+      "unit_type": "method",
+      "summary": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases • Cluster: a collection of data objects/features/points • Similar to one another within the same cluster • Dissimilar to the objects in other clusters • Clustering analysis (or Clustering) • Discover similarities between data according to the characteristics found in the data and grouping similar data objects into clusters • Two Types of Typical applications of Cluster Analysis • As a stand-alone tool to get insight",
+      "aliases": [
+        "clustering",
+        "distance",
+        "method",
+        "similarity",
+        "objects"
+      ],
+      "keywords": [
+        "clustering",
+        "distance",
+        "method",
+        "similarity",
+        "objects",
+        "clusters",
+        "similar",
+        "classification",
+        "Cluster",
+        "other"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l08_001_01",
+          "name": "clustering",
+          "definition": "",
+          "plain_explanation": "clustering 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0003",
+              "page_no": 3,
+              "text_span": "ecc7112de3860fb0_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0004",
+              "page_no": 4,
+              "text_span": "ecc7112de3860fb0_p0004_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0005",
+              "page_no": 5,
+              "text_span": "ecc7112de3860fb0_p0005_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0007",
+              "page_no": 7,
+              "text_span": "ecc7112de3860fb0_p0007_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0008",
+              "page_no": 8,
+              "text_span": "ecc7112de3860fb0_p0008_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_001_02",
+          "name": "distance",
+          "definition": "",
+          "plain_explanation": "distance 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0003",
+              "page_no": 3,
+              "text_span": "ecc7112de3860fb0_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0004",
+              "page_no": 4,
+              "text_span": "ecc7112de3860fb0_p0004_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0005",
+              "page_no": 5,
+              "text_span": "ecc7112de3860fb0_p0005_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0007",
+              "page_no": 7,
+              "text_span": "ecc7112de3860fb0_p0007_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0008",
+              "page_no": 8,
+              "text_span": "ecc7112de3860fb0_p0008_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_001_03",
+          "name": "method",
+          "definition": "",
+          "plain_explanation": "method 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0003",
+              "page_no": 3,
+              "text_span": "ecc7112de3860fb0_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0004",
+              "page_no": 4,
+              "text_span": "ecc7112de3860fb0_p0004_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0005",
+              "page_no": 5,
+              "text_span": "ecc7112de3860fb0_p0005_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0007",
+              "page_no": 7,
+              "text_span": "ecc7112de3860fb0_p0007_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0008",
+              "page_no": 8,
+              "text_span": "ecc7112de3860fb0_p0008_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_001_04",
+          "name": "similarity",
+          "definition": "",
+          "plain_explanation": "similarity 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0003",
+              "page_no": 3,
+              "text_span": "ecc7112de3860fb0_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0004",
+              "page_no": 4,
+              "text_span": "ecc7112de3860fb0_p0004_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0005",
+              "page_no": 5,
+              "text_span": "ecc7112de3860fb0_p0005_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0007",
+              "page_no": 7,
+              "text_span": "ecc7112de3860fb0_p0007_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0008",
+              "page_no": 8,
+              "text_span": "ecc7112de3860fb0_p0008_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_001_05",
+          "name": "objects",
+          "definition": "",
+          "plain_explanation": "objects 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0003",
+              "page_no": 3,
+              "text_span": "ecc7112de3860fb0_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0004",
+              "page_no": 4,
+              "text_span": "ecc7112de3860fb0_p0004_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0005",
+              "page_no": 5,
+              "text_span": "ecc7112de3860fb0_p0005_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0007",
+              "page_no": 7,
+              "text_span": "ecc7112de3860fb0_p0007_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0008",
+              "page_no": 8,
+              "text_span": "ecc7112de3860fb0_p0008_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l08_001_01",
+          "text": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0003",
+              "page_no": 3,
+              "text_span": "ecc7112de3860fb0_p0003_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_001_02",
+          "text": "• Cluster: a collection of data objects/features/points • Similar to one another within the same cluster • Dissimilar to the objects in other clusters • Clustering analysis (or Clustering) • Discover similarities between data according to the characteristics found in the data and grouping similar data objects into clusters • Two Types of Typical applications of Cluster Analysis • As a stand-alone tool to get insight into data distribution • As a preprocessing step for other algorithms",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0004",
+              "page_no": 4,
+              "text_span": "ecc7112de3860fb0_p0004_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_001_03",
+          "text": "• Pattern Recognition • Spatial Data Analysis • Create thematic maps in GIS by clustering feature spaces • Detect spatial clusters or for other spatial mining tasks • Image Processing e.g: identify areas of similar land use in an earth observation database • Economic Science (especially market research) • WWW • Document classification • Cluster Weblog data to discover groups of similar access patterns ….",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0005",
+              "page_no": 5,
+              "text_span": "ecc7112de3860fb0_p0005_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_001_04",
+          "text": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0007",
+              "page_no": 7,
+              "text_span": "ecc7112de3860fb0_p0007_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_001_05",
+          "text": "➢ A good clustering method will produce high quality clusters with • high intra-class similarity • low inter-class similarity ➢ The quality of a clustering result depends on both the similarity measure used by the method and its implementation. ➢ The quality of a clustering method is also measured by its ability to discover some or all of the hidden patterns. What is a good clustering method?",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0008",
+              "page_no": 8,
+              "text_span": "ecc7112de3860fb0_p0008_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0003",
+          "page_no": 3,
+          "text_span": "ecc7112de3860fb0_p0003_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0004",
+          "page_no": 4,
+          "text_span": "ecc7112de3860fb0_p0004_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0005",
+          "page_no": 5,
+          "text_span": "ecc7112de3860fb0_p0005_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0007",
+          "page_no": 7,
+          "text_span": "ecc7112de3860fb0_p0007_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0008",
+          "page_no": 8,
+          "text_span": "ecc7112de3860fb0_p0008_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0009",
+          "page_no": 9,
+          "text_span": "ecc7112de3860fb0_p0009_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0010",
+          "page_no": 10,
+          "text_span": "ecc7112de3860fb0_p0010_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0011",
+          "page_no": 11,
+          "text_span": "ecc7112de3860fb0_p0011_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 3,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 4,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 5,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 7,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 8,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 9,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 10,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 11,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "ecc7112de3860fb0_p0003_c01",
+        "ecc7112de3860fb0_p0004_c01",
+        "ecc7112de3860fb0_p0005_c01",
+        "ecc7112de3860fb0_p0007_c01",
+        "ecc7112de3860fb0_p0008_c01",
+        "ecc7112de3860fb0_p0009_c01",
+        "ecc7112de3860fb0_p0010_c01",
+        "ecc7112de3860fb0_p0011_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l08_002",
+      "title": "空间聚类分析：clustering / cluster",
+      "unit_type": "method",
+      "summary": "• Smallest distance: smallest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = min(tip, tjq) • Largest distance: largest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = max(tip, tjq) • Average distance : average distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = avg(tip, tjq) • Centroid distance : distance between the centroids of two clusters, i.e., dis(Ki, Kj) = dis(Ci, Cj) . Centroid is the “middle” of a cluster • Medoid distance : distance between the medoids of two clusters, i.e., dis(Ki, Kj) = dis(Mi, Mj) • Medoid: one chosen, centrally located object in the c",
+      "aliases": [
+        "clustering",
+        "cluster",
+        "distance",
+        "objects",
+        "approach"
+      ],
+      "keywords": [
+        "clustering",
+        "cluster",
+        "distance",
+        "objects",
+        "approach",
+        "element",
+        "methods",
+        "between",
+        "clusters",
+        "Typical"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l08_002_01",
+          "name": "clustering",
+          "definition": "",
+          "plain_explanation": "clustering 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0012",
+              "page_no": 12,
+              "text_span": "ecc7112de3860fb0_p0012_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0014",
+              "page_no": 14,
+              "text_span": "ecc7112de3860fb0_p0014_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0015",
+              "page_no": 15,
+              "text_span": "ecc7112de3860fb0_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0016",
+              "page_no": 16,
+              "text_span": "ecc7112de3860fb0_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0017",
+              "page_no": 17,
+              "text_span": "ecc7112de3860fb0_p0017_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_002_02",
+          "name": "cluster",
+          "definition": "",
+          "plain_explanation": "cluster 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0012",
+              "page_no": 12,
+              "text_span": "ecc7112de3860fb0_p0012_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0014",
+              "page_no": 14,
+              "text_span": "ecc7112de3860fb0_p0014_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0015",
+              "page_no": 15,
+              "text_span": "ecc7112de3860fb0_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0016",
+              "page_no": 16,
+              "text_span": "ecc7112de3860fb0_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0017",
+              "page_no": 17,
+              "text_span": "ecc7112de3860fb0_p0017_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_002_03",
+          "name": "distance",
+          "definition": "",
+          "plain_explanation": "distance 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0012",
+              "page_no": 12,
+              "text_span": "ecc7112de3860fb0_p0012_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0014",
+              "page_no": 14,
+              "text_span": "ecc7112de3860fb0_p0014_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0015",
+              "page_no": 15,
+              "text_span": "ecc7112de3860fb0_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0016",
+              "page_no": 16,
+              "text_span": "ecc7112de3860fb0_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0017",
+              "page_no": 17,
+              "text_span": "ecc7112de3860fb0_p0017_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_002_04",
+          "name": "objects",
+          "definition": "",
+          "plain_explanation": "objects 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0012",
+              "page_no": 12,
+              "text_span": "ecc7112de3860fb0_p0012_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0014",
+              "page_no": 14,
+              "text_span": "ecc7112de3860fb0_p0014_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0015",
+              "page_no": 15,
+              "text_span": "ecc7112de3860fb0_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0016",
+              "page_no": 16,
+              "text_span": "ecc7112de3860fb0_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0017",
+              "page_no": 17,
+              "text_span": "ecc7112de3860fb0_p0017_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_002_05",
+          "name": "approach",
+          "definition": "",
+          "plain_explanation": "approach 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0012",
+              "page_no": 12,
+              "text_span": "ecc7112de3860fb0_p0012_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0014",
+              "page_no": 14,
+              "text_span": "ecc7112de3860fb0_p0014_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0015",
+              "page_no": 15,
+              "text_span": "ecc7112de3860fb0_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0016",
+              "page_no": 16,
+              "text_span": "ecc7112de3860fb0_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0017",
+              "page_no": 17,
+              "text_span": "ecc7112de3860fb0_p0017_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l08_002_01",
+          "text": "• Smallest distance: smallest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = min(tip, tjq) • Largest distance: largest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = max(tip, tjq) • Average distance : average distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = avg(tip, tjq) • Centroid distance : distance between the centroids of two clusters, i.e., dis(Ki, Kj) = dis(C",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0012",
+              "page_no": 12,
+              "text_span": "ecc7112de3860fb0_p0012_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_002_02",
+          "text": "Angle cosine (夹角余弦） and correlation coefficient r are two classes of commonly used similarity coefficients. Suppose: The numbers of objects and variables are m and n, respectively.    = = = • = n k n k jkik n k jkik ij xx xx 1 1 1cos Where i and j are ordinal numbers of two objects, xk represents the kth variable.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0014",
+              "page_no": 14,
+              "text_span": "ecc7112de3860fb0_p0014_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_002_03",
+          "text": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0015",
+              "page_no": 15,
+              "text_span": "ecc7112de3860fb0_p0015_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_002_04",
+          "text": "Partitioning approach: • Constructs various partitions and then evaluate them by some criterion, e.g., minimizing the sum of square errors • Typical methods: k-means, k-medoids, ISODATA, CLARANS 2. Hierarchical approach: • Create a hierarchical decomposition of the set of data (or objects) using some criterion • Typical methods: AGNES, DIANA, BIRCH, ROCK, CAMELEON 3. Density-based approach • Based on density functions • Typical methods: DBSACN, OPTICS, HDBSCAN, Clustering approaches include part",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0016",
+              "page_no": 16,
+              "text_span": "ecc7112de3860fb0_p0016_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_002_05",
+          "text": "Constraint-based Approach: • Cluster objects by considering user-specified or application-specific constraints • Typical methods: Spatially Constrained Clustering, COD (obstacles) 5. Model-based Approach: • A model is hypothesized for each of the clusters and tries to find the best fit of that model to each other • Typical methods: SOM (Self Organized Maps), EM, COBWEB 6. Raster-based or vector-based Approach • Raster-based • Vector-based ……",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0017",
+              "page_no": 17,
+              "text_span": "ecc7112de3860fb0_p0017_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0012",
+          "page_no": 12,
+          "text_span": "ecc7112de3860fb0_p0012_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0014",
+          "page_no": 14,
+          "text_span": "ecc7112de3860fb0_p0014_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0015",
+          "page_no": 15,
+          "text_span": "ecc7112de3860fb0_p0015_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0016",
+          "page_no": 16,
+          "text_span": "ecc7112de3860fb0_p0016_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0017",
+          "page_no": 17,
+          "text_span": "ecc7112de3860fb0_p0017_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0018",
+          "page_no": 18,
+          "text_span": "ecc7112de3860fb0_p0018_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0019",
+          "page_no": 19,
+          "text_span": "ecc7112de3860fb0_p0019_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0020",
+          "page_no": 20,
+          "text_span": "ecc7112de3860fb0_p0020_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 12,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 14,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 15,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 16,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 17,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 18,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 19,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 20,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "ecc7112de3860fb0_p0012_c01",
+        "ecc7112de3860fb0_p0014_c01",
+        "ecc7112de3860fb0_p0015_c01",
+        "ecc7112de3860fb0_p0016_c01",
+        "ecc7112de3860fb0_p0017_c01",
+        "ecc7112de3860fb0_p0018_c01",
+        "ecc7112de3860fb0_p0019_c01",
+        "ecc7112de3860fb0_p0020_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l08_003",
+      "title": "空间聚类分析：clustering / cluster",
+      "unit_type": "method",
+      "summary": "• Given a k, the k-means algorithm is implemented in four steps: 1. Arbitrarily choose k objects as initial k cluster centers 2. Assign each object to the most similar center; 3.",
+      "aliases": [
+        "clustering",
+        "cluster",
+        "Step",
+        "into",
+        "areas"
+      ],
+      "keywords": [
+        "clustering",
+        "cluster",
+        "Step",
+        "into",
+        "areas",
+        "merge",
+        "since",
+        "rule",
+        "column",
+        "clusters"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l08_003_01",
+          "name": "clustering",
+          "definition": "",
+          "plain_explanation": "clustering 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0021",
+              "page_no": 21,
+              "text_span": "ecc7112de3860fb0_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0022",
+              "page_no": 22,
+              "text_span": "ecc7112de3860fb0_p0022_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0023",
+              "page_no": 23,
+              "text_span": "ecc7112de3860fb0_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0024",
+              "page_no": 24,
+              "text_span": "ecc7112de3860fb0_p0024_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0026",
+              "page_no": 26,
+              "text_span": "ecc7112de3860fb0_p0026_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_003_02",
+          "name": "cluster",
+          "definition": "",
+          "plain_explanation": "cluster 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0021",
+              "page_no": 21,
+              "text_span": "ecc7112de3860fb0_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0022",
+              "page_no": 22,
+              "text_span": "ecc7112de3860fb0_p0022_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0023",
+              "page_no": 23,
+              "text_span": "ecc7112de3860fb0_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0024",
+              "page_no": 24,
+              "text_span": "ecc7112de3860fb0_p0024_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0026",
+              "page_no": 26,
+              "text_span": "ecc7112de3860fb0_p0026_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_003_03",
+          "name": "Step",
+          "definition": "",
+          "plain_explanation": "Step 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0021",
+              "page_no": 21,
+              "text_span": "ecc7112de3860fb0_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0022",
+              "page_no": 22,
+              "text_span": "ecc7112de3860fb0_p0022_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0023",
+              "page_no": 23,
+              "text_span": "ecc7112de3860fb0_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0024",
+              "page_no": 24,
+              "text_span": "ecc7112de3860fb0_p0024_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0026",
+              "page_no": 26,
+              "text_span": "ecc7112de3860fb0_p0026_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_003_04",
+          "name": "into",
+          "definition": "",
+          "plain_explanation": "into 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0021",
+              "page_no": 21,
+              "text_span": "ecc7112de3860fb0_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0022",
+              "page_no": 22,
+              "text_span": "ecc7112de3860fb0_p0022_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0023",
+              "page_no": 23,
+              "text_span": "ecc7112de3860fb0_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0024",
+              "page_no": 24,
+              "text_span": "ecc7112de3860fb0_p0024_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0026",
+              "page_no": 26,
+              "text_span": "ecc7112de3860fb0_p0026_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_003_05",
+          "name": "areas",
+          "definition": "",
+          "plain_explanation": "areas 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0021",
+              "page_no": 21,
+              "text_span": "ecc7112de3860fb0_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0022",
+              "page_no": 22,
+              "text_span": "ecc7112de3860fb0_p0022_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0023",
+              "page_no": 23,
+              "text_span": "ecc7112de3860fb0_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0024",
+              "page_no": 24,
+              "text_span": "ecc7112de3860fb0_p0024_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0026",
+              "page_no": 26,
+              "text_span": "ecc7112de3860fb0_p0026_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l08_003_01",
+          "text": "• Given a k, the k-means algorithm is implemented in four steps: 1. Arbitrarily choose k objects as initial k cluster centers 2. Assign each object to the most similar center; 3.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0021",
+              "page_no": 21,
+              "text_span": "ecc7112de3860fb0_p0021_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_003_02",
+          "text": "• Strength: Relatively efficient: O(tkn), where n is # objects, k is # clusters, and t is # iterations. Normally, k, t << n. • Comment: Often terminates at a local optimum.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0022",
+              "page_no": 22,
+              "text_span": "ecc7112de3860fb0_p0022_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_003_03",
+          "text": "What Is the Problem of the K-Means Method? • The k-means algorithm is sensitive to outliers. • Since an object with an extremely large value may substantially distort the distribution of the data.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0023",
+              "page_no": 23,
+              "text_span": "ecc7112de3860fb0_p0023_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_003_04",
+          "text": "ISODATA is based on K-Means algorithm, it adds two operations (“merging”and “splitting”) to the clustering results, and sets the algorithm to run the control parameters. • Merging operation: • When the distance between two certain clusters ( centers /classes) is less than a given threshold, these two clusters/classes are merged into one. • The number of samples of a certain cluster/class exceeds a given threshold, this cluster/class is merged into the neighboring cluster/class .",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0024",
+              "page_no": 24,
+              "text_span": "ecc7112de3860fb0_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_003_05",
+          "text": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0026",
+              "page_no": 26,
+              "text_span": "ecc7112de3860fb0_p0026_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0021",
+          "page_no": 21,
+          "text_span": "ecc7112de3860fb0_p0021_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0022",
+          "page_no": 22,
+          "text_span": "ecc7112de3860fb0_p0022_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0023",
+          "page_no": 23,
+          "text_span": "ecc7112de3860fb0_p0023_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0024",
+          "page_no": 24,
+          "text_span": "ecc7112de3860fb0_p0024_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0026",
+          "page_no": 26,
+          "text_span": "ecc7112de3860fb0_p0026_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0027",
+          "page_no": 27,
+          "text_span": "ecc7112de3860fb0_p0027_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0028",
+          "page_no": 28,
+          "text_span": "ecc7112de3860fb0_p0028_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0031",
+          "page_no": 31,
+          "text_span": "ecc7112de3860fb0_p0031_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 21,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 22,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 23,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 24,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 26,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 27,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 28,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 31,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "ecc7112de3860fb0_p0021_c01",
+        "ecc7112de3860fb0_p0022_c01",
+        "ecc7112de3860fb0_p0023_c01",
+        "ecc7112de3860fb0_p0024_c01",
+        "ecc7112de3860fb0_p0026_c01",
+        "ecc7112de3860fb0_p0027_c01",
+        "ecc7112de3860fb0_p0028_c01",
+        "ecc7112de3860fb0_p0031_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l08_004",
+      "title": "空间聚类分析：clustering / cluster",
+      "unit_type": "method",
+      "summary": "}min{ ijpq dd = 1）View each node in a m×m dissimilarity matrix as a cluster; 2）Use the smallest-distance method and dissimilarity matrix to merge clusters/nodes that have the least dissimilarity into a new cluster; Gk={Gp, Gq) 3）Calculate the dissimilarity distances between the new cluster and the other nodes/clusters respectively to get a (m-1) ×(m-1) matrix； 4) Go on in a non-descending fashion; 5）Eventually all nodes belong to the same cluster. ),}({max or ),}(min{ qpk，ddd qpk，ddd qkpkrk qkpkrk = = rp rq rp rq Step 3: • Since d2,8=0.88 is the smallest, merge G2 and G8 into new cluster G12, G12=｛G2, G8｝. • Calculate the dissimilarity distances between cluster G12 and the other clusters r",
+      "aliases": [
+        "clustering",
+        "cluster",
+        "clusters",
+        "dissimilarity",
+        "matrix"
+      ],
+      "keywords": [
+        "clustering",
+        "cluster",
+        "clusters",
+        "dissimilarity",
+        "matrix",
+        "into",
+        "merge",
+        "Calculate",
+        "distances",
+        "between"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l08_004_01",
+          "name": "clustering",
+          "definition": "",
+          "plain_explanation": "clustering 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0033",
+              "page_no": 33,
+              "text_span": "ecc7112de3860fb0_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0036",
+              "page_no": 36,
+              "text_span": "ecc7112de3860fb0_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0037",
+              "page_no": 37,
+              "text_span": "ecc7112de3860fb0_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0038",
+              "page_no": 38,
+              "text_span": "ecc7112de3860fb0_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0042",
+              "page_no": 42,
+              "text_span": "ecc7112de3860fb0_p0042_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_004_02",
+          "name": "cluster",
+          "definition": "",
+          "plain_explanation": "cluster 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0033",
+              "page_no": 33,
+              "text_span": "ecc7112de3860fb0_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0036",
+              "page_no": 36,
+              "text_span": "ecc7112de3860fb0_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0037",
+              "page_no": 37,
+              "text_span": "ecc7112de3860fb0_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0038",
+              "page_no": 38,
+              "text_span": "ecc7112de3860fb0_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0042",
+              "page_no": 42,
+              "text_span": "ecc7112de3860fb0_p0042_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_004_03",
+          "name": "clusters",
+          "definition": "",
+          "plain_explanation": "clusters 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0033",
+              "page_no": 33,
+              "text_span": "ecc7112de3860fb0_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0036",
+              "page_no": 36,
+              "text_span": "ecc7112de3860fb0_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0037",
+              "page_no": 37,
+              "text_span": "ecc7112de3860fb0_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0038",
+              "page_no": 38,
+              "text_span": "ecc7112de3860fb0_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0042",
+              "page_no": 42,
+              "text_span": "ecc7112de3860fb0_p0042_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_004_04",
+          "name": "dissimilarity",
+          "definition": "",
+          "plain_explanation": "dissimilarity 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0033",
+              "page_no": 33,
+              "text_span": "ecc7112de3860fb0_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0036",
+              "page_no": 36,
+              "text_span": "ecc7112de3860fb0_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0037",
+              "page_no": 37,
+              "text_span": "ecc7112de3860fb0_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0038",
+              "page_no": 38,
+              "text_span": "ecc7112de3860fb0_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0042",
+              "page_no": 42,
+              "text_span": "ecc7112de3860fb0_p0042_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_004_05",
+          "name": "matrix",
+          "definition": "",
+          "plain_explanation": "matrix 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0033",
+              "page_no": 33,
+              "text_span": "ecc7112de3860fb0_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0036",
+              "page_no": 36,
+              "text_span": "ecc7112de3860fb0_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0037",
+              "page_no": 37,
+              "text_span": "ecc7112de3860fb0_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0038",
+              "page_no": 38,
+              "text_span": "ecc7112de3860fb0_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0042",
+              "page_no": 42,
+              "text_span": "ecc7112de3860fb0_p0042_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l08_004_01",
+          "text": "}min{ ijpq dd = 1）View each node in a m×m dissimilarity matrix as a cluster; 2）Use the smallest-distance method and dissimilarity matrix to merge clusters/nodes that have the least dissimilarity into a new cluster; Gk={Gp, Gq) 3）Calculate the dissimilarity distances between the new cluster and the other nodes/clusters respectively to get a (m-1) ×(m-1) matrix； 4) Go on in a non-descending fashion; 5）Eventually all nodes belong to the same cluster. ),}({max or ),}(min{ qpk，ddd qpk，ddd qkpkrk qkpk",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0033",
+              "page_no": 33,
+              "text_span": "ecc7112de3860fb0_p0033_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_004_02",
+          "text": "Step 3: • Since d2,8=0.88 is the smallest, merge G2 and G8 into new cluster G12, G12=｛G2, G8｝. • Calculate the dissimilarity distances between cluster G12 and the other clusters respectively to get a 6×6 matrix Step 4: • Since d6,11=1.07 is the smallest, merge G6 and G11 into new cluster G13, G13=｛G6，G11｝. • Calculate the dissimilarity distances between cluster G13 and the other clusters respectively to get a 5×5 matrix",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0036",
+              "page_no": 36,
+              "text_span": "ecc7112de3860fb0_p0036_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_004_03",
+          "text": "Step 6: • Since d12,14=1.29 is the smallest, merge G12 and G14 into new cluster G15, G15=｛G12，G14｝. • Calculate the dissimilarity distances between cluster G15and the other clusters respectively to get a 3×3 matrix Step 5: • Since d3,10=1.20 is the smallest, merge G3 and G10 into new cluster G14, G14=｛G3，G10｝. • Calculate the dissimilarity distances between cluster G14 and the other clusters respectively to get a 4×4 matrix 1.86 1.86",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0037",
+              "page_no": 37,
+              "text_span": "ecc7112de3860fb0_p0037_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_004_04",
+          "text": "Step 8: • Since there are only two clusters (G13 and G16) remaining, merger they into new cluster G17, G17 = ｛G13，G16｝. • Draw the dendrogram. Step 7: • Since d1,15=1.32 is the smallest, merge G1 and G15 into new cluster G16, G16=｛G1，G15｝.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0038",
+              "page_no": 38,
+              "text_span": "ecc7112de3860fb0_p0038_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_004_05",
+          "text": "• Implemented in statistical analysis packages, e.g., SPSS, Splus • Inverse order of AGNES • Eventually each node forms a cluster on its own 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0042",
+              "page_no": 42,
+              "text_span": "ecc7112de3860fb0_p0042_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0033",
+          "page_no": 33,
+          "text_span": "ecc7112de3860fb0_p0033_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0036",
+          "page_no": 36,
+          "text_span": "ecc7112de3860fb0_p0036_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0037",
+          "page_no": 37,
+          "text_span": "ecc7112de3860fb0_p0037_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0038",
+          "page_no": 38,
+          "text_span": "ecc7112de3860fb0_p0038_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0042",
+          "page_no": 42,
+          "text_span": "ecc7112de3860fb0_p0042_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0044",
+          "page_no": 44,
+          "text_span": "ecc7112de3860fb0_p0044_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0046",
+          "page_no": 46,
+          "text_span": "ecc7112de3860fb0_p0046_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0047",
+          "page_no": 47,
+          "text_span": "ecc7112de3860fb0_p0047_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 33,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 36,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 37,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 38,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 42,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 44,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 46,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 47,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "ecc7112de3860fb0_p0033_c01",
+        "ecc7112de3860fb0_p0036_c01",
+        "ecc7112de3860fb0_p0037_c01",
+        "ecc7112de3860fb0_p0038_c01",
+        "ecc7112de3860fb0_p0042_c01",
+        "ecc7112de3860fb0_p0044_c01",
+        "ecc7112de3860fb0_p0046_c01",
+        "ecc7112de3860fb0_p0047_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l08_005",
+      "title": "空间聚类分析：clustering / point",
+      "unit_type": "method",
+      "summary": "➢ Defined distance (DBSCAN)- Density-Based Spatial Clustering of Application with Nosie) • Uses a specified distance to separate dense clusters from sparser noise. • DBSCAN is the fastest of the clustering methods but is only appropriate if there is a very clear distance to use that works well to define all clusters that may be present. This results in clusters that have similar densities.",
+      "aliases": [
+        "clustering",
+        "point",
+        "clusters",
+        "distance",
+        "points"
+      ],
+      "keywords": [
+        "clustering",
+        "point",
+        "clusters",
+        "distance",
+        "points",
+        "number",
+        "cluster",
+        "within",
+        "Minimum",
+        "Features"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l08_005_01",
+          "name": "clustering",
+          "definition": "",
+          "plain_explanation": "clustering 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0048",
+              "page_no": 48,
+              "text_span": "ecc7112de3860fb0_p0048_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0050",
+              "page_no": 50,
+              "text_span": "ecc7112de3860fb0_p0050_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0051",
+              "page_no": 51,
+              "text_span": "ecc7112de3860fb0_p0051_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0053",
+              "page_no": 53,
+              "text_span": "ecc7112de3860fb0_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0054",
+              "page_no": 54,
+              "text_span": "ecc7112de3860fb0_p0054_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_005_02",
+          "name": "point",
+          "definition": "",
+          "plain_explanation": "point 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0048",
+              "page_no": 48,
+              "text_span": "ecc7112de3860fb0_p0048_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0050",
+              "page_no": 50,
+              "text_span": "ecc7112de3860fb0_p0050_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0051",
+              "page_no": 51,
+              "text_span": "ecc7112de3860fb0_p0051_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0053",
+              "page_no": 53,
+              "text_span": "ecc7112de3860fb0_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0054",
+              "page_no": 54,
+              "text_span": "ecc7112de3860fb0_p0054_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_005_03",
+          "name": "clusters",
+          "definition": "",
+          "plain_explanation": "clusters 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0048",
+              "page_no": 48,
+              "text_span": "ecc7112de3860fb0_p0048_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0050",
+              "page_no": 50,
+              "text_span": "ecc7112de3860fb0_p0050_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0051",
+              "page_no": 51,
+              "text_span": "ecc7112de3860fb0_p0051_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0053",
+              "page_no": 53,
+              "text_span": "ecc7112de3860fb0_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0054",
+              "page_no": 54,
+              "text_span": "ecc7112de3860fb0_p0054_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_005_04",
+          "name": "distance",
+          "definition": "",
+          "plain_explanation": "distance 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0048",
+              "page_no": 48,
+              "text_span": "ecc7112de3860fb0_p0048_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0050",
+              "page_no": 50,
+              "text_span": "ecc7112de3860fb0_p0050_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0051",
+              "page_no": 51,
+              "text_span": "ecc7112de3860fb0_p0051_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0053",
+              "page_no": 53,
+              "text_span": "ecc7112de3860fb0_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0054",
+              "page_no": 54,
+              "text_span": "ecc7112de3860fb0_p0054_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_005_05",
+          "name": "points",
+          "definition": "",
+          "plain_explanation": "points 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0048",
+              "page_no": 48,
+              "text_span": "ecc7112de3860fb0_p0048_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0050",
+              "page_no": 50,
+              "text_span": "ecc7112de3860fb0_p0050_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0051",
+              "page_no": 51,
+              "text_span": "ecc7112de3860fb0_p0051_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0053",
+              "page_no": 53,
+              "text_span": "ecc7112de3860fb0_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0054",
+              "page_no": 54,
+              "text_span": "ecc7112de3860fb0_p0054_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l08_005_01",
+          "text": "➢ Defined distance (DBSCAN)- Density-Based Spatial Clustering of Application with Nosie) • Uses a specified distance to separate dense clusters from sparser noise. • DBSCAN is the fastest of the clustering methods but is only appropriate if there is a very clear distance to use that works well to define all clusters that may be present. This results in clusters that have similar densities.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0048",
+              "page_no": 48,
+              "text_span": "ecc7112de3860fb0_p0048_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_005_02",
+          "text": "• e-neighborhood: The e-neighborhood of any point in the space is the region contained by a circle with that point as the center of the circle and the eps as the radius. • Point Density : The point density is the ratio of the number of points contained in the eneighborhood to the area of that neighborhood. The number of points contained in the eneighborhood can be regarded as point density.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0050",
+              "page_no": 50,
+              "text_span": "ecc7112de3860fb0_p0050_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_005_03",
+          "text": "• Kth-order neighbor distance: The distance between a point and its kth adjacent point. B O A C The 1st adjacent point (The 1st-ord adjacent distance) The 2nd adjacent point (The 2nd -ord adjacent distance) The 3rd adjacent point (The 3rd -ord adjacent distance) • K-Dis plot: It is a schematic plot of sorting the kth-order neighbor distances of each point.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0051",
+              "page_no": 51,
+              "text_span": "ecc7112de3860fb0_p0051_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_005_04",
+          "text": "• This parameter determines the minimum number of features required to consider a grouping of points a cluster. • For instance, if you have a number of different clusters, ranging in size from 10 points to 100 points, and you choose a Minimum Features per Cluster of 20, all clusters that have less than 20 points will either be considered noise (because they do not form a grouping large enough to be considered a cluster) or they will be merged with nearby clusters in order to satisfy the minimum",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0053",
+              "page_no": 53,
+              "text_span": "ecc7112de3860fb0_p0053_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_005_05",
+          "text": "• The Minimum Features per Cluster parameter is also important in the calculation of the core-distance, which is a measurement used by all three methods to find clusters. • Conceptually, the core-distance for each point is a measurement of the distance that is required to travel from each point to the defined minimum number of features. • So, if a large Minimum Features per Cluster is chosen, then the corresponding core-distance will be larger.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0054",
+              "page_no": 54,
+              "text_span": "ecc7112de3860fb0_p0054_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0048",
+          "page_no": 48,
+          "text_span": "ecc7112de3860fb0_p0048_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0050",
+          "page_no": 50,
+          "text_span": "ecc7112de3860fb0_p0050_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0051",
+          "page_no": 51,
+          "text_span": "ecc7112de3860fb0_p0051_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0053",
+          "page_no": 53,
+          "text_span": "ecc7112de3860fb0_p0053_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0054",
+          "page_no": 54,
+          "text_span": "ecc7112de3860fb0_p0054_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0055",
+          "page_no": 55,
+          "text_span": "ecc7112de3860fb0_p0055_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0056",
+          "page_no": 56,
+          "text_span": "ecc7112de3860fb0_p0056_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0058",
+          "page_no": 58,
+          "text_span": "ecc7112de3860fb0_p0058_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 48,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 50,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 51,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 53,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 54,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 55,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 56,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 58,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "ecc7112de3860fb0_p0048_c01",
+        "ecc7112de3860fb0_p0050_c01",
+        "ecc7112de3860fb0_p0051_c01",
+        "ecc7112de3860fb0_p0053_c01",
+        "ecc7112de3860fb0_p0054_c01",
+        "ecc7112de3860fb0_p0055_c01",
+        "ecc7112de3860fb0_p0056_c01",
+        "ecc7112de3860fb0_p0058_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    },
+    {
+      "id": "ku_l08_006",
+      "title": "空间聚类分析：clustering / classification",
+      "unit_type": "method",
+      "summary": "• Clustering, grouping, and classification techniques are some of the most widely used methods in machine learning. • The Spatially Constrained Multivariate Clustering tool uses unsupervised machine learning methods to determine natural clustering in your data. • These classification methods are considered unsupervised, as they do not require a set of preclassified features to guide or train on in order to determine the clustering of your data.",
+      "aliases": [
+        "clustering",
+        "classification",
+        "machine learning",
+        "cluster",
+        "features"
+      ],
+      "keywords": [
+        "clustering",
+        "classification",
+        "machine learning",
+        "cluster",
+        "features",
+        "regression",
+        "spatial regression",
+        "model",
+        "methods",
+        "Contiguity"
+      ],
+      "concepts": [
+        {
+          "id": "concept_ku_l08_006_01",
+          "name": "clustering",
+          "definition": "",
+          "plain_explanation": "clustering 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0059",
+              "page_no": 59,
+              "text_span": "ecc7112de3860fb0_p0059_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0060",
+              "page_no": 60,
+              "text_span": "ecc7112de3860fb0_p0060_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0061",
+              "page_no": 61,
+              "text_span": "ecc7112de3860fb0_p0061_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0063",
+              "page_no": 63,
+              "text_span": "ecc7112de3860fb0_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0064",
+              "page_no": 64,
+              "text_span": "ecc7112de3860fb0_p0064_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_006_02",
+          "name": "classification",
+          "definition": "",
+          "plain_explanation": "classification 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0059",
+              "page_no": 59,
+              "text_span": "ecc7112de3860fb0_p0059_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0060",
+              "page_no": 60,
+              "text_span": "ecc7112de3860fb0_p0060_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0061",
+              "page_no": 61,
+              "text_span": "ecc7112de3860fb0_p0061_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0063",
+              "page_no": 63,
+              "text_span": "ecc7112de3860fb0_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0064",
+              "page_no": 64,
+              "text_span": "ecc7112de3860fb0_p0064_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_006_03",
+          "name": "machine learning",
+          "definition": "",
+          "plain_explanation": "machine learning 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0059",
+              "page_no": 59,
+              "text_span": "ecc7112de3860fb0_p0059_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0060",
+              "page_no": 60,
+              "text_span": "ecc7112de3860fb0_p0060_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0061",
+              "page_no": 61,
+              "text_span": "ecc7112de3860fb0_p0061_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0063",
+              "page_no": 63,
+              "text_span": "ecc7112de3860fb0_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0064",
+              "page_no": 64,
+              "text_span": "ecc7112de3860fb0_p0064_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_006_04",
+          "name": "cluster",
+          "definition": "",
+          "plain_explanation": "cluster 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0059",
+              "page_no": 59,
+              "text_span": "ecc7112de3860fb0_p0059_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0060",
+              "page_no": 60,
+              "text_span": "ecc7112de3860fb0_p0060_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0061",
+              "page_no": 61,
+              "text_span": "ecc7112de3860fb0_p0061_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0063",
+              "page_no": 63,
+              "text_span": "ecc7112de3860fb0_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0064",
+              "page_no": 64,
+              "text_span": "ecc7112de3860fb0_p0064_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "concept_ku_l08_006_05",
+          "name": "features",
+          "definition": "",
+          "plain_explanation": "features 是本教学单元需要解释、比较或应用的核心知识点。",
+          "why_it_matters": "它帮助学生把空间分析方法与具体 GIS 问题联系起来。",
+          "related_concept_ids": [],
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0059",
+              "page_no": 59,
+              "text_span": "ecc7112de3860fb0_p0059_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0060",
+              "page_no": 60,
+              "text_span": "ecc7112de3860fb0_p0060_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0061",
+              "page_no": 61,
+              "text_span": "ecc7112de3860fb0_p0061_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0063",
+              "page_no": 63,
+              "text_span": "ecc7112de3860fb0_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0064",
+              "page_no": 64,
+              "text_span": "ecc7112de3860fb0_p0064_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l08_006_01",
+          "text": "• Clustering, grouping, and classification techniques are some of the most widely used methods in machine learning. • The Spatially Constrained Multivariate Clustering tool uses unsupervised machine learning methods to determine natural clustering in your data. • These classification methods are considered unsupervised, as they do not require a set of preclassified features to guide or train on in order to determine the clustering of your data.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0059",
+              "page_no": 59,
+              "text_span": "ecc7112de3860fb0_p0059_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_006_02",
+          "text": "• The Spatial Constraints parameter ensures that the resultant clusters will be spatially proximal. • The Contiguity options are enabled for polygon feature classes and indicate that features can only be part of the same cluster if they share an edge (Contiguity edges only) or if they share either an edge or a vertex (Contiguity edges corners) with another member of the cluster. • The polygon contiguity options are not good choices, however, if your dataset includes clusters of discontiguous pol",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0060",
+              "page_no": 60,
+              "text_span": "ecc7112de3860fb0_p0060_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_006_03",
+          "text": "·Contiguity edges only —Clusters will contain contiguous polygon features. Only polygons that share an edge can be part of the same cluster. ·Contiguity edges corners— Clusters will contain contiguous polygon features.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0061",
+              "page_no": 61,
+              "text_span": "ecc7112de3860fb0_p0061_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_006_04",
+          "text": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0063",
+              "page_no": 63,
+              "text_span": "ecc7112de3860fb0_p0063_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_006_05",
+          "text": "• Spatiotemporal analysis of activity-travel fragmentation based on spatial clustering and sequence analysis Spatial clustering-2022 • Combining spatial clustering and spatial regression models to understand distributional inequities in access to urban green spaces2025 • A machine learning method for the prediction of ship motion trajectories in real operational conditions-2023 • Reinforced, Incremental and Cross-Lingual Event Detection From Social Messages-2023",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0064",
+              "page_no": 64,
+              "text_span": "ecc7112de3860fb0_p0064_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "misconceptions": [],
+      "source_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0059",
+          "page_no": 59,
+          "text_span": "ecc7112de3860fb0_p0059_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0060",
+          "page_no": 60,
+          "text_span": "ecc7112de3860fb0_p0060_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0061",
+          "page_no": 61,
+          "text_span": "ecc7112de3860fb0_p0061_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0063",
+          "page_no": 63,
+          "text_span": "ecc7112de3860fb0_p0063_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0064",
+          "page_no": 64,
+          "text_span": "ecc7112de3860fb0_p0064_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0065",
+          "page_no": 65,
+          "text_span": "ecc7112de3860fb0_p0065_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0066",
+          "page_no": 66,
+          "text_span": "ecc7112de3860fb0_p0066_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 59,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 60,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 61,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 63,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 64,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 65,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 66,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "source_unit_ids": [
+        "ecc7112de3860fb0_p0059_c01",
+        "ecc7112de3860fb0_p0060_c01",
+        "ecc7112de3860fb0_p0061_c01",
+        "ecc7112de3860fb0_p0063_c01",
+        "ecc7112de3860fb0_p0064_c01",
+        "ecc7112de3860fb0_p0065_c01",
+        "ecc7112de3860fb0_p0066_c01"
+      ],
+      "relations": [],
+      "importance": "core",
+      "confidence": 0.82
+    }
+  ],
+  "knowledge_tree": {
+    "id": "tree_spatial_analysis_lecture_08",
+    "title": "第 8 讲：空间聚类分析",
+    "nodes": [
+      {
+        "id": "node_lecture_08",
+        "title": "第 8 讲：空间聚类分析",
+        "role": "chapter",
+        "summary": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases • Cluster: a collection of data objects/features/points • Similar to one another within the same cluster • Dissimilar to the objects in other clusters • Clustering analysis (or Clustering) • Discover similarities between data according to the characteristics found in the data and grouping similar data objects into clus",
+        "parent_id": null,
+        "knowledge_unit_ids": [],
+        "order": 8,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l08_001",
+        "title": "空间聚类分析：clustering / distance",
+        "role": "method",
+        "summary": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases • Cluster: a collection of data objects/features/points • Similar to one another within the same cluster • Dissimilar to the objects in other clusters • Clustering analysis (or Clustering) • Discover similarities between data according to the characteristics found in the data and grouping similar data objects into clusters • Two Types of Typical applications of Cluster Analysis • As a stand-alone tool to get insight",
+        "parent_id": "node_lecture_08",
+        "knowledge_unit_ids": [
+          "ku_l08_001"
+        ],
+        "order": 1,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l08_002",
+        "title": "空间聚类分析：clustering / cluster",
+        "role": "method",
+        "summary": "• Smallest distance: smallest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = min(tip, tjq) • Largest distance: largest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = max(tip, tjq) • Average distance : average distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = avg(tip, tjq) • Centroid distance : distance between the centroids of two clusters, i.e., dis(Ki, Kj) = dis(Ci, Cj) . Centroid is the “middle” of a cluster • Medoid distance : distance between the medoids of two clusters, i.e., dis(Ki, Kj) = dis(Mi, Mj) • Medoid: one chosen, centrally located object in the c",
+        "parent_id": "node_lecture_08",
+        "knowledge_unit_ids": [
+          "ku_l08_002"
+        ],
+        "order": 2,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l08_003",
+        "title": "空间聚类分析：clustering / cluster",
+        "role": "method",
+        "summary": "• Given a k, the k-means algorithm is implemented in four steps: 1. Arbitrarily choose k objects as initial k cluster centers 2. Assign each object to the most similar center; 3.",
+        "parent_id": "node_lecture_08",
+        "knowledge_unit_ids": [
+          "ku_l08_003"
+        ],
+        "order": 3,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l08_004",
+        "title": "空间聚类分析：clustering / cluster",
+        "role": "method",
+        "summary": "}min{ ijpq dd = 1）View each node in a m×m dissimilarity matrix as a cluster; 2）Use the smallest-distance method and dissimilarity matrix to merge clusters/nodes that have the least dissimilarity into a new cluster; Gk={Gp, Gq) 3）Calculate the dissimilarity distances between the new cluster and the other nodes/clusters respectively to get a (m-1) ×(m-1) matrix； 4) Go on in a non-descending fashion; 5）Eventually all nodes belong to the same cluster. ),}({max or ),}(min{ qpk，ddd qpk，ddd qkpkrk qkpkrk = = rp rq rp rq Step 3: • Since d2,8=0.88 is the smallest, merge G2 and G8 into new cluster G12, G12=｛G2, G8｝. • Calculate the dissimilarity distances between cluster G12 and the other clusters r",
+        "parent_id": "node_lecture_08",
+        "knowledge_unit_ids": [
+          "ku_l08_004"
+        ],
+        "order": 4,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l08_005",
+        "title": "空间聚类分析：clustering / point",
+        "role": "method",
+        "summary": "➢ Defined distance (DBSCAN)- Density-Based Spatial Clustering of Application with Nosie) • Uses a specified distance to separate dense clusters from sparser noise. • DBSCAN is the fastest of the clustering methods but is only appropriate if there is a very clear distance to use that works well to define all clusters that may be present. This results in clusters that have similar densities.",
+        "parent_id": "node_lecture_08",
+        "knowledge_unit_ids": [
+          "ku_l08_005"
+        ],
+        "order": 5,
+        "prerequisite_node_ids": []
+      },
+      {
+        "id": "node_l08_006",
+        "title": "空间聚类分析：clustering / classification",
+        "role": "method",
+        "summary": "• Clustering, grouping, and classification techniques are some of the most widely used methods in machine learning. • The Spatially Constrained Multivariate Clustering tool uses unsupervised machine learning methods to determine natural clustering in your data. • These classification methods are considered unsupervised, as they do not require a set of preclassified features to guide or train on in order to determine the clustering of your data.",
+        "parent_id": "node_lecture_08",
+        "knowledge_unit_ids": [
+          "ku_l08_006"
+        ],
+        "order": 6,
+        "prerequisite_node_ids": []
+      }
+    ],
+    "root_node_ids": [
+      "node_lecture_08"
+    ],
+    "teaching_sequence": [
+      "node_l08_001",
+      "node_l08_002",
+      "node_l08_003",
+      "node_l08_004",
+      "node_l08_005",
+      "node_l08_006"
+    ],
+    "orphan_unit_ids": [],
+    "warnings": [
+      "This LearningContent was generated deterministically from the spatial_analysis knowledge-base chunks.",
+      "Review low-text pages and chunk labels before high-stakes classroom use."
+    ]
+  },
+  "objectives": [
+    "理解空间聚类分析中的核心概念和方法。",
+    "能够解释关键术语、适用条件和典型应用。",
+    "能够基于来源页码组织课堂讲解和检查题。"
+  ],
+  "sections": [
+    {
+      "id": "section_l08_001",
+      "title": "空间聚类分析：clustering / distance",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间聚类分析：clustering / distance",
+      "summary": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases • Cluster: a collection of data objects/features/points • Similar to one another within the same cluster • Dissimilar to the objects in other clusters • Clustering analysis (or Clustering) • Discover similarities between data according to the characteristics found in the data and grouping similar data objects into clusters • Two Types of Typical applications of Cluster Analysis • As a stand-alone tool to get insight",
+      "key_points": [
+        "clustering",
+        "distance",
+        "method",
+        "similarity",
+        "objects",
+        "clusters",
+        "similar",
+        "classification"
+      ],
+      "teaching_narrative": "本节围绕“空间聚类分析：clustering / distance”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases • Cluster: a collection of data objects/features/points • Similar to one another within the same cluster • Dissimilar to the objects in other clusters • Clustering analysis (or Clustering) • Discover similarities between data according to the characteristics found in the data and grouping similar data objects into clusters • Two Types of Typical applications of Cluster Analysis • As a stand-alone tool to get insight",
+      "knowledge_points": [
+        "clustering",
+        "distance",
+        "method",
+        "similarity",
+        "objects",
+        "clusters",
+        "similar",
+        "classification",
+        "Cluster",
+        "other"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l08_001_01",
+          "text": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0003",
+              "page_no": 3,
+              "text_span": "ecc7112de3860fb0_p0003_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_001_02",
+          "text": "• Cluster: a collection of data objects/features/points • Similar to one another within the same cluster • Dissimilar to the objects in other clusters • Clustering analysis (or Clustering) • Discover similarities between data according to the characteristics found in the data and grouping similar data objects into clusters • Two Types of Typical applications of Cluster Analysis • As a stand-alone tool to get insight into data distribution • As a preprocessing step for other algorithms",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0004",
+              "page_no": 4,
+              "text_span": "ecc7112de3860fb0_p0004_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_001_03",
+          "text": "• Pattern Recognition • Spatial Data Analysis • Create thematic maps in GIS by clustering feature spaces • Detect spatial clusters or for other spatial mining tasks • Image Processing e.g: identify areas of similar land use in an earth observation database • Economic Science (especially market research) • WWW • Document classification • Cluster Weblog data to discover groups of similar access patterns ….",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0005",
+              "page_no": 5,
+              "text_span": "ecc7112de3860fb0_p0005_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_001_04",
+          "text": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0007",
+              "page_no": 7,
+              "text_span": "ecc7112de3860fb0_p0007_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_001_05",
+          "text": "➢ A good clustering method will produce high quality clusters with • high intra-class similarity • low inter-class similarity ➢ The quality of a clustering result depends on both the similarity measure used by the method and its implementation. ➢ The quality of a clustering method is also measured by its ability to discover some or all of the hidden patterns. What is a good clustering method?",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0008",
+              "page_no": 8,
+              "text_span": "ecc7112de3860fb0_p0008_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 clustering 为什么重要。",
+          "expected_answer": "学生应能说明 clustering 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间聚类分析：clustering / cluster”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0003",
+          "page_no": 3,
+          "text_span": "ecc7112de3860fb0_p0003_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0004",
+          "page_no": 4,
+          "text_span": "ecc7112de3860fb0_p0004_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0005",
+          "page_no": 5,
+          "text_span": "ecc7112de3860fb0_p0005_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0007",
+          "page_no": 7,
+          "text_span": "ecc7112de3860fb0_p0007_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0008",
+          "page_no": 8,
+          "text_span": "ecc7112de3860fb0_p0008_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0009",
+          "page_no": 9,
+          "text_span": "ecc7112de3860fb0_p0009_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0010",
+          "page_no": 10,
+          "text_span": "ecc7112de3860fb0_p0010_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0011",
+          "page_no": 11,
+          "text_span": "ecc7112de3860fb0_p0011_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 3,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 4,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 5,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 7,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 8,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 9,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 10,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 11,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l08_001"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l08_001_01",
+          "question": "关于“clustering”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 clustering 的含义、适用条件或典型应用",
+            "只记住 clustering 在课件中出现过",
+            "把 clustering 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "clustering",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0003",
+              "page_no": 3,
+              "text_span": "ecc7112de3860fb0_p0003_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0004",
+              "page_no": 4,
+              "text_span": "ecc7112de3860fb0_p0004_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0005",
+              "page_no": 5,
+              "text_span": "ecc7112de3860fb0_p0005_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0007",
+              "page_no": 7,
+              "text_span": "ecc7112de3860fb0_p0007_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0008",
+              "page_no": 8,
+              "text_span": "ecc7112de3860fb0_p0008_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        3,
+        4,
+        5,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间聚类分析：clustering / distance”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases • Cluster: a collection of data objects/features/points • Similar to one another within the same cluster • Dissimilar to the objects in other clusters • Clustering analysis (or Clustering) • Discover similarities between data according to the characteristics found in the data and grouping similar data objects into clusters • Two Types of Typical applications of Cluster Analysis • As a stand-alone tool to get insight",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间聚类分析：clustering / cluster”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l08_002",
+      "title": "空间聚类分析：clustering / cluster",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间聚类分析：clustering / cluster",
+      "summary": "• Smallest distance: smallest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = min(tip, tjq) • Largest distance: largest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = max(tip, tjq) • Average distance : average distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = avg(tip, tjq) • Centroid distance : distance between the centroids of two clusters, i.e., dis(Ki, Kj) = dis(Ci, Cj) . Centroid is the “middle” of a cluster • Medoid distance : distance between the medoids of two clusters, i.e., dis(Ki, Kj) = dis(Mi, Mj) • Medoid: one chosen, centrally located object in the c",
+      "key_points": [
+        "clustering",
+        "cluster",
+        "distance",
+        "objects",
+        "approach",
+        "element",
+        "methods",
+        "between"
+      ],
+      "teaching_narrative": "本节围绕“空间聚类分析：clustering / cluster”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• Smallest distance: smallest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = min(tip, tjq) • Largest distance: largest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = max(tip, tjq) • Average distance : average distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = avg(tip, tjq) • Centroid distance : distance between the centroids of two clusters, i.e., dis(Ki, Kj) = dis(Ci, Cj) . Centroid is the “middle” of a cluster • Medoid distance : distance between the medoids of two clusters, i.e., dis(Ki, Kj) = dis(Mi, Mj) • Medoid: one chosen, centrally located object in the c",
+      "knowledge_points": [
+        "clustering",
+        "cluster",
+        "distance",
+        "objects",
+        "approach",
+        "element",
+        "methods",
+        "between",
+        "clusters",
+        "Typical"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l08_002_01",
+          "text": "• Smallest distance: smallest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = min(tip, tjq) • Largest distance: largest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = max(tip, tjq) • Average distance : average distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = avg(tip, tjq) • Centroid distance : distance between the centroids of two clusters, i.e., dis(Ki, Kj) = dis(C",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0012",
+              "page_no": 12,
+              "text_span": "ecc7112de3860fb0_p0012_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_002_02",
+          "text": "Angle cosine (夹角余弦） and correlation coefficient r are two classes of commonly used similarity coefficients. Suppose: The numbers of objects and variables are m and n, respectively.    = = = • = n k n k jkik n k jkik ij xx xx 1 1 1cos Where i and j are ordinal numbers of two objects, xk represents the kth variable.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0014",
+              "page_no": 14,
+              "text_span": "ecc7112de3860fb0_p0014_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_002_03",
+          "text": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0015",
+              "page_no": 15,
+              "text_span": "ecc7112de3860fb0_p0015_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_002_04",
+          "text": "Partitioning approach: • Constructs various partitions and then evaluate them by some criterion, e.g., minimizing the sum of square errors • Typical methods: k-means, k-medoids, ISODATA, CLARANS 2. Hierarchical approach: • Create a hierarchical decomposition of the set of data (or objects) using some criterion • Typical methods: AGNES, DIANA, BIRCH, ROCK, CAMELEON 3. Density-based approach • Based on density functions • Typical methods: DBSACN, OPTICS, HDBSCAN, Clustering approaches include part",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0016",
+              "page_no": 16,
+              "text_span": "ecc7112de3860fb0_p0016_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_002_05",
+          "text": "Constraint-based Approach: • Cluster objects by considering user-specified or application-specific constraints • Typical methods: Spatially Constrained Clustering, COD (obstacles) 5. Model-based Approach: • A model is hypothesized for each of the clusters and tries to find the best fit of that model to each other • Typical methods: SOM (Self Organized Maps), EM, COBWEB 6. Raster-based or vector-based Approach • Raster-based • Vector-based ……",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0017",
+              "page_no": 17,
+              "text_span": "ecc7112de3860fb0_p0017_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 clustering 为什么重要。",
+          "expected_answer": "学生应能说明 clustering 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间聚类分析：clustering / cluster”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0012",
+          "page_no": 12,
+          "text_span": "ecc7112de3860fb0_p0012_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0014",
+          "page_no": 14,
+          "text_span": "ecc7112de3860fb0_p0014_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0015",
+          "page_no": 15,
+          "text_span": "ecc7112de3860fb0_p0015_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0016",
+          "page_no": 16,
+          "text_span": "ecc7112de3860fb0_p0016_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0017",
+          "page_no": 17,
+          "text_span": "ecc7112de3860fb0_p0017_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0018",
+          "page_no": 18,
+          "text_span": "ecc7112de3860fb0_p0018_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0019",
+          "page_no": 19,
+          "text_span": "ecc7112de3860fb0_p0019_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0020",
+          "page_no": 20,
+          "text_span": "ecc7112de3860fb0_p0020_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 12,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 14,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 15,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 16,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 17,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 18,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 19,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 20,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l08_002"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l08_002_01",
+          "question": "关于“clustering”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 clustering 的含义、适用条件或典型应用",
+            "只记住 clustering 在课件中出现过",
+            "把 clustering 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "clustering",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0012",
+              "page_no": 12,
+              "text_span": "ecc7112de3860fb0_p0012_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0014",
+              "page_no": 14,
+              "text_span": "ecc7112de3860fb0_p0014_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0015",
+              "page_no": 15,
+              "text_span": "ecc7112de3860fb0_p0015_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0016",
+              "page_no": 16,
+              "text_span": "ecc7112de3860fb0_p0016_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0017",
+              "page_no": 17,
+              "text_span": "ecc7112de3860fb0_p0017_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        12,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间聚类分析：clustering / cluster”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• Smallest distance: smallest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = min(tip, tjq) • Largest distance: largest distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = max(tip, tjq) • Average distance : average distance between an element in one cluster and an element in the other, i.e., dis(Ki, Kj) = avg(tip, tjq) • Centroid distance : distance between the centroids of two clusters, i.e., dis(Ki, Kj) = dis(Ci, Cj) . Centroid is the “middle” of a cluster • Medoid distance : distance between the medoids of two clusters, i.e., dis(Ki, Kj) = dis(Mi, Mj) • Medoid: one chosen, centrally located object in the c",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间聚类分析：clustering / cluster”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l08_003",
+      "title": "空间聚类分析：clustering / cluster",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间聚类分析：clustering / cluster",
+      "summary": "• Given a k, the k-means algorithm is implemented in four steps: 1. Arbitrarily choose k objects as initial k cluster centers 2. Assign each object to the most similar center; 3.",
+      "key_points": [
+        "clustering",
+        "cluster",
+        "Step",
+        "into",
+        "areas",
+        "merge",
+        "since",
+        "rule"
+      ],
+      "teaching_narrative": "本节围绕“空间聚类分析：clustering / cluster”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• Given a k, the k-means algorithm is implemented in four steps: 1. Arbitrarily choose k objects as initial k cluster centers 2. Assign each object to the most similar center; 3.",
+      "knowledge_points": [
+        "clustering",
+        "cluster",
+        "Step",
+        "into",
+        "areas",
+        "merge",
+        "since",
+        "rule",
+        "column",
+        "clusters"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l08_003_01",
+          "text": "• Given a k, the k-means algorithm is implemented in four steps: 1. Arbitrarily choose k objects as initial k cluster centers 2. Assign each object to the most similar center; 3.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0021",
+              "page_no": 21,
+              "text_span": "ecc7112de3860fb0_p0021_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_003_02",
+          "text": "• Strength: Relatively efficient: O(tkn), where n is # objects, k is # clusters, and t is # iterations. Normally, k, t << n. • Comment: Often terminates at a local optimum.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0022",
+              "page_no": 22,
+              "text_span": "ecc7112de3860fb0_p0022_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_003_03",
+          "text": "What Is the Problem of the K-Means Method? • The k-means algorithm is sensitive to outliers. • Since an object with an extremely large value may substantially distort the distribution of the data.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0023",
+              "page_no": 23,
+              "text_span": "ecc7112de3860fb0_p0023_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_003_04",
+          "text": "ISODATA is based on K-Means algorithm, it adds two operations (“merging”and “splitting”) to the clustering results, and sets the algorithm to run the control parameters. • Merging operation: • When the distance between two certain clusters ( centers /classes) is less than a given threshold, these two clusters/classes are merged into one. • The number of samples of a certain cluster/class exceeds a given threshold, this cluster/class is merged into the neighboring cluster/class .",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0024",
+              "page_no": 24,
+              "text_span": "ecc7112de3860fb0_p0024_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_003_05",
+          "text": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0026",
+              "page_no": 26,
+              "text_span": "ecc7112de3860fb0_p0026_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 clustering 为什么重要。",
+          "expected_answer": "学生应能说明 clustering 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间聚类分析：clustering / cluster”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0021",
+          "page_no": 21,
+          "text_span": "ecc7112de3860fb0_p0021_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0022",
+          "page_no": 22,
+          "text_span": "ecc7112de3860fb0_p0022_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0023",
+          "page_no": 23,
+          "text_span": "ecc7112de3860fb0_p0023_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0024",
+          "page_no": 24,
+          "text_span": "ecc7112de3860fb0_p0024_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0026",
+          "page_no": 26,
+          "text_span": "ecc7112de3860fb0_p0026_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0027",
+          "page_no": 27,
+          "text_span": "ecc7112de3860fb0_p0027_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0028",
+          "page_no": 28,
+          "text_span": "ecc7112de3860fb0_p0028_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0031",
+          "page_no": 31,
+          "text_span": "ecc7112de3860fb0_p0031_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 21,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 22,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 23,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 24,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 26,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 27,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 28,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 31,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l08_003"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l08_003_01",
+          "question": "关于“clustering”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 clustering 的含义、适用条件或典型应用",
+            "只记住 clustering 在课件中出现过",
+            "把 clustering 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "clustering",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0021",
+              "page_no": 21,
+              "text_span": "ecc7112de3860fb0_p0021_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0022",
+              "page_no": 22,
+              "text_span": "ecc7112de3860fb0_p0022_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0023",
+              "page_no": 23,
+              "text_span": "ecc7112de3860fb0_p0023_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0024",
+              "page_no": 24,
+              "text_span": "ecc7112de3860fb0_p0024_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0026",
+              "page_no": 26,
+              "text_span": "ecc7112de3860fb0_p0026_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        21,
+        22,
+        23,
+        24,
+        26,
+        27,
+        28,
+        31
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间聚类分析：clustering / cluster”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• Given a k, the k-means algorithm is implemented in four steps: 1. Arbitrarily choose k objects as initial k cluster centers 2. Assign each object to the most similar center; 3.",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间聚类分析：clustering / cluster”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l08_004",
+      "title": "空间聚类分析：clustering / cluster",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间聚类分析：clustering / cluster",
+      "summary": "}min{ ijpq dd = 1）View each node in a m×m dissimilarity matrix as a cluster; 2）Use the smallest-distance method and dissimilarity matrix to merge clusters/nodes that have the least dissimilarity into a new cluster; Gk={Gp, Gq) 3）Calculate the dissimilarity distances between the new cluster and the other nodes/clusters respectively to get a (m-1) ×(m-1) matrix； 4) Go on in a non-descending fashion; 5）Eventually all nodes belong to the same cluster. ),}({max or ),}(min{ qpk，ddd qpk，ddd qkpkrk qkpkrk = = rp rq rp rq Step 3: • Since d2,8=0.88 is the smallest, merge G2 and G8 into new cluster G12, G12=｛G2, G8｝. • Calculate the dissimilarity distances between cluster G12 and the other clusters r",
+      "key_points": [
+        "clustering",
+        "cluster",
+        "clusters",
+        "dissimilarity",
+        "matrix",
+        "into",
+        "merge",
+        "Calculate"
+      ],
+      "teaching_narrative": "本节围绕“空间聚类分析：clustering / cluster”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：}min{ ijpq dd = 1）View each node in a m×m dissimilarity matrix as a cluster; 2）Use the smallest-distance method and dissimilarity matrix to merge clusters/nodes that have the least dissimilarity into a new cluster; Gk={Gp, Gq) 3）Calculate the dissimilarity distances between the new cluster and the other nodes/clusters respectively to get a (m-1) ×(m-1) matrix； 4) Go on in a non-descending fashion; 5）Eventually all nodes belong to the same cluster. ),}({max or ),}(min{ qpk，ddd qpk，ddd qkpkrk qkpkrk = = rp rq rp rq Step 3: • Since d2,8=0.88 is the smallest, merge G2 and G8 into new cluster G12, G12=｛G2, G8｝. • Calculate the dissimilarity distances between cluster G12 and the other clusters r",
+      "knowledge_points": [
+        "clustering",
+        "cluster",
+        "clusters",
+        "dissimilarity",
+        "matrix",
+        "into",
+        "merge",
+        "Calculate",
+        "distances",
+        "between"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l08_004_01",
+          "text": "}min{ ijpq dd = 1）View each node in a m×m dissimilarity matrix as a cluster; 2）Use the smallest-distance method and dissimilarity matrix to merge clusters/nodes that have the least dissimilarity into a new cluster; Gk={Gp, Gq) 3）Calculate the dissimilarity distances between the new cluster and the other nodes/clusters respectively to get a (m-1) ×(m-1) matrix； 4) Go on in a non-descending fashion; 5）Eventually all nodes belong to the same cluster. ),}({max or ),}(min{ qpk，ddd qpk，ddd qkpkrk qkpk",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0033",
+              "page_no": 33,
+              "text_span": "ecc7112de3860fb0_p0033_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_004_02",
+          "text": "Step 3: • Since d2,8=0.88 is the smallest, merge G2 and G8 into new cluster G12, G12=｛G2, G8｝. • Calculate the dissimilarity distances between cluster G12 and the other clusters respectively to get a 6×6 matrix Step 4: • Since d6,11=1.07 is the smallest, merge G6 and G11 into new cluster G13, G13=｛G6，G11｝. • Calculate the dissimilarity distances between cluster G13 and the other clusters respectively to get a 5×5 matrix",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0036",
+              "page_no": 36,
+              "text_span": "ecc7112de3860fb0_p0036_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_004_03",
+          "text": "Step 6: • Since d12,14=1.29 is the smallest, merge G12 and G14 into new cluster G15, G15=｛G12，G14｝. • Calculate the dissimilarity distances between cluster G15and the other clusters respectively to get a 3×3 matrix Step 5: • Since d3,10=1.20 is the smallest, merge G3 and G10 into new cluster G14, G14=｛G3，G10｝. • Calculate the dissimilarity distances between cluster G14 and the other clusters respectively to get a 4×4 matrix 1.86 1.86",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0037",
+              "page_no": 37,
+              "text_span": "ecc7112de3860fb0_p0037_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_004_04",
+          "text": "Step 8: • Since there are only two clusters (G13 and G16) remaining, merger they into new cluster G17, G17 = ｛G13，G16｝. • Draw the dendrogram. Step 7: • Since d1,15=1.32 is the smallest, merge G1 and G15 into new cluster G16, G16=｛G1，G15｝.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0038",
+              "page_no": 38,
+              "text_span": "ecc7112de3860fb0_p0038_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_004_05",
+          "text": "• Implemented in statistical analysis packages, e.g., SPSS, Splus • Inverse order of AGNES • Eventually each node forms a cluster on its own 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10 0 1 2 3 4 5 6 7 8 9 10",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0042",
+              "page_no": 42,
+              "text_span": "ecc7112de3860fb0_p0042_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 clustering 为什么重要。",
+          "expected_answer": "学生应能说明 clustering 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间聚类分析：clustering / point”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0033",
+          "page_no": 33,
+          "text_span": "ecc7112de3860fb0_p0033_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0036",
+          "page_no": 36,
+          "text_span": "ecc7112de3860fb0_p0036_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0037",
+          "page_no": 37,
+          "text_span": "ecc7112de3860fb0_p0037_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0038",
+          "page_no": 38,
+          "text_span": "ecc7112de3860fb0_p0038_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0042",
+          "page_no": 42,
+          "text_span": "ecc7112de3860fb0_p0042_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0044",
+          "page_no": 44,
+          "text_span": "ecc7112de3860fb0_p0044_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0046",
+          "page_no": 46,
+          "text_span": "ecc7112de3860fb0_p0046_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0047",
+          "page_no": 47,
+          "text_span": "ecc7112de3860fb0_p0047_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 33,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 36,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 37,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 38,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 42,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 44,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 46,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 47,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l08_004"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l08_004_01",
+          "question": "关于“clustering”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 clustering 的含义、适用条件或典型应用",
+            "只记住 clustering 在课件中出现过",
+            "把 clustering 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "clustering",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0033",
+              "page_no": 33,
+              "text_span": "ecc7112de3860fb0_p0033_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0036",
+              "page_no": 36,
+              "text_span": "ecc7112de3860fb0_p0036_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0037",
+              "page_no": 37,
+              "text_span": "ecc7112de3860fb0_p0037_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0038",
+              "page_no": 38,
+              "text_span": "ecc7112de3860fb0_p0038_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0042",
+              "page_no": 42,
+              "text_span": "ecc7112de3860fb0_p0042_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        33,
+        36,
+        37,
+        38,
+        42,
+        44,
+        46,
+        47
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间聚类分析：clustering / cluster”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：}min{ ijpq dd = 1）View each node in a m×m dissimilarity matrix as a cluster; 2）Use the smallest-distance method and dissimilarity matrix to merge clusters/nodes that have the least dissimilarity into a new cluster; Gk={Gp, Gq) 3）Calculate the dissimilarity distances between the new cluster and the other nodes/clusters respectively to get a (m-1) ×(m-1) matrix； 4) Go on in a non-descending fashion; 5）Eventually all nodes belong to the same cluster. ),}({max or ),}(min{ qpk，ddd qpk，ddd qkpkrk qkpkrk = = rp rq rp rq Step 3: • Since d2,8=0.88 is the smallest, merge G2 and G8 into new cluster G12, G12=｛G2, G8｝. • Calculate the dissimilarity distances between cluster G12 and the other clusters r",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间聚类分析：clustering / point”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l08_005",
+      "title": "空间聚类分析：clustering / point",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间聚类分析：clustering / point",
+      "summary": "➢ Defined distance (DBSCAN)- Density-Based Spatial Clustering of Application with Nosie) • Uses a specified distance to separate dense clusters from sparser noise. • DBSCAN is the fastest of the clustering methods but is only appropriate if there is a very clear distance to use that works well to define all clusters that may be present. This results in clusters that have similar densities.",
+      "key_points": [
+        "clustering",
+        "point",
+        "clusters",
+        "distance",
+        "points",
+        "number",
+        "cluster",
+        "within"
+      ],
+      "teaching_narrative": "本节围绕“空间聚类分析：clustering / point”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：➢ Defined distance (DBSCAN)- Density-Based Spatial Clustering of Application with Nosie) • Uses a specified distance to separate dense clusters from sparser noise. • DBSCAN is the fastest of the clustering methods but is only appropriate if there is a very clear distance to use that works well to define all clusters that may be present. This results in clusters that have similar densities.",
+      "knowledge_points": [
+        "clustering",
+        "point",
+        "clusters",
+        "distance",
+        "points",
+        "number",
+        "cluster",
+        "within",
+        "Minimum",
+        "Features"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l08_005_01",
+          "text": "➢ Defined distance (DBSCAN)- Density-Based Spatial Clustering of Application with Nosie) • Uses a specified distance to separate dense clusters from sparser noise. • DBSCAN is the fastest of the clustering methods but is only appropriate if there is a very clear distance to use that works well to define all clusters that may be present. This results in clusters that have similar densities.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0048",
+              "page_no": 48,
+              "text_span": "ecc7112de3860fb0_p0048_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_005_02",
+          "text": "• e-neighborhood: The e-neighborhood of any point in the space is the region contained by a circle with that point as the center of the circle and the eps as the radius. • Point Density : The point density is the ratio of the number of points contained in the eneighborhood to the area of that neighborhood. The number of points contained in the eneighborhood can be regarded as point density.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0050",
+              "page_no": 50,
+              "text_span": "ecc7112de3860fb0_p0050_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_005_03",
+          "text": "• Kth-order neighbor distance: The distance between a point and its kth adjacent point. B O A C The 1st adjacent point (The 1st-ord adjacent distance) The 2nd adjacent point (The 2nd -ord adjacent distance) The 3rd adjacent point (The 3rd -ord adjacent distance) • K-Dis plot: It is a schematic plot of sorting the kth-order neighbor distances of each point.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0051",
+              "page_no": 51,
+              "text_span": "ecc7112de3860fb0_p0051_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_005_04",
+          "text": "• This parameter determines the minimum number of features required to consider a grouping of points a cluster. • For instance, if you have a number of different clusters, ranging in size from 10 points to 100 points, and you choose a Minimum Features per Cluster of 20, all clusters that have less than 20 points will either be considered noise (because they do not form a grouping large enough to be considered a cluster) or they will be merged with nearby clusters in order to satisfy the minimum",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0053",
+              "page_no": 53,
+              "text_span": "ecc7112de3860fb0_p0053_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_005_05",
+          "text": "• The Minimum Features per Cluster parameter is also important in the calculation of the core-distance, which is a measurement used by all three methods to find clusters. • Conceptually, the core-distance for each point is a measurement of the distance that is required to travel from each point to the defined minimum number of features. • So, if a large Minimum Features per Cluster is chosen, then the corresponding core-distance will be larger.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0054",
+              "page_no": 54,
+              "text_span": "ecc7112de3860fb0_p0054_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 clustering 为什么重要。",
+          "expected_answer": "学生应能说明 clustering 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": "下一步进入“空间聚类分析：clustering / classification”，继续把本节知识放入更完整的空间分析流程中。"
+      },
+      "source_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0048",
+          "page_no": 48,
+          "text_span": "ecc7112de3860fb0_p0048_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0050",
+          "page_no": 50,
+          "text_span": "ecc7112de3860fb0_p0050_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0051",
+          "page_no": 51,
+          "text_span": "ecc7112de3860fb0_p0051_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0053",
+          "page_no": 53,
+          "text_span": "ecc7112de3860fb0_p0053_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0054",
+          "page_no": 54,
+          "text_span": "ecc7112de3860fb0_p0054_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0055",
+          "page_no": 55,
+          "text_span": "ecc7112de3860fb0_p0055_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0056",
+          "page_no": 56,
+          "text_span": "ecc7112de3860fb0_p0056_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0058",
+          "page_no": 58,
+          "text_span": "ecc7112de3860fb0_p0058_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 48,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 50,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 51,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 53,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 54,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 55,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 56,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 58,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l08_005"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l08_005_01",
+          "question": "关于“clustering”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 clustering 的含义、适用条件或典型应用",
+            "只记住 clustering 在课件中出现过",
+            "把 clustering 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "clustering",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0048",
+              "page_no": 48,
+              "text_span": "ecc7112de3860fb0_p0048_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0050",
+              "page_no": 50,
+              "text_span": "ecc7112de3860fb0_p0050_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0051",
+              "page_no": 51,
+              "text_span": "ecc7112de3860fb0_p0051_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0053",
+              "page_no": 53,
+              "text_span": "ecc7112de3860fb0_p0053_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0054",
+              "page_no": 54,
+              "text_span": "ecc7112de3860fb0_p0054_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        48,
+        50,
+        51,
+        53,
+        54,
+        55,
+        56,
+        58
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间聚类分析：clustering / point”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：➢ Defined distance (DBSCAN)- Density-Based Spatial Clustering of Application with Nosie) • Uses a specified distance to separate dense clusters from sparser noise. • DBSCAN is the fastest of the clustering methods but is only appropriate if there is a very clear distance to use that works well to define all clusters that may be present. This results in clusters that have similar densities.",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": "下一步进入“空间聚类分析：clustering / classification”，继续把本节知识放入更完整的空间分析流程中。"
+    },
+    {
+      "id": "section_l08_006",
+      "title": "空间聚类分析：clustering / classification",
+      "role": "method",
+      "content_goal": "帮助学生理解并能应用：空间聚类分析：clustering / classification",
+      "summary": "• Clustering, grouping, and classification techniques are some of the most widely used methods in machine learning. • The Spatially Constrained Multivariate Clustering tool uses unsupervised machine learning methods to determine natural clustering in your data. • These classification methods are considered unsupervised, as they do not require a set of preclassified features to guide or train on in order to determine the clustering of your data.",
+      "key_points": [
+        "clustering",
+        "classification",
+        "machine learning",
+        "cluster",
+        "features",
+        "regression",
+        "spatial regression",
+        "model"
+      ],
+      "teaching_narrative": "本节围绕“空间聚类分析：clustering / classification”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• Clustering, grouping, and classification techniques are some of the most widely used methods in machine learning. • The Spatially Constrained Multivariate Clustering tool uses unsupervised machine learning methods to determine natural clustering in your data. • These classification methods are considered unsupervised, as they do not require a set of preclassified features to guide or train on in order to determine the clustering of your data.",
+      "knowledge_points": [
+        "clustering",
+        "classification",
+        "machine learning",
+        "cluster",
+        "features",
+        "regression",
+        "spatial regression",
+        "model",
+        "methods",
+        "Contiguity"
+      ],
+      "source_excerpts": [
+        {
+          "id": "excerpt_ku_l08_006_01",
+          "text": "• Clustering, grouping, and classification techniques are some of the most widely used methods in machine learning. • The Spatially Constrained Multivariate Clustering tool uses unsupervised machine learning methods to determine natural clustering in your data. • These classification methods are considered unsupervised, as they do not require a set of preclassified features to guide or train on in order to determine the clustering of your data.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0059",
+              "page_no": 59,
+              "text_span": "ecc7112de3860fb0_p0059_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_006_02",
+          "text": "• The Spatial Constraints parameter ensures that the resultant clusters will be spatially proximal. • The Contiguity options are enabled for polygon feature classes and indicate that features can only be part of the same cluster if they share an edge (Contiguity edges only) or if they share either an edge or a vertex (Contiguity edges corners) with another member of the cluster. • The polygon contiguity options are not good choices, however, if your dataset includes clusters of discontiguous pol",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "core",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0060",
+              "page_no": 60,
+              "text_span": "ecc7112de3860fb0_p0060_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_006_03",
+          "text": "·Contiguity edges only —Clusters will contain contiguous polygon features. Only polygons that share an edge can be part of the same cluster. ·Contiguity edges corners— Clusters will contain contiguous polygon features.",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0061",
+              "page_no": 61,
+              "text_span": "ecc7112de3860fb0_p0061_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_006_04",
+          "text": "Lect. 8 Spatial Clustering Analysis  What is Clustering Analysis?  How to Measure the Similarity of Clustering  Spatial Clustering Approaches • Partitioning Clustering • Hierarchical Clustering • Density-based Clustering • Spatially Constrained Multivariate Clustering  Cases",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0063",
+              "page_no": 63,
+              "text_span": "ecc7112de3860fb0_p0063_c01",
+              "image_path": null
+            }
+          ]
+        },
+        {
+          "id": "excerpt_ku_l08_006_05",
+          "text": "• Spatiotemporal analysis of activity-travel fragmentation based on spatial clustering and sequence analysis Spatial clustering-2022 • Combining spatial clustering and spatial regression models to understand distributional inequities in access to urban green spaces2025 • A machine learning method for the prediction of ship motion trajectories in real operational conditions-2023 • Reinforced, Incremental and Cross-Lingual Event Detection From Social Messages-2023",
+          "type": "method",
+          "reason": "Representative excerpt selected from the spatial-analysis knowledge base.",
+          "importance": "supporting",
+          "usage": "teach_from",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0064",
+              "page_no": 64,
+              "text_span": "ecc7112de3860fb0_p0064_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "formulas": [],
+      "examples": [],
+      "visual_opportunities": [],
+      "misconceptions": [],
+      "interaction_opportunities": [
+        {
+          "type": "probe",
+          "prompt": "请用一个 GIS 应用场景解释 clustering 为什么重要。",
+          "expected_answer": "学生应能说明 clustering 解决的空间问题、适用的数据或分析条件，以及结果如何被解释。",
+          "target_concept_ids": [],
+          "difficulty": "medium"
+        }
+      ],
+      "transition": {
+        "to_next": ""
+      },
+      "source_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0059",
+          "page_no": 59,
+          "text_span": "ecc7112de3860fb0_p0059_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0060",
+          "page_no": 60,
+          "text_span": "ecc7112de3860fb0_p0060_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0061",
+          "page_no": 61,
+          "text_span": "ecc7112de3860fb0_p0061_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0063",
+          "page_no": 63,
+          "text_span": "ecc7112de3860fb0_p0063_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0064",
+          "page_no": 64,
+          "text_span": "ecc7112de3860fb0_p0064_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0065",
+          "page_no": 65,
+          "text_span": "ecc7112de3860fb0_p0065_c01",
+          "image_path": null
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_id": "ecc7112de3860fb0_p0066",
+          "page_no": 66,
+          "text_span": "ecc7112de3860fb0_p0066_c01",
+          "image_path": null
+        }
+      ],
+      "page_refs": [
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 59,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 60,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 61,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 63,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 64,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 65,
+          "reason": "LearningContent section source"
+        },
+        {
+          "material_id": "ecc7112de3860fb0",
+          "page_no": 66,
+          "reason": "LearningContent section source"
+        }
+      ],
+      "tree_node_ids": [
+        "node_l08_006"
+      ],
+      "quiz_items": [
+        {
+          "id": "quiz_section_l08_006_01",
+          "question": "关于“clustering”，下列哪一项最能体现真正理解？",
+          "options": [
+            "能够说明 clustering 的含义、适用条件或典型应用",
+            "只记住 clustering 在课件中出现过",
+            "把 clustering 与所有相关方法无条件混用"
+          ],
+          "correct_index": 0,
+          "explanation": "真正理解一个空间分析知识点，需要能说明其含义、适用条件，并能结合场景判断如何使用。",
+          "knowledge_point": "clustering",
+          "source_refs": [
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0059",
+              "page_no": 59,
+              "text_span": "ecc7112de3860fb0_p0059_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0060",
+              "page_no": 60,
+              "text_span": "ecc7112de3860fb0_p0060_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0061",
+              "page_no": 61,
+              "text_span": "ecc7112de3860fb0_p0061_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0063",
+              "page_no": 63,
+              "text_span": "ecc7112de3860fb0_p0063_c01",
+              "image_path": null
+            },
+            {
+              "material_id": "ecc7112de3860fb0",
+              "page_id": "ecc7112de3860fb0_p0064",
+              "page_no": 64,
+              "text_span": "ecc7112de3860fb0_p0064_c01",
+              "image_path": null
+            }
+          ]
+        }
+      ],
+      "page_nos": [
+        59,
+        60,
+        61,
+        63,
+        64,
+        65,
+        66
+      ],
+      "outline_level": 1,
+      "teaching_script": "本节围绕“空间聚类分析：clustering / classification”组织教学。先让学生识别核心概念和问题背景，再结合来源页码中的定义、方法或案例说明其分析逻辑。讲解时要强调适用条件、输入数据、分析结果解释，以及它与前后知识点的联系。\n\n材料依据：• Clustering, grouping, and classification techniques are some of the most widely used methods in machine learning. • The Spatially Constrained Multivariate Clustering tool uses unsupervised machine learning methods to determine natural clustering in your data. • These classification methods are considered unsupervised, as they do not require a set of preclassified features to guide or train on in order to determine the clustering of your data.",
+      "visual_summary": "如来源页包含地图、流程图、统计图或模型图，建议在课件生成阶段优先保留并用于解释空间关系。",
+      "transition_to_next": ""
+    }
+  ],
+  "generation_guidance": {
+    "recommended_use": [
+      "Use sections as the main units for presentation or classroom-plan generation.",
+      "Use source_refs and page_refs for citations and source-page display.",
+      "Use quiz_items only as lightweight classroom checkpoints; review before formal assessment."
+    ],
+    "language": "Chinese teaching narrative with necessary English GIS terms preserved."
+  },
+  "quality": {
+    "coverage_score": 1.0,
+    "warnings": [
+      "Deterministic first-pass LearningContent; manual review is recommended.",
+      "Image-heavy or low-text pages are tracked separately in low_text_pages.csv."
+    ]
+  },
+  "version": 1,
+  "created_at": "2026-07-18T09:27:23.169388Z",
+  "updated_at": "2026-07-18T09:27:23.169388Z"
+}

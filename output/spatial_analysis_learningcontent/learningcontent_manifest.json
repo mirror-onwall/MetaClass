@@ -1,0 +1,125 @@
+{
+  "built_at": "2026-07-18T09:27:23.643799+00:00",
+  "source_kb_dir": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\output\\spatial_analysis_kb",
+  "output_dir": "E:\\课程资料\\专业必修\\3S实践\\MetaClass\\output\\spatial_analysis_learningcontent",
+  "document_count": 17,
+  "chunk_count": 1725,
+  "course_file": "spatial_analysis_course_learningcontent.json",
+  "course_section_count": 14,
+  "course_knowledge_unit_count": 14,
+  "lecture_outputs": [
+    {
+      "lecture_no": 1,
+      "title_en": "Introduction to GIS Spatial Analysis",
+      "title_zh": "空间分析导论",
+      "file": "lecture_01_learningcontent.json",
+      "section_count": 6,
+      "knowledge_unit_count": 6
+    },
+    {
+      "lecture_no": 2,
+      "title_en": "Conceptual Frameworks for Spatial Analysis",
+      "title_zh": "空间分析概念框架",
+      "file": "lecture_02_learningcontent.json",
+      "section_count": 6,
+      "knowledge_unit_count": 6
+    },
+    {
+      "lecture_no": 3,
+      "title_en": "Data Exploration and Spatial Statistics",
+      "title_zh": "空间数据探索与空间统计",
+      "file": "lecture_03_learningcontent.json",
+      "section_count": 6,
+      "knowledge_unit_count": 6
+    },
+    {
+      "lecture_no": 4,
+      "title_en": "Spatial Pattern Analysis",
+      "title_zh": "空间模式分析",
+      "file": "lecture_04_learningcontent.json",
+      "section_count": 6,
+      "knowledge_unit_count": 6
+    },
+    {
+      "lecture_no": 5,
+      "title_en": "Spatial Correlation Analysis",
+      "title_zh": "空间相关性分析",
+      "file": "lecture_05_learningcontent.json",
+      "section_count": 6,
+      "knowledge_unit_count": 6
+    },
+    {
+      "lecture_no": 6,
+      "title_en": "Regression Analysis in Geography",
+      "title_zh": "地理回归分析",
+      "file": "lecture_06_learningcontent.json",
+      "section_count": 6,
+      "knowledge_unit_count": 6
+    },
+    {
+      "lecture_no": 7,
+      "title_en": "Spatial Regression Analysis",
+      "title_zh": "空间回归分析",
+      "file": "lecture_07_learningcontent.json",
+      "section_count": 6,
+      "knowledge_unit_count": 6
+    },
+    {
+      "lecture_no": 8,
+      "title_en": "Spatial Clustering Analysis",
+      "title_zh": "空间聚类分析",
+      "file": "lecture_08_learningcontent.json",
+      "section_count": 6,
+      "knowledge_unit_count": 6
+    },
+    {
+      "lecture_no": 9,
+      "title_en": "Machine Learning Classification",
+      "title_zh": "机器学习分类",
+      "file": "lecture_09_learningcontent.json",
+      "section_count": 6,
+      "knowledge_unit_count": 6
+    },
+    {
+      "lecture_no": 10,
+      "title_en": "Time Series Analysis",
+      "title_zh": "时间序列分析",
+      "file": "lecture_10_learningcontent.json",
+      "section_count": 6,
+      "knowledge_unit_count": 6
+    },
+    {
+      "lecture_no": 11,
+      "title_en": "Spatio-Temporal Analysis",
+      "title_zh": "时空分析",
+      "file": "lecture_11_learningcontent.json",
+      "section_count": 6,
+      "knowledge_unit_count": 6
+    },
+    {
+      "lecture_no": 12,
+      "title_en": "Project Study",
+      "title_zh": "项目研究",
+      "file": "lecture_12_learningcontent.json",
+      "section_count": 6,
+      "knowledge_unit_count": 6
+    },
+    {
+      "lecture_no": 13,
+      "title_en": "Deep Learning for Remote Sensing Data",
+      "title_zh": "遥感深度学习",
+      "file": "lecture_13_learningcontent.json",
+      "section_count": 5,
+      "knowledge_unit_count": 5
+    },
+    {
+      "lecture_no": 14,
+      "title_en": "Geospatial Big Data Analysis",
+      "title_zh": "地理空间大数据分析",
+      "file": "lecture_14_learningcontent.json",
+      "section_count": 5,
+      "knowledge_unit_count": 5
+    }
+  ],
+  "scope": "LearningContent generation only; retrieval and course-generation orchestration are excluded."
+}

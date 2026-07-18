@@ -1,0 +1,23 @@
+{
+  "content_id": "content_example_non_spatial",
+  "retrieval_enabled": false,
+  "spatial_decision": {
+    "is_spatial_analysis": false,
+    "score": 0.0,
+    "threshold": 1.0,
+    "matched_terms": []
+  },
+  "section_reports": [
+    {
+      "section_id": "section_example_non_spatial_001",
+      "title": "Academic Writing Introduction",
+      "user_pages": [
+        1,
+        2
+      ],
+      "retrieved_chunk_ids": [],
+      "retrieved_count": 0,
+      "top_scores": []
+    }
+  ]
+}
