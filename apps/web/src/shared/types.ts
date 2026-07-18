@@ -296,6 +296,10 @@ export type ControllerResult = {
   session: ClassroomSession;
 };
 
+export type ClassroomNavigationResult = ControllerResult & {
+  page_action: Extract<TeachingAction, { type: "SHOW_PAGE" }> | null;
+};
+
 export type AutoClassroomStep = {
   status: "action" | "agent_turn" | "quiz_answered" | "waiting" | "completed";
   action: TeachingAction | null;

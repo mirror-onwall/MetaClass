@@ -25,6 +25,7 @@ from metaclass.modules.classroom.schemas import (
     ClassroomPlan,
     ClassroomPlanGenerationMeta,
     ClassroomPlanJob,
+    ClassroomNavigationResult,
     ClassroomSession,
     ClassroomState,
     ControllerResult,
@@ -215,6 +216,90 @@ class ClassroomService:
             session.waiting_for = "quiz_answer"
         self._save_session(session)
         return ControllerResult(status="action", action=action, session=session)
+
+    def navigate(self, session_id: str, direction: str) -> ClassroomNavigationResult:
+        """Move between learner-facing narration beats.
+
+        Lecture mode treats every EXPLAIN action as a segment. Interactive mode
+        does the same, except a quiz still pending on the current scene is the
+        next beat; probes and prepared agent Q&A are intentionally skipped.
+        """
+        if direction not in {"previous", "next"}:
+            raise HTTPException(400, "Direction must be previous or next")
+        session = self.get_session(session_id)
+        plan = self.get_plan(session.plan_id)
+        if direction == "next" and session.waiting_for == "quiz_answer":
+            return ClassroomNavigationResult(
+                status="waiting",
+                feedback="请先完成当前小测。",
+                session=session,
+            )
+        session.waiting_for = None
+
+        positions = [
+            (scene_index, action_index, action)
+            for scene_index, scene in enumerate(plan.scenes)
+            for action_index, action in enumerate(scene.actions)
+        ]
+        cursor_order = next(
+            (
+                index
+                for index, (scene_index, action_index, _) in enumerate(positions)
+                if (scene_index, action_index) >= (session.scene_index, session.action_index)
+            ),
+            len(positions),
+        )
+
+        target = None
+        if direction == "previous":
+            explains_before_cursor = [
+                item for index, item in enumerate(positions[:cursor_order])
+                if item[2].type == "EXPLAIN"
+            ]
+            # The last explanation is the currently displayed segment.
+            if len(explains_before_cursor) >= 2:
+                target = explains_before_cursor[-2]
+            elif explains_before_cursor:
+                target = explains_before_cursor[0]
+        else:
+            for scene_index, action_index, candidate in positions[cursor_order:]:
+                if candidate.type == "EXPLAIN":
+                    target = (scene_index, action_index, candidate)
+                    break
+                if (
+                    session.mode == LearningMode.INTERACTIVE
+                    and scene_index == session.scene_index
+                    and candidate.type == "ASK_QUIZ"
+                ):
+                    target = (scene_index, action_index, candidate)
+                    break
+
+        if target is None:
+            return ClassroomNavigationResult(
+                status="completed" if direction == "next" else "action",
+                feedback="已经是最后一段讲解。" if direction == "next" else "已经是第一段讲解。",
+                session=session,
+            )
+
+        scene_index, action_index, action = target
+        scene = plan.scenes[scene_index]
+        page_action = next(
+            (item for item in scene.actions[: action_index + 1] if item.type == "SHOW_PAGE"),
+            None,
+        )
+        session.scene_index = scene_index
+        session.action_index = action_index + 1
+        session.status = "running"
+        self._record_action_executed(session, action)
+        if isinstance(action, AskQuizAction):
+            session.waiting_for = "quiz_answer"
+        self._save_session(session)
+        return ClassroomNavigationResult(
+            status="action",
+            action=action,
+            page_action=page_action,
+            session=session,
+        )
 
     def auto_step(self, session_id: str) -> AutoClassroomStep:
         """Advance one natural classroom beat.

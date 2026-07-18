@@ -388,6 +388,10 @@ class ControllerResult(SchemaModel):
     session: ClassroomSession
 
 
+class ClassroomNavigationResult(ControllerResult):
+    page_action: ShowPageAction | None = None
+
+
 class AutoClassroomStep(SchemaModel):
     status: Literal[
         "action",
