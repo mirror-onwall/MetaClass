@@ -16,7 +16,9 @@ from metaclass.modules.content.schemas import (
     LearningContent,
     LearningContentDraft,
     LearningSection,
+    PageUnderstanding,
     PageRef,
+    QuizItemDraft,
     VisualOpportunity,
 )
 from metaclass.modules.content.service import ContentService
@@ -323,6 +325,146 @@ def test_learning_content_draft_normalizes_common_llm_shape_errors() -> None:
     assert quiz.correct_index == 1
     assert quiz.explanation == ""
     assert quiz.knowledge_point == "Which option describes YOLO?"
+
+
+def test_collection_organizer_repairs_empty_sections_with_page_quizzes() -> None:
+    source_ref = SourceRef(
+        material_id="mat_001",
+        page_id="mat_001_page_001",
+        page_no=1,
+    )
+    page = PageMetadata(
+        id="mat_001_page_001",
+        material_id="mat_001",
+        page_no=1,
+        title="Spatial autocorrelation",
+        raw_text="Moran's I measures spatial autocorrelation.",
+        image_path="page.png",
+        source_refs=[source_ref],
+    )
+    understanding = PageUnderstanding(
+        id="understanding_001",
+        material_id="mat_001",
+        page_id=page.id,
+        page_no=1,
+        title=page.title,
+        summary="Moran's I measures spatial autocorrelation.",
+        knowledge_points=["Moran's I"],
+        quiz_items=[
+            QuizItemDraft(
+                question="What does Moran's I measure?",
+                options=["Spatial autocorrelation", "Map scale"],
+                correct_index=0,
+                explanation="Moran's I is a spatial autocorrelation statistic.",
+                knowledge_point="Moran's I",
+            )
+        ],
+        source_refs=[source_ref],
+        provider="test",
+    )
+    unit = KnowledgeUnit(
+        id="ku_001",
+        title="Moran's I",
+        unit_type="method",
+        summary="Moran's I measures spatial autocorrelation.",
+        keywords=["Moran's I", "spatial autocorrelation"],
+        source_refs=[source_ref],
+        page_refs=[PageRef(material_id="mat_001", page_no=1)],
+    )
+    tree = CourseKnowledgeTree(
+        id="tree_001",
+        title="Spatial Correlation",
+        nodes=[
+            CourseKnowledgeTreeNode(
+                id="node_001",
+                title="Moran's I",
+                role="method",
+                summary="Moran's I measures spatial autocorrelation.",
+                knowledge_unit_ids=["ku_001"],
+                order=1,
+            )
+        ],
+        root_node_ids=["node_001"],
+    )
+    llm = Mock()
+    llm.model = "test-model"
+    llm.complete_json.return_value = '{"title":"Broken","sections":[]}'
+    provider = LLMLearningProvider(llm)
+
+    draft = provider.organize_collection_learning_content(
+        collection_id="single_mat_001",
+        material_ids=["mat_001"],
+        pages=[page],
+        understandings=[understanding],
+        knowledge_units=[unit],
+        knowledge_tree=tree,
+    )
+
+    assert draft.sections
+    assert draft.sections[0].tree_node_ids == ["node_001"]
+    assert draft.sections[0].quiz_items[0].question == "What does Moran's I measure?"
+
+
+def test_fallback_tree_sections_reuse_page_understanding_quizzes() -> None:
+    source_ref = SourceRef(
+        material_id="mat_001",
+        page_id="mat_001_page_001",
+        page_no=1,
+    )
+    understanding = PageUnderstanding(
+        id="understanding_001",
+        material_id="mat_001",
+        page_id="mat_001_page_001",
+        page_no=1,
+        summary="Moran's I measures spatial autocorrelation.",
+        knowledge_points=["Moran's I"],
+        quiz_items=[
+            QuizItemDraft(
+                question="Which result indicates positive spatial autocorrelation?",
+                options=["Similar values cluster together", "All values are independent"],
+                correct_index=0,
+                explanation="Positive spatial autocorrelation means nearby values are similar.",
+                knowledge_point="spatial autocorrelation",
+            )
+        ],
+        source_refs=[source_ref],
+        provider="test",
+    )
+    unit = KnowledgeUnit(
+        id="ku_001",
+        title="Moran's I",
+        unit_type="method",
+        summary="Moran's I measures spatial autocorrelation.",
+        keywords=["Moran's I"],
+        source_refs=[source_ref],
+        page_refs=[PageRef(material_id="mat_001", page_no=1)],
+    )
+    tree = CourseKnowledgeTree(
+        id="tree_001",
+        title="Spatial Correlation",
+        nodes=[
+            CourseKnowledgeTreeNode(
+                id="node_001",
+                title="Moran's I",
+                role="method",
+                summary="Moran's I measures spatial autocorrelation.",
+                knowledge_unit_ids=["ku_001"],
+                order=1,
+            )
+        ],
+        root_node_ids=["node_001"],
+    )
+    service = ContentService(Mock(), Mock(), FakeLearningProvider())
+
+    sections = service._sections_from_knowledge_tree(
+        tree,
+        [unit],
+        understandings=[understanding],
+    )
+
+    assert sections[0].quiz_items[0].question == (
+        "Which result indicates positive spatial autocorrelation?"
+    )
 
 
 def test_collection_learning_content_reports_stage_progress() -> None:

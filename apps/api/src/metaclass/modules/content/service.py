@@ -402,6 +402,7 @@ class ContentService:
             material_ids=material_ids,
             knowledge_units=knowledge_units,
             knowledge_tree=knowledge_tree,
+            understandings=understandings,
             quality_warnings=quality_warnings + canonicalization_warnings,
         )
         content = content.model_copy(
@@ -425,9 +426,14 @@ class ContentService:
         material_ids: list[str],
         knowledge_units: list[KnowledgeUnit],
         knowledge_tree: CourseKnowledgeTree,
+        understandings: list[PageUnderstanding] | None = None,
         quality_warnings: list[str],
     ) -> LearningContent:
-        sections = self._sections_from_knowledge_tree(knowledge_tree, knowledge_units)
+        sections = self._sections_from_knowledge_tree(
+            knowledge_tree,
+            knowledge_units,
+            understandings=understandings,
+        )
 
         if not sections:
             raise HTTPException(409, "No page understanding is available")
@@ -700,6 +706,8 @@ class ContentService:
         self,
         tree: CourseKnowledgeTree,
         units: list[KnowledgeUnit],
+        *,
+        understandings: list[PageUnderstanding] | None = None,
     ) -> list[LearningSection]:
         unit_by_id = {unit.id: unit for unit in units}
         children_by_parent: dict[str, list[CourseKnowledgeTreeNode]] = {}
@@ -737,31 +745,38 @@ class ContentService:
             if not section_units:
                 continue
             next_title = teaching_nodes[index].title if index < len(teaching_nodes) else ""
-            quiz_unit = next(
-                (unit for unit in section_units if unit.keywords and unit.source_refs),
-                None,
+            source_refs = self._dedupe_source_refs(
+                [ref for unit in section_units for ref in unit.source_refs]
             )
-            quiz_items = []
-            if quiz_unit:
-                point = quiz_unit.keywords[0]
-                quiz_items = [
-                    QuizItem(
-                        id=f"quiz_{index:03d}_01",
-                        question=f"Which statement best demonstrates understanding of {point}?",
-                        options=[
-                            f"Explain {point}, its conditions, or an appropriate example",
-                            "Only remember which source page mentioned it",
-                            "Use it interchangeably with every related concept",
-                        ],
-                        correct_index=0,
-                        explanation=(
-                            "Understanding requires explaining the concept and applying it under "
-                            "appropriate conditions."
-                        ),
-                        knowledge_point=point,
-                        source_refs=quiz_unit.source_refs,
-                    )
-                ]
+            quiz_items = self._quiz_items_from_understandings(
+                index,
+                source_refs,
+                understandings or [],
+            )
+            if not quiz_items:
+                quiz_unit = next(
+                    (unit for unit in section_units if unit.keywords and unit.source_refs),
+                    None,
+                )
+                if quiz_unit:
+                    point = quiz_unit.keywords[0]
+                    quiz_items = [
+                        QuizItem(
+                            id=f"quiz_{index:03d}_01",
+                            question=f"关于“{point}”，下列哪一项最能体现理解到位？",
+                            options=[
+                                f"能够解释 {point} 的含义、适用条件或具体例子",
+                                f"只记住 {point} 在材料中出现过",
+                                f"把 {point} 与所有相关概念无条件混用",
+                            ],
+                            correct_index=0,
+                            explanation=(
+                                "理解一个知识点，需要能说明它解决的问题、适用条件和使用边界。"
+                            ),
+                            knowledge_point=point,
+                            source_refs=quiz_unit.source_refs,
+                        )
+                    ]
             sections.append(
                 LearningSection(
                     id=f"section_{index:03d}",
@@ -786,9 +801,7 @@ class ContentService:
                     examples=[example for unit in section_units for example in unit.examples],
                     misconceptions=[item for unit in section_units for item in unit.misconceptions],
                     transition={"to_next": f"Next, move to {next_title}." if next_title else ""},
-                    source_refs=self._dedupe_source_refs(
-                        [ref for unit in section_units for ref in unit.source_refs]
-                    ),
+                    source_refs=source_refs,
                     page_refs=self._dedupe_page_refs(
                         [ref for unit in section_units for ref in unit.page_refs]
                     ),
@@ -797,6 +810,43 @@ class ContentService:
                 )
             )
         return sections
+
+    @staticmethod
+    def _quiz_items_from_understandings(
+        section_index: int,
+        source_refs: list,
+        understandings: list[PageUnderstanding],
+    ) -> list[QuizItem]:
+        if not source_refs or not understandings:
+            return []
+        understanding_by_page = {
+            (item.material_id, item.page_no): item for item in understandings
+        }
+        result = []
+        seen_questions = set()
+        for ref in source_refs:
+            understanding = understanding_by_page.get((ref.material_id, ref.page_no))
+            if not understanding:
+                continue
+            for quiz_index, draft in enumerate(understanding.quiz_items, start=1):
+                question = draft.question.strip()
+                if not question or question in seen_questions:
+                    continue
+                seen_questions.add(question)
+                result.append(
+                    QuizItem(
+                        id=f"quiz_{section_index:03d}_{len(result) + 1:02d}",
+                        question=draft.question,
+                        options=draft.options,
+                        correct_index=draft.correct_index,
+                        explanation=draft.explanation,
+                        knowledge_point=draft.knowledge_point,
+                        source_refs=source_refs,
+                    )
+                )
+                if len(result) >= 2:
+                    return result
+        return result
 
     def _assess_content_quality(
         self,
