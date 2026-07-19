@@ -245,6 +245,159 @@ Quiz design rules:
         )
         return LearningContentDraft.model_validate_json(response, extra="ignore")
 
+    @staticmethod
+    def _fallback_collection_draft_payload(
+        *,
+        collection_id: str,
+        material_ids: list[str],
+        pages: list[PageMetadata],
+        understandings: list,
+        knowledge_units: list[KnowledgeUnit],
+        knowledge_tree: CourseKnowledgeTree,
+    ) -> dict:
+        unit_by_id = {unit.id: unit for unit in knowledge_units}
+        understanding_by_source = {
+            (item.material_id, item.page_no): item for item in understandings
+        }
+        page_by_source = {(page.material_id, page.page_no): page for page in pages}
+        teaching_nodes = [
+            node for node in knowledge_tree.nodes if node.knowledge_unit_ids
+        ] or knowledge_tree.nodes[:1]
+        sections = []
+        for index, node in enumerate(teaching_nodes, start=1):
+            units = [
+                unit_by_id[unit_id]
+                for unit_id in node.knowledge_unit_ids
+                if unit_id in unit_by_id
+            ]
+            source_refs = [
+                ref for unit in units for ref in unit.source_refs
+            ]
+            page_refs = [
+                ref for unit in units for ref in unit.page_refs
+            ] or [
+                {"material_id": ref.material_id, "page_no": ref.page_no}
+                for ref in source_refs
+            ]
+            quiz_items = []
+            seen_questions = set()
+            for page_ref in page_refs:
+                material_id = (
+                    page_ref.material_id
+                    if hasattr(page_ref, "material_id")
+                    else page_ref.get("material_id")
+                )
+                page_no = (
+                    page_ref.page_no if hasattr(page_ref, "page_no") else page_ref.get("page_no")
+                )
+                understanding = understanding_by_source.get((material_id, page_no))
+                for quiz in getattr(understanding, "quiz_items", [])[:2]:
+                    question = quiz.question.strip()
+                    if question and question not in seen_questions:
+                        seen_questions.add(question)
+                        quiz_items.append(quiz.model_dump(mode="json"))
+                if len(quiz_items) >= 2:
+                    break
+            keywords = []
+            for unit in units:
+                keywords.extend(unit.keywords)
+            if not quiz_items and keywords:
+                point = keywords[0]
+                quiz_items = [
+                    {
+                        "question": f"关于“{point}”，下列哪一项最能体现理解到位？",
+                        "options": [
+                            f"能够解释 {point} 的含义、适用条件或具体例子",
+                            f"只记住 {point} 在材料中出现过",
+                            f"把 {point} 与所有相关概念无条件混用",
+                        ],
+                        "correct_index": 0,
+                        "explanation": "理解一个知识点，需要能说明它解决的问题、适用条件和使用边界。",
+                        "knowledge_point": point,
+                    }
+                ]
+            section_pages = [
+                page_by_source.get(
+                    (
+                        ref.material_id if hasattr(ref, "material_id") else ref.get("material_id"),
+                        ref.page_no if hasattr(ref, "page_no") else ref.get("page_no"),
+                    )
+                )
+                for ref in page_refs
+            ]
+            page_nos = sorted({page.page_no for page in section_pages if page})
+            summary = node.summary or " ".join(unit.summary for unit in units)[:1200]
+            teaching_script = (
+                "先围绕材料中的核心问题建立背景，再解释关键概念、方法条件和结果解读。"
+                f"本节重点是：{summary}"
+            )[:2500]
+            sections.append(
+                {
+                    "title": node.title,
+                    "role": node.role,
+                    "content_goal": f"组织并讲清 {node.title} 的核心知识。",
+                    "page_nos": page_nos,
+                    "page_refs": [
+                        ref.model_dump(mode="json") if hasattr(ref, "model_dump") else ref
+                        for ref in page_refs
+                    ],
+                    "summary": summary or node.title,
+                    "key_points": list(dict.fromkeys(keywords))[:8],
+                    "tree_node_ids": [node.id],
+                    "teaching_narrative": teaching_script,
+                    "teaching_script": teaching_script,
+                    "knowledge_points": list(dict.fromkeys(keywords))[:10],
+                    "source_excerpts": [
+                        excerpt.model_dump(mode="json")
+                        for unit in units
+                        for excerpt in unit.source_excerpts[:2]
+                    ][:8],
+                    "formulas": [
+                        formula.model_dump(mode="json")
+                        for unit in units
+                        for formula in unit.formulas
+                    ][:6],
+                    "examples": [
+                        example.model_dump(mode="json")
+                        for unit in units
+                        for example in unit.examples
+                    ][:6],
+                    "visual_opportunities": [],
+                    "misconceptions": [
+                        item.model_dump(mode="json")
+                        for unit in units
+                        for item in unit.misconceptions
+                    ][:6],
+                    "interaction_opportunities": [],
+                    "visual_summary": "",
+                    "transition_to_next": "",
+                    "quiz_items": quiz_items[:2],
+                }
+            )
+        return {
+            "title": knowledge_tree.title,
+            "subtitle": "Repaired LearningContent draft from course knowledge tree",
+            "objectives": [f"理解{section['title']}的核心知识" for section in sections[:3]],
+            "outline": [section["title"] for section in sections],
+            "audience": {"level": "undergraduate"},
+            "teaching_intent": {
+                "goal": "全局 organizer 返回空 sections 后，由知识树自动修复生成可用 LearningContent。"
+            },
+            "material_overview": {
+                "collection_id": collection_id,
+                "material_ids": material_ids,
+                "page_count": len(pages),
+            },
+            "global_concepts": [],
+            "generation_guidance": {},
+            "quality": {
+                "warnings": [
+                    "LLM organizer returned empty sections; repaired from knowledge tree."
+                ]
+            },
+            "sections": sections,
+        }
+
     def organize_collection_learning_content(
         self,
         *,
@@ -345,7 +498,21 @@ Quiz design rules:
             ],
             temperature=0.2,
         )
-        return LearningContentDraft.model_validate_json(response, extra="ignore")
+        payload = _parse_json_object(response)
+        if not payload.get("sections"):
+            logger.warning(
+                "Collection learning-content organizer returned no sections; "
+                "using knowledge-tree draft repair."
+            )
+            payload = self._fallback_collection_draft_payload(
+                collection_id=collection_id,
+                material_ids=material_ids,
+                pages=pages,
+                understandings=understandings,
+                knowledge_units=knowledge_units,
+                knowledge_tree=knowledge_tree,
+            )
+        return LearningContentDraft.model_validate(payload, extra="ignore")
 
     def build_course_knowledge_tree(
         self,
