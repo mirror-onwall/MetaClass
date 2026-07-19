@@ -2,6 +2,7 @@ import re
 
 from fastapi import HTTPException
 
+from metaclass.infrastructure.providers.embedding import EmbeddingProvider, cosine_similarity
 from metaclass.modules.content.service import ContentService
 from metaclass.modules.presentation.service import PresentationService
 from metaclass.modules.question_bank.generator import QuestionBankGenerator
@@ -16,11 +17,13 @@ class QuestionBankService:
         contents: ContentService,
         presentations: PresentationService,
         generator: QuestionBankGenerator,
+        embedding_provider: EmbeddingProvider | None = None,
     ) -> None:
         self.repository = repository
         self.contents = contents
         self.presentations = presentations
         self.generator = generator
+        self.embedding_provider = embedding_provider
 
     def generate_for_plan(self, plan_id: str) -> QuestionBank:
         plan = self.presentations.get_plan(plan_id)
@@ -51,9 +54,62 @@ class QuestionBankService:
         query = query.strip().lower()
         if not query:
             raise HTTPException(422, "Search query must not be empty")
+        items = self.repository.list_for_plan(plan_id)
+        if self.embedding_provider:
+            try:
+                self._ensure_embeddings(items)
+                query_embedding = self.embedding_provider.embed([query])[0]
+                scored = [
+                    QuestionSearchResult(
+                        item=item,
+                        # Preserve the existing caller's 3.0 acceptance threshold:
+                        # cosine >= 0.75 is considered a confident semantic match.
+                        score=max(0.0, cosine_similarity(query_embedding, item.embedding or []))
+                        * 4.0,
+                    )
+                    for item in items
+                    if item.embedding
+                ]
+                return sorted(scored, key=lambda result: result.score, reverse=True)[:limit]
+            except (RuntimeError, IndexError):
+                # Keep classrooms usable if the configured embedding endpoint is down.
+                pass
+        return self._keyword_search(items, query, limit)
+
+    def _ensure_embeddings(self, items: list[ClassroomQA]) -> None:
+        missing = [item for item in items if not item.embedding]
+        if not missing or not self.embedding_provider:
+            return
+        vectors: list[list[float]] = []
+        batch_size = 64
+        texts = [self._embedding_text(item) for item in missing]
+        for start in range(0, len(texts), batch_size):
+            vectors.extend(self.embedding_provider.embed(texts[start : start + batch_size]))
+        if len(vectors) != len(missing):
+            raise RuntimeError("Embedding response count does not match QA count")
+        saved = {}
+        for item, vector in zip(missing, vectors, strict=True):
+            item.embedding = vector
+            saved[item.id] = vector
+        self.repository.save_embeddings(saved)
+
+    @staticmethod
+    def _embedding_text(item: ClassroomQA) -> str:
+        return "\n".join(
+            [
+                f"知识点：{item.knowledge_point}",
+                f"标准问题：{item.canonical_question}",
+                f"学生问法：{item.student_question}",
+                f"标准答案：{item.canonical_answer}",
+            ]
+        )
+
+    def _keyword_search(
+        self, items: list[ClassroomQA], query: str, limit: int
+    ) -> list[QuestionSearchResult]:
         tokens = self._search_tokens(query)
         scored = []
-        for item in self.repository.list_for_plan(plan_id):
+        for item in items:
             fields = [
                 item.knowledge_point.lower(),
                 item.canonical_question.lower(),

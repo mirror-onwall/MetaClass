@@ -12,6 +12,7 @@ class QuestionBankRepository(Protocol):
     def replace_for_plan(self, plan_id: str, items: list[ClassroomQA]) -> None: ...
     def list_for_plan(self, plan_id: str) -> list[ClassroomQA]: ...
     def get_item(self, qa_id: str) -> ClassroomQA | None: ...
+    def save_embeddings(self, embeddings: dict[str, list[float]]) -> None: ...
 
 
 class SqlAlchemyQuestionBankRepository:
@@ -52,6 +53,7 @@ class SqlAlchemyQuestionBankRepository:
                                 item.canonical_answer,
                             ]
                         ).lower(),
+                        embedding=item.embedding,
                         created_at=item.created_at,
                     )
                     for item in items
@@ -71,6 +73,16 @@ class SqlAlchemyQuestionBankRepository:
         with self.database.session() as session:
             record = session.get(ClassroomQARecord, qa_id)
             return self._item(record) if record else None
+
+    def save_embeddings(self, embeddings: dict[str, list[float]]) -> None:
+        if not embeddings:
+            return
+        with self.database.session() as session:
+            records = session.scalars(
+                select(ClassroomQARecord).where(ClassroomQARecord.id.in_(embeddings))
+            ).all()
+            for record in records:
+                record.embedding = embeddings[record.id]
 
     @staticmethod
     def _item(record: ClassroomQARecord) -> ClassroomQA:
@@ -92,4 +104,5 @@ class SqlAlchemyQuestionBankRepository:
             source_refs=[SourceRef.model_validate(ref) for ref in (record.source_refs or [])],
             status=record.status,
             created_at=record.created_at,
+            embedding=record.embedding,
         )

@@ -8,6 +8,7 @@ from metaclass.infrastructure.providers import (
     FakeLLMProvider,
     LLMLearningProvider,
     build_llm_provider,
+    build_embedding_provider,
     build_tts_provider,
 )
 from metaclass.infrastructure.providers.fake import FakeLearningProvider
@@ -120,6 +121,13 @@ def build_services(
         contents,
         presentations,
         question_bank_generator,
+        build_embedding_provider(
+            provider=settings.embedding_provider,
+            base_url=settings.embedding_base_url,
+            api_key=settings.embedding_api_key,
+            model=settings.embedding_model,
+            dimension=settings.embedding_dimension,
+        ),
     )
     classrooms = ClassroomService(
         classroom_repository,

@@ -105,6 +105,7 @@ class Database:
             "ppt_artifacts": {
                 "slide_images": "JSON",
             },
+            "classroom_qa_items": {"embedding": "JSON"},
         }
         unique_indexes = {
             "page_metadata": (

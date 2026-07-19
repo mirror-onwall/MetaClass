@@ -13,6 +13,20 @@ from pydantic import Field, ValidationError
 from metaclass.core.schemas import SchemaModel
 from metaclass.infrastructure.providers.llm import LLMMessage, LLMProvider
 from metaclass.modules.content.schemas import LearningContent
+from metaclass.modules.presentation.layout_registry import (
+    build_fallback_elements,
+    registry_prompt_payload,
+    select_fallback_layout,
+    split_points_for_layout,
+)
+from metaclass.modules.presentation.layout_constraints import (
+    ACADEMIC_LAYOUT_GUIDANCE,
+    DEFAULT_LAYOUT_CONSTRAINTS,
+)
+from metaclass.modules.presentation.brand_palette import (
+    BRAND_PALETTE,
+    apply_brand_palette,
+)
 from metaclass.modules.presentation.schemas import PresentationPlan, SlideElement, SlidePlan
 
 
@@ -92,46 +106,70 @@ class PresentationPlanGenerator:
         plan: PresentationPlan,
         progress_callback: ProgressCallback | None = None,
     ) -> PresentationPlan:
-        sections = {section.id: section for section in content.sections}
-        slides = []
+        # Skill-style stable path: the LLM owns the teaching content, while
+        # executable, tested layout skeletons own geometry.  Free-coordinate
+        # scene generation remains available through _generate_scene_with_repair
+        # for future exceptional/exhibit slides, but is no longer the default.
+        expanded: list[SlidePlan] = []
         for index, slide in enumerate(plan.slides):
-            source_sections = [sections[section_id] for section_id in slide.source_section_ids]
-            try:
-                raw = self.llm.complete_json(
-                    self._build_scene_messages(
-                        content,
-                        source_sections,
-                        slide,
-                        index,
-                        len(plan.slides),
-                    ),
-                    temperature=0.35,
+            spec = select_fallback_layout(slide, index)
+            source_points = slide.key_points or slide.visual_payload
+            chunks = [source_points] if index == 0 else split_points_for_layout(source_points, spec)
+            for part, chunk in enumerate(chunks, start=1):
+                continuation = part > 1
+                expanded.append(
+                    slide.model_copy(
+                        update={
+                            "id": slide.id if not continuation else f"{slide.id}_part_{part}",
+                            "title": slide.title if not continuation else f"{slide.title}（续）",
+                            "key_points": chunk,
+                            "visual_payload": chunk or slide.visual_payload,
+                            "speaker_script": (
+                                slide.speaker_script
+                                if not continuation
+                                else f"继续讲解本页内容：{'；'.join(chunk)}"
+                            ),
+                        }
+                    )
                 )
-                scene = self._normalize_scene(
+
+        slides = []
+        for index, slide in enumerate(expanded):
+            slide = slide.model_copy(update={"order": index + 1})
+            slides.append(self._with_fallback_scene(slide, index))
+            self._report_scene_progress(progress_callback, index + 1, len(expanded))
+        return plan.model_copy(update={"slides": slides})
+
+    def _generate_scene_with_repair(
+        self, slide: SlidePlan, messages: list[LLMMessage], index: int
+    ) -> SlideSceneDraft:
+        first_error: Exception | None = None
+        for attempt in range(2):
+            current_messages = messages
+            if attempt and first_error:
+                current_messages = [
+                    *messages,
+                    LLMMessage(
+                        role="user",
+                        content=(
+                            "上一版画布未通过校验。只重新输出完整 scene JSON。"
+                            f"失败原因：{first_error}。请保持内容不变，调整坐标、间距和文本框高度；"
+                            "正文对象不得重叠，优先减少碎片并扩大安全间距。"
+                        ),
+                    ),
+                ]
+            try:
+                raw = self.llm.complete_json(current_messages, temperature=0.3 if attempt else 0.35)
+                return self._normalize_scene(
                     slide,
                     SlideSceneDraft.model_validate(json.loads(raw)),
                     index,
                 )
-                slides.append(
-                    slide.model_copy(
-                        update={
-                            "layout": "freeform",
-                            "background": scene.background,
-                            "elements": scene.elements,
-                        }
-                    )
-                )
-            except (
-                TimeoutError,
-                json.JSONDecodeError,
-                ValidationError,
-                RuntimeError,
-                ValueError,
-            ) as exc:
-                logger.warning("PPT scene %s fell back: %s", slide.id, exc)
-                slides.append(self._with_fallback_scene(slide, index))
-            self._report_scene_progress(progress_callback, index + 1, len(plan.slides))
-        return plan.model_copy(update={"slides": slides})
+            except (json.JSONDecodeError, ValidationError, RuntimeError, ValueError) as exc:
+                first_error = exc
+                if attempt:
+                    raise
+        raise RuntimeError("scene generation failed")
 
     @staticmethod
     def _report_progress(
@@ -601,6 +639,10 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                 "objectives": content.objectives[:8],
                 "slide_index": index + 1,
                 "slide_count": slide_count,
+                "layout_registry": registry_prompt_payload(),
+                "layout_constraints": DEFAULT_LAYOUT_CONSTRAINTS.prompt_payload(),
+                "academic_layout_guidance": ACADEMIC_LAYOUT_GUIDANCE,
+                "brand_palette": BRAND_PALETTE.prompt_payload(),
             },
             "slide": {
                 "title": slide.title,
@@ -702,25 +744,35 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
         """Repair common LLM layout mistakes before python-pptx renders them."""
         elements: list[SlideElement] = []
         has_visual = False
-        for element in scene.elements:
+        for source_element in scene.elements:
+            element = apply_brand_palette(source_element)
             updates = {}
             if element.type == "text":
                 text = self._clean_text_placeholders(element.text or "\n".join(element.items))
                 style = element.style
-                font_size = style.font_size
-                min_h = self._estimate_text_height(
+                is_title = self._looks_like_title(text, slide.title)
+                fitted_size = self._fit_font_size(
                     text=text,
                     width=element.w,
-                    font_size=font_size,
-                    is_title=self._looks_like_title(text, slide.title),
+                    height=element.h,
+                    font_size=style.font_size,
+                    min_font_size=(
+                        DEFAULT_LAYOUT_CONSTRAINTS.title_min_font_size
+                        if is_title
+                        else DEFAULT_LAYOUT_CONSTRAINTS.body_min_font_size
+                    ),
+                    is_title=is_title,
                 )
-                y = element.y
-                h = max(element.h, min_h)
-                if y + h > 0.96:
-                    y = max(0.04, 0.96 - h)
-                if y + h > 1:
-                    h = max(0.06, 1 - y)
-                updates.update({"text": text, "y": y, "h": h})
+                if fitted_size is None:
+                    raise ValueError(
+                        f"text does not fit its box at minimum font size: {text[:60]}"
+                    )
+                updates.update(
+                    {
+                        "text": text,
+                        "style": style.model_copy(update={"font_size": fitted_size}),
+                    }
+                )
             else:
                 has_visual = True
 
@@ -734,21 +786,14 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                 )
 
         if not has_visual:
-            return SlideSceneDraft.model_validate(
-                {
-                    "background": scene.background,
-                    "elements": self._with_fallback_scene(slide, index).elements,
-                }
-            )
+            raise ValueError("scene contains no non-text visual element")
+        self._validate_scene_safe_zones(
+            elements, slide.title, allow_centered_title=index == 0
+        )
         if self._has_unsafe_scene_collisions(elements, slide.title):
-            logger.warning("Replaced overlapping PPT scene on %s with safe layout", slide.id)
-            return SlideSceneDraft.model_validate(
-                {
-                    "background": scene.background,
-                    "elements": self._with_fallback_scene(slide, index).elements,
-                }
-            )
-        return SlideSceneDraft(background=scene.background, elements=elements)
+            raise ValueError("scene contains overlapping content objects after text fitting")
+        background = BRAND_PALETTE.board if index == 0 else BRAND_PALETTE.paper
+        return SlideSceneDraft(background=background, elements=elements)
 
     @classmethod
     def _has_unsafe_scene_collisions(
@@ -761,10 +806,6 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
             element
             for element in elements
             if element.type in {"text", "image", "table", "chart"}
-            and not (
-                element.type == "text"
-                and cls._looks_like_title(element.text or "\n".join(element.items), slide_title)
-            )
         ]
         for index, left in enumerate(content):
             for right in content[index + 1 :]:
@@ -777,6 +818,29 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                 if smaller_area and overlap_area / smaller_area >= 0.08:
                     return True
         return False
+
+    @classmethod
+    def _validate_scene_safe_zones(
+        cls,
+        elements: list[SlideElement],
+        slide_title: str,
+        *,
+        allow_centered_title: bool = False,
+    ) -> None:
+        rules = DEFAULT_LAYOUT_CONSTRAINTS
+        for element in elements:
+            if element.type not in {"text", "image", "table", "chart"}:
+                continue
+            text = element.text or "\n".join(element.items)
+            is_title = element.type == "text" and cls._looks_like_title(text, slide_title)
+            if element.x < rules.canvas_margin_x or element.x + element.w > 1 - rules.canvas_margin_x:
+                raise ValueError("content element violates horizontal canvas margin")
+            if is_title:
+                title_bottom = 0.65 if allow_centered_title else rules.title_bottom
+                if element.y < rules.title_top or element.y + element.h > title_bottom:
+                    raise ValueError("title element violates title safe zone")
+            elif element.y < rules.content_top or element.y + element.h > rules.content_bottom:
+                raise ValueError("content element violates body safe zone")
 
     @staticmethod
     def _clean_text_placeholders(text: str) -> str:
@@ -810,160 +874,48 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
         min_norm = 0.11 if is_title else 0.075
         return min(0.42, max(min_norm, inches / 7.5))
 
-    def _with_fallback_scene(self, slide: SlidePlan, index: int) -> SlidePlan:
-        """Create a safe but varied free-form scene when one LLM scene is invalid."""
-        palettes = [
-            ("F7F3EA", "6B3F2A", "D97757", "FFFDFC"),
-            ("EEF5F2", "173F3A", "45A08A", "FFFFFF"),
-            ("F2F1F8", "302B63", "7165A8", "FFFFFF"),
-        ]
-        background, ink, accent, card = palettes[index % len(palettes)]
-        points = (slide.key_points or slide.visual_payload or [slide.title])[:4]
-        elements: list[SlideElement] = [
-            SlideElement(
-                type="text",
-                x=0.07,
-                y=0.07,
-                w=0.82,
-                h=0.12,
-                z=5,
-                text=slide.title,
-                style={"font_size": 34, "bold": True, "color": ink},
+    @classmethod
+    def _fit_font_size(
+        cls,
+        *,
+        text: str,
+        width: float,
+        height: float,
+        font_size: float,
+        min_font_size: float,
+        is_title: bool,
+    ) -> float | None:
+        size = max(font_size, min_font_size)
+        while size >= min_font_size:
+            required = cls._estimate_text_height(
+                text=text,
+                width=width,
+                font_size=size,
+                is_title=is_title,
             )
-        ]
+            if required <= height + 0.005:
+                return round(size, 1)
+            size -= 1
+        return None
 
-        pattern = index % 3
-        if pattern == 0:
-            elements.append(
-                SlideElement(
-                    type="shape",
-                    x=0.07,
-                    y=0.26,
-                    w=0.38,
-                    h=0.57,
-                    z=0,
-                    shape="rounded_rectangle",
-                    style={"fill": accent, "line_color": accent},
-                )
-            )
-            elements.append(
-                SlideElement(
-                    type="text",
-                    x=0.105,
-                    y=0.32,
-                    w=0.31,
-                    h=0.4,
-                    z=2,
-                    text=points[0],
-                    style={"font_size": 25, "bold": True, "color": "FFFFFF", "valign": "middle"},
-                )
-            )
-            for point_index, point in enumerate(points[1:4]):
-                y = 0.26 + point_index * 0.19
-                elements.extend(
-                    [
-                        SlideElement(
-                            type="shape",
-                            x=0.51,
-                            y=y,
-                            w=0.41,
-                            h=0.15,
-                            z=0,
-                            shape="rounded_rectangle",
-                            style={"fill": card, "line_color": accent},
-                        ),
-                        SlideElement(
-                            type="text",
-                            x=0.55,
-                            y=y + 0.035,
-                            w=0.33,
-                            h=0.08,
-                            z=2,
-                            text=point,
-                            style={"font_size": 17, "color": ink, "valign": "middle"},
-                        ),
-                    ]
-                )
-        elif pattern == 1:
-            for point_index, point in enumerate(points):
-                row, column = divmod(point_index, 2)
-                x, y = 0.08 + column * 0.44, 0.27 + row * 0.27
-                elements.extend(
-                    [
-                        SlideElement(
-                            type="shape",
-                            x=x,
-                            y=y,
-                            w=0.39,
-                            h=0.21,
-                            z=0,
-                            shape="rounded_rectangle",
-                            style={"fill": card, "line_color": accent, "line_width": 2},
-                        ),
-                        SlideElement(
-                            type="text",
-                            x=x + 0.035,
-                            y=y + 0.045,
-                            w=0.32,
-                            h=0.12,
-                            z=2,
-                            text=point,
-                            style={"font_size": 18, "bold": point_index == 0, "color": ink},
-                        ),
-                    ]
-                )
-        else:
-            count = max(1, len(points))
-            node_w = min(0.19, 0.76 / count)
-            gap = (0.82 - node_w * count) / max(1, count - 1) if count > 1 else 0
-            for point_index, point in enumerate(points):
-                x = 0.09 + point_index * (node_w + gap)
-                if point_index < count - 1:
-                    elements.append(
-                        SlideElement(
-                            type="line",
-                            x=x + node_w,
-                            y=0.48,
-                            w=gap,
-                            h=0,
-                            z=0,
-                            style={"line_color": accent, "line_width": 3},
-                        )
-                    )
-                elements.extend(
-                    [
-                        SlideElement(
-                            type="shape",
-                            x=x,
-                            y=0.36,
-                            w=node_w,
-                            h=0.25,
-                            z=1,
-                            shape="rounded_rectangle",
-                            style={"fill": card, "line_color": accent, "line_width": 2},
-                        ),
-                        SlideElement(
-                            type="text",
-                            x=x + 0.02,
-                            y=0.405,
-                            w=node_w - 0.04,
-                            h=0.15,
-                            z=2,
-                            text=point,
-                            style={
-                                "font_size": 16,
-                                "bold": True,
-                                "color": ink,
-                                "align": "center",
-                                "valign": "middle",
-                            },
-                        ),
-                    ]
-                )
+    def _with_fallback_scene(self, slide: SlidePlan, index: int) -> SlidePlan:
+        """Create a safe constrained scene selected from the layout registry."""
+        background = BRAND_PALETTE.board if index == 0 else BRAND_PALETTE.paper
+        ink = BRAND_PALETTE.chalk if index == 0 else BRAND_PALETTE.ink
+        # A single mid-blue accent keeps hierarchy consistent across the deck.
+        accent = BRAND_PALETTE.chalk if index == 0 else BRAND_PALETTE.mint
+        card = BRAND_PALETTE.wall if index == 0 else BRAND_PALETTE.chalk
+        spec = select_fallback_layout(slide, index)
+        elements = build_fallback_elements(slide, spec, (background, ink, accent, card))
         return slide.model_copy(
             update={
                 "layout": "freeform",
+                "layout_id": spec.id,
                 "background": background,
                 "elements": elements,
             }
         )
+
+    @staticmethod
+    def _fallback_layout_id(slide: SlidePlan) -> str:
+        return slide.layout_id or "freeform"

@@ -13,12 +13,13 @@ from pptx.chart.data import ChartData
 from pptx.dml.color import RGBColor
 from pptx.enum.chart import XL_CHART_TYPE
 from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
-from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
+from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.oxml.ns import qn
 from pptx.oxml.xmlchemy import OxmlElement
 from pptx.util import Inches, Pt
 
 from metaclass.modules.presentation.schemas import PPTArtifact, PPTSlideImage, PresentationPlan
+from metaclass.modules.presentation.brand_palette import BRAND_PALETTE
 
 
 class PPTSkillAdapter:
@@ -419,13 +420,21 @@ class PPTSkillAdapter:
             if element.type == "text":
                 text = element.text or "\n".join(element.items)
                 font_size = max(11, round(style.font_size * 1.32))
+                clean = " ".join(text.split())
+                while True:
+                    chars = max(4, round((x1 - x0 - 10) / max(font_size * 0.95, 1)))
+                    lines = textwrap.wrap(
+                        clean,
+                        width=chars,
+                        break_long_words=True,
+                        break_on_hyphens=False,
+                    ) or [""]
+                    max_lines = max(1, round((y1 - y0 - 6) / max(font_size * 1.35, 1)))
+                    if len(lines) <= max_lines or font_size <= 18:
+                        break
+                    font_size -= 1
                 font = PPTSkillAdapter._load_preview_font(font_size)
-                chars = max(4, round((x1 - x0) / max(font_size * 0.95, 1)))
-                fitted = PPTSkillAdapter._fit_text(
-                    text,
-                    max_chars=chars,
-                    max_lines=max(1, round((y1 - y0) / max(font_size * 1.35, 1))),
-                )
+                fitted = "\n".join(lines)
                 draw.multiline_text(
                     (x0 + 5, y0 + 3),
                     fitted,
@@ -527,7 +536,10 @@ class PPTSkillAdapter:
             frame = box.text_frame
             frame.clear()
             frame.word_wrap = True
-            frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+            # Geometry and font fitting are completed before rendering. Letting
+            # PowerPoint auto-fit here introduces a second, platform-dependent
+            # layout engine and makes previews differ from the exported deck.
+            frame.auto_size = None
             frame.margin_left = Inches(0.05)
             frame.margin_right = Inches(0.05)
             frame.margin_top = Inches(0.03)
@@ -631,12 +643,18 @@ class PPTSkillAdapter:
 
     @staticmethod
     def _add_background(slide, index: int) -> None:
-        palette = [
-            ("F7F9F7", "1F6F78", "D1495B"),
-            ("F8F5F0", "2E4057", "66A182"),
-            ("F4F7FB", "3D348B", "F7B801"),
-        ][index % 3]
-        background, primary, accent = palette
+        if index == 0:
+            background, primary, accent = (
+                BRAND_PALETTE.board,
+                BRAND_PALETTE.chalk,
+                BRAND_PALETTE.amber,
+            )
+        else:
+            background, primary, accent = (
+                BRAND_PALETTE.paper,
+                BRAND_PALETTE.ink,
+                BRAND_PALETTE.amber,
+            )
         fill = slide.background.fill
         fill.solid()
         fill.fore_color.rgb = RGBColor.from_string(background)
