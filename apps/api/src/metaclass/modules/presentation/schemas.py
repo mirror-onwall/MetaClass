@@ -76,6 +76,8 @@ class SlidePlan(SchemaModel):
     suggested_visual: str = Field(min_length=1)
     # Compatibility label only. `elements` defines the actual free-form layout.
     layout: str = "freeform"
+    # Optional registry identity used for deck-level variety and diagnostics.
+    layout_id: str | None = None
     visual_payload: list[str] = Field(default_factory=list)
     background: str = Field(default="F7F9F7", pattern=r"^[0-9A-Fa-f]{6}$")
     elements: list[SlideElement] = Field(default_factory=list, max_length=40)

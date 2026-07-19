@@ -50,10 +50,21 @@ from metaclass.modules.presentation.planner import (
     PresentationPlanGenerator,
     SlidePlanDraft,
 )
+from metaclass.modules.presentation.layout_registry import (
+    LAYOUT_REGISTRY,
+    build_fallback_elements,
+    select_fallback_layout,
+    split_points_for_layout,
+)
+from metaclass.modules.presentation.brand_palette import (
+    BRAND_PALETTE,
+    apply_brand_palette,
+)
 from metaclass.modules.presentation.schemas import (
     PPTGenerationJob,
     PresentationPlan,
     SlideElement,
+    SlideElementStyle,
     SlidePlan,
 )
 from metaclass.modules.question_bank.generator import QuestionBankGenerator
@@ -789,6 +800,274 @@ def test_presentation_scene_allows_text_on_background_card() -> None:
     ]
 
     assert not generator._has_unsafe_scene_collisions(elements, "其他标题")
+
+
+def test_presentation_scene_rejects_title_body_overlap() -> None:
+    generator = PresentationPlanGenerator()
+    elements = [
+        SlideElement(
+            type="text",
+            x=0.06,
+            y=0.05,
+            w=0.88,
+            h=0.14,
+            text="页面标题",
+        ),
+        SlideElement(
+            type="text",
+            x=0.08,
+            y=0.15,
+            w=0.5,
+            h=0.16,
+            text="正文不应压住标题",
+        ),
+    ]
+
+    assert generator._has_unsafe_scene_collisions(elements, "页面标题")
+
+
+def test_presentation_text_fitting_shrinks_font_without_growing_box() -> None:
+    fitted = PresentationPlanGenerator._fit_font_size(
+        text="较长的正文内容需要在原有文本框中通过字号调整完成适配",
+        width=0.28,
+        height=0.15,
+        font_size=24,
+        min_font_size=12,
+        is_title=False,
+    )
+
+    assert fitted is not None
+    assert 12 <= fitted < 24
+
+
+def test_presentation_layout_registry_has_broad_semantic_variety() -> None:
+    assert len(LAYOUT_REGISTRY) == 16
+    assert len({item.family for item in LAYOUT_REGISTRY}) >= 8
+    assert all(item.max_points >= 1 for item in LAYOUT_REGISTRY)
+
+
+def test_every_registered_layout_builds_inside_canvas() -> None:
+    slide = SlidePlan(
+        id="slide_registry",
+        order=1,
+        source_section_ids=["section_001"],
+        title="注册表版式边界测试",
+        key_points=["要点一", "要点二", "要点三", "要点四", "要点五"],
+        speaker_script="逐项讲解。",
+        suggested_visual="结构化表达",
+    )
+    palette = ("FFFFFF", "172033", "3976D3", "F3F5F8")
+
+    for spec in LAYOUT_REGISTRY:
+        elements = build_fallback_elements(slide, spec, palette)
+        assert elements
+        assert all(item.x + item.w <= 1 and item.y + item.h <= 1 for item in elements)
+        assert all(isinstance(item.style, SlideElementStyle) for item in elements)
+
+
+def test_layout_skeleton_keeps_full_text_and_expands_secondary_cards() -> None:
+    long_point = "页面仍有空白时，应优先扩大文本框并保留完整内容，而不是静默添加省略号"
+    slide = SlidePlan(
+        id="slide_capacity",
+        order=2,
+        source_section_ids=["section_001"],
+        title="容量适配",
+        key_points=["核心结论", long_point, long_point, long_point],
+        speaker_script="解释容量适配策略。",
+        suggested_visual="左右分栏",
+    )
+    spec = next(item for item in LAYOUT_REGISTRY if item.id == "split_left")
+
+    elements = build_fallback_elements(
+        slide, spec, ("FFFFFF", "17324D", "4F8FCB", "DCEBFA")
+    )
+    body = [item for item in elements if item.type == "text" and item.text == long_point]
+
+    assert len(body) == 3
+    assert all("…" not in (item.text or "") and "..." not in (item.text or "") for item in body)
+    assert all(item.h > 0.11 for item in body)
+
+
+def test_layout_capacity_split_preserves_all_points() -> None:
+    spec = next(item for item in LAYOUT_REGISTRY if item.id == "focus_rail")
+    points = [f"完整要点 {index}：这是不能被静默丢弃的教学内容。" for index in range(1, 8)]
+
+    chunks = split_points_for_layout(points, spec)
+
+    assert len(chunks) == 3
+    assert [item for chunk in chunks for item in chunk] == points
+    assert all(len(chunk) <= spec.max_points for chunk in chunks)
+
+
+def test_layout_selection_avoids_narrow_flow_for_long_points() -> None:
+    slide = SlidePlan(
+        id="slide_long_process",
+        order=2,
+        source_section_ids=["section_001"],
+        title="流程需要解释每一步的条件与结果",
+        key_points=["这一阶段包含较长的条件说明、执行动作、边界情况以及执行完成后的结果解释" for _ in range(4)],
+        speaker_script="解释流程。",
+        suggested_visual="步骤流程",
+    )
+
+    selected = select_fallback_layout(slide, 1)
+
+    assert selected.family not in {"process", "timeline", "hierarchy"}
+
+
+def test_fallback_layout_selection_uses_current_slide_semantics() -> None:
+    generator = PresentationPlanGenerator()
+    slide = SlidePlan(
+        id="slide_process",
+        order=2,
+        source_section_ids=["section_001"],
+        title="算法步骤与迭代流程",
+        key_points=["初始化", "分配", "更新", "停止"],
+        speaker_script="依次解释算法步骤。",
+        suggested_visual="横向流程",
+    )
+    first = generator._with_fallback_scene(slide, 1)
+    second = generator._with_fallback_scene(slide, 1)
+
+    assert first.layout == "freeform"
+    assert first.layout_id
+    assert second.layout_id
+    assert first.layout_id == second.layout_id
+    assert first.layout_id in {"sequence_horizontal", "sequence_vertical", "timeline_alternating", "ladder"}
+    assert first.elements and second.elements
+
+
+def test_scene_prompt_includes_layout_registry() -> None:
+    content = LearningContent(
+        id="content_layout_history",
+        material_id="mat_001",
+        title="布局历史",
+        sections=[
+            LearningSection(
+                id="section_001",
+                title="概念关系",
+                summary="说明概念之间的关系。",
+                source_refs=[source_ref()],
+            )
+        ],
+    )
+    generator = PresentationPlanGenerator()
+    slide = generator._fallback_plan(content).slides[0]
+    payload = json.loads(
+        generator._build_scene_messages(content, content.sections, slide, 1, 2)[1].content
+    )
+
+    assert len(payload["deck"]["layout_registry"]) == 16
+    assert "recent_layouts" not in payload["deck"]
+    assert payload["deck"]["layout_constraints"]["body_min_font_size"] == 18
+    assert payload["deck"]["academic_layout_guidance"]["argument_per_slide"] == 1
+    assert payload["deck"]["brand_palette"]["tokens"]["amber"] == "2E75B6"
+
+
+def test_scene_safe_zone_rejects_content_too_close_to_edge() -> None:
+    generator = PresentationPlanGenerator()
+    with pytest.raises(ValueError, match="horizontal canvas margin"):
+        generator._validate_scene_safe_zones(
+            [
+                SlideElement(
+                    type="text",
+                    x=0.01,
+                    y=0.25,
+                    w=0.4,
+                    h=0.2,
+                    text="正文",
+                )
+            ],
+            "页面标题",
+        )
+
+
+def test_scene_palette_maps_unrelated_colors_to_brand_tokens() -> None:
+    element = SlideElement(
+        type="shape",
+        x=0.1,
+        y=0.25,
+        w=0.4,
+        h=0.3,
+        style={
+            "color": "6A42C2",
+            "fill": "1976D2",
+            "line_color": "00BCD4",
+        },
+    )
+
+    normalized = apply_brand_palette(element)
+
+    assert normalized.style.color in BRAND_PALETTE.allowed_colors
+    assert normalized.style.fill in BRAND_PALETTE.allowed_colors
+    assert normalized.style.line_color in BRAND_PALETTE.allowed_colors
+    assert "6A42C2" not in {
+        normalized.style.color,
+        normalized.style.fill,
+        normalized.style.line_color,
+    }
+
+
+def test_scene_generation_retries_once_with_validation_feedback() -> None:
+    llm = Mock()
+    llm.complete_json.side_effect = [
+        json.dumps(
+            {
+                "background": "FFFFFF",
+                "elements": [
+                    {
+                        "type": "text",
+                        "x": 0.06,
+                        "y": 0.06,
+                        "w": 0.88,
+                        "h": 0.12,
+                        "text": "页面标题",
+                    }
+                ],
+            }
+        ),
+        json.dumps(
+            {
+                "background": "FFFFFF",
+                "elements": [
+                    {
+                        "type": "text",
+                        "x": 0.06,
+                        "y": 0.06,
+                        "w": 0.88,
+                        "h": 0.12,
+                        "text": "页面标题",
+                    },
+                    {
+                        "type": "shape",
+                        "x": 0.1,
+                        "y": 0.3,
+                        "w": 0.8,
+                        "h": 0.4,
+                        "shape": "rectangle",
+                        "style": {"fill": "EDEDED"},
+                    },
+                ],
+            }
+        ),
+    ]
+    slide = SlidePlan(
+        id="slide_retry",
+        order=1,
+        source_section_ids=["section_001"],
+        title="页面标题",
+        key_points=["核心内容"],
+        speaker_script="讲解核心内容。",
+        suggested_visual="使用一个视觉区域。",
+    )
+    generator = PresentationPlanGenerator(llm)
+
+    scene = generator._generate_scene_with_repair(slide, [], 0)
+
+    assert scene.elements[-1].type == "shape"
+    assert llm.complete_json.call_count == 2
+    repair_messages = llm.complete_json.call_args.args[0]
+    assert "失败原因" in repair_messages[-1].content
 
 
 def test_classroom_plan_covers_every_presentation_slide() -> None:

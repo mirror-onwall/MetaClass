@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { TeachingAction } from "../../shared/types";
 
 export function ActionView({
@@ -15,6 +16,11 @@ export function ActionView({
   answerDisabled?: boolean;
   quizResult?: { actionId: string; selectedIndex: number; correct: boolean } | null;
 }) {
+  const [pendingSelection, setPendingSelection] = useState<{
+    actionId: string;
+    index: number;
+  } | null>(null);
+
   function renderSlide(slide: { src: string; pageNo: number; generated: boolean }) {
     return (
       <div className="slide-action">
@@ -56,6 +62,9 @@ export function ActionView({
   }
   if (action.type === "ASK_QUIZ") {
     const quiz = action.payload.quiz;
+    const resultForAction = quizResult?.actionId === action.id ? quizResult : null;
+    const selectedIndex = resultForAction?.selectedIndex
+      ?? (pendingSelection?.actionId === action.id ? pendingSelection.index : null);
     return (
       <div className="quiz-action">
         <small>EVALUATION CHECKPOINT</small>
@@ -63,15 +72,17 @@ export function ActionView({
         <div>
           {quiz.options.map((option, index) => (
             <button
-              className={
-                quizResult?.actionId === action.id
-                && quizResult.selectedIndex === index
-                && !quizResult.correct
-                  ? "selected-incorrect"
-                  : undefined
-              }
+              aria-pressed={selectedIndex === index}
+              className={selectedIndex === index
+                ? resultForAction
+                  ? resultForAction.correct ? "selected-correct" : "selected-incorrect"
+                  : "selected-pending"
+                : undefined}
               disabled={answerDisabled}
-              onClick={() => onAnswer(index)}
+              onClick={() => {
+                setPendingSelection({ actionId: action.id, index });
+                onAnswer(index);
+              }}
               key={option}
             >
               <span>{String.fromCharCode(65 + index)}</span>

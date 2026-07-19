@@ -1,4 +1,9 @@
 from metaclass.infrastructure.providers.fake import FakeLearningProvider, FakeTTSProvider
+from metaclass.infrastructure.providers.embedding import (
+    EmbeddingProvider,
+    OpenAICompatibleEmbeddingProvider,
+    build_embedding_provider,
+)
 from metaclass.infrastructure.providers.learning import LLMLearningProvider
 from metaclass.infrastructure.providers.llm import (
     FakeLLMProvider,
@@ -18,6 +23,9 @@ __all__ = [
     "FakeLLMProvider",
     "FakeLearningProvider",
     "FakeTTSProvider",
+    "EmbeddingProvider",
+    "OpenAICompatibleEmbeddingProvider",
+    "build_embedding_provider",
     "GeminiVisionProvider",
     "LLMLearningProvider",
     "LLMMessage",
