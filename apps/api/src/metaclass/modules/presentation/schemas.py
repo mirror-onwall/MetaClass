@@ -88,8 +88,38 @@ class PresentationPlan(SchemaModel):
     content_id: str = Field(min_length=1)
     title: str = Field(min_length=1)
     slides: list[SlidePlan] = Field(min_length=1)
+    generation_source: Literal["llm", "fallback", "unknown"] = "unknown"
+    generation_provider: str | None = None
+    generation_model: str | None = None
+    fallback_reason: str | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
+
+
+class SlideScriptDiagnosis(SchemaModel):
+    slide_id: str
+    title: str
+    source_section_id: str | None = None
+    source_field: Literal["teaching_script", "teaching_narrative", "summary", "title"] | None = None
+    exact_learning_content_copy: bool = False
+    fallback_markers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class PresentationPlanDiagnosis(SchemaModel):
+    presentation_plan_id: str
+    content_id: str
+    likely_fallback: bool
+    fallback_confidence: float = Field(ge=0, le=1)
+    llm_configured: bool
+    provider: str
+    model: str | None = None
+    exact_historical_reason: str | None = None
+    direct_script_count: int = Field(ge=0)
+    body_slide_count: int = Field(ge=0)
+    one_body_slide_per_section: bool
+    reasons: list[str] = Field(default_factory=list)
+    slides: list[SlideScriptDiagnosis] = Field(default_factory=list)
 
 
 class PresentationPlanJob(SchemaModel):

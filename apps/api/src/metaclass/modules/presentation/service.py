@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from metaclass.core.schemas import utc_now
 from metaclass.modules.content.service import ContentService
 from metaclass.modules.presentation.planner import PresentationPlanGenerator
+from metaclass.modules.presentation.diagnostics import diagnose_presentation_plan
 from metaclass.modules.presentation.repository import PresentationRepository
 from metaclass.modules.presentation.schemas import (
     PPTArtifact,
@@ -16,6 +17,7 @@ from metaclass.modules.presentation.schemas import (
     PresentationPlanJob,
     PresentationPlanJobStatus,
     PresentationPlan,
+    PresentationPlanDiagnosis,
 )
 from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
 from metaclass.modules.question_bank.generator import QuestionBankGenerator
@@ -165,6 +167,18 @@ class PresentationService:
         if not plan:
             raise HTTPException(404, "Presentation plan not found")
         return plan
+
+    def diagnose_plan(self, plan_id: str) -> PresentationPlanDiagnosis:
+        plan = self.get_plan(plan_id)
+        content = self.contents.get(plan.content_id)
+        llm = self.planner.llm
+        return diagnose_presentation_plan(
+            plan,
+            content,
+            llm_configured=llm is not None,
+            provider=getattr(llm, "name", "none") if llm else "none",
+            model=getattr(llm, "model", None) if llm else None,
+        )
 
     def get_plan_for_content(self, content_id: str) -> PresentationPlan:
         self.contents.get(content_id)

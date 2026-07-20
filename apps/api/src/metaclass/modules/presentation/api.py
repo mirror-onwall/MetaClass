@@ -6,6 +6,7 @@ from metaclass.modules.presentation.schemas import (
     PPTGenerationJob,
     PPTSlideImage,
     PresentationPlan,
+    PresentationPlanDiagnosis,
     PresentationPlanJob,
 )
 from metaclass.modules.presentation.service import PresentationService
@@ -62,6 +63,13 @@ def create_router(presentations: PresentationService) -> APIRouter:
     @router.get("/presentation-plans/{plan_id}", response_model=PresentationPlan)
     async def get_presentation_plan(plan_id: str) -> PresentationPlan:
         return presentations.get_plan(plan_id)
+
+    @router.get(
+        "/presentation-plans/{plan_id}/diagnosis",
+        response_model=PresentationPlanDiagnosis,
+    )
+    async def diagnose_presentation_plan(plan_id: str) -> PresentationPlanDiagnosis:
+        return presentations.diagnose_plan(plan_id)
 
     @router.post(
         "/presentation-plans/{plan_id}/ppt-jobs",

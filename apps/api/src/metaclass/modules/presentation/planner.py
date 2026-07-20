@@ -82,23 +82,90 @@ class PresentationPlanGenerator:
                 "planning_scenes",
                 "Creating fallback slide layouts",
             )
-            return self._add_fallback_scenes(fallback)
-        try:
-            raw = self.llm.complete_json(self._build_content_messages(content), temperature=0.2)
-            payload = json.loads(raw)
-            draft = PresentationPlanDraft.model_validate(payload)
-            plan = self._hydrate_draft(content, draft)
-        except (
-            TimeoutError,
-            json.JSONDecodeError,
-            ValidationError,
-            RuntimeError,
-            ValueError,
-        ) as exc:
-            logger.warning("PPT content planning fell back: %s", exc)
-            plan = fallback
+            return self._add_fallback_scenes(
+                fallback.model_copy(
+                    update={
+                        "generation_source": "fallback",
+                        "generation_provider": "none",
+                        "fallback_reason": "No LLM provider configured",
+                    }
+                )
+            )
+        plan = self._generate_content_batches(content, fallback, progress_callback)
         self._report_progress(progress_callback, 35, "planning_scenes", "Designing slide layouts")
         return self._generate_scenes(content, plan, progress_callback)
+
+    def _generate_content_batches(
+        self,
+        content: LearningContent,
+        fallback: PresentationPlan,
+        progress_callback: ProgressCallback | None = None,
+    ) -> PresentationPlan:
+        batches = self._section_batches(content.sections)
+        body_slides: list[SlidePlan] = []
+        failures: list[str] = []
+        for batch_index, sections in enumerate(batches, start=1):
+            batch_content = content.model_copy(update={"sections": sections})
+            try:
+                raw = self.llm.complete_json(
+                    self._build_content_messages(
+                        content,
+                        sections=sections,
+                        batch_index=batch_index,
+                        batch_count=len(batches),
+                    ),
+                    temperature=0.2,
+                )
+                draft = PresentationPlanDraft.model_validate(json.loads(raw))
+                body_slides.extend(self._hydrate_draft(batch_content, draft).slides)
+            except (
+                TimeoutError,
+                json.JSONDecodeError,
+                ValidationError,
+                RuntimeError,
+                ValueError,
+            ) as exc:
+                reason = f"batch {batch_index}/{len(batches)}: {type(exc).__name__}: {exc}"
+                logger.warning("PPT content planning batch fell back: %s", reason)
+                failures.append(reason)
+                body_slides.extend(self._fallback_plan(batch_content).slides[1:-1])
+            self._report_progress(
+                progress_callback,
+                10 + int(25 * batch_index / len(batches)),
+                "planning_content",
+                f"Planning slide content batch {batch_index}/{len(batches)}",
+            )
+
+        merged = [fallback.slides[0], *body_slides, fallback.slides[-1]]
+        slides = [
+            slide.model_copy(update={"id": f"slide_{index:03d}", "order": index})
+            for index, slide in enumerate(merged, start=1)
+        ]
+        return PresentationPlan(
+            id=f"presentation_plan_{uuid4().hex[:12]}",
+            content_id=content.id,
+            title=content.title,
+            slides=slides,
+            generation_source="fallback" if failures else "llm",
+            generation_provider=getattr(self.llm, "name", "unknown"),
+            generation_model=getattr(self.llm, "model", None),
+            fallback_reason="; ".join(failures) or None,
+        )
+
+    @staticmethod
+    def _section_batches(sections: list) -> list[list]:
+        """Split contiguous sections into balanced batches of three to five."""
+        if len(sections) <= 5:
+            return [sections]
+        batch_count = math.ceil(len(sections) / 5)
+        base_size, remainder = divmod(len(sections), batch_count)
+        sizes = [base_size + (1 if index < remainder else 0) for index in range(batch_count)]
+        batches = []
+        cursor = 0
+        for size in sizes:
+            batches.append(sections[cursor : cursor + size])
+            cursor += size
+        return batches
 
     def _generate_scenes(
         self,
@@ -388,7 +455,14 @@ class PresentationPlanGenerator:
             slides=slides,
         )
 
-    def _build_content_messages(self, content: LearningContent) -> list[LLMMessage]:
+    def _build_content_messages(
+        self,
+        content: LearningContent,
+        *,
+        sections: list | None = None,
+        batch_index: int | None = None,
+        batch_count: int | None = None,
+    ) -> list[LLMMessage]:
         # Read on every request so prompt edits take effect without code changes.
         system = (
             self.skill_path.read_text(encoding="utf-8")
@@ -406,14 +480,21 @@ suggested_visual、visual_payload；layout 固定写 freeform。不要输出 bac
 - 在最后面补一页“课程总结”：综合前面正文的核心结论、知识联系、迁移方向或反思问题，
   不能只是重复标题；source_section_ids 只填写最后一个 section 的 id。
 - 最终输出顺序必须是：纯封面、全部正文页、课程总结。
-- 不要生成目录页。
+
+内容保真是最高优先级：只允许在 LearningContent 基础上扩充，不允许压缩、删减或用概括性表述替代已有内容。
+- LearningContent 是必须完整覆盖的内容下限，不是可任意摘要的大纲。每个 section 中已有的核心定义、机制、步骤、
+  条件、公式、变量、案例、结论、误区辨析和重要 source_excerpts，都必须出现在对应页面文字或 speaker_script 中。
+- 一个 section 内容较多时拆成多张连续 slide，不能为了减少页数缩短讲解、合并知识点或只保留标题与摘要。
+- 尽量不要把不同 section 合并成一张 slide。
+- 可以补充可靠的解释、例子、过渡、前置知识和应用，但补充内容不能取代或挤掉 LearningContent 已有内容。
+- 课程总结可以概括前文，但正文页不得以“总结”“概览”“知识单元介绍”等方式跳过具体教学内容。
 不要按 section 数量机械决定页数。先把输入拆成连续的教学功能单元，再决定 slide：
 1. 概念页：一个核心概念、必要定义、与相邻概念的关系；
-2. 例子页：一个完整情境及其如何解释概念；
+2. 例子页：一个完整情境及其如何解释概念（例子能和其他主内容放在一页时可以放在同一页）；
 3. 推导页：公式含义、变量、步骤或因果过程，复杂推导可拆成连续多页；
 4. 练习页：问题、选项/任务、预期答案与讲评依据；
 5. 总结页：综合前面结论、比较、迁移或反思，不得只是目录复述。
-同一 section 可以贡献多种功能页，也可以跨相邻 section 合并一个教学功能单元；页数不设上下限。
+同一 section 可以贡献多种功能页；不得跨 section 合并，页数不设上限。
 每个 section 至少被一页覆盖，slide 顺序必须遵循 section 顺序，不能回退，也不要为增加页数重复内容。
 把 LearningContent 当作课程大纲、结构边界和已有材料，而不是内容上限。逐个 section 先判断内容充分度：
 - 若定义、机制、步骤、变量、例子和条件已经足够，忠实使用并合理拆页；
@@ -422,7 +503,7 @@ suggested_visual、visual_payload；layout 固定写 freeform。不要输出 bac
 - 扩充必须服务于现有大纲，不能另起主题；可以使用公认基础知识，但不得虚构数据、实验、论文、人物或特定事实，无法可靠确定的内容不要补。
 标题和 key_points 必须直接陈述要教给学生的知识或任务，禁止“This page introduces”、
 “本页介绍”“本节将讲”“Overview of”“Summary of”之类描述页面行为的元话语。
-页面上必须出现实质性内容。例如不能只写“本页讲解 K-means 的算法”，而应写清初始化中心、按最近中心分配样本、重算簇中心、迭代至稳定等实际过程。
+页面上必须出现实质性内容。例如不能只写“本页讲解 K-means 的算法”，而应写清初始化中心、按最近中心分配样本、重算簇中心、迭代至稳定等实际过程。又例如，不能只写对ndbi的分析，而不写具体的分析是什么。又例如，不能只写svm的意义，而不写具体意义是什么。
 把定义、关键公式、算法步骤、对比条件和案例结论放在页面；把完整推理、补充例子、自然过渡放进 speaker_script。页面不能像讲稿一样堆满段落，也不能只剩空泛标签。
 speaker_script 必须像真实老师连续讲课：承接上下文、解释本页核心、讲清原因或步骤、给出恰当例子或辨析、自然引向后续；不要逐字朗读 key_points，也不要反复使用机械的“这一页我们讲……”。讲稿中不要输出“本页要点：……”这种格式。
 讲稿是课堂现场口语，不是教材章节摘要。不要用“本章”“本单元”“本文”“本节”等书面化自指开头；
@@ -432,6 +513,17 @@ LearningContent、section、source_refs、source_excerpts、selected evidence、
 优先使用 source_excerpts、source_refs、公式、案例和题目中的具体证据；不要把不相干内容压进同一页。
 """
         )
+        selected_sections = sections or content.sections
+        if batch_index is not None and batch_count is not None:
+            system += f"""
+
+PPT_CONTENT_BATCH
+这是正文内容生成的第 {batch_index}/{batch_count} 批。本批只处理输入 sections 中的连续 section：
+- 只输出本批正文 slide，不生成封面、目录或课程总结。
+- 必须覆盖本批每一个 section，不能引用本批之外的 section id。
+- 保持 course_outline 中的全课顺序和上下文，但不要替其他批次生成页面。
+- 内容丰富时继续拆页，不得压缩。
+"""
         compact_sections = [
             {
                 "id": section.id,
@@ -537,8 +629,17 @@ LearningContent、section、source_refs、source_excerpts、selected evidence、
                 "page_refs": [item.model_dump(mode="json") for item in section.page_refs],
                 "source_refs": [self._source_ref_payload(ref) for ref in section.source_refs[:20]],
             }
-            for section in content.sections
+            for section in selected_sections
         ]
+        selected_node_ids = {
+            node_id for section in selected_sections for node_id in section.tree_node_ids
+        }
+        selected_unit_ids = {
+            unit_id
+            for node in (content.knowledge_tree.nodes if content.knowledge_tree else [])
+            if node.id in selected_node_ids
+            for unit_id in node.knowledge_unit_ids
+        }
         user = {
             "content_id": content.id,
             "title": content.title,
@@ -583,11 +684,19 @@ LearningContent、section、source_refs、source_excerpts、selected evidence、
                         relation.model_dump(mode="json") for relation in item.relations[:6]
                     ],
                 }
-                for item in content.knowledge_units[:20]
+                for item in content.knowledge_units
+                if item.id in selected_unit_ids
             ],
-            "knowledge_tree": (
-                content.knowledge_tree.model_dump(mode="json") if content.knowledge_tree else None
+            "course_outline": [
+                {"id": section.id, "title": section.title, "role": section.role}
+                for section in content.sections
+            ],
+            "batch": (
+                {"index": batch_index, "count": batch_count}
+                if batch_index is not None and batch_count is not None
+                else None
             ),
+            "knowledge_tree": None,
             "generation_guidance": content.generation_guidance,
             "quality": content.quality,
             "sections": compact_sections,
