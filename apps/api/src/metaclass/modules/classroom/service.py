@@ -1,3 +1,4 @@
+import random
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -31,6 +32,7 @@ from metaclass.modules.classroom.schemas import (
     ControllerResult,
     GiveFeedbackAction,
     LearningMode,
+    ProbeAction,
     QAInteractionExecutedEvent,
     QAInteractionExecutedPayload,
     QuizEvaluatedEvent,
@@ -201,13 +203,33 @@ class ClassroomService:
         action = plan.scenes[session.scene_index].actions[session.action_index]
         if isinstance(action, GiveFeedbackAction):
             raise HTTPException(409, "Submit the pending quiz answer before feedback")
+        target_student = None
+        if isinstance(action, ProbeAction) and session.mode == LearningMode.INTERACTIVE:
+            target_student = self._select_dialog_student(
+                self._build_state(session),
+                question=action.payload.question,
+                knowledge_point=action.payload.target_knowledge_point,
+            )
+            if target_student:
+                student_name = student_name_for_type(target_student.agent_type)
+                action = action.model_copy(
+                    update={
+                        "payload": action.payload.model_copy(
+                            update={
+                                "question": f"{student_name}同学，{action.payload.question}"
+                            }
+                        )
+                    }
+                )
         session.events.append(
             ActionExecutedEvent(
                 id=f"event_{uuid4().hex[:12]}",
                 session_id=session.id,
                 type="ACTION_EXECUTED",
                 payload=ActionExecutedPayload(
-                    action_id=action.id, action_type=ActionType(action.type)
+                    action_id=action.id,
+                    action_type=ActionType(action.type),
+                    target_agent_id=target_student.id if target_student else None,
                 ),
             )
         )
@@ -772,7 +794,11 @@ class ClassroomService:
                     f"请老师先自然回应，并称呼“{student_name}同学”；"
                     "禁止用深度思考者、基础薄弱者、研究型同学等画像或智能体类型称呼学生。"
                     "如果是问题就回答，如果是回答就做简短反馈，然后把课堂拉回主线。"
+                    "这是反馈收束回合，不得再提出新问题，不得邀请其他同学继续回答。"
                 ),
+            )
+            teacher_turn.speech = self._remove_unplanned_follow_up_question(
+                teacher_turn.speech
             )
             teacher_turn.actions = []
             teacher_turn.intent = "teacher_reply_to_student"
@@ -795,6 +821,28 @@ class ClassroomService:
 
         return None
 
+    @staticmethod
+    def _remove_unplanned_follow_up_question(speech: str) -> str:
+        """Keep a feedback turn from asking a question the state machine will not await."""
+        follow_up_markers = (
+            "那么接下来，我想请大家思考",
+            "接下来，我想请大家思考",
+            "那我们再进一步思考",
+            "下面我想请大家思考",
+            "我再问一个问题",
+            "哪位同学愿意",
+            "哪位同学可以",
+            "哪位同学来",
+        )
+        cut_at = min(
+            (speech.find(marker) for marker in follow_up_markers if marker in speech),
+            default=-1,
+        )
+        if cut_at > 0:
+            trimmed = speech[:cut_at].rstrip("，,；;：:。 ")
+            return f"{trimmed}。"
+        return speech
+
     def _continue_after_planned_probe(self, session: ClassroomSession) -> AutoClassroomStep | None:
         if not session.events or session.events[-1].type != "ACTION_EXECUTED":
             return None
@@ -802,7 +850,11 @@ class ClassroomService:
             return None
 
         state = self._build_state(session)
-        student = self._select_dialog_student(state)
+        target_agent_id = session.events[-1].payload.target_agent_id
+        student = next(
+            (item for item in state.students if item.id == target_agent_id),
+            None,
+        ) or self._select_dialog_student(state)
         if not student:
             return None
         probe_question = self._executed_probe_question(session)
@@ -849,38 +901,79 @@ class ClassroomService:
             return None
         return session.events[-1].payload.turn
 
+    @classmethod
+    def _select_dialog_student(
+        cls,
+        state: ClassroomState,
+        *,
+        question: str = "",
+        knowledge_point: str = "",
+    ):
+        if not state.students:
+            return None
+        spoken_ids = {
+            event.payload.turn.agent_id
+            for event in state.recent_events
+            if event.type == "AGENT_TURN" and event.payload.turn.role == "student"
+        }
+        spoken_ids.update(student.id for student in state.students if student.last_intent)
+        recent_speakers = cls._recent_student_speaker_id_list(state, limit=3)
+        context = f"{question} {knowledge_point}".lower()
+
+        def score(student) -> float:
+            # Fairness and classroom state deliberately outweigh small random noise.
+            total = 3.0 if student.id not in spoken_ids else 0.0
+            total += 1.4 * student.engagement
+            total -= 1.2 * student.pressure
+            if student.id not in recent_speakers:
+                total += 0.8
+            elif recent_speakers[0] == student.id:
+                total -= 3.5
+            else:
+                total -= 1.5 / (recent_speakers.index(student.id) + 1)
+            total += cls._question_match_score(student.agent_type, context)
+            total += random.uniform(-0.25, 0.25)
+            return total
+
+        return max(state.students, key=score)
+
     @staticmethod
-    def _select_dialog_student(state: ClassroomState):
-        preferred_types = [
-            StudentAgentType.DEEP_THINKER,
-            StudentAgentType.CONCEPT_CONFUSED,
-            StudentAgentType.FOUNDATION_WEAK,
-            StudentAgentType.RESEARCHER,
-            StudentAgentType.PRACTICAL_APPLIER,
-            StudentAgentType.ATMOSPHERE_REGULATOR,
-            StudentAgentType.NOTE_TAKER,
-            StudentAgentType.SILENT_OBSERVER,
-        ]
-        recent_student_ids = ClassroomService._recent_student_speaker_ids(state)
-        candidates = [student for student in state.students if student.id not in recent_student_ids]
-        if not candidates:
-            candidates = state.students
-
-        fresh_candidates = [student for student in candidates if not student.last_intent]
-        if fresh_candidates:
-            candidates = fresh_candidates
-
-        for preferred_type in preferred_types:
-            selected = next(
-                (student for student in candidates if student.agent_type == preferred_type),
-                None,
-            )
-            if selected:
-                return selected
-        return candidates[0] if candidates else None
+    def _question_match_score(agent_type: StudentAgentType, context: str) -> float:
+        keywords = {
+            StudentAgentType.DEEP_THINKER: (
+                "为什么", "原因", "条件", "前提", "推理", "成立", "机制", "因果", "关系",
+            ),
+            StudentAgentType.CONCEPT_CONFUSED: (
+                "区别", "区分", "辨析", "混淆", "相似", "比较", "异同", "概念",
+            ),
+            StudentAgentType.FOUNDATION_WEAK: (
+                "定义", "基础", "基本", "是什么", "第一步", "步骤", "前置",
+            ),
+            StudentAgentType.NOTE_TAKER: (
+                "总结", "概括", "复述", "要点", "重点", "核心", "梳理",
+            ),
+            StudentAgentType.RESEARCHER: (
+                "研究", "拓展", "延伸", "局限", "进一步", "开放", "假设",
+            ),
+            StudentAgentType.PRACTICAL_APPLIER: (
+                "应用", "实际", "案例", "怎么做", "操作", "场景", "解决", "任务",
+            ),
+            StudentAgentType.ATMOSPHERE_REGULATOR: (
+                "类比", "生活", "直观", "简单", "日常", "轻松",
+            ),
+            StudentAgentType.SILENT_OBSERVER: (),
+        }
+        matches = sum(keyword in context for keyword in keywords[agent_type])
+        return min(matches * 0.9, 3.0)
 
     @staticmethod
     def _recent_student_speaker_ids(state: ClassroomState, limit: int = 1) -> set[str]:
+        return set(ClassroomService._recent_student_speaker_id_list(state, limit))
+
+    @staticmethod
+    def _recent_student_speaker_id_list(
+        state: ClassroomState, limit: int = 1
+    ) -> list[str]:
         recent_ids: list[str] = []
         for event in reversed(state.recent_events):
             if event.type != "AGENT_TURN":
@@ -891,7 +984,7 @@ class ClassroomService:
             recent_ids.append(turn.agent_id)
             if len(recent_ids) >= limit:
                 break
-        return set(recent_ids)
+        return recent_ids
 
     @staticmethod
     def _normalize_cursor(session: ClassroomSession, plan: ClassroomPlan) -> None:

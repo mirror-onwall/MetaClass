@@ -238,6 +238,7 @@ class ClassroomPlanJob(SchemaModel):
 class ActionExecutedPayload(SchemaModel):
     action_id: str
     action_type: ActionType
+    target_agent_id: str | None = None
 
 
 class QuizEvaluatedPayload(SchemaModel):

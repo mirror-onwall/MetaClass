@@ -54,6 +54,10 @@ class SqlAlchemyPresentationRepository:
                     content_id=plan.content_id,
                     title=plan.title,
                     slides=[slide.model_dump(mode="json") for slide in plan.slides],
+                    generation_source=plan.generation_source,
+                    generation_provider=plan.generation_provider,
+                    generation_model=plan.generation_model,
+                    fallback_reason=plan.fallback_reason,
                     created_at=plan.created_at,
                     updated_at=plan.updated_at,
                 )
@@ -138,6 +142,10 @@ class SqlAlchemyPresentationRepository:
             content_id=record.content_id,
             title=record.title,
             slides=[SlidePlan.model_validate(slide) for slide in record.slides],
+            generation_source=record.generation_source or "unknown",
+            generation_provider=record.generation_provider,
+            generation_model=record.generation_model,
+            fallback_reason=record.fallback_reason,
             created_at=ensure_utc(record.created_at),
             updated_at=ensure_utc(record.updated_at),
         )

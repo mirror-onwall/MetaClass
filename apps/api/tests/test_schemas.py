@@ -45,6 +45,7 @@ from metaclass.modules.content.schemas import (
     VisualOpportunity,
 )
 from metaclass.modules.materials.schemas import PageMetadata, SourceRef
+from metaclass.modules.presentation.diagnostics import diagnose_presentation_plan
 from metaclass.modules.presentation.planner import (
     PresentationPlanDraft,
     PresentationPlanGenerator,
@@ -331,6 +332,83 @@ def test_presentation_plan_generator_uses_learning_content_sections() -> None:
     assert plan.slides[0].elements
 
 
+def test_presentation_content_generation_uses_balanced_section_batches() -> None:
+    sections = [
+        LearningSection(
+            id=f"section_{index:03d}",
+            title=f"章节 {index}",
+            summary=f"章节 {index} 的完整内容。",
+            knowledge_points=[f"知识点 {index}"],
+            source_refs=[source_ref().model_copy(update={"page_no": index})],
+        )
+        for index in range(1, 12)
+    ]
+    content = LearningContent(
+        id="content_batched",
+        material_id="mat_001",
+        title="分批生成测试",
+        sections=sections,
+    )
+    llm = FakeLLMProvider()
+    complete_json = llm.complete_json
+    batch_sizes = []
+
+    def track_batches(messages, *, temperature=0.2):
+        if "PPT_CONTENT_BATCH" in messages[0].content:
+            batch_sizes.append(len(json.loads(messages[-1].content)["sections"]))
+        return complete_json(messages, temperature=temperature)
+
+    llm.complete_json = track_batches
+
+    plan = PresentationPlanGenerator(llm).generate(content)
+
+    assert batch_sizes == [4, 4, 3]
+    assert plan.generation_source == "llm"
+    assert {section.id for section in sections}.issubset(
+        {section_id for slide in plan.slides for section_id in slide.source_section_ids}
+    )
+
+
+def test_presentation_batch_failure_only_falls_back_failed_batch() -> None:
+    sections = [
+        LearningSection(
+            id=f"section_{index:03d}",
+            title=f"章节 {index}",
+            summary=f"章节 {index} 的完整内容。",
+            source_refs=[source_ref().model_copy(update={"page_no": index})],
+        )
+        for index in range(1, 9)
+    ]
+    content = LearningContent(
+        id="content_partial_fallback",
+        material_id="mat_001",
+        title="局部回退测试",
+        sections=sections,
+    )
+    llm = FakeLLMProvider()
+    complete_json = llm.complete_json
+    call_count = 0
+
+    def fail_second_batch(messages, *, temperature=0.2):
+        nonlocal call_count
+        if "PPT_CONTENT_BATCH" in messages[0].content:
+            call_count += 1
+            if call_count == 2:
+                raise TimeoutError("second batch timeout")
+        return complete_json(messages, temperature=temperature)
+
+    llm.complete_json = fail_second_batch
+
+    plan = PresentationPlanGenerator(llm).generate(content)
+
+    assert call_count == 2
+    assert plan.generation_source == "fallback"
+    assert "batch 2/2: TimeoutError" in (plan.fallback_reason or "")
+    assert {section.id for section in sections}.issubset(
+        {section_id for slide in plan.slides for section_id in slide.source_section_ids}
+    )
+
+
 def test_presentation_plan_allows_multiple_slides_for_one_section() -> None:
     content = LearningContent(
         id="content_split",
@@ -407,6 +485,9 @@ def test_presentation_prompt_is_loaded_from_editable_skill_file() -> None:
     assert "在最前面补一页纯封面" in messages[0].content
     assert "在最后面补一页“课程总结”" in messages[0].content
     assert "不要生成目录页" in messages[0].content
+    assert "只允许在 LearningContent 基础上扩充" in messages[0].content
+    assert "禁止把不同 section 合并成一张 slide" in messages[0].content
+    assert "一个 section 内容较多时必须拆成多张连续 slide" in messages[0].content
 
 
 def test_presentation_messages_only_pass_visual_opportunity_image_paths() -> None:
@@ -478,6 +559,39 @@ def test_presentation_fallback_prefers_substantive_section_content() -> None:
     assert plan.slides[1].speaker_script == (
         "先初始化中心，再重复分配与更新，直到结果稳定。"
     )
+
+
+def test_presentation_diagnosis_identifies_direct_fallback_scripts() -> None:
+    content = LearningContent(
+        id="content_diagnosis",
+        material_id="mat_001",
+        title="诊断课程",
+        sections=[
+            LearningSection(
+                id="section_diagnosis",
+                title="核心内容",
+                summary="总结文本",
+                teaching_narrative="这段讲稿直接来自课程内容。",
+                key_points=["关键点"],
+                source_refs=[source_ref()],
+            )
+        ],
+    )
+    plan = PresentationPlanGenerator().generate(content)
+
+    diagnosis = diagnose_presentation_plan(
+        plan,
+        content,
+        llm_configured=False,
+        provider="none",
+        model=None,
+    )
+
+    assert diagnosis.likely_fallback is True
+    assert diagnosis.fallback_confidence == 1.0
+    assert diagnosis.direct_script_count == 1
+    assert diagnosis.slides[1].source_field == "teaching_narrative"
+    assert diagnosis.exact_historical_reason == "No LLM provider configured"
 
 
 def test_presentation_removes_internal_prompt_terms_from_scripts() -> None:
@@ -737,6 +851,29 @@ def test_teacher_check_receives_only_current_and_previous_slides() -> None:
     assert "这是第1页讲稿" in messages[1].content
     assert "这是第2页讲稿" in messages[1].content
     assert "这是第3页讲稿" not in messages[1].content
+
+
+def test_teacher_check_guarantees_one_probe_when_model_selects_none() -> None:
+    slides = [
+        SlidePlan(
+            id=f"slide_{index:03d}",
+            order=index,
+            source_section_ids=["section_001"],
+            title=f"第{index}页",
+            key_points=[f"知识点{index}"],
+            speaker_script=f"这是第{index}页讲稿。",
+            suggested_visual="关系图",
+        )
+        for index in range(1, 4)
+    ]
+    llm = Mock()
+    llm.complete_json.return_value = '{"checks":[]}'
+
+    checks = ClassroomPlanGenerator(llm)._generate_teacher_checks(slides, slides)
+
+    assert len(checks) == 1
+    assert checks[0].slide_id == "slide_002"
+    assert "不要按固定页数或固定间隔" in llm.complete_json.call_args.args[0][0].content
 
 
 def test_slide_element_must_stay_inside_canvas() -> None:
@@ -1324,6 +1461,47 @@ def test_auto_step_starts_student_dialog_after_planned_probe_in_interactive_mode
     assert result.directed_turn.turns[0].intent == "student_answer_planned_probe"
 
 
+def test_probe_names_the_same_selected_student_who_answers() -> None:
+    section = LearningSection(
+        id="section_001",
+        title="第一页",
+        summary="老师应点名具体学生回答。",
+        source_refs=[source_ref()],
+    )
+    plan = ClassroomPlanGenerator(FakeLLMProvider()).generate(
+        LearningContent(
+            id="content_001",
+            material_id="mat_001",
+            title="测试内容",
+            sections=[section],
+        )
+    )
+    probe_index = next(
+        index for index, action in enumerate(plan.scenes[0].actions) if action.type == "PROBE"
+    )
+    students = get_student_agent_states([StudentAgentType.DEEP_THINKER])
+    session = ClassroomSession(
+        id="session_001",
+        plan_id=plan.id,
+        mode="interactive",
+        action_index=probe_index,
+        student_states=students,
+    )
+    repository = Mock()
+    repository.get_session.return_value = session
+    repository.get_plan.return_value = plan
+    service = ClassroomService(repository, Mock())
+
+    probe_result = service.auto_step(session.id)
+    answer_result = service.auto_step(session.id)
+
+    assert probe_result.action is not None
+    assert probe_result.action.payload.question.startswith("浩浩同学，")
+    assert session.events[0].payload.target_agent_id == students[0].id
+    assert answer_result.directed_turn is not None
+    assert answer_result.directed_turn.turns[0].agent_id == students[0].id
+
+
 def test_student_answer_turn_forbids_starting_a_new_question() -> None:
     student = get_default_student_agent_states()[0]
     state = ClassroomSession(
@@ -1352,6 +1530,20 @@ def test_student_answer_turn_forbids_starting_a_new_question() -> None:
     )
 
     assert "不能反问、不能提出新问题" in messages[0].content
+
+
+def test_teacher_feedback_removes_unplanned_question_before_quiz() -> None:
+    speech = (
+        "包包同学说得非常准确，FVC变化图确实能反映植被覆盖度变化。"
+        "那么接下来，我想请大家思考一个问题：除了FVC还有哪些指数？"
+        "哪位同学愿意分享一下？"
+    )
+
+    result = ClassroomService._remove_unplanned_follow_up_question(speech)
+
+    assert result == "包包同学说得非常准确，FVC变化图确实能反映植被覆盖度变化。"
+    assert "哪位同学" not in result
+    assert "？" not in result
 
 
 def test_planned_probe_dialog_skips_recent_student_speaker() -> None:
@@ -1417,6 +1609,84 @@ def test_planned_probe_dialog_skips_recent_student_speaker() -> None:
     assert result.directed_turn is not None
     assert result.directed_turn.decision.next_agent_id == students[1].id
     assert result.directed_turn.turns[0].agent_id == students[1].id
+
+
+@pytest.mark.parametrize(
+    ("question", "expected_type"),
+    [
+        ("为什么这个结论在该前提下成立？", StudentAgentType.DEEP_THINKER),
+        ("请总结这一页的核心要点。", StudentAgentType.NOTE_TAKER),
+        ("这个方法在实际项目中怎么应用？", StudentAgentType.PRACTICAL_APPLIER),
+    ],
+)
+def test_probe_student_selection_matches_question_type(
+    monkeypatch, question: str, expected_type: StudentAgentType
+) -> None:
+    students = get_student_agent_states(
+        [
+            StudentAgentType.DEEP_THINKER,
+            StudentAgentType.NOTE_TAKER,
+            StudentAgentType.PRACTICAL_APPLIER,
+        ]
+    )
+    state = ClassroomState(
+        session_id="session_weighted_selection",
+        plan_id="plan_weighted_selection",
+        mode="interactive",
+        status="running",
+        scene_index=0,
+        action_index=0,
+        students=students,
+    )
+    monkeypatch.setattr(
+        "metaclass.modules.classroom.service.random.uniform", lambda _low, _high: 0.0
+    )
+
+    selected = ClassroomService._select_dialog_student(state, question=question)
+
+    assert selected is not None
+    assert selected.agent_type == expected_type
+
+
+def test_probe_student_selection_rewards_unspoken_and_penalizes_recent(monkeypatch) -> None:
+    students = get_student_agent_states(
+        [StudentAgentType.DEEP_THINKER, StudentAgentType.NOTE_TAKER]
+    )
+    students[0].last_intent = "student_answer_planned_probe"
+    state = ClassroomState(
+        session_id="session_rotation",
+        plan_id="plan_rotation",
+        mode="interactive",
+        status="running",
+        scene_index=0,
+        action_index=0,
+        students=students,
+        recent_events=[
+            AgentTurnEvent(
+                id="event_recent",
+                session_id="session_rotation",
+                type="AGENT_TURN",
+                payload=AgentTurnPayload(
+                    turn=AgentTurn(
+                        agent_id=students[0].id,
+                        role="student",
+                        speech="我刚刚回答过。",
+                        intent="student_answer_planned_probe",
+                    )
+                ),
+            )
+        ],
+    )
+    monkeypatch.setattr(
+        "metaclass.modules.classroom.service.random.uniform", lambda _low, _high: 0.0
+    )
+
+    selected = ClassroomService._select_dialog_student(
+        state, question="为什么这个结论成立？"
+    )
+
+    assert selected is not None
+    assert selected.id == students[1].id
 
 
 def test_auto_step_continues_planned_probe_dialog_before_quiz() -> None:

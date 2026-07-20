@@ -445,7 +445,10 @@ def test_classroom_session_uses_selected_student_agent_types(client: TestClient)
 
     assert dialog.status_code == 200
     assert dialog.json()["status"] == "agent_turn"
-    assert dialog.json()["directed_turn"]["turns"][0]["agent_id"] == "student_agent_002"
+    assert dialog.json()["directed_turn"]["turns"][0]["agent_id"] in {
+        "student_agent_001",
+        "student_agent_002",
+    }
     assert dialog.json()["session"]["student_states"][1]["agent_type"] == "concept_confused"
 
 

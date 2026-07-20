@@ -105,6 +105,12 @@ class Database:
             "ppt_artifacts": {
                 "slide_images": "JSON",
             },
+            "presentation_plans": {
+                "generation_source": "VARCHAR(20)",
+                "generation_provider": "VARCHAR(100)",
+                "generation_model": "VARCHAR(200)",
+                "fallback_reason": "TEXT",
+            },
             "classroom_qa_items": {"embedding": "JSON"},
         }
         unique_indexes = {
