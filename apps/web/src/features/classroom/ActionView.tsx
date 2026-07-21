@@ -5,6 +5,7 @@ export function ActionView({
   action,
   presentationSlideImages = {},
   currentSlide,
+  slideProgress,
   onAnswer,
   answerDisabled = false,
   quizResult = null,
@@ -12,6 +13,11 @@ export function ActionView({
   action: TeachingAction | null;
   presentationSlideImages?: Record<number, string>;
   currentSlide?: { src: string; pageNo: number; generated: boolean } | null;
+  slideProgress?: {
+    current: number;
+    total: number;
+    knowledgePoint: string;
+  } | null;
   onAnswer: (index: number) => void;
   answerDisabled?: boolean;
   quizResult?: { actionId: string; selectedIndex: number; correct: boolean } | null;
@@ -25,7 +31,26 @@ export function ActionView({
     return (
       <div className="slide-action">
         <img src={slide.src} alt={`PPT 第 ${slide.pageNo} 页`} />
-        <span>{slide.generated ? "正在展示生成 PPT" : "正在展示原始页面"} · 第 {slide.pageNo} 页</span>
+        {slideProgress ? (
+          <div
+            className="lesson-progress"
+            role="progressbar"
+            aria-label={`课程进度：第 ${slideProgress.current} 页，共 ${slideProgress.total} 页`}
+            aria-valuemin={1}
+            aria-valuemax={slideProgress.total}
+            aria-valuenow={slideProgress.current}
+          >
+            <div className="lesson-progress-copy">
+              <b>{slideProgress.current}/{slideProgress.total}</b>
+              <span><small>当前知识点</small>{slideProgress.knowledgePoint}</span>
+            </div>
+            <i aria-hidden="true">
+              <b style={{ width: `${Math.min(100, Math.max(0, slideProgress.current / slideProgress.total * 100))}%` }} />
+            </i>
+          </div>
+        ) : (
+          <span>{slide.generated ? "正在展示生成 PPT" : "正在展示原始页面"} · 第 {slide.pageNo} 页</span>
+        )}
       </div>
     );
   }
