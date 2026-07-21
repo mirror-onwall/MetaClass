@@ -98,6 +98,7 @@ class PPTSkillAdapter:
         pptx_path: Path,
         provider_name: str,
         provider_metadata: dict,
+        external_slide_images: list[PPTSlideImage] | None = None,
     ) -> PPTArtifact:
         """Package and preview a PPTX produced by an external presentation service."""
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -114,11 +115,14 @@ class PPTSkillAdapter:
             ),
             encoding="utf-8",
         )
-        slide_images = self._render_slide_images(
-            plan,
-            pptx_path,
-            output_dir / "slides",
-        )
+        slide_images = external_slide_images
+        if slide_images is None:
+            slide_images = self._render_slide_images(
+                plan,
+                pptx_path,
+                output_dir / "slides",
+                allow_placeholder=False,
+            )
         return PPTArtifact(
             id=f"ppt_artifact_{uuid4().hex[:12]}",
             job_id=job_id,
@@ -133,13 +137,31 @@ class PPTSkillAdapter:
         plan: PresentationPlan,
         pptx_path: Path,
         output_dir: Path,
+        *,
+        allow_placeholder: bool = True,
     ) -> list[PPTSlideImage]:
         output_dir.mkdir(parents=True, exist_ok=True)
-        if platform.system().lower() == "darwin":
+        operating_system = platform.system().lower()
+        if operating_system == "windows":
+            try:
+                slide_images = self._render_with_powerpoint(plan, pptx_path, output_dir)
+                (output_dir.parent / "render_error.txt").unlink(missing_ok=True)
+                return slide_images
+            except (FileNotFoundError, subprocess.SubprocessError, RuntimeError) as exc:
+                # Continue to LibreOffice/PIL so generation still completes on
+                # Windows hosts without Microsoft PowerPoint.
+                powerpoint_error = exc
+            else:  # pragma: no cover - return above is the successful path
+                powerpoint_error = None
+        else:
+            powerpoint_error = None
+        if operating_system == "darwin":
             # The bundled headless LibreOffice runtime cannot reliably access
             # macOS system CJK fonts and renders Chinese as tofu boxes. Browser
             # previews use our declarative PIL renderer, which loads PingFang
             # directly; the downloadable PPTX remains unchanged.
+            if not allow_placeholder:
+                raise RuntimeError("Real PPTX preview rendering is unavailable on this macOS host")
             return self._render_placeholder_images(plan, output_dir)
         try:
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -163,13 +185,114 @@ class PPTSkillAdapter:
                 pdf_path = Path(temp_dir) / f"{pptx_path.stem}.pdf"
                 if not pdf_path.exists():
                     raise FileNotFoundError(f"Converted PDF not found: {pdf_path}")
-                return self._render_pdf_pages(plan, pdf_path, output_dir)
+                slide_images = self._render_pdf_pages(plan, pdf_path, output_dir)
+                (output_dir.parent / "render_error.txt").unlink(missing_ok=True)
+                return slide_images
         except (FileNotFoundError, subprocess.SubprocessError, fitz.FileDataError) as exc:
+            if powerpoint_error is not None:
+                exc = RuntimeError(f"PowerPoint: {powerpoint_error}; LibreOffice: {exc}")
             (output_dir.parent / "render_error.txt").write_text(
                 PPTSkillAdapter._render_error_message(exc),
                 encoding="utf-8",
             )
+            if not allow_placeholder:
+                raise RuntimeError(
+                    "Real PPTX preview rendering failed; placeholder previews are disabled"
+                ) from exc
             return self._render_placeholder_images(plan, output_dir)
+
+    @staticmethod
+    def _render_with_powerpoint(
+        plan: PresentationPlan,
+        pptx_path: Path,
+        output_dir: Path,
+    ) -> list[PPTSlideImage]:
+        powershell = Path(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe")
+        if not powershell.exists():
+            raise FileNotFoundError("Windows PowerShell was not found")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            script_path = Path(temp_dir) / "render_powerpoint.ps1"
+            script_path.write_text(
+                textwrap.dedent(
+                    """
+                    param(
+                        [Parameter(Mandatory=$true)][string]$InputPath,
+                        [Parameter(Mandatory=$true)][string]$OutputDir
+                    )
+                    $ErrorActionPreference = 'Stop'
+                    $powerpoint = New-Object -ComObject PowerPoint.Application
+                    $presentation = $null
+                    try {
+                        $presentation = $powerpoint.Presentations.Open(
+                            $InputPath, $true, $false, $false
+                        )
+                        for ($index = 1; $index -le $presentation.Slides.Count; $index++) {
+                            $outputPath = Join-Path $OutputDir (
+                                'slide_{0:D3}.png' -f $index
+                            )
+                            $presentation.Slides.Item($index).Export(
+                                $outputPath, 'PNG', 1600, 900
+                            )
+                        }
+                    }
+                    finally {
+                        if ($null -ne $presentation) {
+                            $presentation.Close()
+                            [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject(
+                                $presentation
+                            )
+                        }
+                        $powerpoint.Quit()
+                        [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject(
+                            $powerpoint
+                        )
+                    }
+                    """
+                ).strip(),
+                encoding="utf-8-sig",
+            )
+            completed = subprocess.run(
+                [
+                    str(powershell),
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    str(script_path),
+                    "-InputPath",
+                    str(pptx_path.resolve()),
+                    "-OutputDir",
+                    str(output_dir.resolve()),
+                ],
+                check=True,
+                capture_output=True,
+                timeout=90,
+            )
+            if completed.stderr:
+                stderr = completed.stderr.decode("utf-8", errors="replace").strip()
+                if stderr:
+                    raise RuntimeError(stderr)
+
+        slide_images = []
+        for index, slide_plan in enumerate(plan.slides, start=1):
+            image_path = output_dir / f"slide_{index:03d}.png"
+            if not image_path.exists():
+                raise RuntimeError(f"PowerPoint preview page-count mismatch: missing page {index}")
+            with Image.open(image_path) as image:
+                image.verify()
+                width, height = image.size
+            slide_images.append(
+                PPTSlideImage(
+                    slide_id=slide_plan.id,
+                    slide_no=index,
+                    image_path=str(image_path),
+                    width=width,
+                    height=height,
+                )
+            )
+        return slide_images
 
     @staticmethod
     def _render_error_message(exc: Exception) -> str:
