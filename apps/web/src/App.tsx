@@ -44,6 +44,7 @@ import type {
 } from "./shared/types";
 
 const stages = ["导入材料", "页面解析", "组织内容", "互动课堂", "讲解视频"];
+const answeringUserQuestionLabel = "老师正在组织回答";
 
 const contentStepLabels: Record<string, string> = {
   queued: "等待生成任务",
@@ -476,7 +477,32 @@ function App() {
   const captionStudentAgent = studentAgentChoices.find(
     (agent) => agent.type === captionStudentState?.agent_type,
   );
+  const isUserNarration = narration.cue?.agentId === "user";
   const captionAvatar = captionStudentAgent?.avatar ?? teacherQianqianAvatar;
+  const currentLessonProgress = useMemo(() => {
+    if (!currentSlide || !presentationPlan?.slides.length || !content) return null;
+    const slide = presentationPlan.slides.find((item) => item.order === currentSlide.pageNo);
+    if (!slide) return null;
+    const sourceSections = slide.source_section_ids
+      .map((sectionId) => content.sections.find((section) => section.id === sectionId))
+      .filter((section): section is NonNullable<typeof section> => Boolean(section));
+    const knowledgePoints = sourceSections
+      .flatMap((section) => section.knowledge_points)
+      .filter((point, index, points) => Boolean(point) && points.indexOf(point) === index);
+    const isCoverSlide = slide.order === 1;
+    const isSummarySlide = slide.order === presentationPlan.slides.length;
+    return {
+      current: slide.order,
+      total: presentationPlan.slides.length,
+      knowledgePoint: isCoverSlide
+        ? slide.title
+        : isSummarySlide
+          ? "总结"
+          : knowledgePoints.slice(0, 2).join(" · ")
+            || sourceSections.map((section) => section.title).join(" · ")
+            || slide.title,
+    };
+  }, [content, currentSlide, presentationPlan]);
   const speechTextRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
@@ -1101,7 +1127,8 @@ function App() {
 
   async function ask(event: FormEvent) {
     event.preventDefault();
-    if (!session || !question.trim() || userQuestionBlockedByAgentExchange) return;
+    const submittedQuestion = question.trim();
+    if (!session || !submittedQuestion || userQuestionBlockedByAgentExchange) return;
     playbackVersionRef.current += 1;
     autoPlayingRef.current = false;
     if (
@@ -1113,14 +1140,36 @@ function App() {
       interruptedTeacherCueRef.current = null;
     }
     narration.stop();
+    narration.unlock();
     setAutoPlaying(false);
-    const result = await run("Teacher 正在回答", () => api.ask(session.id, question.trim()));
+    setQuestion("");
+
+    // Start generating the teacher's answer immediately, then use that same wait
+    // to read the learner's question aloud. This keeps the exchange conversational
+    // without adding the question narration to the response latency.
+    const answerRequest = run(answeringUserQuestionLabel, () =>
+      api.ask(session.id, submittedQuestion),
+    );
+    const questionNarrationResult = await narration.play({
+      id: `user-question:${session.id}:${Date.now()}`,
+      text: submittedQuestion,
+      scope: "user_question",
+      refId: `${session.id}:user-question:${Date.now()}`,
+      voice: "student_user",
+      speaker: "你",
+      agentId: "user",
+      role: "student",
+    });
+    if (questionNarrationResult === "failed") {
+      setError("问题已发送，但问题语音暂时无法播放");
+    }
+
+    const result = await answerRequest;
     if (!result) return;
     setSession(result.session);
     setAgentTurn(null);
     const answerText = result.feedback ?? "";
     setFeedback(answerText);
-    setQuestion("");
     if (answerText) {
       const narrationResult = await narration.play({
         id: `user-question-answer:${session.id}:${Date.now()}`,
@@ -1298,6 +1347,7 @@ function App() {
                     quizResult={quizResult}
                     presentationSlideImages={presentationSlideImages}
                     currentSlide={currentSlide}
+                    slideProgress={currentLessonProgress}
                     onAnswer={answer}
                   />
                 ) : pages.length ? (
@@ -1312,13 +1362,25 @@ function App() {
                 )}
               </div>
               {captionText && (
-                <aside className="live-speaker" aria-live="polite">
-                  <div className="live-speaker-avatar"><img src={captionAvatar} alt="" /></div>
+                <aside className={`live-speaker ${isUserNarration ? "user-voice" : ""}`} aria-live="polite">
+                  {!isUserNarration && (
+                    <div className="live-speaker-avatar"><img src={captionAvatar} alt="" /></div>
+                  )}
                   <div className="speech-bubble">
                     <span>
                       {captionSpeaker}
                       {narration.cue && (
-                        <em>{narration.status === "loading" ? "正在生成语音" : "语音同步中"}</em>
+                        <em>
+                          {narration.cue.scope === "user_question"
+                            ? narration.status === "loading"
+                              ? "正在准备问题语音"
+                              : narration.status === "idle"
+                                ? "老师正在组织回答"
+                                : "正在朗读你的问题"
+                            : narration.status === "loading"
+                              ? "正在生成语音"
+                              : "语音同步中"}
+                        </em>
                       )}
                     </span>
                     <p ref={speechTextRef} tabIndex={0} aria-label={`${captionSpeaker}的发言`}>{captionText}</p>
@@ -1496,7 +1558,7 @@ function App() {
       </main>
 
       {error && <div className="error-toast" role="alert"><span>!</span><div><b>流程暂停</b><p>{error}</p></div><button onClick={() => setError(null)}>×</button></div>}
-      {busy && (
+      {busy && busy !== answeringUserQuestionLabel && (
         <div className="busy-overlay" aria-live="polite">
           <section className="loading-board">
             <header><span>METACLASS · LESSON PREP</span><b>正在准备这堂课</b></header>
