@@ -105,6 +105,9 @@ class Database:
             "ppt_artifacts": {
                 "slide_images": "JSON",
             },
+            "ppt_generation_jobs": {
+                "theme_id": "VARCHAR(64)",
+            },
             "presentation_plans": {
                 "generation_source": "VARCHAR(20)",
                 "generation_provider": "VARCHAR(100)",
@@ -151,6 +154,14 @@ class Database:
                             "UPDATE ppt_artifacts "
                             "SET slide_images = '[]' "
                             "WHERE slide_images IS NULL"
+                        )
+                    )
+                if table == "ppt_generation_jobs":
+                    connection.execute(
+                        text(
+                            "UPDATE ppt_generation_jobs "
+                            "SET theme_id = 'academic_blue' "
+                            "WHERE theme_id IS NULL"
                         )
                     )
                 if table == "page_metadata":
@@ -270,6 +281,7 @@ class Database:
                         "slide_images",
                         "quiz_items",
                         "embedded_images",
+                        "theme_id",
                     }:
                         continue
                     connection.execute(

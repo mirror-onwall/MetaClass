@@ -20,6 +20,10 @@ from metaclass.modules.presentation.schemas import (
     PresentationPlan,
     PresentationPlanDiagnosis,
 )
+from metaclass.modules.presentation.themes import (
+    get_presentation_theme,
+    list_presentation_themes,
+)
 from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
 from metaclass.modules.question_bank.generator import QuestionBankGenerator
 from metaclass.modules.question_bank.repository import QuestionBankRepository
@@ -188,11 +192,24 @@ class PresentationService:
             raise HTTPException(404, "Presentation plan not found")
         return plan
 
-    def create_ppt_job(self, presentation_plan_id: str) -> PPTGenerationJob:
+    def list_ppt_themes(self):
+        return list_presentation_themes()
+
+    def create_ppt_job(
+        self,
+        presentation_plan_id: str,
+        *,
+        theme_id: str | None = None,
+    ) -> PPTGenerationJob:
         plan = self.get_plan(presentation_plan_id)
+        try:
+            theme = get_presentation_theme(theme_id)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
         job = PPTGenerationJob(
             id=f"ppt_job_{uuid4().hex[:12]}",
             presentation_plan_id=plan.id,
+            theme_id=theme.id,
         )
         self.repository.save_job(job)
         return job
@@ -200,6 +217,7 @@ class PresentationService:
     def run_ppt_job(self, job_id: str) -> None:
         job = self.get_ppt_job(job_id)
         plan = self.get_plan(job.presentation_plan_id)
+        theme = get_presentation_theme(job.theme_id)
         job.status = PPTGenerationStatus.RUNNING
         job.progress = 0.2
         job.updated_at = utc_now()
@@ -209,6 +227,7 @@ class PresentationService:
                 plan=plan,
                 job_id=job.id,
                 output_dir=self.data_dir / "generated" / "presentations" / job.id,
+                theme=theme,
             )
             self.repository.save_artifact(artifact)
             job.artifact_id = artifact.id

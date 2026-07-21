@@ -28,7 +28,17 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 8192
     qa_student_concurrency: int = 3
     qa_candidates_per_slide: int = 4
-    ppt_provider: str = "local"
+    ppt_provider: str = "codex"
+    codex_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "CODEX_API_KEY",
+            "METACLASS_CODEX_API_KEY",
+        ),
+    )
+    codex_model: str | None = None
+    codex_timeout_seconds: float = 900.0
+    codex_repair_attempts: int = Field(default=1, ge=0, le=2)
     presenton_base_url: str = Field(
         default="https://api.presenton.ai",
         validation_alias=AliasChoices(

@@ -16,6 +16,7 @@ import type {
   ProcessedMaterials,
   PPTArtifact,
   PPTGenerationJob,
+  PPTThemeOption,
   PresentationPlanJob,
   PresentationPlan,
   StudentAgentType,
@@ -243,6 +244,7 @@ export const api = {
   async createPresentationDeck(
     contentId: string,
     prepareQuestionBank: boolean,
+    themeId: string,
     onPlanProgress?: (job: PresentationPlanJob) => void,
     onPptProgress?: (job: PPTGenerationJob) => void,
   ) {
@@ -257,12 +259,19 @@ export const api = {
     );
     const job = await request<PPTGenerationJob>(
       `/api/v1/presentation-plans/${plan.id}/ppt-jobs`,
-      { method: "POST" },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme_id: themeId }),
+      },
     );
     onPptProgress?.(job);
     const finished = await api.waitForPptJob(job.id, onPptProgress);
     const artifact = await request<PPTArtifact>(`/api/v1/ppt-jobs/${finished.id}/artifact`);
     return { plan, artifact };
+  },
+  getPptThemes() {
+    return request<PPTThemeOption[]>("/api/v1/ppt-themes");
   },
   getPptJob(jobId: string) {
     return request<PPTGenerationJob>(`/api/v1/ppt-jobs/${jobId}`);

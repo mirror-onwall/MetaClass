@@ -83,6 +83,7 @@ class SqlAlchemyPresentationRepository:
                 PPTGenerationJobRecord(
                     id=job.id,
                     presentation_plan_id=job.presentation_plan_id,
+                    theme_id=job.theme_id,
                     status=job.status.value,
                     progress=job.progress,
                     artifact_id=job.artifact_id,
@@ -155,6 +156,7 @@ class SqlAlchemyPresentationRepository:
         return PPTGenerationJob(
             id=record.id,
             presentation_plan_id=record.presentation_plan_id,
+            theme_id=record.theme_id or "academic_blue",
             status=record.status,
             progress=record.progress,
             artifact_id=record.artifact_id,

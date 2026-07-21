@@ -6,6 +6,7 @@ dependencies = [
   "certifi>=2024.0",
   "fastapi>=0.115",
   "imageio-ffmpeg>=0.6",
+  "openai-codex==0.144.4",
   "pillow>=11.0",
   "pydantic-settings>=2.0",
   "pymupdf>=1.25",

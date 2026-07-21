@@ -520,8 +520,26 @@ def test_presentation_plan_and_ppt_skill_request_flow(client: TestClient) -> Non
     assert latest.status_code == 200
     assert latest.json()["id"] == plan.json()["id"]
 
-    job = client.post(f"/api/v1/presentation-plans/{plan.json()['id']}/ppt-jobs")
+    themes = client.get("/api/v1/ppt-themes")
+    assert themes.status_code == 200
+    assert {theme["id"] for theme in themes.json()} >= {
+        "academic_blue",
+        "scholar_green",
+        "deep_technology",
+    }
+
+    invalid_theme_job = client.post(
+        f"/api/v1/presentation-plans/{plan.json()['id']}/ppt-jobs",
+        json={"theme_id": "unknown_theme"},
+    )
+    assert invalid_theme_job.status_code == 422
+
+    job = client.post(
+        f"/api/v1/presentation-plans/{plan.json()['id']}/ppt-jobs",
+        json={"theme_id": "scholar_green"},
+    )
     assert job.status_code == 202
+    assert job.json()["theme_id"] == "scholar_green"
     assert job.json()["status"] in {"queued", "running", "finished"}
 
     job = client.get(f"/api/v1/ppt-jobs/{job.json()['id']}")
