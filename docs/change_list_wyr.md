@@ -13,26 +13,48 @@
 
 ### 材料与内容
 
-| 功能 | 前端调用 | 当前行为 | 影响方 |
-| --- | --- | --- | --- |
-| 上传并解析 | `POST /api/v1/materials/process` | 接收 `.pdf` / `.pptx`，返回 `material` 与 `pages` | 前端、材料模块 |
-| 重新解析 | `POST /api/v1/materials/{id}/parse` | 返回逐页 `PageMetadata` | 前端、材料模块 |
-| 构建学习内容 | `POST /api/v1/materials/{id}/learning-content` | 返回 `LearningContent` 与章节、来源页码 | 前端、内容模块 |
-| 页面图片 | `GET /api/v1/materials/{id}/pages/{pageNo}/image` | 用于逐页预览和课堂展示 | 前端、材料模块 |
+| 功能         | 前端调用                                            | 当前行为                                                 | 影响方         |
+| ------------ | --------------------------------------------------- | -------------------------------------------------------- | -------------- |
+| 上传并解析   | `POST /api/v1/materials/process`                  | 接收`.pdf` / `.pptx`，返回 `material` 与 `pages` | 前端、材料模块 |
+| 重新解析     | `POST /api/v1/materials/{id}/parse`               | 返回逐页`PageMetadata`                                 | 前端、材料模块 |
+| 构建学习内容 | `POST /api/v1/materials/{id}/learning-content`    | 返回`LearningContent` 与章节、来源页码                 | 前端、内容模块 |
+| 页面图片     | `GET /api/v1/materials/{id}/pages/{pageNo}/image` | 用于逐页预览和课堂展示                                   | 前端、材料模块 |
 
 ### 课堂与视频
 
-| 功能 | 前端调用 | 当前行为 | 影响方 |
-| --- | --- | --- | --- |
-| 创建课堂 | 先创建 `classroom-plan`，再 `POST /api/v1/classroom-plans/{id}/sessions` | 支持 `lecture` 与 `interactive` 模式 | 前端、课堂模块 |
-| 教学动作 | `POST /api/v1/classroom-sessions/{id}/next` | 返回 `TeachingAction`，前端按 `type` 渲染 | 前端、课堂模块 |
-| 智能体轮次 | `POST /api/v1/classroom-sessions/{id}/agent-turns/next` | 返回调度决策与智能体发言 | 前端、课堂模块 |
-| 提问/答题 | `questions` / `answers` 接口 | 更新 session、反馈与掌握度 | 前端、课堂模块 |
-| 实时语音 | `POST /api/v1/tts-artifacts`，再读取响应中的 `audio_url` | 请求携带 `text`、`scope`、`ref_id`、`voice`；教师和学生角色使用固定音色映射 | 前端、视频模块、TTS Provider |
-| 视频生成 | `POST /api/v1/learning-contents/{id}/videos?presentation_artifact_id={id}` | 异步生成任务；使用已生成 PPT 画面和逐页 `speaker_script` 合成讲解视频 | 前端、演示文稿模块、视频模块 |
-| 视频播放 | `GET /api/v1/videos/{resultId}/download` | 返回 MP4，前端直接使用 `<video>` 播放 | 前端、视频模块 |
+| 功能       | 前端调用                                                                     | 当前行为                                                                           | 影响方                       |
+| ---------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------------------------- |
+| 创建课堂   | 先创建`classroom-plan`，再 `POST /api/v1/classroom-plans/{id}/sessions`  | 支持`lecture` 与 `interactive` 模式                                            | 前端、课堂模块               |
+| 教学动作   | `POST /api/v1/classroom-sessions/{id}/next`                                | 返回`TeachingAction`，前端按 `type` 渲染                                       | 前端、课堂模块               |
+| 智能体轮次 | `POST /api/v1/classroom-sessions/{id}/agent-turns/next`                    | 返回调度决策与智能体发言                                                           | 前端、课堂模块               |
+| 提问/答题  | `questions` / `answers` 接口                                             | 更新 session、反馈与掌握度                                                         | 前端、课堂模块               |
+| 实时语音   | `POST /api/v1/tts-artifacts`，再读取响应中的 `audio_url`                 | 请求携带`text`、`scope`、`ref_id`、`voice`；教师和学生角色使用固定音色映射 | 前端、视频模块、TTS Provider |
+| 视频生成   | `POST /api/v1/learning-contents/{id}/videos?presentation_artifact_id={id}` | 异步生成任务；使用已生成 PPT 画面和逐页`speaker_script` 合成讲解视频             | 前端、演示文稿模块、视频模块 |
+| 视频播放   | `GET /api/v1/videos/{resultId}/download`                                   | 返回 MP4，前端直接使用`<video>` 播放                                             | 前端、视频模块               |
 
 ## 变更记录
+
+现在ppt生成逻辑
+
+
+```mermaid
+flowchart TD
+    A["Learning Content<br/>课程知识与来源"] --> B["Presentation Plan<br/>页数、顺序、标题、要点、讲稿"]
+    B --> C["选择 PPT 主题"]
+    C --> D["创建 PPT 生成任务"]
+    D --> E["Codex：生成版式 JSON"]
+    E --> F{"内容和版式校验"}
+    F -->|"第一次失败"| G["带错误原因修复一次"]
+    G --> F
+    F -->|"通过"| H["后端编译为可编辑 PPTX"]
+    F -->|"Codex 最终失败"| I["Presenton 备选生成"]
+    I --> J["后端清除改写文本<br/>重新写回 Plan 原文"]
+    J --> K{"最终内容校验"}
+    H --> K
+    K -->|"通过"| L["PPTX + 每页 PNG + 讲稿文件"]
+    K -->|"失败"| M["任务失败，前端显示错误"]
+    L --> N["使用同一个 Plan 创建课堂"]
+```
 
 ### 2026-07-16 - MiniMax Speech 2.8 云端语音与固定角色音色
 
