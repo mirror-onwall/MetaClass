@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +28,23 @@ class Settings(BaseSettings):
     llm_max_tokens: int = 8192
     qa_student_concurrency: int = 3
     qa_candidates_per_slide: int = 4
+    ppt_provider: str = "local"
+    presenton_base_url: str = Field(
+        default="https://api.presenton.ai",
+        validation_alias=AliasChoices(
+            "PRESENTON_BASE_URL",
+            "METACLASS_PRESENTON_BASE_URL",
+        ),
+    )
+    presenton_api_key: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "PRESENTON_API_KEY",
+            "METACLASS_PRESENTON_API_KEY",
+        ),
+    )
+    presenton_timeout_seconds: float = 300.0
+    presenton_template: str = "general"
     tts_provider: str = "fake"
     tts_base_url: str | None = None
     tts_api_key: str | None = None

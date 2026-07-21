@@ -22,8 +22,12 @@ from metaclass.modules.content.service import ContentService
 from metaclass.modules.materials.repository import SqlAlchemyMaterialRepository
 from metaclass.modules.materials.service import MaterialService
 from metaclass.modules.presentation.planner import PresentationPlanGenerator
+from metaclass.modules.presentation.providers import (
+    PresentonPPTProvider,
+)
 from metaclass.modules.presentation.repository import SqlAlchemyPresentationRepository
 from metaclass.modules.presentation.service import PresentationService
+from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
 from metaclass.modules.question_bank.generator import QuestionBankGenerator
 from metaclass.modules.question_bank.repository import SqlAlchemyQuestionBankRepository
 from metaclass.modules.question_bank.service import QuestionBankService
@@ -108,11 +112,27 @@ def build_services(
         student_concurrency=settings.qa_student_concurrency,
         candidates_per_slide=settings.qa_candidates_per_slide,
     )
+    local_ppt_provider = PPTSkillAdapter()
+    ppt_provider = local_ppt_provider
+    configured_ppt_provider = settings.ppt_provider.strip().lower()
+    if not force_fake_llm and configured_ppt_provider == "presenton":
+        if not settings.presenton_api_key:
+            raise ValueError("PRESENTON_API_KEY is required when METACLASS_PPT_PROVIDER=presenton")
+        ppt_provider = PresentonPPTProvider(
+            base_url=settings.presenton_base_url,
+            api_key=settings.presenton_api_key,
+            adapter=local_ppt_provider,
+            timeout_seconds=settings.presenton_timeout_seconds,
+            template=settings.presenton_template,
+        )
+    elif configured_ppt_provider != "local" and not force_fake_llm:
+        raise ValueError(f"Unsupported PPT provider: {settings.ppt_provider}")
     presentations = PresentationService(
         data_dir,
         presentation_repository,
         contents,
         planner=PresentationPlanGenerator(llm),
+        ppt_adapter=ppt_provider,
         question_bank_generator=question_bank_generator,
         question_bank_repository=question_bank_repository,
     )

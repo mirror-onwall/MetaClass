@@ -7,6 +7,7 @@ from fastapi import HTTPException
 from metaclass.core.schemas import utc_now
 from metaclass.modules.content.service import ContentService
 from metaclass.modules.presentation.planner import PresentationPlanGenerator
+from metaclass.modules.presentation.providers import PPTProvider
 from metaclass.modules.presentation.repository import PresentationRepository
 from metaclass.modules.presentation.schemas import (
     PPTArtifact,
@@ -29,7 +30,7 @@ class PresentationService:
         repository: PresentationRepository,
         contents: ContentService,
         planner: PresentationPlanGenerator | None = None,
-        ppt_adapter: PPTSkillAdapter | None = None,
+        ppt_adapter: PPTProvider | None = None,
         question_bank_generator: QuestionBankGenerator | None = None,
         question_bank_repository: QuestionBankRepository | None = None,
     ) -> None:
