@@ -54,6 +54,14 @@ def create_router(classrooms: ClassroomService) -> APIRouter:
     async def get_plan(plan_id: str) -> ClassroomPlan:
         return classrooms.get_plan(plan_id)
 
+    @router.post(
+        "/classroom-plans/{plan_id}/lecture-variant",
+        response_model=ClassroomPlan,
+        status_code=201,
+    )
+    async def create_lecture_variant(plan_id: str) -> ClassroomPlan:
+        return classrooms.create_lecture_variant(plan_id)
+
     @router.get(
         "/classroom-plans/{plan_id}/generation-meta",
         response_model=ClassroomPlanGenerationMeta,
@@ -77,6 +85,14 @@ def create_router(classrooms: ClassroomService) -> APIRouter:
     @router.get("/classroom-sessions/{session_id}", response_model=ClassroomSession)
     async def get_session(session_id: str) -> ClassroomSession:
         return classrooms.get_session(session_id)
+
+    @router.post(
+        "/classroom-sessions/{session_id}/replay",
+        response_model=ClassroomSession,
+        status_code=201,
+    )
+    async def replay_session(session_id: str) -> ClassroomSession:
+        return classrooms.replay_session(session_id)
 
     @router.get("/classroom-sessions/{session_id}/state", response_model=ClassroomState)
     async def get_state(session_id: str) -> ClassroomState:

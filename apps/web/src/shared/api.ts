@@ -213,6 +213,33 @@ export const api = {
       body: JSON.stringify({ mode, student_agent_types: studentAgentTypes }),
     });
   },
+  generateQuestionBank(planId: string) {
+    return request(`/api/v1/presentation-plans/${planId}/question-bank`, { method: "POST" });
+  },
+  getQuestionBank(planId: string) {
+    return request<{ items: unknown[] }>(`/api/v1/presentation-plans/${planId}/question-bank`);
+  },
+  createLectureVariant(planId: string) {
+    return request<{ id: string }>(`/api/v1/classroom-plans/${planId}/lecture-variant`, {
+      method: "POST",
+    });
+  },
+  createSessionForPlan(
+    planId: string,
+    mode: LearningMode,
+    studentAgentTypes?: StudentAgentType[],
+  ) {
+    return request<ClassroomSession>(`/api/v1/classroom-plans/${planId}/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode, student_agent_types: studentAgentTypes }),
+    });
+  },
+  replaySession(sessionId: string) {
+    return request<ClassroomSession>(`/api/v1/classroom-sessions/${sessionId}/replay`, {
+      method: "POST",
+    });
+  },
   async createPresentationDeck(
     contentId: string,
     prepareQuestionBank: boolean,

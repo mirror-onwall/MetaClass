@@ -329,6 +329,28 @@ def test_complete_mvp_flow(client: TestClient) -> None:
     services.classrooms.repository.save_session(
         services.classrooms.get_session(session_id).model_copy(update={"status": "completed"})
     )
+    replay = client.post(f"/api/v1/classroom-sessions/{session_id}/replay")
+    assert replay.status_code == 201
+    assert replay.json()["id"] != session_id
+    assert replay.json()["plan_id"] == plan.json()["id"]
+    assert replay.json()["status"] == "running"
+    assert replay.json()["scene_index"] == 0
+    assert replay.json()["action_index"] == 0
+    assert replay.json()["events"] == []
+
+    lecture_plan = client.post(
+        f"/api/v1/classroom-plans/{plan.json()['id']}/lecture-variant"
+    )
+    assert lecture_plan.status_code == 201
+    assert lecture_plan.json()["id"] != plan.json()["id"]
+    lecture_action_types = {
+        action["type"]
+        for scene in lecture_plan.json()["scenes"]
+        for action in scene["actions"]
+    }
+    assert lecture_action_types <= {"SHOW_PAGE", "EXPLAIN", "END"}
+    assert {"SHOW_PAGE", "EXPLAIN"} <= lecture_action_types
+
     after_class_question = client.post(
         f"/api/v1/classroom-sessions/{session_id}/questions",
         json={"question": "Can I still ask after class?"},

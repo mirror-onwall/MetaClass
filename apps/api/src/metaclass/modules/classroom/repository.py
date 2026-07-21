@@ -1,6 +1,8 @@
 from datetime import timezone
 from typing import Protocol
 
+from sqlalchemy import select
+
 from metaclass.infrastructure.database import Database
 from metaclass.modules.classroom.models import (
     ClassroomPlanGenerationMetaRecord,
@@ -30,6 +32,8 @@ class ClassroomRepository(Protocol):
     def save_plan_job(self, job: ClassroomPlanJob) -> None: ...
 
     def get_plan_job(self, job_id: str) -> ClassroomPlanJob | None: ...
+
+    def get_presentation_plan_id_for_plan(self, plan_id: str) -> str | None: ...
 
     def save_session(self, session_model: ClassroomSession) -> None: ...
 
@@ -150,6 +154,19 @@ class SqlAlchemyClassroomRepository:
                     ),
                 }
             )
+
+    def get_presentation_plan_id_for_plan(self, plan_id: str) -> str | None:
+        with self.database.session() as session:
+            record = session.scalar(
+                select(ClassroomPlanJobRecord)
+                .where(
+                    ClassroomPlanJobRecord.plan_id == plan_id,
+                    ClassroomPlanJobRecord.status == "succeeded",
+                    ClassroomPlanJobRecord.presentation_plan_id.is_not(None),
+                )
+                .order_by(ClassroomPlanJobRecord.updated_at.desc())
+            )
+            return record.presentation_plan_id if record else None
 
     def save_session(self, session_model: ClassroomSession) -> None:
         with self.database.session() as session:

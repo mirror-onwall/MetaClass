@@ -83,6 +83,11 @@ button { color: inherit; }
 .material-ticket b { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: 9px; white-space: nowrap; }
 .material-ticket .success { color: #a98a5d; font-weight: 700; }
 .material-ticket button { border: 0; padding: 0; background: none; color: var(--amber-soft); font-size: 9px; cursor: pointer; }
+.saved-classrooms { display: grid; gap: 6px; margin-top: 12px; }
+.saved-classrooms > span { color: var(--muted); font: 8px "DM Mono", monospace; letter-spacing: .12em; }
+.saved-classrooms > button { display: grid; gap: 2px; width: 100%; padding: 8px 9px; border: 1px solid var(--line); background: rgba(146,124,91,.05); color: inherit; text-align: left; cursor: pointer; }
+.saved-classrooms > button b { overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+.saved-classrooms > button small { color: var(--muted); font-size: 8px; }
 .quick-actions { margin-top: 28px; }
 .mode-switch { margin: 13px 0 8px; display: grid; gap: 8px; }
 .mode-switch button { width: 100%; min-height: 72px; display: grid; grid-template-columns: 28px 1fr; grid-template-rows: auto auto; gap: 2px 9px; text-align: left; align-items: center; padding: 11px; border: 1px solid var(--line); background: rgba(255,255,255,.025); color: #b6c6bf; cursor: pointer; transition: .2s ease; }

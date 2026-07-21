@@ -168,7 +168,13 @@ class ClassroomService:
         mode: LearningMode = LearningMode.LECTURE,
         student_agent_types: list[StudentAgentType] | None = None,
     ) -> ClassroomSession:
-        self.get_plan(plan_id)
+        plan = self.get_plan(plan_id)
+        if mode == LearningMode.INTERACTIVE and self._plan_has_missing_qa(plan):
+            presentation_plan_id = self.repository.get_presentation_plan_id_for_plan(plan.id)
+            if presentation_plan_id and self.question_banks:
+                self.question_banks.generate_for_plan(presentation_plan_id)
+                plan = self.create_plan(plan.content_id, presentation_plan_id)
+                plan_id = plan.id
         session = ClassroomSession(
             id=f"session_{uuid4().hex[:12]}",
             plan_id=plan_id,
@@ -177,6 +183,52 @@ class ClassroomService:
         )
         self._save_session(session)
         return session
+
+    def _plan_has_missing_qa(self, plan: ClassroomPlan) -> bool:
+        if not self.question_banks:
+            return False
+        qa_ids = {
+            action.payload.qa_id
+            for scene in plan.scenes
+            for action in scene.actions
+            if isinstance(action, (StudentQuestionAction, TeacherQAResponseAction))
+        }
+        for qa_id in qa_ids:
+            try:
+                self.question_banks.get_item(qa_id)
+            except HTTPException as exc:
+                if exc.status_code == 404:
+                    return True
+                raise
+        return False
+
+    def create_lecture_variant(self, plan_id: str) -> ClassroomPlan:
+        """Create a deterministic lecture-only view of an existing classroom plan."""
+        source = self.get_plan(plan_id)
+        scenes = []
+        for scene in source.scenes:
+            actions = [
+                action
+                for action in scene.actions
+                if action.type in {ActionType.SHOW_PAGE, ActionType.EXPLAIN, ActionType.END}
+            ]
+            if actions:
+                scenes.append(scene.model_copy(update={"actions": actions}, deep=True))
+        if not scenes:
+            raise HTTPException(409, "Classroom plan has no lecture actions")
+        plan = ClassroomPlan(
+            id=f"plan_{uuid4().hex[:12]}",
+            content_id=source.content_id,
+            scenes=scenes,
+            version=source.version,
+        )
+        self.repository.save_plan(plan)
+        return plan
+
+    def replay_session(self, session_id: str) -> ClassroomSession:
+        source = self.get_session(session_id)
+        agent_types = [state.agent_type for state in source.student_states]
+        return self.create_session(source.plan_id, source.mode, agent_types)
 
     def get_session(self, session_id: str) -> ClassroomSession:
         session = self.repository.get_session(session_id)

@@ -248,6 +248,7 @@ export type Mastery = { knowledge_point: string; value: number | null; evidence_
 
 export type ClassroomSession = {
   id: string;
+  plan_id: string;
   mode: LearningMode;
   status: "running" | "completed";
   waiting_for: "quiz_answer" | "free_answer" | null;

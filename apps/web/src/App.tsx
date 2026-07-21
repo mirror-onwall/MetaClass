@@ -179,6 +179,54 @@ const defaultStudentAgentTypes: StudentAgentType[] = studentAgentChoices.map(
   (student) => student.type,
 );
 
+const runtimeWorkspaceKey = "metaclass-runtime-workspace-v1";
+const completedWorkspacesKey = "metaclass-completed-workspaces-v1";
+
+type RuntimeWorkspace = {
+  material: Material | null;
+  materials: Material[];
+  materialCollection: MaterialCollection | null;
+  pages: PageMetadata[];
+  content: LearningContent | null;
+  presentationPlan: PresentationPlan | null;
+  presentationArtifact: PPTArtifact | null;
+  presentationSlideImages: Record<number, string>;
+  session: ClassroomSession | null;
+  classroomPlanIds: Partial<Record<LearningMode, string>>;
+  action: TeachingAction | null;
+  currentSlide: { src: string; pageNo: number; generated: boolean } | null;
+  learningMode: LearningMode;
+  studentAgentTypes: StudentAgentType[];
+  agentTurn: DirectedAgentTurn | null;
+  feedback: string;
+  video: VideoResult | null;
+};
+
+type CompletedWorkspace = RuntimeWorkspace & {
+  id: string;
+  title: string;
+  completedAt: string;
+};
+
+function loadRuntimeWorkspace(): Partial<RuntimeWorkspace> {
+  try {
+    const saved = window.sessionStorage.getItem(runtimeWorkspaceKey);
+    return saved ? JSON.parse(saved) as RuntimeWorkspace : {};
+  } catch {
+    window.sessionStorage.removeItem(runtimeWorkspaceKey);
+    return {};
+  }
+}
+
+function loadCompletedWorkspaces(): CompletedWorkspace[] {
+  try {
+    const saved = window.sessionStorage.getItem(completedWorkspacesKey);
+    return saved ? JSON.parse(saved) as CompletedWorkspace[] : [];
+  } catch {
+    return [];
+  }
+}
+
 function actionNarrationCue(
   action: TeachingAction,
   plan: PresentationPlan | null,
@@ -243,27 +291,35 @@ function actionNarrationCue(
 }
 
 function App() {
+  const runtimeWorkspace = useRef(loadRuntimeWorkspace()).current;
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     const savedTheme = window.localStorage.getItem("metaclass-theme");
     if (savedTheme === "dark" || savedTheme === "light") return savedTheme;
     return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
   });
   const [files, setFiles] = useState<File[]>([]);
-  const [material, setMaterial] = useState<Material | null>(null);
-  const [materials, setMaterials] = useState<Material[]>([]);
-  const [materialCollection, setMaterialCollection] = useState<MaterialCollection | null>(null);
-  const [pages, setPages] = useState<PageMetadata[]>([]);
-  const [content, setContent] = useState<LearningContent | null>(null);
+  const [material, setMaterial] = useState<Material | null>(runtimeWorkspace.material ?? null);
+  const [materials, setMaterials] = useState<Material[]>(runtimeWorkspace.materials ?? []);
+  const [materialCollection, setMaterialCollection] = useState<MaterialCollection | null>(runtimeWorkspace.materialCollection ?? null);
+  const [pages, setPages] = useState<PageMetadata[]>(runtimeWorkspace.pages ?? []);
+  const [content, setContent] = useState<LearningContent | null>(runtimeWorkspace.content ?? null);
   const [contentJob, setContentJob] = useState<ContentGenerationJob | null>(null);
   const [contentView, setContentView] = useState<"outline" | "tree" | "quality">("outline");
-  const [presentationPlan, setPresentationPlan] = useState<PresentationPlan | null>(null);
+  const [presentationPlan, setPresentationPlan] = useState<PresentationPlan | null>(runtimeWorkspace.presentationPlan ?? null);
   const [presentationPlanJob, setPresentationPlanJob] = useState<PresentationPlanJob | null>(null);
   const [pptJob, setPptJob] = useState<PPTGenerationJob | null>(null);
   const [classroomPlanJob, setClassroomPlanJob] = useState<ClassroomPlanJob | null>(null);
-  const [presentationArtifact, setPresentationArtifact] = useState<PPTArtifact | null>(null);
-  const [presentationSlideImages, setPresentationSlideImages] = useState<Record<number, string>>({});
-  const [session, setSession] = useState<ClassroomSession | null>(null);
-  const [action, setAction] = useState<TeachingAction | null>(null);
+  const [presentationArtifact, setPresentationArtifact] = useState<PPTArtifact | null>(runtimeWorkspace.presentationArtifact ?? null);
+  const [presentationSlideImages, setPresentationSlideImages] = useState<Record<number, string>>(runtimeWorkspace.presentationSlideImages ?? {});
+  const [session, setSession] = useState<ClassroomSession | null>(runtimeWorkspace.session ?? null);
+  const [classroomPlanIds, setClassroomPlanIds] = useState<Partial<Record<LearningMode, string>>>(
+    runtimeWorkspace.classroomPlanIds ?? (
+      runtimeWorkspace.session
+        ? { [runtimeWorkspace.session.mode]: runtimeWorkspace.session.plan_id }
+        : {}
+    ),
+  );
+  const [action, setAction] = useState<TeachingAction | null>(runtimeWorkspace.action ?? null);
   const [quizResult, setQuizResult] = useState<{
     actionId: string;
     selectedIndex: number;
@@ -273,21 +329,24 @@ function App() {
     src: string;
     pageNo: number;
     generated: boolean;
-  } | null>(null);
-  const [learningMode, setLearningMode] = useState<LearningMode>("lecture");
+  } | null>(runtimeWorkspace.currentSlide ?? null);
+  const [learningMode, setLearningMode] = useState<LearningMode>(runtimeWorkspace.learningMode ?? "lecture");
   const [studentAgentTypes, setStudentAgentTypes] = useState<StudentAgentType[]>(
-    defaultStudentAgentTypes,
+    runtimeWorkspace.studentAgentTypes ?? defaultStudentAgentTypes,
   );
   const [hoveredStudentAgentType, setHoveredStudentAgentType] = useState<StudentAgentType | null>(null);
-  const [agentTurn, setAgentTurn] = useState<DirectedAgentTurn | null>(null);
-  const [feedback, setFeedback] = useState("");
+  const [agentTurn, setAgentTurn] = useState<DirectedAgentTurn | null>(runtimeWorkspace.agentTurn ?? null);
+  const [feedback, setFeedback] = useState(runtimeWorkspace.feedback ?? "");
   const [question, setQuestion] = useState("");
-  const [video, setVideo] = useState<VideoResult | null>(null);
+  const [video, setVideo] = useState<VideoResult | null>(runtimeWorkspace.video ?? null);
   const [autoPlaying, setAutoPlaying] = useState(false);
   const [playbackTrigger, setPlaybackTrigger] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [completedWorkspaces, setCompletedWorkspaces] = useState<CompletedWorkspace[]>(
+    loadCompletedWorkspaces,
+  );
   const autoStepInFlight = useRef(false);
   const autoPlayingRef = useRef(false);
   const playbackVersionRef = useRef(0);
@@ -300,6 +359,60 @@ function App() {
     document.documentElement.style.colorScheme = theme;
     window.localStorage.setItem("metaclass-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    const snapshot: RuntimeWorkspace = {
+      material,
+      materials,
+      materialCollection,
+      pages,
+      content,
+      presentationPlan,
+      presentationArtifact,
+      presentationSlideImages,
+      session,
+      classroomPlanIds,
+      action,
+      currentSlide,
+      learningMode,
+      studentAgentTypes,
+      agentTurn,
+      feedback,
+      video,
+    };
+    try {
+      window.sessionStorage.setItem(runtimeWorkspaceKey, JSON.stringify(snapshot));
+    } catch {
+      // A very large source document may exceed the browser's per-tab storage quota.
+      // Keep the live workspace usable even when a snapshot cannot be written.
+    }
+  }, [
+    action,
+    agentTurn,
+    content,
+    currentSlide,
+    feedback,
+    learningMode,
+    material,
+    materialCollection,
+    materials,
+    pages,
+    presentationArtifact,
+    presentationPlan,
+    presentationSlideImages,
+    session,
+    classroomPlanIds,
+    studentAgentTypes,
+    video,
+  ]);
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(completedWorkspacesKey, JSON.stringify(completedWorkspaces));
+    } catch {
+      // Completed projects remain persisted by the backend even if browser storage is full.
+    }
+  }, [completedWorkspaces]);
 
   const activeStage = useMemo(() => {
     if (video) return 4;
@@ -566,6 +679,7 @@ function App() {
     setPresentationArtifact(null);
     setPresentationSlideImages({});
     setSession(null);
+    setClassroomPlanIds({});
     setAction(null);
     setCurrentSlide(null);
     setAgentTurn(null);
@@ -575,6 +689,7 @@ function App() {
     setError(null);
     narratedStepRef.current = null;
     narration.stop();
+    window.sessionStorage.removeItem(runtimeWorkspaceKey);
   }
 
   async function upload() {
@@ -632,13 +747,17 @@ function App() {
           api.pptSlideImage(artifact.id, slide.slide_no),
         ]),
       );
-      const classroomSession = await api.createSession(
+      let classroomSession = await api.createSession(
         content.id,
         deck.plan.id,
         learningMode,
         learningMode === "interactive" ? studentAgentTypes : [],
         setClassroomPlanJob,
       );
+      if (learningMode === "lecture") {
+        const lecturePlan = await api.createLectureVariant(classroomSession.plan_id);
+        classroomSession = await api.createSessionForPlan(lecturePlan.id, "lecture", []);
+      }
       return { artifact, classroomSession, plan: deck.plan, slideImages };
     });
     if (result) {
@@ -648,12 +767,138 @@ function App() {
       setPresentationPlan(result.plan);
       setPresentationSlideImages(result.slideImages);
       setSession(result.classroomSession);
+      setClassroomPlanIds((current) => ({
+        ...current,
+        [learningMode]: result.classroomSession.plan_id,
+      }));
       setAction(null);
       setAgentTurn(null);
       setAutoPlaying(true);
       setFeedback("PPT 已生成，课堂已就绪，自动播放已开始。你可以随时输入问题打断。");
       narratedStepRef.current = null;
     }
+  }
+
+  async function switchClassroomMode(nextMode: LearningMode) {
+    if (nextMode === learningMode && session?.mode === nextMode) return;
+    if (!session) {
+      setLearningMode(nextMode);
+      return;
+    }
+    if (!content || !presentationPlan) return;
+    narration.stop();
+    const nextSession = await run(
+      nextMode === "interactive" ? "正在增加互动课堂规划" : "正在提取连续讲解课堂",
+      async () => {
+        const savedPlanId = classroomPlanIds[nextMode];
+        if (savedPlanId) {
+          return api.createSessionForPlan(
+            savedPlanId,
+            nextMode,
+            nextMode === "interactive" ? studentAgentTypes : [],
+          );
+        }
+        if (nextMode === "interactive") {
+          await api.generateQuestionBank(presentationPlan.id);
+          return api.createSession(
+            content.id,
+            presentationPlan.id,
+            "interactive",
+            studentAgentTypes,
+            setClassroomPlanJob,
+          );
+        }
+        const lecturePlan = await api.createLectureVariant(session.plan_id);
+        return api.createSessionForPlan(lecturePlan.id, "lecture", []);
+      },
+    );
+    if (!nextSession) return;
+    playbackVersionRef.current += 1;
+    autoPlayingRef.current = false;
+    setLearningMode(nextMode);
+    setSession(nextSession);
+    setClassroomPlanIds((current) => ({ ...current, [nextMode]: nextSession.plan_id }));
+    setAction(null);
+    setAgentTurn(null);
+    setCurrentSlide(null);
+    setAutoPlaying(false);
+    setFeedback(nextMode === "interactive" ? "互动规划已增加，可以开始互动课堂。" : "已提取展示与讲解动作，可以开始连续课堂。");
+    narratedStepRef.current = null;
+  }
+
+  async function replayClassroom() {
+    if (!session) return;
+    narration.unlock();
+    const replay = await run("正在重新准备课堂", () => api.replaySession(session.id));
+    if (!replay) return;
+    playbackVersionRef.current += 1;
+    autoPlayingRef.current = true;
+    setSession(replay);
+    setAction(null);
+    setAgentTurn(null);
+    setCurrentSlide(null);
+    setAutoPlaying(true);
+    setFeedback("课堂已回到开头，正在重新播放。");
+    narratedStepRef.current = null;
+  }
+
+  async function completeWorkspace() {
+    if (!content || !presentationPlan) return;
+    const prepared = await run("正在完成并保存课堂", async () => {
+      const existing = await api.getQuestionBank(presentationPlan.id);
+      return existing.items.length ? existing : api.generateQuestionBank(presentationPlan.id);
+    });
+    if (!prepared) return;
+    const completed: CompletedWorkspace = {
+      id: `${content.id}:${Date.now()}`,
+      title: content.title,
+      completedAt: new Date().toISOString(),
+      material,
+      materials,
+      materialCollection,
+      pages,
+      content,
+      presentationPlan,
+      presentationArtifact,
+      presentationSlideImages,
+      session,
+      classroomPlanIds,
+      action,
+      currentSlide,
+      learningMode,
+      studentAgentTypes,
+      agentTurn,
+      feedback,
+      video,
+    };
+    setCompletedWorkspaces((current) => [completed, ...current.filter((item) => item.content?.id !== content.id)]);
+    reset();
+    setFeedback("当前课堂项目已完成保存，可以上传下一组材料。");
+  }
+
+  function restoreWorkspace(saved: CompletedWorkspace) {
+    reset();
+    setMaterial(saved.material);
+    setMaterials(saved.materials);
+    setMaterialCollection(saved.materialCollection);
+    setPages(saved.pages);
+    setContent(saved.content);
+    setPresentationPlan(saved.presentationPlan);
+    setPresentationArtifact(saved.presentationArtifact);
+    setPresentationSlideImages(saved.presentationSlideImages);
+    setSession(saved.session);
+    setClassroomPlanIds(
+      saved.classroomPlanIds ?? (
+        saved.session ? { [saved.session.mode]: saved.session.plan_id } : {}
+      ),
+    );
+    setAction(saved.action);
+    setCurrentSlide(saved.currentSlide);
+    setLearningMode(saved.learningMode);
+    setStudentAgentTypes(saved.studentAgentTypes);
+    setAgentTurn(saved.agentTurn);
+    setFeedback(saved.feedback || "已重新打开保存的课堂项目。");
+    setVideo(saved.video);
   }
 
   function toggleStudentAgent(type: StudentAgentType) {
@@ -904,6 +1149,7 @@ function App() {
   function onDrop(event: DragEvent<HTMLLabelElement>) {
     event.preventDefault();
     setDragging(false);
+    if (material) return;
     chooseFiles(Array.from(event.dataTransfer.files));
   }
 
@@ -984,7 +1230,7 @@ function App() {
               onDragOver={(event) => event.preventDefault()}
               onDrop={onDrop}
             >
-              <input type="file" accept=".pdf,.pptx" multiple onChange={(event: ChangeEvent<HTMLInputElement>) => chooseFiles(Array.from(event.target.files ?? []))} />
+              <input type="file" accept=".pdf,.pptx" multiple disabled={!!material} onChange={(event: ChangeEvent<HTMLInputElement>) => chooseFiles(Array.from(event.target.files ?? []))} />
               <span className="upload-icon">↥</span>
               <div>{files.length ? <><b>{selectedFilesLabel}</b><small>{files.length} 个文件 · {formatBytes(selectedFilesSize)}</small></> : <><b>把课件放到讲台</b><small>拖拽或点击选择文件</small></>}</div>
             </label>
@@ -994,10 +1240,20 @@ function App() {
               <div className="material-ticket">
                 <div><span>FILE</span><b>{materials.length > 1 ? `${material.filename} 等 ${materials.length} 个文件` : material.filename}</b></div>
                 <div><span>STATUS</span><b className="success">● 已解析 · {pages.length} 页</b></div>
-                <button onClick={() => reset()}>更换材料</button>
               </div>
             )}
             {material && !pages.length && <button className="control-button warm" disabled={!!busy} onClick={parse}>重新解析</button>}
+            {completedWorkspaces.length > 0 && (
+              <div className="saved-classrooms">
+                <span>已完成课堂</span>
+                {completedWorkspaces.map((saved) => (
+                  <button key={saved.id} disabled={!!busy} onClick={() => restoreWorkspace(saved)}>
+                    <b>{saved.title}</b>
+                    <small>{new Date(saved.completedAt).toLocaleString()}</small>
+                  </button>
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="quick-actions">
@@ -1005,8 +1261,8 @@ function App() {
             <div className="mode-switch" aria-label="选择学习方式">
               <button
                 className={learningMode === "lecture" ? "selected" : ""}
-                disabled={!!session}
-                onClick={() => setLearningMode("lecture")}
+                disabled={!!busy}
+                onClick={() => switchClassroomMode("lecture")}
               >
                 <span>A</span>
                 <b>连续讲解</b>
@@ -1014,8 +1270,8 @@ function App() {
               </button>
               <button
                 className={learningMode === "interactive" ? "selected" : ""}
-                disabled={!!session}
-                onClick={() => setLearningMode("interactive")}
+                disabled={!!busy}
+                onClick={() => switchClassroomMode("interactive")}
               >
                 <span>B</span>
                 <b>互动课堂</b>
@@ -1023,8 +1279,9 @@ function App() {
               </button>
             </div>
             <button disabled={!pages.length || !!content || !!busy} onClick={buildContent}><span>01</span><b>{content ? "内容已构建" : "构建学习内容"}</b><i>↗</i></button>
-            <button disabled={!content || !!session || !!busy} onClick={startClassroom}><span>02</span><b>{session ? "课堂进行中" : "创建互动课堂"}</b><i>↗</i></button>
+            <button disabled={!content || !!session || !!busy} onClick={startClassroom}><span>02</span><b>{session ? "课堂已创建" : learningMode === "interactive" ? "创建互动课堂" : "创建连续课堂"}</b><i>↗</i></button>
             <button disabled={!content || !presentationArtifact || !!video || !!busy} onClick={createVideo}><span>03</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
+            <button disabled={!content || !presentationPlan || !!busy} onClick={completeWorkspace}><span>✓</span><b>完成当前材料</b><i>→</i></button>
           </section>
         </aside>
 
@@ -1091,10 +1348,10 @@ function App() {
             <div className="desk-actions">
               <button
                 className="next-button"
-                disabled={!session || !!busy || session.status === "completed"}
-                onClick={toggleAutoPlaying}
+                disabled={!session || !!busy}
+                onClick={session?.status === "completed" ? replayClassroom : toggleAutoPlaying}
               >
-                {autoPlaying ? "暂停自动课堂" : "开始自动课堂"} <span>{autoPlaying ? "Ⅱ" : "▶"}</span>
+                {session?.status === "completed" ? "重新播放课堂" : autoPlaying ? "暂停自动课堂" : "开始自动课堂"} <span>{autoPlaying ? "Ⅱ" : "▶"}</span>
               </button>
               <button className="next-button secondary" disabled={!session || !!busy} onClick={() => navigateClassroom("previous")}><span>←</span> 上一页</button>
               <button className="next-button secondary" disabled={!session || !!busy || session.waiting_for === "quiz_answer" || session.status === "completed"} onClick={() => navigateClassroom("next")}>下一页 <span>→</span></button>
