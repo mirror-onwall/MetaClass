@@ -406,9 +406,25 @@ export type PresentationPlanJob = {
   error?: string;
 };
 
+export type PPTThemeOption = {
+  id: string;
+  name: string;
+  description: string;
+  style_direction: string;
+  colors: {
+    cover: string;
+    background: string;
+    text: string;
+    accent: string;
+    soft: string;
+    secondary: string;
+  };
+};
+
 export type PPTGenerationJob = {
   id: string;
   presentation_plan_id: string;
+  theme_id: string;
   status: "queued" | "running" | "waiting_for_skill" | "finished" | "failed";
   progress: number;
   artifact_id?: string;

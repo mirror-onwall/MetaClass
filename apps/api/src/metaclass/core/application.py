@@ -19,11 +19,17 @@ from metaclass.modules.classroom.repository import SqlAlchemyClassroomRepository
 from metaclass.modules.classroom.service import ClassroomService
 from metaclass.modules.content.repository import SqlAlchemyContentRepository
 from metaclass.modules.content.service import ContentService
+from metaclass.modules.presentation.codex_provider import (
+    CodexGenerationError,
+    CodexPPTProvider,
+)
 from metaclass.modules.materials.repository import SqlAlchemyMaterialRepository
 from metaclass.modules.materials.service import MaterialService
 from metaclass.modules.presentation.planner import PresentationPlanGenerator
 from metaclass.modules.presentation.providers import (
+    FallbackPPTProvider,
     PresentonPPTProvider,
+    UnavailablePPTProvider,
 )
 from metaclass.modules.presentation.repository import SqlAlchemyPresentationRepository
 from metaclass.modules.presentation.service import PresentationService
@@ -115,15 +121,36 @@ def build_services(
     local_ppt_provider = PPTSkillAdapter()
     ppt_provider = local_ppt_provider
     configured_ppt_provider = settings.ppt_provider.strip().lower()
-    if not force_fake_llm and configured_ppt_provider == "presenton":
-        if not settings.presenton_api_key:
-            raise ValueError("PRESENTON_API_KEY is required when METACLASS_PPT_PROVIDER=presenton")
-        ppt_provider = PresentonPPTProvider(
+    presenton_provider = None
+    if settings.presenton_api_key:
+        presenton_provider = PresentonPPTProvider(
             base_url=settings.presenton_base_url,
             api_key=settings.presenton_api_key,
             adapter=local_ppt_provider,
             timeout_seconds=settings.presenton_timeout_seconds,
             template=settings.presenton_template,
+        )
+    if not force_fake_llm and configured_ppt_provider == "presenton":
+        if presenton_provider is None:
+            raise ValueError("PRESENTON_API_KEY is required when METACLASS_PPT_PROVIDER=presenton")
+        ppt_provider = presenton_provider
+    elif not force_fake_llm and configured_ppt_provider == "codex":
+        codex_provider = CodexPPTProvider(
+            adapter=local_ppt_provider,
+            api_key=settings.codex_api_key,
+            model=settings.codex_model,
+            timeout_seconds=settings.codex_timeout_seconds,
+            repair_attempts=settings.codex_repair_attempts,
+        )
+        fallback_provider = presenton_provider or UnavailablePPTProvider(
+            "Presenton fallback is unavailable because PRESENTON_API_KEY is not configured"
+        )
+        ppt_provider = FallbackPPTProvider(
+            primary=codex_provider,
+            fallback=fallback_provider,
+            primary_name="codex",
+            fallback_name="presenton",
+            fallback_exceptions=(CodexGenerationError,),
         )
     elif configured_ppt_provider != "local" and not force_fake_llm:
         raise ValueError(f"Unsupported PPT provider: {settings.ppt_provider}")

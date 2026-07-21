@@ -7,6 +7,9 @@ from pydantic import Field, model_validator
 from metaclass.core.schemas import SchemaModel, utc_now
 
 
+DEFAULT_PPT_THEME_ID = "academic_blue"
+
+
 class PPTGenerationStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
@@ -136,9 +139,28 @@ class PresentationPlanJob(SchemaModel):
     updated_at: datetime = Field(default_factory=utc_now)
 
 
+class PPTThemeOption(SchemaModel):
+    id: str = Field(pattern=r"^[a-z0-9_]+$")
+    name: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    style_direction: str = Field(min_length=1)
+    colors: dict[str, str]
+
+
+class CreatePPTJobRequest(SchemaModel):
+    theme_id: str = Field(
+        default=DEFAULT_PPT_THEME_ID,
+        pattern=r"^[a-z0-9_]+$",
+    )
+
+
 class PPTGenerationJob(SchemaModel):
     id: str = Field(min_length=1)
     presentation_plan_id: str = Field(min_length=1)
+    theme_id: str = Field(
+        default=DEFAULT_PPT_THEME_ID,
+        pattern=r"^[a-z0-9_]+$",
+    )
     status: PPTGenerationStatus = PPTGenerationStatus.QUEUED
     progress: float = Field(default=0, ge=0, le=1)
     artifact_id: str | None = None

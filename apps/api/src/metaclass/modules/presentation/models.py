@@ -4,6 +4,7 @@ from sqlalchemy import DateTime, Float, ForeignKey, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from metaclass.infrastructure.database import Base
+from metaclass.modules.presentation.schemas import DEFAULT_PPT_THEME_ID
 
 
 class PresentationPlanRecord(Base):
@@ -27,6 +28,9 @@ class PPTGenerationJobRecord(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     presentation_plan_id: Mapped[str] = mapped_column(
         ForeignKey("presentation_plans.id"), index=True
+    )
+    theme_id: Mapped[str] = mapped_column(
+        String(64), default=DEFAULT_PPT_THEME_ID
     )
     status: Mapped[str] = mapped_column(String(30), index=True)
     progress: Mapped[float] = mapped_column(Float)

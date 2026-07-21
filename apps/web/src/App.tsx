@@ -36,6 +36,7 @@ import type {
   PageMetadata,
   PPTArtifact,
   PPTGenerationJob,
+  PPTThemeOption,
   PresentationPlan,
   PresentationPlanJob,
   StudentAgentType,
@@ -45,6 +46,21 @@ import type {
 
 const stages = ["导入材料", "页面解析", "组织内容", "互动课堂", "讲解视频"];
 const answeringUserQuestionLabel = "老师正在组织回答";
+
+const defaultPptTheme: PPTThemeOption = {
+  id: "academic_blue",
+  name: "学术蓝白",
+  description: "清晰、克制，适合课程讲解与研究汇报",
+  style_direction: "restrained academic editorial",
+  colors: {
+    cover: "12365A",
+    background: "FFFFFF",
+    text: "17324D",
+    accent: "2E75B6",
+    soft: "DCEBFA",
+    secondary: "4F8FCB",
+  },
+};
 
 const contentStepLabels: Record<string, string> = {
   queued: "等待生成任务",
@@ -309,6 +325,10 @@ function App() {
   const [presentationPlan, setPresentationPlan] = useState<PresentationPlan | null>(runtimeWorkspace.presentationPlan ?? null);
   const [presentationPlanJob, setPresentationPlanJob] = useState<PresentationPlanJob | null>(null);
   const [pptJob, setPptJob] = useState<PPTGenerationJob | null>(null);
+  const [pptThemes, setPptThemes] = useState<PPTThemeOption[]>([defaultPptTheme]);
+  const [pptThemeId, setPptThemeId] = useState(() =>
+    window.localStorage.getItem("metaclass-ppt-theme") || defaultPptTheme.id,
+  );
   const [classroomPlanJob, setClassroomPlanJob] = useState<ClassroomPlanJob | null>(null);
   const [presentationArtifact, setPresentationArtifact] = useState<PPTArtifact | null>(runtimeWorkspace.presentationArtifact ?? null);
   const [presentationSlideImages, setPresentationSlideImages] = useState<Record<number, string>>(runtimeWorkspace.presentationSlideImages ?? {});
@@ -360,6 +380,28 @@ function App() {
     document.documentElement.style.colorScheme = theme;
     window.localStorage.setItem("metaclass-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.getPptThemes()
+      .then((options) => {
+        if (cancelled || !options.length) return;
+        setPptThemes(options);
+        setPptThemeId((current) =>
+          options.some((option) => option.id === current) ? current : options[0].id,
+        );
+      })
+      .catch(() => {
+        // Keep the default theme available while the API is restarting.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem("metaclass-ppt-theme", pptThemeId);
+  }, [pptThemeId]);
 
   useEffect(() => {
     const snapshot: RuntimeWorkspace = {
@@ -763,6 +805,7 @@ function App() {
       const deck = await api.createPresentationDeck(
         content.id,
         learningMode === "interactive",
+        pptThemeId,
         setPresentationPlanJob,
         setPptJob,
       );
@@ -1326,6 +1369,35 @@ function App() {
                 <b>互动课堂</b>
                 <small>允许 agent 同学提问、总结和插话</small>
               </button>
+            </div>
+            <div className="ppt-theme-selector">
+              <div className="ppt-theme-heading">
+                <span>PPT 主题</span>
+                <small>只改变视觉，不改页面内容</small>
+              </div>
+              <div className="ppt-theme-grid" role="radiogroup" aria-label="选择 PPT 视觉主题">
+                {pptThemes.map((option) => (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={pptThemeId === option.id}
+                    className={pptThemeId === option.id ? "selected" : ""}
+                    disabled={!!busy || !!session}
+                    key={option.id}
+                    onClick={() => setPptThemeId(option.id)}
+                    title={option.description}
+                  >
+                    <span className="ppt-theme-preview" aria-hidden="true">
+                      <i style={{ backgroundColor: `#${option.colors.cover}` }} />
+                      <i style={{ backgroundColor: `#${option.colors.background}` }} />
+                      <i style={{ backgroundColor: `#${option.colors.accent}` }} />
+                    </span>
+                    <b>{option.name}</b>
+                    <small>{option.description}</small>
+                    <em aria-hidden="true">{pptThemeId === option.id ? "✓" : ""}</em>
+                  </button>
+                ))}
+              </div>
             </div>
             <button disabled={!pages.length || !!content || !!busy} onClick={buildContent}><span>01</span><b>{content ? "内容已构建" : "构建学习内容"}</b><i>↗</i></button>
             <button disabled={!content || !!session || !!busy} onClick={startClassroom}><span>02</span><b>{session ? "课堂已创建" : learningMode === "interactive" ? "创建互动课堂" : "创建连续课堂"}</b><i>↗</i></button>

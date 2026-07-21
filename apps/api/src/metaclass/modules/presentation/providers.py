@@ -29,6 +29,10 @@ from metaclass.modules.presentation.schemas import (
     PresentationPlan,
 )
 from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
+from metaclass.modules.presentation.themes import (
+    PresentationTheme,
+    get_presentation_theme,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -68,6 +72,7 @@ class PPTProvider(Protocol):
         plan: PresentationPlan,
         job_id: str,
         output_dir: Path,
+        theme: PresentationTheme | None = None,
     ) -> PPTArtifact: ...
 
 
@@ -99,9 +104,14 @@ class PresentonPPTProvider:
         plan: PresentationPlan,
         job_id: str,
         output_dir: Path,
+        theme: PresentationTheme | None = None,
     ) -> PPTArtifact:
+        selected_theme = theme or get_presentation_theme()
         output_dir.mkdir(parents=True, exist_ok=True)
-        response = self._post_json(self.GENERATE_PATH, self.build_payload(plan))
+        response = self._post_json(
+            self.GENERATE_PATH,
+            self.build_payload(plan, selected_theme),
+        )
         download_path = response.get("path")
         if not isinstance(download_path, str) or not download_path.strip():
             raise RuntimeError("Presenton response did not include a PPTX path")
@@ -123,6 +133,7 @@ class PresentonPPTProvider:
                 "edit_path": response.get("edit_path"),
                 "credits_consumed": response.get("credits_consumed"),
                 "template": self.template,
+                "theme": selected_theme.prompt_payload(),
                 "content_generation": "preserve",
                 "content_lock": content_lock,
                 "validation": validation,
@@ -133,7 +144,12 @@ class PresentonPPTProvider:
             external_slide_images=None,
         )
 
-    def build_payload(self, plan: PresentationPlan) -> dict:
+    def build_payload(
+        self,
+        plan: PresentationPlan,
+        theme: PresentationTheme | None = None,
+    ) -> dict:
+        selected_theme = theme or get_presentation_theme()
         slide_markdown = []
         visual_directions = []
         for index, slide in enumerate(plan.slides, start=1):
@@ -151,6 +167,10 @@ class PresentonPPTProvider:
                 "只负责版式、配色、图形与图片增强，不要把下面的视觉说明显示成正文。",
                 *visual_directions,
             ]
+        )
+        instructions += (
+            "\nSelected visual theme (do not change visible text):\n"
+            + json.dumps(selected_theme.prompt_payload(), ensure_ascii=False)
         )
         return {
             "slides_markdown": slide_markdown,
@@ -279,55 +299,7 @@ class PresentonPPTProvider:
         }
 
     def validate_deck(self, plan: PresentationPlan, pptx_path: Path) -> dict:
-        if not pptx_path.exists() or pptx_path.stat().st_size == 0:
-            raise RuntimeError("Presenton returned an empty PPTX file")
-        try:
-            deck = Presentation(str(pptx_path))
-        except Exception as exc:
-            raise RuntimeError("Presenton returned an invalid PPTX file") from exc
-
-        expected_count = len(plan.slides)
-        actual_count = len(deck.slides)
-        if actual_count != expected_count:
-            raise RuntimeError(
-                f"Presenton page-count mismatch: expected {expected_count}, got {actual_count}"
-            )
-
-        checked_items = 0
-        for index, (planned_slide, generated_slide) in enumerate(
-            zip(plan.slides, deck.slides, strict=True), start=1
-        ):
-            actual_items = [
-                target.text
-                for target in self._collect_text_targets(generated_slide)
-                if target.text.strip() and not target.occluded
-            ]
-            required_items = [
-                item for item in [planned_slide.title, *planned_slide.key_points] if item.strip()
-            ]
-            actual_counter = Counter(map(self._normalize_text, actual_items))
-            required_counter = Counter(map(self._normalize_text, required_items))
-            missing_counter = required_counter - actual_counter
-            extra_counter = actual_counter - required_counter
-            if missing_counter or extra_counter:
-                missing = list(missing_counter.elements())
-                extra = list(extra_counter.elements())
-                details = []
-                if missing:
-                    details.append(f"missing: {missing!r}")
-                if extra:
-                    details.append(f"extra or rewritten: {extra!r}")
-                raise RuntimeError(
-                    f"Presenton content mismatch on page {index}; " + "; ".join(details)
-                )
-            checked_items += len(required_items)
-
-        return {
-            "expected_slide_count": expected_count,
-            "actual_slide_count": actual_count,
-            "checked_text_items": checked_items,
-            "status": "passed",
-        }
+        return validate_deck_against_plan(plan, pptx_path, provider_name="Presenton")
 
     def _post_json(self, path: str, payload: dict) -> dict:
         request = Request(
@@ -756,17 +728,83 @@ class PresentonPPTProvider:
         return re.sub(r"[^\w]+", "", normalized, flags=re.UNICODE)
 
 
-class FallbackPPTProvider:
-    def __init__(
-        self,
-        *,
-        primary: PPTProvider,
-        fallback: PPTProvider,
-        primary_name: str,
-    ) -> None:
-        self.primary = primary
-        self.fallback = fallback
-        self.primary_name = primary_name
+def validate_deck_against_plan(
+    plan: PresentationPlan,
+    pptx_path: Path,
+    *,
+    provider_name: str,
+) -> dict:
+    """Enforce the immutable visible-text contract shared by every provider.
+
+    Comparisons trim only the outer whitespace of a text object. Unicode code
+    points, punctuation, case, internal whitespace, wording, page count, and
+    page assignment therefore cannot be changed.
+    """
+    if not pptx_path.exists() or pptx_path.stat().st_size == 0:
+        raise RuntimeError(f"{provider_name} returned an empty PPTX file")
+    try:
+        deck = Presentation(str(pptx_path))
+    except Exception as exc:
+        raise RuntimeError(f"{provider_name} returned an invalid PPTX file") from exc
+
+    expected_count = len(plan.slides)
+    actual_count = len(deck.slides)
+    if actual_count != expected_count:
+        raise RuntimeError(
+            f"{provider_name} page-count mismatch: expected {expected_count}, got {actual_count}"
+        )
+
+    checked_items = 0
+    for index, (planned_slide, generated_slide) in enumerate(
+        zip(plan.slides, deck.slides, strict=True), start=1
+    ):
+        actual_items: list[str] = []
+        for target in PresentonPPTProvider._collect_text_targets(generated_slide):
+            if target.occluded:
+                continue
+            paragraphs = [
+                paragraph.text for paragraph in target.frame.paragraphs if paragraph.text.strip()
+            ]
+            if paragraphs:
+                actual_items.extend(paragraphs)
+            elif target.text.strip():
+                actual_items.append(target.text)
+
+        required_items = [
+            item for item in [planned_slide.title, *planned_slide.key_points] if item.strip()
+        ]
+        actual_counter = Counter(_contract_text(item) for item in actual_items)
+        required_counter = Counter(_contract_text(item) for item in required_items)
+        missing_counter = required_counter - actual_counter
+        extra_counter = actual_counter - required_counter
+        if missing_counter or extra_counter:
+            missing = list(missing_counter.elements())
+            extra = list(extra_counter.elements())
+            details = []
+            if missing:
+                details.append(f"missing: {missing!r}")
+            if extra:
+                details.append(f"extra or rewritten: {extra!r}")
+            raise RuntimeError(
+                f"{provider_name} content mismatch on page {index}; " + "; ".join(details)
+            )
+        checked_items += len(required_items)
+
+    return {
+        "expected_slide_count": expected_count,
+        "actual_slide_count": actual_count,
+        "checked_text_items": checked_items,
+        "status": "passed",
+    }
+
+
+def _contract_text(value: str) -> str:
+    return value.strip()
+
+
+class UnavailablePPTProvider:
+    def __init__(self, message: str) -> None:
+        self.message = message
 
     def prepare_request(
         self,
@@ -774,21 +812,80 @@ class FallbackPPTProvider:
         plan: PresentationPlan,
         job_id: str,
         output_dir: Path,
+        theme: PresentationTheme | None = None,
     ) -> PPTArtifact:
+        raise RuntimeError(self.message)
+
+
+class FallbackPPTProvider:
+    def __init__(
+        self,
+        *,
+        primary: PPTProvider,
+        fallback: PPTProvider,
+        primary_name: str,
+        fallback_name: str = "fallback",
+        fallback_exceptions: tuple[type[Exception], ...] = (Exception,),
+    ) -> None:
+        self.primary = primary
+        self.fallback = fallback
+        self.primary_name = primary_name
+        self.fallback_name = fallback_name
+        self.fallback_exceptions = fallback_exceptions
+
+    def prepare_request(
+        self,
+        *,
+        plan: PresentationPlan,
+        job_id: str,
+        output_dir: Path,
+        theme: PresentationTheme | None = None,
+    ) -> PPTArtifact:
+        provider_kwargs = {
+            "plan": plan,
+            "job_id": job_id,
+            "output_dir": output_dir,
+        }
+        if theme is not None:
+            provider_kwargs["theme"] = theme
         try:
-            return self.primary.prepare_request(
-                plan=plan,
-                job_id=job_id,
-                output_dir=output_dir,
-            )
-        except Exception as exc:
+            return self.primary.prepare_request(**provider_kwargs)
+        except self.fallback_exceptions as primary_error:
             logger.warning(
-                "PPT provider %s failed; falling back to local renderer: %s",
+                "PPT provider %s failed; falling back to %s: %s",
                 self.primary_name,
-                exc,
+                self.fallback_name,
+                primary_error,
             )
-            return self.fallback.prepare_request(
-                plan=plan,
-                job_id=job_id,
-                output_dir=output_dir,
+            try:
+                artifact = self.fallback.prepare_request(**provider_kwargs)
+            except Exception as fallback_error:
+                raise RuntimeError(
+                    f"{self.primary_name} generation failed: {primary_error}; "
+                    f"{self.fallback_name} fallback failed: {fallback_error}"
+                ) from fallback_error
+            self._record_fallback(artifact, primary_error)
+            return artifact
+
+    def _record_fallback(self, artifact: PPTArtifact, primary_error: Exception) -> None:
+        request_path_value = getattr(artifact, "skill_request_path", None)
+        if not isinstance(request_path_value, (str, Path)):
+            return
+        request_path = Path(request_path_value)
+        if not request_path.exists():
+            return
+        try:
+            payload = json.loads(request_path.read_text(encoding="utf-8"))
+            if not isinstance(payload, dict):
+                return
+            payload["fallback"] = {
+                "from": self.primary_name,
+                "to": self.fallback_name,
+                "reason": str(primary_error)[:1000],
+            }
+            request_path.write_text(
+                json.dumps(payload, ensure_ascii=False, indent=2),
+                encoding="utf-8",
             )
+        except (OSError, json.JSONDecodeError):
+            logger.warning("Could not record PPT fallback metadata in %s", request_path)

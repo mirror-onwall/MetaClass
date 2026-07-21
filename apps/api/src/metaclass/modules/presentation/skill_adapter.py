@@ -20,6 +20,11 @@ from pptx.util import Inches, Pt
 
 from metaclass.modules.presentation.schemas import PPTArtifact, PPTSlideImage, PresentationPlan
 from metaclass.modules.presentation.brand_palette import BRAND_PALETTE
+from metaclass.modules.presentation.themes import (
+    PresentationTheme,
+    apply_presentation_theme,
+    get_presentation_theme,
+)
 
 
 class PPTSkillAdapter:
@@ -36,36 +41,26 @@ class PPTSkillAdapter:
         plan: PresentationPlan,
         job_id: str,
         output_dir: Path,
+        theme: PresentationTheme | None = None,
     ) -> PPTArtifact:
+        selected_theme = theme or get_presentation_theme()
+        themed_plan = apply_presentation_theme(plan, selected_theme)
         output_dir.mkdir(parents=True, exist_ok=True)
         pptx_path = output_dir / "deck.pptx"
         speaker_scripts_path = output_dir / "speaker_scripts.json"
-        self._render_basic_pptx(plan, pptx_path)
-        slide_images = self._render_slide_images(plan, pptx_path, output_dir / "slides")
-        speaker_scripts_path.write_text(
-            json.dumps(
-                {
-                    "presentation_plan_id": plan.id,
-                    "slides": [
-                        {
-                            "slide_id": slide.id,
-                            "order": slide.order,
-                            "title": slide.title,
-                            "speaker_script": slide.speaker_script,
-                        }
-                        for slide in plan.slides
-                    ],
-                },
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
+        self._render_basic_pptx(themed_plan, pptx_path)
+        slide_images = self._render_slide_images(
+            themed_plan,
+            pptx_path,
+            output_dir / "slides",
         )
+        self._write_speaker_scripts(plan, speaker_scripts_path)
         request_path = output_dir / "skill_request.json"
         request_path.write_text(
             json.dumps(
                 {
                     "presentation_plan": plan.model_dump(mode="json"),
+                    "theme": selected_theme.prompt_payload(),
                     "planner_skill": str(Path(__file__).with_name("pptx_skill") / "SKILL.md"),
                     "expected_output": str(pptx_path),
                     "speaker_scripts_output": str(speaker_scripts_path),
@@ -89,6 +84,39 @@ class PPTSkillAdapter:
             slide_images=slide_images,
         )
 
+    def render_declarative_pptx(self, plan: PresentationPlan, destination: Path) -> None:
+        """Compile an already validated declarative scene into an editable PPTX."""
+        missing = [slide.id for slide in plan.slides if not slide.elements]
+        if missing:
+            raise ValueError(
+                "Declarative PPTX rendering requires elements on every slide: "
+                + ", ".join(missing)
+            )
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        self._render_basic_pptx(plan, destination)
+
+    @staticmethod
+    def _write_speaker_scripts(plan: PresentationPlan, destination: Path) -> None:
+        destination.write_text(
+            json.dumps(
+                {
+                    "presentation_plan_id": plan.id,
+                    "slides": [
+                        {
+                            "slide_id": slide.id,
+                            "order": slide.order,
+                            "title": slide.title,
+                            "speaker_script": slide.speaker_script,
+                        }
+                        for slide in plan.slides
+                    ],
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
     def prepare_external_pptx(
         self,
         *,
@@ -102,6 +130,8 @@ class PPTSkillAdapter:
     ) -> PPTArtifact:
         """Package and preview a PPTX produced by an external presentation service."""
         output_dir.mkdir(parents=True, exist_ok=True)
+        speaker_scripts_path = output_dir / "speaker_scripts.json"
+        self._write_speaker_scripts(plan, speaker_scripts_path)
         request_path = output_dir / "skill_request.json"
         request_path.write_text(
             json.dumps(
@@ -109,6 +139,7 @@ class PPTSkillAdapter:
                     "presentation_plan": plan.model_dump(mode="json"),
                     "provider": provider_name,
                     "provider_metadata": provider_metadata,
+                    "speaker_scripts_output": str(speaker_scripts_path),
                 },
                 ensure_ascii=False,
                 indent=2,

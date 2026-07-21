@@ -65,7 +65,12 @@ class PresentationBrandPalette:
 BRAND_PALETTE = PresentationBrandPalette()
 
 
-def nearest_brand_color(value: str | None, *, fallback: str) -> str | None:
+def nearest_brand_color(
+    value: str | None,
+    *,
+    fallback: str,
+    palette: PresentationBrandPalette = BRAND_PALETTE,
+) -> str | None:
     if value is None:
         return None
     try:
@@ -77,17 +82,24 @@ def nearest_brand_color(value: str | None, *, fallback: str) -> str | None:
         rgb = tuple(int(candidate[index : index + 2], 16) for index in (0, 2, 4))
         return sum((left - right) ** 2 for left, right in zip(source, rgb, strict=True))
 
-    return min(BRAND_PALETTE.allowed_colors, key=distance)
+    return min(palette.allowed_colors, key=distance)
 
 
-def apply_brand_palette(element: SlideElement) -> SlideElement:
+def apply_brand_palette(
+    element: SlideElement,
+    palette: PresentationBrandPalette = BRAND_PALETTE,
+) -> SlideElement:
     style = element.style
     normalized = style.model_copy(
         update={
-            "color": nearest_brand_color(style.color, fallback=BRAND_PALETTE.ink),
-            "fill": nearest_brand_color(style.fill, fallback=BRAND_PALETTE.paper),
+            "color": nearest_brand_color(
+                style.color, fallback=palette.ink, palette=palette
+            ),
+            "fill": nearest_brand_color(
+                style.fill, fallback=palette.paper, palette=palette
+            ),
             "line_color": nearest_brand_color(
-                style.line_color, fallback=BRAND_PALETTE.amber
+                style.line_color, fallback=palette.amber, palette=palette
             ),
         }
     )
