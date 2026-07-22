@@ -1,10 +1,10 @@
 import type {
   ClassroomPlanJob,
+  ClassroomNavigationResult,
   ClassroomSession,
   AutoClassroomStep,
   ContentGenerationJob,
   ControllerResult,
-  DirectedAgentTurn,
   LearningContent,
   LearningContentDiagnostics,
   LearningMode,
@@ -16,6 +16,7 @@ import type {
   ProcessedMaterials,
   PPTArtifact,
   PPTGenerationJob,
+  PPTThemeOption,
   PresentationPlanJob,
   PresentationPlan,
   StudentAgentType,
@@ -213,9 +214,37 @@ export const api = {
       body: JSON.stringify({ mode, student_agent_types: studentAgentTypes }),
     });
   },
+  generateQuestionBank(planId: string) {
+    return request(`/api/v1/presentation-plans/${planId}/question-bank`, { method: "POST" });
+  },
+  getQuestionBank(planId: string) {
+    return request<{ items: unknown[] }>(`/api/v1/presentation-plans/${planId}/question-bank`);
+  },
+  createLectureVariant(planId: string) {
+    return request<{ id: string }>(`/api/v1/classroom-plans/${planId}/lecture-variant`, {
+      method: "POST",
+    });
+  },
+  createSessionForPlan(
+    planId: string,
+    mode: LearningMode,
+    studentAgentTypes?: StudentAgentType[],
+  ) {
+    return request<ClassroomSession>(`/api/v1/classroom-plans/${planId}/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode, student_agent_types: studentAgentTypes }),
+    });
+  },
+  replaySession(sessionId: string) {
+    return request<ClassroomSession>(`/api/v1/classroom-sessions/${sessionId}/replay`, {
+      method: "POST",
+    });
+  },
   async createPresentationDeck(
     contentId: string,
     prepareQuestionBank: boolean,
+    themeId: string,
     onPlanProgress?: (job: PresentationPlanJob) => void,
     onPptProgress?: (job: PPTGenerationJob) => void,
   ) {
@@ -230,12 +259,19 @@ export const api = {
     );
     const job = await request<PPTGenerationJob>(
       `/api/v1/presentation-plans/${plan.id}/ppt-jobs`,
-      { method: "POST" },
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme_id: themeId }),
+      },
     );
     onPptProgress?.(job);
     const finished = await api.waitForPptJob(job.id, onPptProgress);
     const artifact = await request<PPTArtifact>(`/api/v1/ppt-jobs/${finished.id}/artifact`);
     return { plan, artifact };
+  },
+  getPptThemes() {
+    return request<PPTThemeOption[]>("/api/v1/ppt-themes");
   },
   getPptJob(jobId: string) {
     return request<PPTGenerationJob>(`/api/v1/ppt-jobs/${jobId}`);
@@ -271,15 +307,16 @@ export const api = {
       await wait(1500);
     }
   },
-  nextAgentTurn(sessionId: string) {
-    return request<DirectedAgentTurn>(`/api/v1/classroom-sessions/${sessionId}/agent-turns/next`, {
-      method: "POST",
-    });
-  },
   next(sessionId: string) {
     return request<ControllerResult>(`/api/v1/classroom-sessions/${sessionId}/next`, {
       method: "POST",
     });
+  },
+  navigate(sessionId: string, direction: "previous" | "next") {
+    return request<ClassroomNavigationResult>(
+      `/api/v1/classroom-sessions/${sessionId}/navigation/${direction}`,
+      { method: "POST" },
+    );
   },
   autoStep(sessionId: string) {
     return request<AutoClassroomStep>(`/api/v1/classroom-sessions/${sessionId}/auto-step`, {

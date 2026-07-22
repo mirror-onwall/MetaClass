@@ -8,6 +8,7 @@ from metaclass.infrastructure.providers import (
     FakeLLMProvider,
     LLMLearningProvider,
     build_llm_provider,
+    build_embedding_provider,
     build_tts_provider,
 )
 from metaclass.infrastructure.providers.fake import FakeLearningProvider
@@ -18,11 +19,21 @@ from metaclass.modules.classroom.repository import SqlAlchemyClassroomRepository
 from metaclass.modules.classroom.service import ClassroomService
 from metaclass.modules.content.repository import SqlAlchemyContentRepository
 from metaclass.modules.content.service import ContentService
+from metaclass.modules.presentation.codex_provider import (
+    CodexGenerationError,
+    CodexPPTProvider,
+)
 from metaclass.modules.materials.repository import SqlAlchemyMaterialRepository
 from metaclass.modules.materials.service import MaterialService
 from metaclass.modules.presentation.planner import PresentationPlanGenerator
+from metaclass.modules.presentation.providers import (
+    FallbackPPTProvider,
+    PresentonPPTProvider,
+    UnavailablePPTProvider,
+)
 from metaclass.modules.presentation.repository import SqlAlchemyPresentationRepository
 from metaclass.modules.presentation.service import PresentationService
+from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
 from metaclass.modules.question_bank.generator import QuestionBankGenerator
 from metaclass.modules.question_bank.repository import SqlAlchemyQuestionBankRepository
 from metaclass.modules.question_bank.service import QuestionBankService
@@ -107,11 +118,48 @@ def build_services(
         student_concurrency=settings.qa_student_concurrency,
         candidates_per_slide=settings.qa_candidates_per_slide,
     )
+    local_ppt_provider = PPTSkillAdapter()
+    ppt_provider = local_ppt_provider
+    configured_ppt_provider = settings.ppt_provider.strip().lower()
+    presenton_provider = None
+    if settings.presenton_api_key:
+        presenton_provider = PresentonPPTProvider(
+            base_url=settings.presenton_base_url,
+            api_key=settings.presenton_api_key,
+            adapter=local_ppt_provider,
+            timeout_seconds=settings.presenton_timeout_seconds,
+            template=settings.presenton_template,
+        )
+    if not force_fake_llm and configured_ppt_provider == "presenton":
+        if presenton_provider is None:
+            raise ValueError("PRESENTON_API_KEY is required when METACLASS_PPT_PROVIDER=presenton")
+        ppt_provider = presenton_provider
+    elif not force_fake_llm and configured_ppt_provider == "codex":
+        codex_provider = CodexPPTProvider(
+            adapter=local_ppt_provider,
+            api_key=settings.codex_api_key,
+            model=settings.codex_model,
+            timeout_seconds=settings.codex_timeout_seconds,
+            repair_attempts=settings.codex_repair_attempts,
+        )
+        fallback_provider = presenton_provider or UnavailablePPTProvider(
+            "Presenton fallback is unavailable because PRESENTON_API_KEY is not configured"
+        )
+        ppt_provider = FallbackPPTProvider(
+            primary=codex_provider,
+            fallback=fallback_provider,
+            primary_name="codex",
+            fallback_name="presenton",
+            fallback_exceptions=(CodexGenerationError,),
+        )
+    elif configured_ppt_provider != "local" and not force_fake_llm:
+        raise ValueError(f"Unsupported PPT provider: {settings.ppt_provider}")
     presentations = PresentationService(
         data_dir,
         presentation_repository,
         contents,
         planner=PresentationPlanGenerator(llm),
+        ppt_adapter=ppt_provider,
         question_bank_generator=question_bank_generator,
         question_bank_repository=question_bank_repository,
     )
@@ -120,6 +168,13 @@ def build_services(
         contents,
         presentations,
         question_bank_generator,
+        build_embedding_provider(
+            provider=settings.embedding_provider,
+            base_url=settings.embedding_base_url,
+            api_key=settings.embedding_api_key,
+            model=settings.embedding_model,
+            dimension=settings.embedding_dimension,
+        ),
     )
     classrooms = ClassroomService(
         classroom_repository,

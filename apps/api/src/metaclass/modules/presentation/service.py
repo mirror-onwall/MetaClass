@@ -7,6 +7,8 @@ from fastapi import HTTPException
 from metaclass.core.schemas import utc_now
 from metaclass.modules.content.service import ContentService
 from metaclass.modules.presentation.planner import PresentationPlanGenerator
+from metaclass.modules.presentation.diagnostics import diagnose_presentation_plan
+from metaclass.modules.presentation.providers import PPTProvider
 from metaclass.modules.presentation.repository import PresentationRepository
 from metaclass.modules.presentation.schemas import (
     PPTArtifact,
@@ -16,6 +18,11 @@ from metaclass.modules.presentation.schemas import (
     PresentationPlanJob,
     PresentationPlanJobStatus,
     PresentationPlan,
+    PresentationPlanDiagnosis,
+)
+from metaclass.modules.presentation.themes import (
+    get_presentation_theme,
+    list_presentation_themes,
 )
 from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
 from metaclass.modules.question_bank.generator import QuestionBankGenerator
@@ -29,7 +36,7 @@ class PresentationService:
         repository: PresentationRepository,
         contents: ContentService,
         planner: PresentationPlanGenerator | None = None,
-        ppt_adapter: PPTSkillAdapter | None = None,
+        ppt_adapter: PPTProvider | None = None,
         question_bank_generator: QuestionBankGenerator | None = None,
         question_bank_repository: QuestionBankRepository | None = None,
     ) -> None:
@@ -166,6 +173,18 @@ class PresentationService:
             raise HTTPException(404, "Presentation plan not found")
         return plan
 
+    def diagnose_plan(self, plan_id: str) -> PresentationPlanDiagnosis:
+        plan = self.get_plan(plan_id)
+        content = self.contents.get(plan.content_id)
+        llm = self.planner.llm
+        return diagnose_presentation_plan(
+            plan,
+            content,
+            llm_configured=llm is not None,
+            provider=getattr(llm, "name", "none") if llm else "none",
+            model=getattr(llm, "model", None) if llm else None,
+        )
+
     def get_plan_for_content(self, content_id: str) -> PresentationPlan:
         self.contents.get(content_id)
         plan = self.repository.get_plan_for_content(content_id)
@@ -173,11 +192,24 @@ class PresentationService:
             raise HTTPException(404, "Presentation plan not found")
         return plan
 
-    def create_ppt_job(self, presentation_plan_id: str) -> PPTGenerationJob:
+    def list_ppt_themes(self):
+        return list_presentation_themes()
+
+    def create_ppt_job(
+        self,
+        presentation_plan_id: str,
+        *,
+        theme_id: str | None = None,
+    ) -> PPTGenerationJob:
         plan = self.get_plan(presentation_plan_id)
+        try:
+            theme = get_presentation_theme(theme_id)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
         job = PPTGenerationJob(
             id=f"ppt_job_{uuid4().hex[:12]}",
             presentation_plan_id=plan.id,
+            theme_id=theme.id,
         )
         self.repository.save_job(job)
         return job
@@ -185,6 +217,7 @@ class PresentationService:
     def run_ppt_job(self, job_id: str) -> None:
         job = self.get_ppt_job(job_id)
         plan = self.get_plan(job.presentation_plan_id)
+        theme = get_presentation_theme(job.theme_id)
         job.status = PPTGenerationStatus.RUNNING
         job.progress = 0.2
         job.updated_at = utc_now()
@@ -194,6 +227,7 @@ class PresentationService:
                 plan=plan,
                 job_id=job.id,
                 output_dir=self.data_dir / "generated" / "presentations" / job.id,
+                theme=theme,
             )
             self.repository.save_artifact(artifact)
             job.artifact_id = artifact.id

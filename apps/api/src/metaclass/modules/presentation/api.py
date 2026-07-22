@@ -2,10 +2,13 @@ from fastapi import APIRouter, BackgroundTasks
 from fastapi.responses import FileResponse
 
 from metaclass.modules.presentation.schemas import (
+    CreatePPTJobRequest,
     PPTArtifact,
     PPTGenerationJob,
     PPTSlideImage,
+    PPTThemeOption,
     PresentationPlan,
+    PresentationPlanDiagnosis,
     PresentationPlanJob,
 )
 from metaclass.modules.presentation.service import PresentationService
@@ -63,17 +66,33 @@ def create_router(presentations: PresentationService) -> APIRouter:
     async def get_presentation_plan(plan_id: str) -> PresentationPlan:
         return presentations.get_plan(plan_id)
 
+    @router.get(
+        "/presentation-plans/{plan_id}/diagnosis",
+        response_model=PresentationPlanDiagnosis,
+    )
+    async def diagnose_presentation_plan(plan_id: str) -> PresentationPlanDiagnosis:
+        return presentations.diagnose_plan(plan_id)
+
     @router.post(
         "/presentation-plans/{plan_id}/ppt-jobs",
         response_model=PPTGenerationJob,
         status_code=202,
     )
     async def create_ppt_job(
-        plan_id: str, background_tasks: BackgroundTasks
+        plan_id: str,
+        background_tasks: BackgroundTasks,
+        payload: CreatePPTJobRequest | None = None,
     ) -> PPTGenerationJob:
-        job = presentations.create_ppt_job(plan_id)
+        job = presentations.create_ppt_job(
+            plan_id,
+            theme_id=payload.theme_id if payload else None,
+        )
         background_tasks.add_task(presentations.run_ppt_job, job.id)
         return job
+
+    @router.get("/ppt-themes", response_model=list[PPTThemeOption])
+    async def list_ppt_themes() -> list[PPTThemeOption]:
+        return presentations.list_ppt_themes()
 
     @router.get("/ppt-jobs/{job_id}", response_model=PPTGenerationJob)
     async def get_ppt_job(job_id: str) -> PPTGenerationJob:

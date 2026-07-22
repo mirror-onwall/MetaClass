@@ -7,6 +7,9 @@ from pydantic import Field, model_validator
 from metaclass.core.schemas import SchemaModel, utc_now
 
 
+DEFAULT_PPT_THEME_ID = "academic_blue"
+
+
 class PPTGenerationStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
@@ -76,6 +79,8 @@ class SlidePlan(SchemaModel):
     suggested_visual: str = Field(min_length=1)
     # Compatibility label only. `elements` defines the actual free-form layout.
     layout: str = "freeform"
+    # Optional registry identity used for deck-level variety and diagnostics.
+    layout_id: str | None = None
     visual_payload: list[str] = Field(default_factory=list)
     background: str = Field(default="F7F9F7", pattern=r"^[0-9A-Fa-f]{6}$")
     elements: list[SlideElement] = Field(default_factory=list, max_length=40)
@@ -86,8 +91,38 @@ class PresentationPlan(SchemaModel):
     content_id: str = Field(min_length=1)
     title: str = Field(min_length=1)
     slides: list[SlidePlan] = Field(min_length=1)
+    generation_source: Literal["llm", "fallback", "unknown"] = "unknown"
+    generation_provider: str | None = None
+    generation_model: str | None = None
+    fallback_reason: str | None = None
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
+
+
+class SlideScriptDiagnosis(SchemaModel):
+    slide_id: str
+    title: str
+    source_section_id: str | None = None
+    source_field: Literal["teaching_script", "teaching_narrative", "summary", "title"] | None = None
+    exact_learning_content_copy: bool = False
+    fallback_markers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class PresentationPlanDiagnosis(SchemaModel):
+    presentation_plan_id: str
+    content_id: str
+    likely_fallback: bool
+    fallback_confidence: float = Field(ge=0, le=1)
+    llm_configured: bool
+    provider: str
+    model: str | None = None
+    exact_historical_reason: str | None = None
+    direct_script_count: int = Field(ge=0)
+    body_slide_count: int = Field(ge=0)
+    one_body_slide_per_section: bool
+    reasons: list[str] = Field(default_factory=list)
+    slides: list[SlideScriptDiagnosis] = Field(default_factory=list)
 
 
 class PresentationPlanJob(SchemaModel):
@@ -104,9 +139,28 @@ class PresentationPlanJob(SchemaModel):
     updated_at: datetime = Field(default_factory=utc_now)
 
 
+class PPTThemeOption(SchemaModel):
+    id: str = Field(pattern=r"^[a-z0-9_]+$")
+    name: str = Field(min_length=1)
+    description: str = Field(min_length=1)
+    style_direction: str = Field(min_length=1)
+    colors: dict[str, str]
+
+
+class CreatePPTJobRequest(SchemaModel):
+    theme_id: str = Field(
+        default=DEFAULT_PPT_THEME_ID,
+        pattern=r"^[a-z0-9_]+$",
+    )
+
+
 class PPTGenerationJob(SchemaModel):
     id: str = Field(min_length=1)
     presentation_plan_id: str = Field(min_length=1)
+    theme_id: str = Field(
+        default=DEFAULT_PPT_THEME_ID,
+        pattern=r"^[a-z0-9_]+$",
+    )
     status: PPTGenerationStatus = PPTGenerationStatus.QUEUED
     progress: float = Field(default=0, ge=0, le=1)
     artifact_id: str | None = None

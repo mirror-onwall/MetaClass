@@ -13,6 +13,20 @@ from pydantic import Field, ValidationError
 from metaclass.core.schemas import SchemaModel
 from metaclass.infrastructure.providers.llm import LLMMessage, LLMProvider
 from metaclass.modules.content.schemas import LearningContent
+from metaclass.modules.presentation.layout_registry import (
+    build_fallback_elements,
+    registry_prompt_payload,
+    select_fallback_layout,
+    split_points_for_layout,
+)
+from metaclass.modules.presentation.layout_constraints import (
+    ACADEMIC_LAYOUT_GUIDANCE,
+    DEFAULT_LAYOUT_CONSTRAINTS,
+)
+from metaclass.modules.presentation.brand_palette import (
+    BRAND_PALETTE,
+    apply_brand_palette,
+)
 from metaclass.modules.presentation.schemas import PresentationPlan, SlideElement, SlidePlan
 
 
@@ -68,59 +82,42 @@ class PresentationPlanGenerator:
                 "planning_scenes",
                 "Creating fallback slide layouts",
             )
-            return self._add_fallback_scenes(fallback)
-        try:
-            raw = self.llm.complete_json(self._build_content_messages(content), temperature=0.2)
-            payload = json.loads(raw)
-            draft = PresentationPlanDraft.model_validate(payload)
-            plan = self._hydrate_draft(content, draft)
-        except (
-            TimeoutError,
-            json.JSONDecodeError,
-            ValidationError,
-            RuntimeError,
-            ValueError,
-        ) as exc:
-            logger.warning("PPT content planning fell back: %s", exc)
-            plan = fallback
+            return self._add_fallback_scenes(
+                fallback.model_copy(
+                    update={
+                        "generation_source": "fallback",
+                        "generation_provider": "none",
+                        "fallback_reason": "No LLM provider configured",
+                    }
+                )
+            )
+        plan = self._generate_content_batches(content, fallback, progress_callback)
         self._report_progress(progress_callback, 35, "planning_scenes", "Designing slide layouts")
         return self._generate_scenes(content, plan, progress_callback)
 
-    def _generate_scenes(
+    def _generate_content_batches(
         self,
         content: LearningContent,
-        plan: PresentationPlan,
+        fallback: PresentationPlan,
         progress_callback: ProgressCallback | None = None,
     ) -> PresentationPlan:
-        sections = {section.id: section for section in content.sections}
-        slides = []
-        for index, slide in enumerate(plan.slides):
-            source_sections = [sections[section_id] for section_id in slide.source_section_ids]
+        batches = self._section_batches(content.sections)
+        body_slides: list[SlidePlan] = []
+        failures: list[str] = []
+        for batch_index, sections in enumerate(batches, start=1):
+            batch_content = content.model_copy(update={"sections": sections})
             try:
                 raw = self.llm.complete_json(
-                    self._build_scene_messages(
+                    self._build_content_messages(
                         content,
-                        source_sections,
-                        slide,
-                        index,
-                        len(plan.slides),
+                        sections=sections,
+                        batch_index=batch_index,
+                        batch_count=len(batches),
                     ),
-                    temperature=0.35,
+                    temperature=0.2,
                 )
-                scene = self._normalize_scene(
-                    slide,
-                    SlideSceneDraft.model_validate(json.loads(raw)),
-                    index,
-                )
-                slides.append(
-                    slide.model_copy(
-                        update={
-                            "layout": "freeform",
-                            "background": scene.background,
-                            "elements": scene.elements,
-                        }
-                    )
-                )
+                draft = PresentationPlanDraft.model_validate(json.loads(raw))
+                body_slides.extend(self._hydrate_draft(batch_content, draft).slides)
             except (
                 TimeoutError,
                 json.JSONDecodeError,
@@ -128,10 +125,118 @@ class PresentationPlanGenerator:
                 RuntimeError,
                 ValueError,
             ) as exc:
-                logger.warning("PPT scene %s fell back: %s", slide.id, exc)
-                slides.append(self._with_fallback_scene(slide, index))
-            self._report_scene_progress(progress_callback, index + 1, len(plan.slides))
+                reason = f"batch {batch_index}/{len(batches)}: {type(exc).__name__}: {exc}"
+                logger.warning("PPT content planning batch fell back: %s", reason)
+                failures.append(reason)
+                body_slides.extend(self._fallback_plan(batch_content).slides[1:-1])
+            self._report_progress(
+                progress_callback,
+                10 + int(25 * batch_index / len(batches)),
+                "planning_content",
+                f"Planning slide content batch {batch_index}/{len(batches)}",
+            )
+
+        merged = [fallback.slides[0], *body_slides, fallback.slides[-1]]
+        slides = [
+            slide.model_copy(update={"id": f"slide_{index:03d}", "order": index})
+            for index, slide in enumerate(merged, start=1)
+        ]
+        return PresentationPlan(
+            id=f"presentation_plan_{uuid4().hex[:12]}",
+            content_id=content.id,
+            title=content.title,
+            slides=slides,
+            generation_source="fallback" if failures else "llm",
+            generation_provider=getattr(self.llm, "name", "unknown"),
+            generation_model=getattr(self.llm, "model", None),
+            fallback_reason="; ".join(failures) or None,
+        )
+
+    @staticmethod
+    def _section_batches(sections: list) -> list[list]:
+        """Split contiguous sections into balanced batches of three to five."""
+        if len(sections) <= 5:
+            return [sections]
+        batch_count = math.ceil(len(sections) / 5)
+        base_size, remainder = divmod(len(sections), batch_count)
+        sizes = [base_size + (1 if index < remainder else 0) for index in range(batch_count)]
+        batches = []
+        cursor = 0
+        for size in sizes:
+            batches.append(sections[cursor : cursor + size])
+            cursor += size
+        return batches
+
+    def _generate_scenes(
+        self,
+        content: LearningContent,
+        plan: PresentationPlan,
+        progress_callback: ProgressCallback | None = None,
+    ) -> PresentationPlan:
+        # Skill-style stable path: the LLM owns the teaching content, while
+        # executable, tested layout skeletons own geometry.  Free-coordinate
+        # scene generation remains available through _generate_scene_with_repair
+        # for future exceptional/exhibit slides, but is no longer the default.
+        expanded: list[SlidePlan] = []
+        for index, slide in enumerate(plan.slides):
+            spec = select_fallback_layout(slide, index)
+            source_points = slide.key_points or slide.visual_payload
+            chunks = [source_points] if index == 0 else split_points_for_layout(source_points, spec)
+            for part, chunk in enumerate(chunks, start=1):
+                continuation = part > 1
+                expanded.append(
+                    slide.model_copy(
+                        update={
+                            "id": slide.id if not continuation else f"{slide.id}_part_{part}",
+                            "title": slide.title if not continuation else f"{slide.title}（续）",
+                            "key_points": chunk,
+                            "visual_payload": chunk or slide.visual_payload,
+                            "speaker_script": (
+                                slide.speaker_script
+                                if not continuation
+                                else f"继续讲解本页内容：{'；'.join(chunk)}"
+                            ),
+                        }
+                    )
+                )
+
+        slides = []
+        for index, slide in enumerate(expanded):
+            slide = slide.model_copy(update={"order": index + 1})
+            slides.append(self._with_fallback_scene(slide, index))
+            self._report_scene_progress(progress_callback, index + 1, len(expanded))
         return plan.model_copy(update={"slides": slides})
+
+    def _generate_scene_with_repair(
+        self, slide: SlidePlan, messages: list[LLMMessage], index: int
+    ) -> SlideSceneDraft:
+        first_error: Exception | None = None
+        for attempt in range(2):
+            current_messages = messages
+            if attempt and first_error:
+                current_messages = [
+                    *messages,
+                    LLMMessage(
+                        role="user",
+                        content=(
+                            "上一版画布未通过校验。只重新输出完整 scene JSON。"
+                            f"失败原因：{first_error}。请保持内容不变，调整坐标、间距和文本框高度；"
+                            "正文对象不得重叠，优先减少碎片并扩大安全间距。"
+                        ),
+                    ),
+                ]
+            try:
+                raw = self.llm.complete_json(current_messages, temperature=0.3 if attempt else 0.35)
+                return self._normalize_scene(
+                    slide,
+                    SlideSceneDraft.model_validate(json.loads(raw)),
+                    index,
+                )
+            except (json.JSONDecodeError, ValidationError, RuntimeError, ValueError) as exc:
+                first_error = exc
+                if attempt:
+                    raise
+        raise RuntimeError("scene generation failed")
 
     @staticmethod
     def _report_progress(
@@ -350,7 +455,14 @@ class PresentationPlanGenerator:
             slides=slides,
         )
 
-    def _build_content_messages(self, content: LearningContent) -> list[LLMMessage]:
+    def _build_content_messages(
+        self,
+        content: LearningContent,
+        *,
+        sections: list | None = None,
+        batch_index: int | None = None,
+        batch_count: int | None = None,
+    ) -> list[LLMMessage]:
         # Read on every request so prompt edits take effect without code changes.
         system = (
             self.skill_path.read_text(encoding="utf-8")
@@ -369,13 +481,21 @@ suggested_visual、visual_payload；layout 固定写 freeform。不要输出 bac
   不能只是重复标题；source_section_ids 只填写最后一个 section 的 id。
 - 最终输出顺序必须是：纯封面、全部正文页、课程总结。
 - 不要生成目录页。
+
+内容保真是最高优先级：只允许在 LearningContent 基础上扩充，不允许压缩、删减或用概括性表述替代已有内容。
+- LearningContent 是必须完整覆盖的内容下限，不是可任意摘要的大纲。每个 section 中已有的核心定义、机制、步骤、
+  条件、公式、变量、案例、结论、误区辨析和重要 source_excerpts，都必须出现在对应页面文字或 speaker_script 中。
+- 一个 section 内容较多时必须拆成多张连续 slide，不能为了减少页数缩短讲解、合并知识点或只保留标题与摘要。
+- 禁止把不同 section 合并成一张 slide。
+- 可以补充可靠的解释、例子、过渡、前置知识和应用，但补充内容不能取代或挤掉 LearningContent 已有内容。
+- 课程总结可以概括前文，但正文页不得以“总结”“概览”“知识单元介绍”等方式跳过具体教学内容。
 不要按 section 数量机械决定页数。先把输入拆成连续的教学功能单元，再决定 slide：
 1. 概念页：一个核心概念、必要定义、与相邻概念的关系；
-2. 例子页：一个完整情境及其如何解释概念；
+2. 例子页：一个完整情境及其如何解释概念（例子能和其他主内容放在一页时可以放在同一页）；
 3. 推导页：公式含义、变量、步骤或因果过程，复杂推导可拆成连续多页；
 4. 练习页：问题、选项/任务、预期答案与讲评依据；
 5. 总结页：综合前面结论、比较、迁移或反思，不得只是目录复述。
-同一 section 可以贡献多种功能页，也可以跨相邻 section 合并一个教学功能单元；页数不设上下限。
+同一 section 可以贡献多种功能页；不得跨 section 合并，页数不设上限。
 每个 section 至少被一页覆盖，slide 顺序必须遵循 section 顺序，不能回退，也不要为增加页数重复内容。
 把 LearningContent 当作课程大纲、结构边界和已有材料，而不是内容上限。逐个 section 先判断内容充分度：
 - 若定义、机制、步骤、变量、例子和条件已经足够，忠实使用并合理拆页；
@@ -384,7 +504,7 @@ suggested_visual、visual_payload；layout 固定写 freeform。不要输出 bac
 - 扩充必须服务于现有大纲，不能另起主题；可以使用公认基础知识，但不得虚构数据、实验、论文、人物或特定事实，无法可靠确定的内容不要补。
 标题和 key_points 必须直接陈述要教给学生的知识或任务，禁止“This page introduces”、
 “本页介绍”“本节将讲”“Overview of”“Summary of”之类描述页面行为的元话语。
-页面上必须出现实质性内容。例如不能只写“本页讲解 K-means 的算法”，而应写清初始化中心、按最近中心分配样本、重算簇中心、迭代至稳定等实际过程。
+页面上必须出现实质性内容。例如不能只写“本页讲解 K-means 的算法”，而应写清初始化中心、按最近中心分配样本、重算簇中心、迭代至稳定等实际过程。又例如，不能只写对ndbi的分析，而不写具体的分析是什么。又例如，不能只写svm的意义，而不写具体意义是什么。
 把定义、关键公式、算法步骤、对比条件和案例结论放在页面；把完整推理、补充例子、自然过渡放进 speaker_script。页面不能像讲稿一样堆满段落，也不能只剩空泛标签。
 speaker_script 必须像真实老师连续讲课：承接上下文、解释本页核心、讲清原因或步骤、给出恰当例子或辨析、自然引向后续；不要逐字朗读 key_points，也不要反复使用机械的“这一页我们讲……”。讲稿中不要输出“本页要点：……”这种格式。
 讲稿是课堂现场口语，不是教材章节摘要。不要用“本章”“本单元”“本文”“本节”等书面化自指开头；
@@ -394,6 +514,17 @@ LearningContent、section、source_refs、source_excerpts、selected evidence、
 优先使用 source_excerpts、source_refs、公式、案例和题目中的具体证据；不要把不相干内容压进同一页。
 """
         )
+        selected_sections = sections or content.sections
+        if batch_index is not None and batch_count is not None:
+            system += f"""
+
+PPT_CONTENT_BATCH
+这是正文内容生成的第 {batch_index}/{batch_count} 批。本批只处理输入 sections 中的连续 section：
+- 只输出本批正文 slide，不生成封面、目录或课程总结。
+- 必须覆盖本批每一个 section，不能引用本批之外的 section id。
+- 保持 course_outline 中的全课顺序和上下文，但不要替其他批次生成页面。
+- 内容丰富时继续拆页，不得压缩。
+"""
         compact_sections = [
             {
                 "id": section.id,
@@ -499,8 +630,17 @@ LearningContent、section、source_refs、source_excerpts、selected evidence、
                 "page_refs": [item.model_dump(mode="json") for item in section.page_refs],
                 "source_refs": [self._source_ref_payload(ref) for ref in section.source_refs[:20]],
             }
-            for section in content.sections
+            for section in selected_sections
         ]
+        selected_node_ids = {
+            node_id for section in selected_sections for node_id in section.tree_node_ids
+        }
+        selected_unit_ids = {
+            unit_id
+            for node in (content.knowledge_tree.nodes if content.knowledge_tree else [])
+            if node.id in selected_node_ids
+            for unit_id in node.knowledge_unit_ids
+        }
         user = {
             "content_id": content.id,
             "title": content.title,
@@ -545,11 +685,19 @@ LearningContent、section、source_refs、source_excerpts、selected evidence、
                         relation.model_dump(mode="json") for relation in item.relations[:6]
                     ],
                 }
-                for item in content.knowledge_units[:20]
+                for item in content.knowledge_units
+                if item.id in selected_unit_ids
             ],
-            "knowledge_tree": (
-                content.knowledge_tree.model_dump(mode="json") if content.knowledge_tree else None
+            "course_outline": [
+                {"id": section.id, "title": section.title, "role": section.role}
+                for section in content.sections
+            ],
+            "batch": (
+                {"index": batch_index, "count": batch_count}
+                if batch_index is not None and batch_count is not None
+                else None
             ),
+            "knowledge_tree": None,
             "generation_guidance": content.generation_guidance,
             "quality": content.quality,
             "sections": compact_sections,
@@ -601,6 +749,10 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                 "objectives": content.objectives[:8],
                 "slide_index": index + 1,
                 "slide_count": slide_count,
+                "layout_registry": registry_prompt_payload(),
+                "layout_constraints": DEFAULT_LAYOUT_CONSTRAINTS.prompt_payload(),
+                "academic_layout_guidance": ACADEMIC_LAYOUT_GUIDANCE,
+                "brand_palette": BRAND_PALETTE.prompt_payload(),
             },
             "slide": {
                 "title": slide.title,
@@ -702,25 +854,35 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
         """Repair common LLM layout mistakes before python-pptx renders them."""
         elements: list[SlideElement] = []
         has_visual = False
-        for element in scene.elements:
+        for source_element in scene.elements:
+            element = apply_brand_palette(source_element)
             updates = {}
             if element.type == "text":
                 text = self._clean_text_placeholders(element.text or "\n".join(element.items))
                 style = element.style
-                font_size = style.font_size
-                min_h = self._estimate_text_height(
+                is_title = self._looks_like_title(text, slide.title)
+                fitted_size = self._fit_font_size(
                     text=text,
                     width=element.w,
-                    font_size=font_size,
-                    is_title=self._looks_like_title(text, slide.title),
+                    height=element.h,
+                    font_size=style.font_size,
+                    min_font_size=(
+                        DEFAULT_LAYOUT_CONSTRAINTS.title_min_font_size
+                        if is_title
+                        else DEFAULT_LAYOUT_CONSTRAINTS.body_min_font_size
+                    ),
+                    is_title=is_title,
                 )
-                y = element.y
-                h = max(element.h, min_h)
-                if y + h > 0.96:
-                    y = max(0.04, 0.96 - h)
-                if y + h > 1:
-                    h = max(0.06, 1 - y)
-                updates.update({"text": text, "y": y, "h": h})
+                if fitted_size is None:
+                    raise ValueError(
+                        f"text does not fit its box at minimum font size: {text[:60]}"
+                    )
+                updates.update(
+                    {
+                        "text": text,
+                        "style": style.model_copy(update={"font_size": fitted_size}),
+                    }
+                )
             else:
                 has_visual = True
 
@@ -734,21 +896,14 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                 )
 
         if not has_visual:
-            return SlideSceneDraft.model_validate(
-                {
-                    "background": scene.background,
-                    "elements": self._with_fallback_scene(slide, index).elements,
-                }
-            )
+            raise ValueError("scene contains no non-text visual element")
+        self._validate_scene_safe_zones(
+            elements, slide.title, allow_centered_title=index == 0
+        )
         if self._has_unsafe_scene_collisions(elements, slide.title):
-            logger.warning("Replaced overlapping PPT scene on %s with safe layout", slide.id)
-            return SlideSceneDraft.model_validate(
-                {
-                    "background": scene.background,
-                    "elements": self._with_fallback_scene(slide, index).elements,
-                }
-            )
-        return SlideSceneDraft(background=scene.background, elements=elements)
+            raise ValueError("scene contains overlapping content objects after text fitting")
+        background = BRAND_PALETTE.board if index == 0 else BRAND_PALETTE.paper
+        return SlideSceneDraft(background=background, elements=elements)
 
     @classmethod
     def _has_unsafe_scene_collisions(
@@ -761,10 +916,6 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
             element
             for element in elements
             if element.type in {"text", "image", "table", "chart"}
-            and not (
-                element.type == "text"
-                and cls._looks_like_title(element.text or "\n".join(element.items), slide_title)
-            )
         ]
         for index, left in enumerate(content):
             for right in content[index + 1 :]:
@@ -777,6 +928,29 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                 if smaller_area and overlap_area / smaller_area >= 0.08:
                     return True
         return False
+
+    @classmethod
+    def _validate_scene_safe_zones(
+        cls,
+        elements: list[SlideElement],
+        slide_title: str,
+        *,
+        allow_centered_title: bool = False,
+    ) -> None:
+        rules = DEFAULT_LAYOUT_CONSTRAINTS
+        for element in elements:
+            if element.type not in {"text", "image", "table", "chart"}:
+                continue
+            text = element.text or "\n".join(element.items)
+            is_title = element.type == "text" and cls._looks_like_title(text, slide_title)
+            if element.x < rules.canvas_margin_x or element.x + element.w > 1 - rules.canvas_margin_x:
+                raise ValueError("content element violates horizontal canvas margin")
+            if is_title:
+                title_bottom = 0.65 if allow_centered_title else rules.title_bottom
+                if element.y < rules.title_top or element.y + element.h > title_bottom:
+                    raise ValueError("title element violates title safe zone")
+            elif element.y < rules.content_top or element.y + element.h > rules.content_bottom:
+                raise ValueError("content element violates body safe zone")
 
     @staticmethod
     def _clean_text_placeholders(text: str) -> str:
@@ -810,160 +984,48 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
         min_norm = 0.11 if is_title else 0.075
         return min(0.42, max(min_norm, inches / 7.5))
 
-    def _with_fallback_scene(self, slide: SlidePlan, index: int) -> SlidePlan:
-        """Create a safe but varied free-form scene when one LLM scene is invalid."""
-        palettes = [
-            ("F7F3EA", "6B3F2A", "D97757", "FFFDFC"),
-            ("EEF5F2", "173F3A", "45A08A", "FFFFFF"),
-            ("F2F1F8", "302B63", "7165A8", "FFFFFF"),
-        ]
-        background, ink, accent, card = palettes[index % len(palettes)]
-        points = (slide.key_points or slide.visual_payload or [slide.title])[:4]
-        elements: list[SlideElement] = [
-            SlideElement(
-                type="text",
-                x=0.07,
-                y=0.07,
-                w=0.82,
-                h=0.12,
-                z=5,
-                text=slide.title,
-                style={"font_size": 34, "bold": True, "color": ink},
+    @classmethod
+    def _fit_font_size(
+        cls,
+        *,
+        text: str,
+        width: float,
+        height: float,
+        font_size: float,
+        min_font_size: float,
+        is_title: bool,
+    ) -> float | None:
+        size = max(font_size, min_font_size)
+        while size >= min_font_size:
+            required = cls._estimate_text_height(
+                text=text,
+                width=width,
+                font_size=size,
+                is_title=is_title,
             )
-        ]
+            if required <= height + 0.005:
+                return round(size, 1)
+            size -= 1
+        return None
 
-        pattern = index % 3
-        if pattern == 0:
-            elements.append(
-                SlideElement(
-                    type="shape",
-                    x=0.07,
-                    y=0.26,
-                    w=0.38,
-                    h=0.57,
-                    z=0,
-                    shape="rounded_rectangle",
-                    style={"fill": accent, "line_color": accent},
-                )
-            )
-            elements.append(
-                SlideElement(
-                    type="text",
-                    x=0.105,
-                    y=0.32,
-                    w=0.31,
-                    h=0.4,
-                    z=2,
-                    text=points[0],
-                    style={"font_size": 25, "bold": True, "color": "FFFFFF", "valign": "middle"},
-                )
-            )
-            for point_index, point in enumerate(points[1:4]):
-                y = 0.26 + point_index * 0.19
-                elements.extend(
-                    [
-                        SlideElement(
-                            type="shape",
-                            x=0.51,
-                            y=y,
-                            w=0.41,
-                            h=0.15,
-                            z=0,
-                            shape="rounded_rectangle",
-                            style={"fill": card, "line_color": accent},
-                        ),
-                        SlideElement(
-                            type="text",
-                            x=0.55,
-                            y=y + 0.035,
-                            w=0.33,
-                            h=0.08,
-                            z=2,
-                            text=point,
-                            style={"font_size": 17, "color": ink, "valign": "middle"},
-                        ),
-                    ]
-                )
-        elif pattern == 1:
-            for point_index, point in enumerate(points):
-                row, column = divmod(point_index, 2)
-                x, y = 0.08 + column * 0.44, 0.27 + row * 0.27
-                elements.extend(
-                    [
-                        SlideElement(
-                            type="shape",
-                            x=x,
-                            y=y,
-                            w=0.39,
-                            h=0.21,
-                            z=0,
-                            shape="rounded_rectangle",
-                            style={"fill": card, "line_color": accent, "line_width": 2},
-                        ),
-                        SlideElement(
-                            type="text",
-                            x=x + 0.035,
-                            y=y + 0.045,
-                            w=0.32,
-                            h=0.12,
-                            z=2,
-                            text=point,
-                            style={"font_size": 18, "bold": point_index == 0, "color": ink},
-                        ),
-                    ]
-                )
-        else:
-            count = max(1, len(points))
-            node_w = min(0.19, 0.76 / count)
-            gap = (0.82 - node_w * count) / max(1, count - 1) if count > 1 else 0
-            for point_index, point in enumerate(points):
-                x = 0.09 + point_index * (node_w + gap)
-                if point_index < count - 1:
-                    elements.append(
-                        SlideElement(
-                            type="line",
-                            x=x + node_w,
-                            y=0.48,
-                            w=gap,
-                            h=0,
-                            z=0,
-                            style={"line_color": accent, "line_width": 3},
-                        )
-                    )
-                elements.extend(
-                    [
-                        SlideElement(
-                            type="shape",
-                            x=x,
-                            y=0.36,
-                            w=node_w,
-                            h=0.25,
-                            z=1,
-                            shape="rounded_rectangle",
-                            style={"fill": card, "line_color": accent, "line_width": 2},
-                        ),
-                        SlideElement(
-                            type="text",
-                            x=x + 0.02,
-                            y=0.405,
-                            w=node_w - 0.04,
-                            h=0.15,
-                            z=2,
-                            text=point,
-                            style={
-                                "font_size": 16,
-                                "bold": True,
-                                "color": ink,
-                                "align": "center",
-                                "valign": "middle",
-                            },
-                        ),
-                    ]
-                )
+    def _with_fallback_scene(self, slide: SlidePlan, index: int) -> SlidePlan:
+        """Create a safe constrained scene selected from the layout registry."""
+        background = BRAND_PALETTE.board if index == 0 else BRAND_PALETTE.paper
+        ink = BRAND_PALETTE.chalk if index == 0 else BRAND_PALETTE.ink
+        # A single mid-blue accent keeps hierarchy consistent across the deck.
+        accent = BRAND_PALETTE.chalk if index == 0 else BRAND_PALETTE.mint
+        card = BRAND_PALETTE.wall if index == 0 else BRAND_PALETTE.chalk
+        spec = select_fallback_layout(slide, index)
+        elements = build_fallback_elements(slide, spec, (background, ink, accent, card))
         return slide.model_copy(
             update={
                 "layout": "freeform",
+                "layout_id": spec.id,
                 "background": background,
                 "elements": elements,
             }
         )
+
+    @staticmethod
+    def _fallback_layout_id(slide: SlidePlan) -> str:
+        return slide.layout_id or "freeform"

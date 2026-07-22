@@ -13,12 +13,18 @@ from pptx.chart.data import ChartData
 from pptx.dml.color import RGBColor
 from pptx.enum.chart import XL_CHART_TYPE
 from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
-from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
+from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
 from pptx.oxml.ns import qn
 from pptx.oxml.xmlchemy import OxmlElement
 from pptx.util import Inches, Pt
 
 from metaclass.modules.presentation.schemas import PPTArtifact, PPTSlideImage, PresentationPlan
+from metaclass.modules.presentation.brand_palette import BRAND_PALETTE
+from metaclass.modules.presentation.themes import (
+    PresentationTheme,
+    apply_presentation_theme,
+    get_presentation_theme,
+)
 
 
 class PPTSkillAdapter:
@@ -35,36 +41,26 @@ class PPTSkillAdapter:
         plan: PresentationPlan,
         job_id: str,
         output_dir: Path,
+        theme: PresentationTheme | None = None,
     ) -> PPTArtifact:
+        selected_theme = theme or get_presentation_theme()
+        themed_plan = apply_presentation_theme(plan, selected_theme)
         output_dir.mkdir(parents=True, exist_ok=True)
         pptx_path = output_dir / "deck.pptx"
         speaker_scripts_path = output_dir / "speaker_scripts.json"
-        self._render_basic_pptx(plan, pptx_path)
-        slide_images = self._render_slide_images(plan, pptx_path, output_dir / "slides")
-        speaker_scripts_path.write_text(
-            json.dumps(
-                {
-                    "presentation_plan_id": plan.id,
-                    "slides": [
-                        {
-                            "slide_id": slide.id,
-                            "order": slide.order,
-                            "title": slide.title,
-                            "speaker_script": slide.speaker_script,
-                        }
-                        for slide in plan.slides
-                    ],
-                },
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
+        self._render_basic_pptx(themed_plan, pptx_path)
+        slide_images = self._render_slide_images(
+            themed_plan,
+            pptx_path,
+            output_dir / "slides",
         )
+        self._write_speaker_scripts(plan, speaker_scripts_path)
         request_path = output_dir / "skill_request.json"
         request_path.write_text(
             json.dumps(
                 {
                     "presentation_plan": plan.model_dump(mode="json"),
+                    "theme": selected_theme.prompt_payload(),
                     "planner_skill": str(Path(__file__).with_name("pptx_skill") / "SKILL.md"),
                     "expected_output": str(pptx_path),
                     "speaker_scripts_output": str(speaker_scripts_path),
@@ -88,6 +84,39 @@ class PPTSkillAdapter:
             slide_images=slide_images,
         )
 
+    def render_declarative_pptx(self, plan: PresentationPlan, destination: Path) -> None:
+        """Compile an already validated declarative scene into an editable PPTX."""
+        missing = [slide.id for slide in plan.slides if not slide.elements]
+        if missing:
+            raise ValueError(
+                "Declarative PPTX rendering requires elements on every slide: "
+                + ", ".join(missing)
+            )
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        self._render_basic_pptx(plan, destination)
+
+    @staticmethod
+    def _write_speaker_scripts(plan: PresentationPlan, destination: Path) -> None:
+        destination.write_text(
+            json.dumps(
+                {
+                    "presentation_plan_id": plan.id,
+                    "slides": [
+                        {
+                            "slide_id": slide.id,
+                            "order": slide.order,
+                            "title": slide.title,
+                            "speaker_script": slide.speaker_script,
+                        }
+                        for slide in plan.slides
+                    ],
+                },
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+
     def prepare_external_pptx(
         self,
         *,
@@ -97,9 +126,12 @@ class PPTSkillAdapter:
         pptx_path: Path,
         provider_name: str,
         provider_metadata: dict,
+        external_slide_images: list[PPTSlideImage] | None = None,
     ) -> PPTArtifact:
         """Package and preview a PPTX produced by an external presentation service."""
         output_dir.mkdir(parents=True, exist_ok=True)
+        speaker_scripts_path = output_dir / "speaker_scripts.json"
+        self._write_speaker_scripts(plan, speaker_scripts_path)
         request_path = output_dir / "skill_request.json"
         request_path.write_text(
             json.dumps(
@@ -107,17 +139,21 @@ class PPTSkillAdapter:
                     "presentation_plan": plan.model_dump(mode="json"),
                     "provider": provider_name,
                     "provider_metadata": provider_metadata,
+                    "speaker_scripts_output": str(speaker_scripts_path),
                 },
                 ensure_ascii=False,
                 indent=2,
             ),
             encoding="utf-8",
         )
-        slide_images = self._render_slide_images(
-            plan,
-            pptx_path,
-            output_dir / "slides",
-        )
+        slide_images = external_slide_images
+        if slide_images is None:
+            slide_images = self._render_slide_images(
+                plan,
+                pptx_path,
+                output_dir / "slides",
+                allow_placeholder=False,
+            )
         return PPTArtifact(
             id=f"ppt_artifact_{uuid4().hex[:12]}",
             job_id=job_id,
@@ -132,13 +168,31 @@ class PPTSkillAdapter:
         plan: PresentationPlan,
         pptx_path: Path,
         output_dir: Path,
+        *,
+        allow_placeholder: bool = True,
     ) -> list[PPTSlideImage]:
         output_dir.mkdir(parents=True, exist_ok=True)
-        if platform.system().lower() == "darwin":
+        operating_system = platform.system().lower()
+        if operating_system == "windows":
+            try:
+                slide_images = self._render_with_powerpoint(plan, pptx_path, output_dir)
+                (output_dir.parent / "render_error.txt").unlink(missing_ok=True)
+                return slide_images
+            except (FileNotFoundError, subprocess.SubprocessError, RuntimeError) as exc:
+                # Continue to LibreOffice/PIL so generation still completes on
+                # Windows hosts without Microsoft PowerPoint.
+                powerpoint_error = exc
+            else:  # pragma: no cover - return above is the successful path
+                powerpoint_error = None
+        else:
+            powerpoint_error = None
+        if operating_system == "darwin":
             # The bundled headless LibreOffice runtime cannot reliably access
             # macOS system CJK fonts and renders Chinese as tofu boxes. Browser
             # previews use our declarative PIL renderer, which loads PingFang
             # directly; the downloadable PPTX remains unchanged.
+            if not allow_placeholder:
+                raise RuntimeError("Real PPTX preview rendering is unavailable on this macOS host")
             return self._render_placeholder_images(plan, output_dir)
         try:
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -162,13 +216,114 @@ class PPTSkillAdapter:
                 pdf_path = Path(temp_dir) / f"{pptx_path.stem}.pdf"
                 if not pdf_path.exists():
                     raise FileNotFoundError(f"Converted PDF not found: {pdf_path}")
-                return self._render_pdf_pages(plan, pdf_path, output_dir)
+                slide_images = self._render_pdf_pages(plan, pdf_path, output_dir)
+                (output_dir.parent / "render_error.txt").unlink(missing_ok=True)
+                return slide_images
         except (FileNotFoundError, subprocess.SubprocessError, fitz.FileDataError) as exc:
+            if powerpoint_error is not None:
+                exc = RuntimeError(f"PowerPoint: {powerpoint_error}; LibreOffice: {exc}")
             (output_dir.parent / "render_error.txt").write_text(
                 PPTSkillAdapter._render_error_message(exc),
                 encoding="utf-8",
             )
+            if not allow_placeholder:
+                raise RuntimeError(
+                    "Real PPTX preview rendering failed; placeholder previews are disabled"
+                ) from exc
             return self._render_placeholder_images(plan, output_dir)
+
+    @staticmethod
+    def _render_with_powerpoint(
+        plan: PresentationPlan,
+        pptx_path: Path,
+        output_dir: Path,
+    ) -> list[PPTSlideImage]:
+        powershell = Path(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe")
+        if not powershell.exists():
+            raise FileNotFoundError("Windows PowerShell was not found")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            script_path = Path(temp_dir) / "render_powerpoint.ps1"
+            script_path.write_text(
+                textwrap.dedent(
+                    """
+                    param(
+                        [Parameter(Mandatory=$true)][string]$InputPath,
+                        [Parameter(Mandatory=$true)][string]$OutputDir
+                    )
+                    $ErrorActionPreference = 'Stop'
+                    $powerpoint = New-Object -ComObject PowerPoint.Application
+                    $presentation = $null
+                    try {
+                        $presentation = $powerpoint.Presentations.Open(
+                            $InputPath, $true, $false, $false
+                        )
+                        for ($index = 1; $index -le $presentation.Slides.Count; $index++) {
+                            $outputPath = Join-Path $OutputDir (
+                                'slide_{0:D3}.png' -f $index
+                            )
+                            $presentation.Slides.Item($index).Export(
+                                $outputPath, 'PNG', 1600, 900
+                            )
+                        }
+                    }
+                    finally {
+                        if ($null -ne $presentation) {
+                            $presentation.Close()
+                            [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject(
+                                $presentation
+                            )
+                        }
+                        $powerpoint.Quit()
+                        [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject(
+                            $powerpoint
+                        )
+                    }
+                    """
+                ).strip(),
+                encoding="utf-8-sig",
+            )
+            completed = subprocess.run(
+                [
+                    str(powershell),
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    str(script_path),
+                    "-InputPath",
+                    str(pptx_path.resolve()),
+                    "-OutputDir",
+                    str(output_dir.resolve()),
+                ],
+                check=True,
+                capture_output=True,
+                timeout=90,
+            )
+            if completed.stderr:
+                stderr = completed.stderr.decode("utf-8", errors="replace").strip()
+                if stderr:
+                    raise RuntimeError(stderr)
+
+        slide_images = []
+        for index, slide_plan in enumerate(plan.slides, start=1):
+            image_path = output_dir / f"slide_{index:03d}.png"
+            if not image_path.exists():
+                raise RuntimeError(f"PowerPoint preview page-count mismatch: missing page {index}")
+            with Image.open(image_path) as image:
+                image.verify()
+                width, height = image.size
+            slide_images.append(
+                PPTSlideImage(
+                    slide_id=slide_plan.id,
+                    slide_no=index,
+                    image_path=str(image_path),
+                    width=width,
+                    height=height,
+                )
+            )
+        return slide_images
 
     @staticmethod
     def _render_error_message(exc: Exception) -> str:
@@ -419,13 +574,21 @@ class PPTSkillAdapter:
             if element.type == "text":
                 text = element.text or "\n".join(element.items)
                 font_size = max(11, round(style.font_size * 1.32))
+                clean = " ".join(text.split())
+                while True:
+                    chars = max(4, round((x1 - x0 - 10) / max(font_size * 0.95, 1)))
+                    lines = textwrap.wrap(
+                        clean,
+                        width=chars,
+                        break_long_words=True,
+                        break_on_hyphens=False,
+                    ) or [""]
+                    max_lines = max(1, round((y1 - y0 - 6) / max(font_size * 1.35, 1)))
+                    if len(lines) <= max_lines or font_size <= 18:
+                        break
+                    font_size -= 1
                 font = PPTSkillAdapter._load_preview_font(font_size)
-                chars = max(4, round((x1 - x0) / max(font_size * 0.95, 1)))
-                fitted = PPTSkillAdapter._fit_text(
-                    text,
-                    max_chars=chars,
-                    max_lines=max(1, round((y1 - y0) / max(font_size * 1.35, 1))),
-                )
+                fitted = "\n".join(lines)
                 draw.multiline_text(
                     (x0 + 5, y0 + 3),
                     fitted,
@@ -527,7 +690,10 @@ class PPTSkillAdapter:
             frame = box.text_frame
             frame.clear()
             frame.word_wrap = True
-            frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
+            # Geometry and font fitting are completed before rendering. Letting
+            # PowerPoint auto-fit here introduces a second, platform-dependent
+            # layout engine and makes previews differ from the exported deck.
+            frame.auto_size = None
             frame.margin_left = Inches(0.05)
             frame.margin_right = Inches(0.05)
             frame.margin_top = Inches(0.03)
@@ -631,12 +797,18 @@ class PPTSkillAdapter:
 
     @staticmethod
     def _add_background(slide, index: int) -> None:
-        palette = [
-            ("F7F9F7", "1F6F78", "D1495B"),
-            ("F8F5F0", "2E4057", "66A182"),
-            ("F4F7FB", "3D348B", "F7B801"),
-        ][index % 3]
-        background, primary, accent = palette
+        if index == 0:
+            background, primary, accent = (
+                BRAND_PALETTE.board,
+                BRAND_PALETTE.chalk,
+                BRAND_PALETTE.amber,
+            )
+        else:
+            background, primary, accent = (
+                BRAND_PALETTE.paper,
+                BRAND_PALETTE.ink,
+                BRAND_PALETTE.amber,
+            )
         fill = slide.background.fill
         fill.solid()
         fill.fore_color.rgb = RGBColor.from_string(background)

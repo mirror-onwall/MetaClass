@@ -283,13 +283,9 @@ class ClassroomPlanGenerator:
         # the runtime still has an explicit listening-check action.
         if not eligible and presentation_plan.slides:
             eligible = list(presentation_plan.slides)
-        # Roughly one listening check per four slides; student questions keep the
-        # larger share of classroom interaction.
-        budget = min(len(eligible), max(1, math.ceil(len(presentation_plan.slides) / 4)))
-        selected_slides = self._spread_slides(eligible, budget)
-        prepared = self._generate_teacher_checks(
-            selected_slides, presentation_plan.slides
-        )
+        # Let the teacher model choose checkpoints by instructional value rather
+        # than page count. _generate_teacher_checks guarantees at least one check.
+        prepared = self._generate_teacher_checks(eligible, presentation_plan.slides)
         checks_by_slide = {item.slide_id: item for item in prepared}
 
         scenes = []
@@ -340,11 +336,13 @@ class ClassroomPlanGenerator:
             for slide in slides
         ]
         if not self.llm:
-            return fallback
-        system = """你是备课阶段的教师智能体。请根据每个候选检查点截至当前页已经讲过的全部 PPT 页面内容和全部老师讲稿，提前设计课堂上的听课检查问题。
+            return [fallback[len(fallback) // 2]]
+        system = """你是备课阶段的教师智能体。请根据候选页面截至当前页已经讲过的全部 PPT 页面内容和全部老师讲稿，选择真正值得检查理解的节点，并提前设计课堂上的听课检查问题。
 问题用于检查学生是否听懂刚讲过的概念、机制、步骤或前后关系，而不是让学生猜尚未讲过的知识。
 你可以检查当前页本身，也可以检查当前页与此前页面的概念衔接、因果关系和综合理解；不得使用当前页之后的内容。
 每页只生成一个具体、可简短作答的问题；不要问“听懂了吗”，不要重复讲稿原句，不要出冷知识。
+不要按固定页数或固定间隔机械安排。只有问题能暴露关键误解、检查重要推理或连接核心知识时才安排。
+整节课至少安排一次检查；高价值检查点可以安排多次，但不要为了数量打断课堂。
 问题会在该页讲解完成后由老师说出。只输出 JSON：
 {"checks":[{"slide_id":"...","question":"...","target_knowledge_point":"..."}]}"""
         user = {
@@ -383,13 +381,11 @@ class ClassroomPlanGenerator:
             ]
             allowed = {slide.id for slide in slides}
             checks = [item for item in checks if item.slide_id in allowed]
-            by_slide = {item.slide_id: item for item in checks}
-            by_slide.update(
-                {item.slide_id: item for item in fallback if item.slide_id not in by_slide}
-            )
-            return [by_slide[slide.id] for slide in slides]
+            if checks:
+                return checks
+            return [fallback[len(fallback) // 2]]
         except (TypeError, ValueError, json.JSONDecodeError, ValidationError):
-            return fallback
+            return [fallback[len(fallback) // 2]]
 
     @staticmethod
     def _spread_slides(slides: list, budget: int) -> list:

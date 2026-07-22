@@ -238,6 +238,7 @@ class ClassroomPlanJob(SchemaModel):
 class ActionExecutedPayload(SchemaModel):
     action_id: str
     action_type: ActionType
+    target_agent_id: str | None = None
 
 
 class QuizEvaluatedPayload(SchemaModel):
@@ -386,6 +387,10 @@ class ControllerResult(SchemaModel):
     correct: bool | None = None
     source_refs: list[SourceRef] = Field(default_factory=list)
     session: ClassroomSession
+
+
+class ClassroomNavigationResult(ControllerResult):
+    page_action: ShowPageAction | None = None
 
 
 class AutoClassroomStep(SchemaModel):

@@ -248,6 +248,7 @@ export type Mastery = { knowledge_point: string; value: number | null; evidence_
 
 export type ClassroomSession = {
   id: string;
+  plan_id: string;
   mode: LearningMode;
   status: "running" | "completed";
   waiting_for: "quiz_answer" | "free_answer" | null;
@@ -294,6 +295,10 @@ export type ControllerResult = {
   correct?: boolean;
   source_refs: SourceRef[];
   session: ClassroomSession;
+};
+
+export type ClassroomNavigationResult = ControllerResult & {
+  page_action: Extract<TeachingAction, { type: "SHOW_PAGE" }> | null;
 };
 
 export type AutoClassroomStep = {
@@ -401,9 +406,25 @@ export type PresentationPlanJob = {
   error?: string;
 };
 
+export type PPTThemeOption = {
+  id: string;
+  name: string;
+  description: string;
+  style_direction: string;
+  colors: {
+    cover: string;
+    background: string;
+    text: string;
+    accent: string;
+    soft: string;
+    secondary: string;
+  };
+};
+
 export type PPTGenerationJob = {
   id: string;
   presentation_plan_id: string;
+  theme_id: string;
   status: "queued" | "running" | "waiting_for_skill" | "finished" | "failed";
   progress: number;
   artifact_id?: string;

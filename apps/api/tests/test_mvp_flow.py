@@ -329,6 +329,28 @@ def test_complete_mvp_flow(client: TestClient) -> None:
     services.classrooms.repository.save_session(
         services.classrooms.get_session(session_id).model_copy(update={"status": "completed"})
     )
+    replay = client.post(f"/api/v1/classroom-sessions/{session_id}/replay")
+    assert replay.status_code == 201
+    assert replay.json()["id"] != session_id
+    assert replay.json()["plan_id"] == plan.json()["id"]
+    assert replay.json()["status"] == "running"
+    assert replay.json()["scene_index"] == 0
+    assert replay.json()["action_index"] == 0
+    assert replay.json()["events"] == []
+
+    lecture_plan = client.post(
+        f"/api/v1/classroom-plans/{plan.json()['id']}/lecture-variant"
+    )
+    assert lecture_plan.status_code == 201
+    assert lecture_plan.json()["id"] != plan.json()["id"]
+    lecture_action_types = {
+        action["type"]
+        for scene in lecture_plan.json()["scenes"]
+        for action in scene["actions"]
+    }
+    assert lecture_action_types <= {"SHOW_PAGE", "EXPLAIN", "END"}
+    assert {"SHOW_PAGE", "EXPLAIN"} <= lecture_action_types
+
     after_class_question = client.post(
         f"/api/v1/classroom-sessions/{session_id}/questions",
         json={"question": "Can I still ask after class?"},
@@ -445,7 +467,10 @@ def test_classroom_session_uses_selected_student_agent_types(client: TestClient)
 
     assert dialog.status_code == 200
     assert dialog.json()["status"] == "agent_turn"
-    assert dialog.json()["directed_turn"]["turns"][0]["agent_id"] == "student_agent_002"
+    assert dialog.json()["directed_turn"]["turns"][0]["agent_id"] in {
+        "student_agent_001",
+        "student_agent_002",
+    }
     assert dialog.json()["session"]["student_states"][1]["agent_type"] == "concept_confused"
 
 
@@ -495,8 +520,26 @@ def test_presentation_plan_and_ppt_skill_request_flow(client: TestClient) -> Non
     assert latest.status_code == 200
     assert latest.json()["id"] == plan.json()["id"]
 
-    job = client.post(f"/api/v1/presentation-plans/{plan.json()['id']}/ppt-jobs")
+    themes = client.get("/api/v1/ppt-themes")
+    assert themes.status_code == 200
+    assert {theme["id"] for theme in themes.json()} >= {
+        "academic_blue",
+        "scholar_green",
+        "deep_technology",
+    }
+
+    invalid_theme_job = client.post(
+        f"/api/v1/presentation-plans/{plan.json()['id']}/ppt-jobs",
+        json={"theme_id": "unknown_theme"},
+    )
+    assert invalid_theme_job.status_code == 422
+
+    job = client.post(
+        f"/api/v1/presentation-plans/{plan.json()['id']}/ppt-jobs",
+        json={"theme_id": "scholar_green"},
+    )
     assert job.status_code == 202
+    assert job.json()["theme_id"] == "scholar_green"
     assert job.json()["status"] in {"queued", "running", "finished"}
 
     job = client.get(f"/api/v1/ppt-jobs/{job.json()['id']}")

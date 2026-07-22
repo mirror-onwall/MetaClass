@@ -60,6 +60,7 @@ class ClassroomQA(SchemaModel):
     source_refs: list[SourceRef] = Field(default_factory=list)
     status: Literal["approved", "rejected"] = "approved"
     created_at: datetime = Field(default_factory=utc_now)
+    embedding: list[float] | None = Field(default=None, exclude=True)
 
 
 class QuestionBank(SchemaModel):
