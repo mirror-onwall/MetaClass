@@ -28,6 +28,7 @@ import type {
   ClassroomSession,
   ClassroomPlanJob,
   ContentGenerationJob,
+  CourseKnowledgeTreeNode,
   DirectedAgentTurn,
   LearningContent,
   LearningMode,
@@ -196,6 +197,73 @@ const defaultStudentAgentTypes: StudentAgentType[] = studentAgentChoices.map(
   (student) => student.type,
 );
 
+const knowledgeTreeRoleLabels: Record<string, string> = {
+  foundation: "基础概念",
+  concept: "核心概念",
+  method: "方法步骤",
+  process: "过程机制",
+  application: "应用场景",
+  example: "案例说明",
+  assessment: "检测评价",
+  extension: "拓展关联",
+};
+
+function formatKnowledgeTreeRole(role: string) {
+  return knowledgeTreeRoleLabels[role] ?? role;
+}
+
+type KnowledgeTreeBranchProps = {
+  node: CourseKnowledgeTreeNode;
+  indexPath: string;
+  depth: number;
+  childrenByParent: Map<string, CourseKnowledgeTreeNode[]>;
+  nodeById: Map<string, CourseKnowledgeTreeNode>;
+};
+
+function KnowledgeTreeBranch({
+  node,
+  indexPath,
+  depth,
+  childrenByParent,
+  nodeById,
+}: KnowledgeTreeBranchProps) {
+  const childNodes = childrenByParent.get(node.id) ?? [];
+  const prerequisites = node.prerequisite_node_ids
+    .map((nodeId) => nodeById.get(nodeId)?.title)
+    .filter((title): title is string => Boolean(title));
+
+  return (
+    <li className={`knowledge-tree-item depth-${Math.min(depth, 3)}`}>
+      <div className="knowledge-tree-node">
+        <span className="knowledge-tree-index">{indexPath}</span>
+        <div className="knowledge-tree-content">
+          <div className="knowledge-tree-heading">
+            <b>{node.title}</b>
+            <small>{formatKnowledgeTreeRole(node.role)}</small>
+          </div>
+          {node.summary && <p>{node.summary}</p>}
+          <div className="knowledge-tree-meta">
+            <span>{node.knowledge_unit_ids.length} 个知识单元</span>
+            {prerequisites.length > 0 && <span>前置：{prerequisites.join(" / ")}</span>}
+          </div>
+        </div>
+      </div>
+      {childNodes.length > 0 && (
+        <ol className="knowledge-tree-children">
+          {childNodes.map((childNode, childIndex) => (
+            <KnowledgeTreeBranch
+              key={childNode.id}
+              node={childNode}
+              indexPath={`${indexPath}.${childIndex + 1}`}
+              depth={depth + 1}
+              childrenByParent={childrenByParent}
+              nodeById={nodeById}
+            />
+          ))}
+        </ol>
+      )}
+    </li>
+  );
 const runtimeWorkspaceKey = "metaclass-runtime-workspace-v1";
 const completedWorkspacesKey = "metaclass-completed-workspaces-v1";
 
@@ -322,6 +390,8 @@ function App() {
   const [content, setContent] = useState<LearningContent | null>(runtimeWorkspace.content ?? null);
   const [contentJob, setContentJob] = useState<ContentGenerationJob | null>(null);
   const [contentView, setContentView] = useState<"outline" | "tree" | "quality">("outline");
+  const [selectedKnowledgeTreeNodeId, setSelectedKnowledgeTreeNodeId] = useState<string | null>(null);
+  const [presentationPlan, setPresentationPlan] = useState<PresentationPlan | null>(null);
   const [presentationPlan, setPresentationPlan] = useState<PresentationPlan | null>(runtimeWorkspace.presentationPlan ?? null);
   const [presentationPlanJob, setPresentationPlanJob] = useState<PresentationPlanJob | null>(null);
   const [pptJob, setPptJob] = useState<PPTGenerationJob | null>(null);
@@ -474,13 +544,33 @@ function App() {
   const selectedFilesLabel = files.length > 1
     ? `${files[0].name} +${files.length - 1}`
     : files[0]?.name;
-  const treeRootNodes = useMemo(() => {
-    if (!content?.knowledge_tree) return [];
-    const nodeById = new Map(content.knowledge_tree.nodes.map((node) => [node.id, node]));
-    return content.knowledge_tree.root_node_ids
+  const knowledgeTreeModel = useMemo(() => {
+    const nodeById = new Map<string, CourseKnowledgeTreeNode>();
+    const childrenByParent = new Map<string, CourseKnowledgeTreeNode[]>();
+    if (!content?.knowledge_tree) return { rootNodes: [], nodeById, childrenByParent };
+
+    content.knowledge_tree.nodes.forEach((node) => {
+      nodeById.set(node.id, node);
+      if (node.parent_id) {
+        const siblings = childrenByParent.get(node.parent_id) ?? [];
+        siblings.push(node);
+        childrenByParent.set(node.parent_id, siblings);
+      }
+    });
+    childrenByParent.forEach((nodes) => nodes.sort((left, right) => left.order - right.order));
+
+    const rootNodes = content.knowledge_tree.root_node_ids
       .map((nodeId) => nodeById.get(nodeId))
-      .filter((node): node is NonNullable<typeof node> => Boolean(node));
+      .filter((node): node is CourseKnowledgeTreeNode => Boolean(node))
+      .sort((left, right) => left.order - right.order);
+    return { rootNodes, nodeById, childrenByParent };
   }, [content]);
+  const selectedKnowledgeTreeNode = selectedKnowledgeTreeNodeId
+    ? knowledgeTreeModel.nodeById.get(selectedKnowledgeTreeNodeId) ?? null
+    : null;
+  const selectedKnowledgeTreeIndex = selectedKnowledgeTreeNode
+    ? knowledgeTreeModel.rootNodes.findIndex((node) => node.id === selectedKnowledgeTreeNode.id)
+    : -1;
   const qualityWarnings = Array.isArray(content?.quality?.warnings)
     ? content.quality.warnings.filter((warning): warning is string => typeof warning === "string")
     : [];
@@ -1579,10 +1669,22 @@ function App() {
               )}
               {contentView === "tree" && (
                 <ol className="knowledge-tree-list">
-                  {treeRootNodes.map((node, index) => {
-                    const childCount = content.knowledge_tree?.nodes.filter((item) => item.parent_id === node.id).length ?? 0;
-                    return <li key={node.id}><span>{String(index + 1).padStart(2, "0")}</span><div><b>{node.title}</b><small>{childCount} 个主题 · {node.role}</small></div></li>;
-                  })}
+                  {knowledgeTreeModel.rootNodes.length ? knowledgeTreeModel.rootNodes.map((node, index) => (
+                    <li className="knowledge-root-item" key={node.id}>
+                      <button type="button" onClick={() => setSelectedKnowledgeTreeNodeId(node.id)}>
+                        <span>{String(index + 1).padStart(2, "0")}</span>
+                        <div>
+                          <b>{node.title}</b>
+                          <small>
+                            {formatKnowledgeTreeRole(node.role)}
+                            {" · "}
+                            {(knowledgeTreeModel.childrenByParent.get(node.id) ?? []).length} 个子主题
+                          </small>
+                        </div>
+                        <i>查看</i>
+                      </button>
+                    </li>
+                  )) : <li className="knowledge-tree-empty">暂未生成知识树结构</li>}
                 </ol>
               )}
               {contentView === "quality" && (
@@ -1628,6 +1730,41 @@ function App() {
           )}
         </aside>
       </main>
+
+      {selectedKnowledgeTreeNode && (
+        <div
+          className="knowledge-tree-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="knowledge-tree-modal-title"
+          onClick={() => setSelectedKnowledgeTreeNodeId(null)}
+        >
+          <section className="knowledge-tree-dialog" onClick={(event) => event.stopPropagation()}>
+            <header>
+              <div>
+                <small>KNOWLEDGE OUTLINE</small>
+                <h2 id="knowledge-tree-modal-title">{selectedKnowledgeTreeNode.title}</h2>
+              </div>
+              <button
+                type="button"
+                aria-label="关闭知识树详情"
+                onClick={() => setSelectedKnowledgeTreeNodeId(null)}
+              >
+                ×
+              </button>
+            </header>
+            <ol className="knowledge-tree-list knowledge-tree-full">
+              <KnowledgeTreeBranch
+                node={selectedKnowledgeTreeNode}
+                indexPath={String(selectedKnowledgeTreeIndex + 1).padStart(2, "0")}
+                depth={0}
+                childrenByParent={knowledgeTreeModel.childrenByParent}
+                nodeById={knowledgeTreeModel.nodeById}
+              />
+            </ol>
+          </section>
+        </div>
+      )}
 
       {error && <div className="error-toast" role="alert"><span>!</span><div><b>流程暂停</b><p>{error}</p></div><button onClick={() => setError(null)}>×</button></div>}
       {busy && busy !== answeringUserQuestionLabel && (
