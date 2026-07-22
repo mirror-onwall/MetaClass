@@ -226,6 +226,282 @@ button { color: inherit; }
 .lesson-outline li b, .lesson-outline li small { display: block; }
 .lesson-outline li b { font-size: 10px; font-weight: 500; }
 .lesson-outline li small { margin-top: 3px; color: var(--muted); font-size: 8px; }
+.lesson-outline .knowledge-tree-list {
+  display: grid;
+  gap: 10px;
+  max-height: 360px;
+  padding-right: 4px;
+}
+.lesson-outline .knowledge-tree-list,
+.lesson-outline .knowledge-tree-children,
+.knowledge-tree-dialog .knowledge-tree-list,
+.knowledge-tree-dialog .knowledge-tree-children {
+  list-style: none;
+}
+.lesson-outline .knowledge-root-item {
+  display: block;
+  padding: 0;
+  border-top: 0;
+}
+.knowledge-root-item button {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  gap: 9px;
+  align-items: center;
+  padding: 10px 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.knowledge-root-item button:hover b,
+.knowledge-root-item button:focus-visible b {
+  color: var(--amber-soft);
+}
+.knowledge-root-item button > span {
+  color: var(--amber);
+  font: 8px "DM Mono", monospace;
+}
+.knowledge-root-item button div {
+  min-width: 0;
+}
+.knowledge-root-item button b,
+.knowledge-root-item button small {
+  display: block;
+}
+.knowledge-root-item button b {
+  overflow: hidden;
+  color: var(--chalk);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.knowledge-root-item button small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 8px;
+}
+.knowledge-root-item button i {
+  color: var(--mint);
+  font-size: 8px;
+  font-style: normal;
+}
+.lesson-outline .knowledge-tree-item {
+  display: block;
+  padding: 0;
+  border-top: 0;
+}
+.knowledge-tree-dialog .knowledge-tree-list {
+  display: grid;
+  max-height: min(58vh, 620px);
+  margin: 18px 0 0;
+  padding: 0 8px 0 0;
+  overflow: auto;
+}
+.knowledge-tree-node {
+  position: relative;
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 9px;
+  align-items: start;
+  padding: 10px 0;
+}
+.knowledge-tree-node::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 31px;
+  bottom: -12px;
+  width: 1px;
+  background: rgba(198,171,126,.28);
+}
+.knowledge-tree-item:last-child > .knowledge-tree-node::before { display: none; }
+.knowledge-tree-index {
+  width: 28px;
+  min-height: 22px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(216,153,63,.45);
+  background: rgba(216,153,63,.12);
+  color: var(--amber);
+  font: 8px "DM Mono", monospace;
+}
+.knowledge-tree-content {
+  min-width: 0;
+  padding: 0 0 10px;
+  border-bottom: 1px solid rgba(198,171,126,.18);
+}
+.knowledge-tree-heading {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.lesson-outline .knowledge-tree-heading b {
+  color: var(--chalk);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.lesson-outline .knowledge-tree-heading small {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 2px 5px;
+  border: 1px solid rgba(140,173,156,.25);
+  color: var(--mint);
+  font-size: 7px;
+}
+.knowledge-tree-content p {
+  margin: 6px 0 0;
+  color: #9fb1aa;
+  font-size: 9px;
+  line-height: 1.55;
+}
+.knowledge-tree-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 7px;
+}
+.knowledge-tree-meta span {
+  padding: 3px 5px;
+  border: 1px solid rgba(198,171,126,.18);
+  color: var(--muted);
+  font-size: 7px;
+  line-height: 1.35;
+}
+.lesson-outline .knowledge-tree-children,
+.knowledge-tree-dialog .knowledge-tree-children {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  margin: 0 0 0 21px;
+  padding: 0 0 0 13px;
+  border-left: 1px solid rgba(198,171,126,.22);
+}
+.knowledge-tree-item.depth-1 .knowledge-tree-index,
+.knowledge-tree-item.depth-2 .knowledge-tree-index,
+.knowledge-tree-item.depth-3 .knowledge-tree-index {
+  background: rgba(140,173,156,.1);
+  border-color: rgba(140,173,156,.28);
+  color: #8cad9c;
+}
+.knowledge-tree-item.depth-2 .knowledge-tree-content p,
+.knowledge-tree-item.depth-3 .knowledge-tree-content p {
+  color: #879a92;
+}
+.lesson-outline .knowledge-tree-empty {
+  display: block;
+  padding: 18px 0;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 9px;
+  text-align: center;
+}
+.knowledge-tree-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgba(12,18,16,.66);
+  backdrop-filter: blur(8px);
+}
+.knowledge-tree-dialog {
+  width: min(820px, 92vw);
+  max-height: min(780px, 88vh);
+  overflow: hidden;
+  padding: 22px 24px 24px;
+  border: 1px solid rgba(198,171,126,.28);
+  background: #17231e;
+  color: var(--chalk);
+  box-shadow: 0 28px 90px rgba(0,0,0,.45);
+}
+.knowledge-tree-dialog header {
+  display: flex;
+  gap: 18px;
+  align-items: start;
+  justify-content: space-between;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(198,171,126,.2);
+}
+.knowledge-tree-dialog header small {
+  color: var(--amber);
+  font: 9px "DM Mono", monospace;
+  letter-spacing: .12em;
+}
+.knowledge-tree-dialog header h2 {
+  margin: 7px 0 0;
+  font-size: 24px;
+  line-height: 1.35;
+}
+.knowledge-tree-dialog header button {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(198,171,126,.25);
+  background: rgba(255,255,255,.04);
+  color: var(--chalk);
+  font-size: 20px;
+  cursor: pointer;
+}
+.knowledge-tree-dialog .knowledge-tree-node {
+  grid-template-columns: 48px 1fr;
+  gap: 14px;
+  padding: 13px 0;
+}
+.knowledge-tree-dialog .knowledge-tree-index {
+  width: 40px;
+  min-height: 28px;
+  font-size: 9px;
+}
+.knowledge-tree-dialog .knowledge-tree-heading b {
+  font-size: 15px;
+}
+.knowledge-tree-dialog .knowledge-tree-heading small {
+  font-size: 9px;
+}
+.knowledge-tree-dialog .knowledge-tree-content p {
+  font-size: 12px;
+}
+.knowledge-tree-dialog .knowledge-tree-meta span {
+  font-size: 9px;
+}
+@media (max-width: 700px) {
+  .knowledge-tree-modal {
+    padding: 14px;
+  }
+  .knowledge-tree-dialog {
+    width: 100%;
+    max-height: 90vh;
+    padding: 18px 16px;
+  }
+  .knowledge-tree-dialog header h2 {
+    font-size: 19px;
+  }
+  .knowledge-tree-dialog .knowledge-tree-node {
+    grid-template-columns: 40px 1fr;
+    gap: 10px;
+  }
+  .knowledge-tree-dialog .knowledge-tree-heading {
+    display: grid;
+    justify-content: stretch;
+  }
+  .knowledge-tree-dialog .knowledge-tree-heading small {
+    width: fit-content;
+  }
+  .knowledge-tree-dialog .knowledge-tree-children {
+    margin-left: 15px;
+    padding-left: 10px;
+  }
+}
 .content-quality { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 15px; }
 .content-quality > div { padding: 9px 4px; border-top: 1px solid var(--line); }
 .content-quality span, .content-quality b { display: block; }
@@ -778,6 +1054,41 @@ button { color: inherit; }
   font-size: 10px;
   font-weight: 500;
   line-height: 1.55;
+}
+.right-board .knowledge-tree-node::before,
+.right-board .lesson-outline .knowledge-tree-children {
+  border-color: rgba(81,91,84,.28);
+  background-color: transparent;
+}
+.right-board .knowledge-tree-node::before {
+  background: rgba(81,91,84,.28);
+}
+.right-board .knowledge-tree-index {
+  border-color: rgba(177,112,26,.42);
+  background: rgba(177,112,26,.1);
+  color: #a16216;
+}
+.right-board .lesson-outline .knowledge-tree-heading b {
+  color: #17231e;
+  font-size: 12px;
+  font-weight: 750;
+}
+.right-board .lesson-outline .knowledge-tree-heading small {
+  color: #476554;
+  border-color: rgba(71,101,84,.28);
+  background: rgba(71,101,84,.08);
+}
+.right-board .knowledge-tree-content {
+  border-bottom-color: rgba(54,62,57,.18);
+}
+.right-board .knowledge-tree-content p {
+  color: #42534a;
+  font-size: 10px;
+}
+.right-board .knowledge-tree-meta span {
+  color: #5b675f;
+  border-color: rgba(54,62,57,.18);
+  background: rgba(255,255,255,.18);
 }
 .left-console .control-button.warm {
   background: #d49a3d;
