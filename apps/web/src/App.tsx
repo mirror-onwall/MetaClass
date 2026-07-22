@@ -264,6 +264,8 @@ function KnowledgeTreeBranch({
       )}
     </li>
   );
+}
+
 const runtimeWorkspaceKey = "metaclass-runtime-workspace-v1";
 const completedWorkspacesKey = "metaclass-completed-workspaces-v1";
 
@@ -391,7 +393,6 @@ function App() {
   const [contentJob, setContentJob] = useState<ContentGenerationJob | null>(null);
   const [contentView, setContentView] = useState<"outline" | "tree" | "quality">("outline");
   const [selectedKnowledgeTreeNodeId, setSelectedKnowledgeTreeNodeId] = useState<string | null>(null);
-  const [presentationPlan, setPresentationPlan] = useState<PresentationPlan | null>(null);
   const [presentationPlan, setPresentationPlan] = useState<PresentationPlan | null>(runtimeWorkspace.presentationPlan ?? null);
   const [presentationPlanJob, setPresentationPlanJob] = useState<PresentationPlanJob | null>(null);
   const [pptJob, setPptJob] = useState<PPTGenerationJob | null>(null);
