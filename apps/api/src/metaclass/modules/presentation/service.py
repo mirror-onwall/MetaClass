@@ -195,6 +195,9 @@ class PresentationService:
     def list_ppt_themes(self):
         return list_presentation_themes()
 
+    def list_plan_summaries(self):
+        return self.repository.list_plan_summaries()
+
     def create_ppt_job(
         self,
         presentation_plan_id: str,

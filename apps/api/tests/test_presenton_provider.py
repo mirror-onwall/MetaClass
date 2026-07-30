@@ -12,7 +12,7 @@ from metaclass.modules.presentation.providers import (
     FallbackPPTProvider,
     PresentonPPTProvider,
 )
-from metaclass.modules.presentation.schemas import PresentationPlan, SlidePlan
+from metaclass.modules.presentation.schemas import PresentationPlan, SlideElement, SlidePlan
 from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
 
 
@@ -360,6 +360,14 @@ def test_windows_preview_renders_the_final_pptx_with_powerpoint(
         "metaclass.modules.presentation.skill_adapter.platform.system",
         lambda: "Windows",
     )
+    original_exists = Path.exists
+    monkeypatch.setattr(
+        Path,
+        "exists",
+        lambda path: True
+        if str(path) == r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+        else original_exists(path),
+    )
     monkeypatch.setattr(
         "metaclass.modules.presentation.skill_adapter.subprocess.run",
         fake_run,
@@ -409,6 +417,51 @@ def test_external_preview_never_falls_back_to_placeholder(
         )
 
     assert not list(output_dir.glob("*.png"))
+
+
+def test_macos_external_deck_uses_declarative_scene_preview(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = make_content_lock_plan()
+    source_slide = plan.slides[0]
+    slide = source_slide.model_copy(
+        update={
+            "elements": [
+                SlideElement(
+                    type="text",
+                    x=0.08,
+                    y=0.08,
+                    w=0.84,
+                    h=0.16,
+                    text=source_slide.title,
+                ),
+                SlideElement(
+                    type="shape",
+                    x=0.08,
+                    y=0.3,
+                    w=0.84,
+                    h=0.42,
+                ),
+            ]
+        }
+    )
+    plan = plan.model_copy(update={"slides": [slide]})
+    deck_path = tmp_path / "deck.pptx"
+    write_pptx(deck_path, [[slide.title, *slide.key_points]])
+    monkeypatch.setattr(
+        "metaclass.modules.presentation.skill_adapter.platform.system",
+        lambda: "Darwin",
+    )
+
+    images = PPTSkillAdapter()._render_slide_images(
+        plan,
+        deck_path,
+        tmp_path / "slides",
+        allow_placeholder=False,
+    )
+
+    assert len(images) == 1
+    assert Path(images[0].image_path).is_file()
 
 
 def test_presenton_download_does_not_forward_api_key_to_external_storage(

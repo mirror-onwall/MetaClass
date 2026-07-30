@@ -49,8 +49,7 @@ cd apps/web && npm run build
 | 文件/目录 | 职责 | 谁通常修改 |
 |---|---|---|
 | `README.md` | 项目入口、启动命令、文档导航 | 负责人 |
-| `MetaClass_具体设计_新版.md` | 产品设计原稿，不等同于最终代码架构 | 产品/负责人 |
-| `MetaClass_开题PPT_详细版.md` | 开题展示内容 | 汇报组 |
+| `MetaClass_具体设计.md` | 产品设计原稿，不等同于最终代码架构 | 产品/负责人 |
 | `.gitignore` | 忽略环境、缓存、数据库和生成产物 | 负责人 |
 | `scripts/dev.sh` | 构建前端并启动同源 FastAPI | 工程负责人 |
 | `data/raw` | 上传的原始 PDF/PPTX，不提交 Git | 程序生成 |

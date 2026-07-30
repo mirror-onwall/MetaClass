@@ -14,6 +14,7 @@ from metaclass.modules.presentation.schemas import (
     PPTGenerationJob,
     PPTSlideImage,
     PresentationPlan,
+    PresentationPlanLibrarySummary,
     SlidePlan,
 )
 
@@ -28,6 +29,8 @@ class PresentationRepository(Protocol):
     def get_plan(self, plan_id: str) -> PresentationPlan | None: ...
 
     def get_plan_for_content(self, content_id: str) -> PresentationPlan | None: ...
+
+    def list_plan_summaries(self) -> list[PresentationPlanLibrarySummary]: ...
 
     def save_job(self, job: PPTGenerationJob) -> None: ...
 
@@ -76,6 +79,32 @@ class SqlAlchemyPresentationRepository:
                 .order_by(PresentationPlanRecord.created_at.desc())
             )
             return self._plan(record) if record else None
+
+    def list_plan_summaries(self) -> list[PresentationPlanLibrarySummary]:
+        with self.database.session() as session:
+            records = session.scalars(
+                select(PresentationPlanRecord).order_by(
+                    PresentationPlanRecord.created_at.desc()
+                )
+            ).all()
+            summaries = []
+            for record in records:
+                artifact = session.scalar(
+                    select(PPTArtifactRecord)
+                    .where(PPTArtifactRecord.presentation_plan_id == record.id)
+                    .order_by(PPTArtifactRecord.created_at.desc())
+                )
+                summaries.append(
+                    PresentationPlanLibrarySummary(
+                        id=record.id,
+                        content_id=record.content_id,
+                        title=record.title,
+                        slide_count=len(record.slides or []),
+                        artifact_id=artifact.id if artifact else None,
+                        created_at=ensure_utc(record.created_at),
+                    )
+                )
+            return summaries
 
     def save_job(self, job: PPTGenerationJob) -> None:
         with self.database.session() as session:

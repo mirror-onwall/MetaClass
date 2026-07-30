@@ -2,6 +2,7 @@ import type {
   ClassroomPlanJob,
   ClassroomNavigationResult,
   ClassroomSession,
+  ClassroomPlanLibrarySummary,
   AutoClassroomStep,
   ContentGenerationJob,
   ControllerResult,
@@ -10,6 +11,7 @@ import type {
   LearningMode,
   Material,
   MaterialCollection,
+  MaterialLearningContentSummary,
   MaterialProcessingJob,
   PageMetadata,
   ProcessedMaterial,
@@ -19,6 +21,7 @@ import type {
   PPTThemeOption,
   PresentationPlanJob,
   PresentationPlan,
+  PresentationPlanLibrarySummary,
   StudentAgentType,
   TTSArtifact,
   TTSArtifactRequest,
@@ -87,7 +90,10 @@ export const api = {
       body: form,
     });
   },
-  async uploadMany(files: File[]) {
+  async uploadMany(
+    files: File[],
+    onProgress?: (job: MaterialProcessingJob) => void,
+  ) {
     const form = new FormData();
     files.forEach((file) => form.append("files", file));
     const job = await request<MaterialProcessingJob>("/api/v1/materials/processing-jobs", {
@@ -95,7 +101,8 @@ export const api = {
       body: form,
       timeoutMs: 600_000,
     });
-    return api.waitForMaterialProcessingJob(job.id);
+    onProgress?.(job);
+    return api.waitForMaterialProcessingJob(job.id, onProgress);
   },
   getMaterialProcessingJob(jobId: string) {
     return request<MaterialProcessingJob>(`/api/v1/materials/processing-jobs/${jobId}`);
@@ -103,13 +110,24 @@ export const api = {
   getMaterialProcessingJobResult(jobId: string) {
     return request<ProcessedMaterials>(`/api/v1/materials/processing-jobs/${jobId}/result`);
   },
-  async waitForMaterialProcessingJob(jobId: string) {
+  cancelMaterialProcessingJob(jobId: string) {
+    return request<MaterialProcessingJob>(
+      `/api/v1/materials/processing-jobs/${jobId}/cancel`,
+      { method: "POST" },
+    );
+  },
+  async waitForMaterialProcessingJob(
+    jobId: string,
+    onProgress?: (job: MaterialProcessingJob) => void,
+  ) {
     for (;;) {
       const job = await api.getMaterialProcessingJob(jobId);
+      onProgress?.(job);
       if (job.status === "succeeded") return api.getMaterialProcessingJobResult(jobId);
       if (job.status === "failed") {
         throw new Error(job.error ?? "材料解析任务失败");
       }
+      if (job.status === "canceled") throw new Error("材料处理已取消");
       await wait(1500);
     }
   },
@@ -118,6 +136,14 @@ export const api = {
   },
   listMaterialCollections() {
     return request<MaterialCollection[]>("/api/v1/materials/collections");
+  },
+  listMaterialLearningContentSummaries() {
+    return request<MaterialLearningContentSummary[]>(
+      "/api/v1/material-learning-content-summaries",
+    );
+  },
+  getMaterialPages(materialId: string) {
+    return request<PageMetadata[]>(`/api/v1/materials/${materialId}/pages`);
   },
   createMaterialCollection(title: string, materialIds: string[], primaryMaterialId?: string) {
     return request<MaterialCollection>("/api/v1/materials/collections", {
@@ -170,6 +196,9 @@ export const api = {
     return request<LearningContentDiagnostics>(
       `/api/v1/learning-contents/${contentId}/diagnostics`,
     );
+  },
+  getLearningContent(contentId: string) {
+    return request<LearningContent>(`/api/v1/learning-contents/${contentId}`);
   },
   async waitForContentGenerationJob(
     jobId: string,
@@ -269,6 +298,48 @@ export const api = {
     const finished = await api.waitForPptJob(job.id, onPptProgress);
     const artifact = await request<PPTArtifact>(`/api/v1/ppt-jobs/${finished.id}/artifact`);
     return { plan, artifact };
+  },
+  async createPresentationPlan(
+    contentId: string,
+    prepareQuestionBank = true,
+    onProgress?: (job: PresentationPlanJob) => void,
+  ) {
+    const created = await request<PresentationPlanJob>(
+      `/api/v1/learning-contents/${contentId}/presentation-plan-jobs?prepare_question_bank=${prepareQuestionBank}`,
+      { method: "POST" },
+    );
+    onProgress?.(created);
+    const finished = await api.waitForPresentationPlanJob(created.id, onProgress);
+    return request<PresentationPlan>(`/api/v1/presentation-plan-jobs/${finished.id}/result`);
+  },
+  async generatePptForPlan(
+    planId: string,
+    themeId: string,
+    onProgress?: (job: PPTGenerationJob) => void,
+  ) {
+    const created = await request<PPTGenerationJob>(
+      `/api/v1/presentation-plans/${planId}/ppt-jobs`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme_id: themeId }),
+      },
+    );
+    onProgress?.(created);
+    const finished = await api.waitForPptJob(created.id, onProgress);
+    return request<PPTArtifact>(`/api/v1/ppt-jobs/${finished.id}/artifact`);
+  },
+  listPresentationPlanLibrary() {
+    return request<PresentationPlanLibrarySummary[]>("/api/v1/presentation-plan-library");
+  },
+  getPresentationPlan(planId: string) {
+    return request<PresentationPlan>(`/api/v1/presentation-plans/${planId}`);
+  },
+  getPptArtifact(artifactId: string) {
+    return request<PPTArtifact>(`/api/v1/ppt-artifacts/${artifactId}`);
+  },
+  listClassroomPlanLibrary() {
+    return request<ClassroomPlanLibrarySummary[]>("/api/v1/classroom-plan-library");
   },
   getPptThemes() {
     return request<PPTThemeOption[]>("/api/v1/ppt-themes");

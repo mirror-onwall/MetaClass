@@ -14,6 +14,16 @@ class ContentGenerationJobStatus(StrEnum):
     FAILED = "failed"
 
 
+class MaterialLearningContentSummary(SchemaModel):
+    """Lightweight library label derived from the latest organized content."""
+
+    content_id: str = Field(min_length=1)
+    material_ids: list[str] = Field(min_length=1)
+    title: str = Field(min_length=1)
+    subtitle: str = ""
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
 class TeachingPoint(SchemaModel):
     point: str = Field(min_length=1)
     importance: str = "supporting"

@@ -5,7 +5,11 @@ from sqlalchemy import select
 
 from metaclass.infrastructure.database import Database
 from metaclass.modules.content.models import LearningContentRecord, PageUnderstandingRecord
-from metaclass.modules.content.schemas import LearningContent, PageUnderstanding
+from metaclass.modules.content.schemas import (
+    LearningContent,
+    MaterialLearningContentSummary,
+    PageUnderstanding,
+)
 
 
 class ContentRepository(Protocol):
@@ -16,6 +20,8 @@ class ContentRepository(Protocol):
     def save(self, content: LearningContent) -> None: ...
 
     def get(self, content_id: str) -> LearningContent | None: ...
+
+    def list_material_summaries(self) -> list[MaterialLearningContentSummary]: ...
 
 
 class SqlAlchemyContentRepository:
@@ -92,6 +98,36 @@ class SqlAlchemyContentRepository:
                     ),
                 }
             )
+
+    def list_material_summaries(self) -> list[MaterialLearningContentSummary]:
+        with self.database.session() as session:
+            records = session.scalars(
+                select(LearningContentRecord).order_by(
+                    LearningContentRecord.updated_at.desc()
+                )
+            ).all()
+            seen: set[str] = set()
+            summaries: list[MaterialLearningContentSummary] = []
+            for record in records:
+                material_ids = list(record.material_ids or [record.material_id])
+                fresh_ids = [material_id for material_id in material_ids if material_id not in seen]
+                if not fresh_ids:
+                    continue
+                seen.update(fresh_ids)
+                summaries.append(
+                    MaterialLearningContentSummary(
+                        content_id=record.id,
+                        material_ids=fresh_ids,
+                        title=record.title,
+                        subtitle=record.subtitle or "",
+                        updated_at=(
+                            record.updated_at.replace(tzinfo=timezone.utc)
+                            if record.updated_at.tzinfo is None
+                            else record.updated_at
+                        ),
+                    )
+                )
+            return summaries
 
     def save_understandings(self, items: list[PageUnderstanding]) -> None:
         with self.database.session() as session:

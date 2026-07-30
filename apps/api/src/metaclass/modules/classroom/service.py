@@ -155,6 +155,9 @@ class ClassroomService:
             raise HTTPException(404, "Classroom plan not found")
         return plan
 
+    def list_plan_summaries(self):
+        return self.repository.list_plan_summaries()
+
     def get_plan_generation_meta(self, plan_id: str) -> ClassroomPlanGenerationMeta:
         self.get_plan(plan_id)
         meta = self.repository.get_plan_generation_meta(plan_id)

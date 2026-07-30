@@ -13,6 +13,9 @@ export type Material = {
   file_hash?: string;
   status: "uploaded" | "parsing" | "parsed" | "failed";
   page_count: number;
+  error?: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type PageMetadata = {
@@ -20,6 +23,8 @@ export type PageMetadata = {
   material_id: string;
   page_no: number;
   title: string;
+  raw_text?: string;
+  image_path?: string;
   source_refs: SourceRef[];
 };
 
@@ -33,11 +38,13 @@ export type MaterialCollection = {
   title: string;
   material_ids: string[];
   primary_material_id?: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type MaterialProcessingJob = {
   id: string;
-  status: "queued" | "running" | "succeeded" | "failed";
+  status: "queued" | "running" | "succeeded" | "failed" | "canceled";
   progress: number;
   step: string;
   message: string;
@@ -153,6 +160,14 @@ export type LearningContent = {
   sections: LearningSection[];
   generation_guidance?: Record<string, unknown>;
   quality?: Record<string, unknown>;
+};
+
+export type MaterialLearningContentSummary = {
+  content_id: string;
+  material_ids: string[];
+  title: string;
+  subtitle?: string;
+  updated_at?: string;
 };
 
 export type LearningContentDiagnostics = {
@@ -392,6 +407,23 @@ export type PresentationPlan = {
       };
     }>;
   }>;
+};
+
+export type PresentationPlanLibrarySummary = {
+  id: string;
+  content_id: string;
+  title: string;
+  slide_count: number;
+  artifact_id?: string;
+  created_at: string;
+};
+
+export type ClassroomPlanLibrarySummary = {
+  id: string;
+  content_id: string;
+  presentation_plan_id?: string;
+  scene_count: number;
+  action_count: number;
 };
 
 export type PresentationPlanJob = {

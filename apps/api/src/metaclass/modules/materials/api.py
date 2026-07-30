@@ -58,6 +58,13 @@ def create_router(materials: MaterialService) -> APIRouter:
     async def get_processing_job(job_id: str) -> MaterialProcessingJob:
         return materials.get_processing_job(job_id)
 
+    @router.post(
+        "/processing-jobs/{job_id}/cancel",
+        response_model=MaterialProcessingJob,
+    )
+    async def cancel_processing_job(job_id: str) -> MaterialProcessingJob:
+        return materials.cancel_processing_job(job_id, discard=True)
+
     @router.get("/processing-jobs/{job_id}/result", response_model=ProcessedMaterials)
     async def get_processing_job_result(job_id: str) -> ProcessedMaterials:
         return materials.processing_job_result(job_id)

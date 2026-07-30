@@ -10,6 +10,7 @@ from metaclass.modules.presentation.schemas import (
     PresentationPlan,
     PresentationPlanDiagnosis,
     PresentationPlanJob,
+    PresentationPlanLibrarySummary,
 )
 from metaclass.modules.presentation.service import PresentationService
 
@@ -65,6 +66,13 @@ def create_router(presentations: PresentationService) -> APIRouter:
     @router.get("/presentation-plans/{plan_id}", response_model=PresentationPlan)
     async def get_presentation_plan(plan_id: str) -> PresentationPlan:
         return presentations.get_plan(plan_id)
+
+    @router.get(
+        "/presentation-plan-library",
+        response_model=list[PresentationPlanLibrarySummary],
+    )
+    async def list_presentation_plan_library() -> list[PresentationPlanLibrarySummary]:
+        return presentations.list_plan_summaries()
 
     @router.get(
         "/presentation-plans/{plan_id}/diagnosis",

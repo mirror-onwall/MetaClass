@@ -8,6 +8,7 @@ import {
   useState,
 } from "react";
 import { ActionView } from "./features/classroom/ActionView";
+import { LibraryPage } from "./features/materials/LibraryPage";
 import { SlideNarrationPlayer } from "./features/video/SlideNarrationPlayer";
 import {
   type NarrationCue,
@@ -34,6 +35,7 @@ import type {
   LearningMode,
   Material,
   MaterialCollection,
+  MaterialProcessingJob,
   PageMetadata,
   PPTArtifact,
   PPTGenerationJob,
@@ -377,6 +379,23 @@ function actionNarrationCue(
   };
 }
 
+function sourceSlideImages(
+  plan: PresentationPlan,
+  learningContent: LearningContent,
+  sourceMaterial: Material,
+  sourcePages: PageMetadata[],
+) {
+  return Object.fromEntries(plan.slides.map((slide, index) => {
+    const section = learningContent.sections.find((item) =>
+      slide.source_section_ids.includes(item.id)
+    );
+    const pageNo = section?.source_refs[0]?.page_no
+      ?? sourcePages[Math.min(index, Math.max(0, sourcePages.length - 1))]?.page_no
+      ?? 1;
+    return [slide.order, api.pageImage(sourceMaterial.id, pageNo)];
+  }));
+}
+
 function App() {
   const runtimeWorkspace = useRef(loadRuntimeWorkspace()).current;
   const [theme, setTheme] = useState<"dark" | "light">(() => {
@@ -384,10 +403,12 @@ function App() {
     if (savedTheme === "dark" || savedTheme === "light") return savedTheme;
     return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
   });
+  const [activePage, setActivePage] = useState<"classroom" | "library">("classroom");
   const [files, setFiles] = useState<File[]>([]);
   const [material, setMaterial] = useState<Material | null>(runtimeWorkspace.material ?? null);
   const [materials, setMaterials] = useState<Material[]>(runtimeWorkspace.materials ?? []);
   const [materialCollection, setMaterialCollection] = useState<MaterialCollection | null>(runtimeWorkspace.materialCollection ?? null);
+  const [materialProcessingJob, setMaterialProcessingJob] = useState<MaterialProcessingJob | null>(null);
   const [pages, setPages] = useState<PageMetadata[]>(runtimeWorkspace.pages ?? []);
   const [content, setContent] = useState<LearningContent | null>(runtimeWorkspace.content ?? null);
   const [contentJob, setContentJob] = useState<ContentGenerationJob | null>(null);
@@ -799,7 +820,8 @@ function App() {
     try {
       return await task();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "发生未知错误");
+      const message = caught instanceof Error ? caught.message : "发生未知错误";
+      if (message !== "材料处理已取消") setError(message);
       return undefined;
     } finally {
       setBusy(null);
@@ -827,6 +849,7 @@ function App() {
     setMaterial(null);
     setMaterials([]);
     setMaterialCollection(null);
+    setMaterialProcessingJob(null);
     setPages([]);
     setContent(null);
     setContentJob(null);
@@ -851,11 +874,55 @@ function App() {
     window.sessionStorage.removeItem(runtimeWorkspaceKey);
   }
 
+  function useLibraryMaterial(nextMaterial: Material, nextPages: PageMetadata[]) {
+    reset();
+    setMaterial(nextMaterial);
+    setMaterials([nextMaterial]);
+    setPages(nextPages);
+    setActivePage("classroom");
+  }
+
+  function openLibraryAsset(asset: {
+    material: Material;
+    pages: PageMetadata[];
+    content: LearningContent;
+    presentationPlan?: PresentationPlan;
+    presentationArtifact?: PPTArtifact;
+    session?: ClassroomSession;
+  }) {
+    reset();
+    setMaterial(asset.material);
+    setMaterials([asset.material]);
+    setPages(asset.pages);
+    setContent(asset.content);
+    setPresentationPlan(asset.presentationPlan ?? null);
+    setPresentationArtifact(asset.presentationArtifact ?? null);
+    if (asset.presentationPlan) {
+      const images = asset.presentationArtifact
+        ? Object.fromEntries(asset.presentationArtifact.slide_images.map((slide) => [
+            slide.slide_no,
+            api.pptSlideImage(asset.presentationArtifact!.id, slide.slide_no),
+          ]))
+        : sourceSlideImages(asset.presentationPlan, asset.content, asset.material, asset.pages);
+      setPresentationSlideImages(images);
+    }
+    setSession(asset.session ?? null);
+    if (asset.session) {
+      setLearningMode(asset.session.mode);
+      setClassroomPlanIds({ [asset.session.mode]: asset.session.plan_id });
+      setAutoPlaying(true);
+      autoPlayingRef.current = true;
+      setFeedback("已从资料库载入课堂剧本，自动播放已开始。");
+    }
+    setActivePage("classroom");
+  }
+
   async function upload() {
     if (!files.length) return;
-    const result = files.length === 1
-      ? await run("正在上传并解析材料", () => api.upload(files[0]))
-      : await run("正在上传并解析材料", () => api.uploadMany(files));
+    setMaterialProcessingJob(null);
+    const result = await run("正在上传并解析材料", () =>
+      api.uploadMany(files, setMaterialProcessingJob),
+    );
     if (result) {
       const processed = "items" in result ? result.items : [result];
       if (!processed.length) return;
@@ -863,7 +930,31 @@ function App() {
       setMaterialCollection("collection" in result ? result.collection ?? null : null);
       setMaterial(processed[0].material);
       setPages(processed[0].pages);
+      setMaterialProcessingJob(null);
     }
+  }
+
+  async function cancelMaterialProcessing() {
+    const job = materialProcessingJob;
+    if (!job || job.status === "succeeded" || job.status === "failed" || job.status === "canceled") return;
+    try {
+      await api.cancelMaterialProcessingJob(job.id);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "取消材料处理失败");
+      return;
+    }
+    reset();
+    setBusy(null);
+    setFeedback("已停止并取消本次材料处理，可以重新选择资料。");
+  }
+
+  function terminateCurrentMaterial() {
+    const hasPreparedAssets = Boolean(content || presentationPlan || session);
+    if (
+      hasPreparedAssets
+      && !window.confirm("确定终止当前材料并返回上传入口吗？已经保存到资料库的内容不会被删除。")
+    ) return;
+    reset();
   }
 
   async function parse() {
@@ -886,30 +977,49 @@ function App() {
     if (result) setContent(result);
   }
 
-  async function startClassroom() {
-    if (!content) return;
-    narration.unlock();
+  async function preparePresentationPlan() {
+    if (!content || !material) return;
     setPresentationPlanJob(null);
-    setPptJob(null);
-    setClassroomPlanJob(null);
-    const result = await run("正在生成 PPT 并布置课堂", async () => {
-      const deck = await api.createPresentationDeck(
+    const plan = await run("正在生成 PresentationPlan", () =>
+      api.createPresentationPlan(
         content.id,
         learningMode === "interactive",
-        pptThemeId,
         setPresentationPlanJob,
-        setPptJob,
-      );
-      const artifact = deck.artifact;
-      const slideImages = Object.fromEntries(
-        artifact.slide_images.map((slide) => [
-          slide.slide_no,
-          api.pptSlideImage(artifact.id, slide.slide_no),
-        ]),
-      );
+      ),
+    );
+    if (!plan) return;
+    setPresentationPlan(plan);
+    setPresentationSlideImages(sourceSlideImages(plan, content, material, pages));
+    setFeedback("PresentationPlan 已保存。现在可以单独生成 PPT，或直接创建课堂剧本。");
+  }
+
+  async function generatePresentationArtifact() {
+    if (!presentationPlan) return;
+    setPptJob(null);
+    const artifact = await run("正在生成 PPT", () =>
+      api.generatePptForPlan(presentationPlan.id, pptThemeId, setPptJob),
+    );
+    if (!artifact) return;
+    setPresentationArtifact(artifact);
+    setPresentationSlideImages(Object.fromEntries(
+      artifact.slide_images.map((slide) => [
+        slide.slide_no,
+        api.pptSlideImage(artifact.id, slide.slide_no),
+      ]),
+    ));
+    setFeedback("PPT 已生成并保存，可以继续创建课堂。");
+  }
+
+  async function startClassroom() {
+    if (!content || !presentationPlan) return;
+    narration.unlock();
+    setClassroomPlanJob(null);
+    const result = await run(
+      learningMode === "interactive" ? "正在创建互动课堂剧本" : "正在创建连续讲解剧本",
+      async () => {
       let classroomSession = await api.createSession(
         content.id,
-        deck.plan.id,
+        presentationPlan.id,
         learningMode,
         learningMode === "interactive" ? studentAgentTypes : [],
         setClassroomPlanJob,
@@ -918,23 +1028,20 @@ function App() {
         const lecturePlan = await api.createLectureVariant(classroomSession.plan_id);
         classroomSession = await api.createSessionForPlan(lecturePlan.id, "lecture", []);
       }
-      return { artifact, classroomSession, plan: deck.plan, slideImages };
+      return classroomSession;
     });
     if (result) {
       playbackVersionRef.current += 1;
       autoPlayingRef.current = true;
-      setPresentationArtifact(result.artifact);
-      setPresentationPlan(result.plan);
-      setPresentationSlideImages(result.slideImages);
-      setSession(result.classroomSession);
+      setSession(result);
       setClassroomPlanIds((current) => ({
         ...current,
-        [learningMode]: result.classroomSession.plan_id,
+        [learningMode]: result.plan_id,
       }));
       setAction(null);
       setAgentTurn(null);
       setAutoPlaying(true);
-      setFeedback("PPT 已生成，课堂已就绪，自动播放已开始。你可以随时输入问题打断。");
+      setFeedback("课堂剧本已保存，自动播放已开始。你可以随时输入问题打断。");
       narratedStepRef.current = null;
     }
   }
@@ -1337,8 +1444,10 @@ function App() {
   }
 
   const actionLabel = action?.type.replaceAll("_", " ") ?? "WAITING";
-  const loadingProgress = contentJob && busy === "正在组织学习内容"
-    ? contentJob.progress
+  const loadingProgress = materialProcessingJob && busy === "正在上传并解析材料"
+    ? materialProcessingJob.progress
+    : contentJob && busy === "正在组织学习内容"
+      ? contentJob.progress
     : presentationPlanJob && busy === "正在生成 PPT 并布置课堂"
       ? classroomPlanJob
         ? classroomPlanJob.progress
@@ -1346,8 +1455,10 @@ function App() {
           ? 75 + Math.round(pptJob.progress * 25)
           : presentationPlanJob.progress
       : null;
-  const loadingLabel = contentJob && busy === "正在组织学习内容"
-    ? contentProgressLabel(contentJob)
+  const loadingLabel = materialProcessingJob && busy === "正在上传并解析材料"
+    ? materialProcessingJob.message
+    : contentJob && busy === "正在组织学习内容"
+      ? contentProgressLabel(contentJob)
     : presentationPlanJob && busy === "正在生成 PPT 并布置课堂"
       ? classroomPlanJob
         ? classroomPlanProgressLabel(classroomPlanJob)
@@ -1355,7 +1466,9 @@ function App() {
           ? "正在导出 PPTX"
           : presentationProgressLabel(presentationPlanJob)
       : busy;
-  const loadingSteps = busy === "正在生成 PPT 并布置课堂"
+  const loadingSteps = busy === "正在上传并解析材料"
+    ? ["接收上传文件", "建立材料记录", "解析页面内容", "渲染页面预览", "保存解析结果"]
+    : busy === "正在生成 PPT 并布置课堂"
     ? ["理解课程内容", "规划课件页面", "设计课堂版式", "渲染并导出 PPT", "布置互动课堂"]
     : busy === "正在组织学习内容"
       ? ["读取课程材料", "逐页理解内容", "提取知识单元", "组织课堂结构", "保存备课结果"]
@@ -1363,6 +1476,18 @@ function App() {
   const loadingStepIndex = loadingProgress === null
     ? 0
     : Math.min(loadingSteps.length - 1, Math.floor((loadingProgress / 100) * loadingSteps.length));
+
+  if (activePage === "library") {
+    return (
+      <div className="classroom-app" data-theme={theme}>
+        <LibraryPage
+          onBack={() => setActivePage("classroom")}
+          onUseMaterial={useLibraryMaterial}
+          onOpenAsset={openLibraryAsset}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="classroom-app" data-theme={theme}>
@@ -1385,6 +1510,11 @@ function App() {
           </div>
         </div>
         <div className="system-live">
+          <button className="library-nav-button" type="button" onClick={() => setActivePage("library")}>
+            <span className="library-nav-icon" aria-hidden="true">▤</span>
+            <span className="library-nav-copy"><b>历史资料库</b><small>OPEN ARCHIVE</small></span>
+            <span className="library-nav-arrow" aria-hidden="true">→</span>
+          </button>
           <button
             className="theme-toggle"
             type="button"
@@ -1426,6 +1556,13 @@ function App() {
               </div>
             )}
             {material && !pages.length && <button className="control-button warm" disabled={!!busy} onClick={parse}>重新解析</button>}
+            {(material || files.length > 0) && !busy && (
+              <button className="terminate-material-button" type="button" onClick={terminateCurrentMaterial}>
+                <span>{material ? "终止当前材料" : "取消当前选择"}</span>
+                <small>{material ? "保留资料库记录 · 返回上传入口" : "重新选择其他文件"}</small>
+                <b>×</b>
+              </button>
+            )}
             {completedWorkspaces.length > 0 && (
               <div className="saved-classrooms">
                 <span>已完成课堂</span>
@@ -1491,8 +1628,10 @@ function App() {
               </div>
             </div>
             <button disabled={!pages.length || !!content || !!busy} onClick={buildContent}><span>01</span><b>{content ? "内容已构建" : "构建学习内容"}</b><i>↗</i></button>
-            <button disabled={!content || !!session || !!busy} onClick={startClassroom}><span>02</span><b>{session ? "课堂已创建" : learningMode === "interactive" ? "创建互动课堂" : "创建连续课堂"}</b><i>↗</i></button>
-            <button disabled={!content || !presentationArtifact || !!video || !!busy} onClick={createVideo}><span>03</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
+            <button disabled={!content || !!presentationPlan || !!busy} onClick={preparePresentationPlan}><span>02</span><b>{presentationPlan ? "PresentationPlan 已生成" : "生成 PresentationPlan"}</b><i>↗</i></button>
+            <button disabled={!presentationPlan || !!presentationArtifact || !!busy} onClick={generatePresentationArtifact}><span>03</span><b>{presentationArtifact ? "PPT 已生成" : "生成 PPT（可选）"}</b><i>↗</i></button>
+            <button disabled={!content || !presentationPlan || !!session || !!busy} onClick={startClassroom}><span>04</span><b>{session ? "课堂已创建" : learningMode === "interactive" ? "创建互动课堂" : "创建连续课堂"}</b><i>↗</i></button>
+            <button disabled={!content || !presentationArtifact || !!video || !!busy} onClick={createVideo}><span>05</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
             <button disabled={!content || !presentationPlan || !!busy} onClick={completeWorkspace}><span>✓</span><b>完成当前材料</b><i>→</i></button>
           </section>
         </aside>
@@ -1781,6 +1920,11 @@ function App() {
               ))}
             </ol>
             <div className="loading-current"><span className="writing-mark" /> <b>{loadingLabel}</b></div>
+            {materialProcessingJob && busy === "正在上传并解析材料" && (
+              <button className="cancel-processing-button" type="button" onClick={cancelMaterialProcessing}>
+                <span>停止当前进程</span><b>×</b>
+              </button>
+            )}
             <footer>
               <div
                 className={`generation-progress ${loadingProgress === null ? "indeterminate" : ""}`}
