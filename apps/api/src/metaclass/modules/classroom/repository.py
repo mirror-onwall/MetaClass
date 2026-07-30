@@ -12,6 +12,7 @@ from metaclass.modules.classroom.models import (
 )
 from metaclass.modules.classroom.schemas import (
     ClassroomPlan,
+    ClassroomPlanLibrarySummary,
     ClassroomPlanGenerationMeta,
     ClassroomPlanJob,
     ClassroomSession,
@@ -22,6 +23,8 @@ class ClassroomRepository(Protocol):
     def save_plan(self, plan: ClassroomPlan) -> None: ...
 
     def get_plan(self, plan_id: str) -> ClassroomPlan | None: ...
+
+    def list_plan_summaries(self) -> list[ClassroomPlanLibrarySummary]: ...
 
     def save_plan_generation_meta(self, meta: ClassroomPlanGenerationMeta) -> None: ...
 
@@ -68,6 +71,32 @@ class SqlAlchemyClassroomRepository:
                     "version": record.version,
                 }
             )
+
+    def list_plan_summaries(self) -> list[ClassroomPlanLibrarySummary]:
+        with self.database.session() as session:
+            records = session.scalars(select(ClassroomPlanRecord)).all()
+            summaries = []
+            for record in records:
+                job = session.scalar(
+                    select(ClassroomPlanJobRecord)
+                    .where(
+                        ClassroomPlanJobRecord.plan_id == record.id,
+                        ClassroomPlanJobRecord.status == "succeeded",
+                    )
+                    .order_by(ClassroomPlanJobRecord.updated_at.desc())
+                )
+                summaries.append(
+                    ClassroomPlanLibrarySummary(
+                        id=record.id,
+                        content_id=record.content_id,
+                        presentation_plan_id=job.presentation_plan_id if job else None,
+                        scene_count=len(record.scenes or []),
+                        action_count=sum(
+                            len(scene.get("actions", [])) for scene in (record.scenes or [])
+                        ),
+                    )
+                )
+            return summaries
 
     def save_plan_generation_meta(self, meta: ClassroomPlanGenerationMeta) -> None:
         with self.database.session() as session:

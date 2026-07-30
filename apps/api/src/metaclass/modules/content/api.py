@@ -5,6 +5,7 @@ from metaclass.modules.content.schemas import (
     CourseKnowledgeTree,
     LearningContent,
     LearningContentDiagnostics,
+    MaterialLearningContentSummary,
     PageUnderstanding,
 )
 from metaclass.modules.content.service import ContentService
@@ -12,6 +13,14 @@ from metaclass.modules.content.service import ContentService
 
 def create_router(contents: ContentService) -> APIRouter:
     router = APIRouter(tags=["content"])
+
+    @router.get(
+        "/api/v1/material-learning-content-summaries",
+        response_model=list[MaterialLearningContentSummary],
+    )
+    async def list_material_learning_content_summaries(
+    ) -> list[MaterialLearningContentSummary]:
+        return contents.list_material_summaries()
 
     @router.post(
         "/api/v1/materials/{material_id}/learning-content",

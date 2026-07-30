@@ -2,9 +2,11 @@ import hashlib
 import json
 import os
 import shlex
+import shutil
 import subprocess
 import tempfile
-from threading import Lock
+import time
+from threading import Event, Lock
 from pathlib import Path
 from uuid import uuid4
 
@@ -29,6 +31,10 @@ from metaclass.modules.materials.schemas import (
 )
 
 
+class MaterialProcessingCancelled(RuntimeError):
+    pass
+
+
 class MaterialService:
     def __init__(
         self,
@@ -45,6 +51,8 @@ class MaterialService:
         self.mineru_command = mineru_command
         self.mineru_timeout_seconds = mineru_timeout_seconds
         self._jobs: dict[str, MaterialProcessingJob] = {}
+        self._cancel_events: dict[str, Event] = {}
+        self._discard_on_cancel: set[str] = set()
         self._job_lock = Lock()
 
     async def create(self, upload: UploadFile) -> Material:
@@ -126,6 +134,8 @@ class MaterialService:
             collection_id=collection.id,
         )
         self._save_job(job)
+        with self._job_lock:
+            self._cancel_events[job.id] = Event()
         return job
 
     def get_processing_job(self, job_id: str) -> MaterialProcessingJob:
@@ -139,6 +149,8 @@ class MaterialService:
         job = self.get_processing_job(job_id)
         if job.status == MaterialProcessingJobStatus.FAILED:
             raise HTTPException(422, job.error or "Material processing job failed")
+        if job.status == MaterialProcessingJobStatus.CANCELED:
+            raise HTTPException(409, "Material processing job was canceled")
         if job.status != MaterialProcessingJobStatus.SUCCEEDED:
             raise HTTPException(409, "Material processing job is not finished")
         collection = self.get_collection(job.collection_id) if job.collection_id else None
@@ -148,9 +160,37 @@ class MaterialService:
         ]
         return ProcessedMaterials(items=items, collection=collection)
 
+    def cancel_processing_job(
+        self, job_id: str, *, discard: bool = True
+    ) -> MaterialProcessingJob:
+        with self._job_lock:
+            job = self._jobs.get(job_id)
+            if not job:
+                raise HTTPException(404, "Material processing job not found")
+            if job.status in {
+                MaterialProcessingJobStatus.SUCCEEDED,
+                MaterialProcessingJobStatus.FAILED,
+            }:
+                raise HTTPException(409, "Material processing job is already finished")
+            event = self._cancel_events.setdefault(job_id, Event())
+            event.set()
+            if discard:
+                self._discard_on_cancel.add(job_id)
+            job.status = MaterialProcessingJobStatus.CANCELED
+            job.step = "canceled"
+            job.message = "Material processing canceled"
+            job.progress = 100
+            job.error = None
+            job.updated_at = utc_now()
+            self._jobs[job_id] = job.model_copy(deep=True)
+            return job.model_copy(deep=True)
+
     def run_processing_job(self, job_id: str) -> None:
         job = self.get_processing_job(job_id)
+        with self._job_lock:
+            cancel_event = self._cancel_events.setdefault(job_id, Event())
         try:
+            self._raise_if_cancelled(cancel_event)
             total = max(len(job.material_ids), 1)
             job.status = MaterialProcessingJobStatus.RUNNING
             job.step = "parsing"
@@ -159,13 +199,14 @@ class MaterialService:
             job.updated_at = utc_now()
             self._save_job(job)
             for index, material_id in enumerate(job.material_ids, start=1):
+                self._raise_if_cancelled(cancel_event)
                 material = self.get(material_id)
                 job.step = f"parsing:{material.filename}"
                 job.message = f"Parsing {material.filename}"
                 job.progress = min(95, 5 + int(((index - 1) / total) * 90))
                 job.updated_at = utc_now()
                 self._save_job(job)
-                self.parse(material_id)
+                self.parse(material_id, cancel_event=cancel_event)
                 job.progress = min(95, 5 + int((index / total) * 90))
                 job.updated_at = utc_now()
                 self._save_job(job)
@@ -175,6 +216,18 @@ class MaterialService:
             job.progress = 100
             job.updated_at = utc_now()
             self._save_job(job)
+        except MaterialProcessingCancelled:
+            job.status = MaterialProcessingJobStatus.CANCELED
+            job.step = "canceled"
+            job.message = "Material processing canceled"
+            job.progress = 100
+            job.error = None
+            job.updated_at = utc_now()
+            self._save_job(job)
+            with self._job_lock:
+                discard = job_id in self._discard_on_cancel
+            if discard:
+                self._discard_processing_job(job)
         except Exception as exc:
             job.status = MaterialProcessingJobStatus.FAILED
             job.step = "failed"
@@ -188,16 +241,18 @@ class MaterialService:
         self.get(material_id)
         return self.repository.list_pages(material_id)
 
-    def parse(self, material_id: str) -> list[PageMetadata]:
+    def parse(
+        self, material_id: str, *, cancel_event: Event | None = None
+    ) -> list[PageMetadata]:
         material = self.get(material_id)
         material.status = "parsing"
         material.updated_at = utc_now()
         self.repository.save_material(material)
         try:
             pages = (
-                self._parse_pdf(material)
+                self._parse_pdf(material, cancel_event)
                 if material.file_type == "pdf"
-                else self._parse_pptx(material)
+                else self._parse_pptx(material, cancel_event)
             )
             material.status = "parsed"
             material.page_count = len(pages)
@@ -205,12 +260,31 @@ class MaterialService:
             material.updated_at = utc_now()
             self.repository.save_material(material)
             return pages
+        except MaterialProcessingCancelled:
+            material.status = "uploaded"
+            material.error = None
+            material.updated_at = utc_now()
+            self.repository.save_material(material)
+            raise
         except Exception as exc:
             material.status = "failed"
             material.error = str(exc)
             material.updated_at = utc_now()
             self.repository.save_material(material)
             raise HTTPException(422, f"Material parsing failed: {exc}") from exc
+
+    @staticmethod
+    def _raise_if_cancelled(cancel_event: Event | None) -> None:
+        if cancel_event and cancel_event.is_set():
+            raise MaterialProcessingCancelled("Material processing canceled")
+
+    def _discard_processing_job(self, job: MaterialProcessingJob) -> None:
+        if job.collection_id:
+            self.repository.delete_collection(job.collection_id)
+        for material_id in job.material_ids:
+            self.repository.delete_material(material_id)
+            shutil.rmtree(self.data_dir / "raw" / material_id, ignore_errors=True)
+            shutil.rmtree(self.data_dir / "processed" / material_id, ignore_errors=True)
 
     def _save_job(self, job: MaterialProcessingJob) -> None:
         with self._job_lock:
@@ -224,39 +298,47 @@ class MaterialService:
                 digest.update(chunk)
         return digest.hexdigest()
 
-    def _parse_pdf(self, material: Material) -> list[PageMetadata]:
+    def _parse_pdf(
+        self, material: Material, cancel_event: Event | None = None
+    ) -> list[PageMetadata]:
         if self.parser_backend in {"auto", "mineru"}:
             try:
-                return self._parse_pdf_with_mineru(material)
+                return self._parse_pdf_with_mineru(material, cancel_event)
+            except MaterialProcessingCancelled:
+                raise
             except Exception:
                 if self.parser_backend == "mineru":
                     raise
 
-        return self._parse_pdf_locally(material)
+        return self._parse_pdf_locally(material, cancel_event)
 
-    def _parse_pdf_with_mineru(self, material: Material) -> list[PageMetadata]:
+    def _parse_pdf_with_mineru(
+        self, material: Material, cancel_event: Event | None = None
+    ) -> list[PageMetadata]:
         output_dir = self.data_dir / "processed" / material.id / "mineru"
         output_dir.mkdir(parents=True, exist_ok=True)
         command = self._mineru_command()
-        subprocess.run(
+        self._run_cancelable_subprocess(
             [*command, "-p", material.storage_path, "-o", str(output_dir)],
-            check=True,
-            capture_output=True,
-            text=True,
             timeout=self.mineru_timeout_seconds,
+            cancel_event=cancel_event,
         )
+        self._raise_if_cancelled(cancel_event)
         pages = self._metadata_from_mineru_output(material, output_dir)
         if not pages:
             raise ValueError("MinerU did not produce page metadata")
         return self._save_pages(material.id, pages)
 
-    def _parse_pdf_locally(self, material: Material) -> list[PageMetadata]:
+    def _parse_pdf_locally(
+        self, material: Material, cancel_event: Event | None = None
+    ) -> list[PageMetadata]:
         document = fitz.open(material.storage_path)
         images_dir = self.data_dir / "processed" / material.id / "pages"
         images_dir.mkdir(parents=True, exist_ok=True)
         embedded_images = self._extract_pdf_embedded_images(material)
         result = []
         for index, page in enumerate(document):
+            self._raise_if_cancelled(cancel_event)
             number = index + 1
             text = page.get_text("text").strip()
             image_path = images_dir / f"page_{number:03d}.png"
@@ -413,24 +495,32 @@ class MaterialService:
     def _mineru_command(self) -> list[str]:
         return shlex.split(self.mineru_command, posix=os.name != "nt") or ["mineru"]
 
-    def _parse_pptx(self, material: Material) -> list[PageMetadata]:
+    def _parse_pptx(
+        self, material: Material, cancel_event: Event | None = None
+    ) -> list[PageMetadata]:
         presentation = Presentation(material.storage_path)
         texts = []
         for slide in presentation.slides:
+            self._raise_if_cancelled(cancel_event)
             texts.append("\n".join(shape.text for shape in slide.shapes if hasattr(shape, "text")))
-        images = self._render_pptx(material, len(texts))
+        images = self._render_pptx(material, len(texts), cancel_event)
         pages = [
             self._metadata(material.id, index + 1, text, images[index])
             for index, text in enumerate(texts)
         ]
         return self._save_pages(material.id, pages)
 
-    def _render_pptx(self, material: Material, page_count: int) -> list[Path]:
+    def _render_pptx(
+        self,
+        material: Material,
+        page_count: int,
+        cancel_event: Event | None = None,
+    ) -> list[Path]:
         images_dir = self.data_dir / "processed" / material.id / "pages"
         images_dir.mkdir(parents=True, exist_ok=True)
         try:
             with tempfile.TemporaryDirectory() as temp_dir:
-                subprocess.run(
+                self._run_cancelable_subprocess(
                     [
                         "soffice",
                         "--headless",
@@ -440,23 +530,65 @@ class MaterialService:
                         temp_dir,
                         material.storage_path,
                     ],
-                    check=True,
-                    capture_output=True,
                     timeout=60,
+                    cancel_event=cancel_event,
                 )
                 pdf_path = Path(temp_dir) / f"{Path(material.storage_path).stem}.pdf"
                 document = fitz.open(pdf_path)
                 paths = []
                 for index, page in enumerate(document):
+                    self._raise_if_cancelled(cancel_event)
                     path = images_dir / f"page_{index + 1:03d}.png"
                     page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False).save(path)
                     paths.append(path)
                 document.close()
                 if len(paths) == page_count:
                     return paths
+        except MaterialProcessingCancelled:
+            raise
         except (FileNotFoundError, subprocess.SubprocessError, fitz.FileDataError):
             pass
         return [self._placeholder(images_dir, index + 1) for index in range(page_count)]
+
+    def _run_cancelable_subprocess(
+        self,
+        command: list[str],
+        *,
+        timeout: float,
+        cancel_event: Event | None,
+    ) -> None:
+        process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        started_at = time.monotonic()
+        try:
+            while process.poll() is None:
+                if cancel_event and cancel_event.wait(0.1):
+                    process.terminate()
+                    try:
+                        process.wait(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
+                    raise MaterialProcessingCancelled("Material processing canceled")
+                if time.monotonic() - started_at > timeout:
+                    process.kill()
+                    raise subprocess.TimeoutExpired(command, timeout)
+                if not cancel_event:
+                    time.sleep(0.1)
+            stdout, stderr = process.communicate()
+            if process.returncode:
+                raise subprocess.CalledProcessError(
+                    process.returncode,
+                    command,
+                    output=stdout,
+                    stderr=stderr,
+                )
+        finally:
+            if process.poll() is None:
+                process.kill()
 
     @staticmethod
     def _placeholder(directory: Path, number: int) -> Path:

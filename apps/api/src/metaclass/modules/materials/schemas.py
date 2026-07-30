@@ -23,6 +23,7 @@ class MaterialProcessingJobStatus(StrEnum):
     RUNNING = "running"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
+    CANCELED = "canceled"
 
 
 class SourceRef(SchemaModel):

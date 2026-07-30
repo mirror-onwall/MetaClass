@@ -209,6 +209,14 @@ class ClassroomPlan(SchemaModel):
     version: int = Field(default=1, ge=1)
 
 
+class ClassroomPlanLibrarySummary(SchemaModel):
+    id: str = Field(min_length=1)
+    content_id: str = Field(min_length=1)
+    presentation_plan_id: str | None = None
+    scene_count: int = Field(ge=1)
+    action_count: int = Field(ge=1)
+
+
 class ClassroomPlanGenerationMeta(SchemaModel):
     plan_id: str = Field(min_length=1)
     content_id: str = Field(min_length=1)

@@ -4,7 +4,7 @@
 - `architecture.md`：当前代码架构、依赖方向、主流程与技术债。
 - `architecture.mmd` / `architecture.svg`：可编辑的 Mermaid 架构图及导出图。
 - `development-guide.md`：组员环境配置、逐文件职责、标准修改方式和分工建议。
-- 仓库根目录 `MetaClass_具体设计_新版.md`：详细产品设计原稿。
+- 仓库根目录 `MetaClass_具体设计.md`：详细产品设计原稿。
 
 后续文档建议按需增加：
 
