@@ -20,6 +20,7 @@ from metaclass.modules.content.schemas import (
     LearningContent,
     LearningContentDraft,
     LearningContentDiagnostics,
+    MaterialLearningContentSummary,
     LearningSection,
     ConceptNote,
     PageRef,
@@ -1564,6 +1565,9 @@ class ContentService:
         if not content:
             raise HTTPException(404, "Learning content not found")
         return content
+
+    def list_material_summaries(self) -> list[MaterialLearningContentSummary]:
+        return self.repository.list_material_summaries()
 
     def get_knowledge_tree(self, content_id: str) -> CourseKnowledgeTree:
         content = self.get(content_id)

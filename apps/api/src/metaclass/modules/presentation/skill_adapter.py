@@ -191,7 +191,13 @@ class PPTSkillAdapter:
             # macOS system CJK fonts and renders Chinese as tofu boxes. Browser
             # previews use our declarative PIL renderer, which loads PingFang
             # directly; the downloadable PPTX remains unchanged.
-            if not allow_placeholder:
+            # Codex decks are compiled from the same immutable SlideElement scene.
+            # Rendering that scene with PIL is therefore a faithful browser preview,
+            # not a generic placeholder. Permit it even when external providers
+            # disallow synthetic previews. Plans without scene geometry still fail
+            # closed because their real PPTX appearance cannot be reconstructed.
+            has_declarative_scenes = all(slide.elements for slide in plan.slides)
+            if not allow_placeholder and not has_declarative_scenes:
                 raise RuntimeError("Real PPTX preview rendering is unavailable on this macOS host")
             return self._render_placeholder_images(plan, output_dir)
         try:

@@ -26,6 +26,7 @@ data/raw/*
 data/processed/*
 data/generated/*
 data/runtime/*
+data/archive/
 !data/**/.gitkeep
 
 # Local runtime and test artifacts

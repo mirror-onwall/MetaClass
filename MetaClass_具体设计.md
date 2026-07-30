@@ -1,4 +1,4 @@
-# MetaClass 具体设计（新版）
+# MetaClass 具体设计
 
 > 版本说明：本版在原有「学习端 Learner Studio + 教师/创作端 Presenter Studio + 共享底座 Shared Core」结构基础上，根据 OpenMAIC / MAIC 论文的设计思路进行了重整。核心修改是：AI 互动课堂不再被设计成“几个 Agent 自由聊天”，而是设计为 **Read → Plan → Run** 的可控课堂结构。
 >

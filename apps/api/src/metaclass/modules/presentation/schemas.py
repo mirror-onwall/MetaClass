@@ -99,6 +99,15 @@ class PresentationPlan(SchemaModel):
     updated_at: datetime = Field(default_factory=utc_now)
 
 
+class PresentationPlanLibrarySummary(SchemaModel):
+    id: str = Field(min_length=1)
+    content_id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    slide_count: int = Field(ge=1)
+    artifact_id: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class SlideScriptDiagnosis(SchemaModel):
     slide_id: str
     title: str

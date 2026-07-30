@@ -8,6 +8,7 @@ from metaclass.modules.classroom.schemas import (
     ClassroomPlan,
     ClassroomPlanGenerationMeta,
     ClassroomPlanJob,
+    ClassroomPlanLibrarySummary,
     ClassroomNavigationResult,
     ClassroomSession,
     ClassroomState,
@@ -53,6 +54,13 @@ def create_router(classrooms: ClassroomService) -> APIRouter:
     @router.get("/classroom-plans/{plan_id}", response_model=ClassroomPlan)
     async def get_plan(plan_id: str) -> ClassroomPlan:
         return classrooms.get_plan(plan_id)
+
+    @router.get(
+        "/classroom-plan-library",
+        response_model=list[ClassroomPlanLibrarySummary],
+    )
+    async def list_classroom_plan_library() -> list[ClassroomPlanLibrarySummary]:
+        return classrooms.list_plan_summaries()
 
     @router.post(
         "/classroom-plans/{plan_id}/lecture-variant",

@@ -19,11 +19,15 @@ class MaterialRepository(Protocol):
 
     def list_materials(self) -> list[Material]: ...
 
+    def delete_material(self, material_id: str) -> None: ...
+
     def save_collection(self, collection: MaterialCollection) -> None: ...
 
     def get_collection(self, collection_id: str) -> MaterialCollection | None: ...
 
     def list_collections(self) -> list[MaterialCollection]: ...
+
+    def delete_collection(self, collection_id: str) -> None: ...
 
     def replace_pages(self, material_id: str, pages: list[PageMetadata]) -> None: ...
 
@@ -86,6 +90,11 @@ class SqlAlchemyMaterialRepository:
             ).all()
             return [self._material_from_record(record) for record in records]
 
+    def delete_material(self, material_id: str) -> None:
+        with self.database.session() as session:
+            session.execute(delete(PageRecord).where(PageRecord.material_id == material_id))
+            session.execute(delete(MaterialRecord).where(MaterialRecord.id == material_id))
+
     def save_collection(self, collection: MaterialCollection) -> None:
         with self.database.session() as session:
             session.merge(
@@ -112,6 +121,14 @@ class SqlAlchemyMaterialRepository:
                 )
             ).all()
             return [self._collection_from_record(record) for record in records]
+
+    def delete_collection(self, collection_id: str) -> None:
+        with self.database.session() as session:
+            session.execute(
+                delete(MaterialCollectionRecord).where(
+                    MaterialCollectionRecord.id == collection_id
+                )
+            )
 
     def replace_pages(self, material_id: str, pages: list[PageMetadata]) -> None:
         if any(page.material_id != material_id for page in pages):

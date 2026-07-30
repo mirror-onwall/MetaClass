@@ -1,150 +1,116 @@
 # MetaClass
 
-MetaClass 是一个把 PPT/PDF 或学习主题转换为结构化学习内容、讲解资源和可控互动课堂的教学平台原型。
+MetaClass 是一个面向教学材料的 AI 课堂生成平台。它可以导入 PDF/PPTX，解析并组织学习内容，生成演示文稿和问题库，再运行由教师与多类学生 Agent 参与的互动课堂，同时支持 TTS 讲解视频。
 
-项目同时服务两类场景：
+## 已实现功能
 
-- **Learner Studio**：材料解析、讲解文档、讲解视频、互动课堂与学习诊断。
-- **Presenter Studio**：逐页讲稿、提问预测、结构诊断与 PPT 重构。
+- 材料库：上传、解析、预览、归档与删除 PDF/PPTX
+- 学习内容：按材料生成结构化课程内容和知识树
+- 演示文稿：规划、生成并导出 PPTX
+- 问题库：基于课程内容生成课堂问题
+- 互动课堂：课堂计划、教师讲解、学生 Agent、自由提问与学习诊断
+- 讲解视频：逐页语音合成、字幕与 MP4 输出
+- 本地持久化：SQLAlchemy + SQLite，默认数据位于 `data/runtime/`
 
-两端共享 `PageMetadata`、`LearningContent`、`ClassroomPlan` 和类型化 `TeachingAction`。课堂并非让多个 Agent 自由聊天，而是由 `ClassroomController` 按计划和会话状态调度。
+没有配置外部模型密钥时，后端默认使用 fake LLM/TTS，仍可运行测试和体验基础流程。
 
-> 当前状态：项目处于骨架搭建阶段，已提供 FastAPI 健康检查、领域目录和测试入口；材料解析、课堂运行与前端页面仍待实现。
+## 技术栈
 
-## 核心流程
+- 后端：Python 3.11+、FastAPI、Pydantic、SQLAlchemy
+- 前端：React 19、TypeScript、Vite
+- 测试与检查：pytest、Ruff、TypeScript
 
-```text
-PPT/PDF ─┐
-         ├─ Read ─> PageMetadata ─> LearningContent
-学习主题 ─┘                                │
-                                          v
-                              Plan ─> ClassroomPlan
-                                          │
-                                          v
-                           Run ─> ClassroomSession
-                                  + SessionEvent
-                                  + StudentState
+## 快速开始
+
+### 1. 安装后端
+
+```bash
+python3 -m venv metaclass_env
+source metaclass_env/bin/activate
+python -m pip install -e 'apps/api[dev]'
 ```
 
-`Read → Plan → Run` 是本项目对“课程生成 + 状态机式课堂编排”的工程归纳，不是 OpenMAIC 的官方阶段命名。
+### 2. 安装前端
+
+```bash
+cd apps/web
+npm install
+cd ../..
+```
+
+### 3. 配置环境变量
+
+```bash
+cp .env.example .env
+```
+
+默认配置无需密钥。接入真实 LLM、TTS、视觉模型或 PPT 服务时，按 `.env.example` 中的说明填写对应配置；不要提交 `.env`。
+
+### 4. 启动项目
+
+```bash
+./scripts/dev.sh
+```
+
+脚本会先构建前端，再由 FastAPI 在同一端口托管 Web 和 API：
+
+- 应用：<http://127.0.0.1:8000>
+- API 文档：<http://127.0.0.1:8000/docs>
+- 健康检查：<http://127.0.0.1:8000/health>
+
+前端单独开发时：
+
+```bash
+cd apps/web
+npm run dev
+```
+
+访问 <http://127.0.0.1:5173>。前后端分开部署时，可在 `apps/web/.env.local` 设置 `VITE_API_BASE`。
+
+## 运行检查
+
+```bash
+source metaclass_env/bin/activate
+pytest -q apps/api/tests
+ruff check apps/api/src apps/api/tests
+cd apps/web && npm run build
+```
 
 ## 仓库结构
 
 ```text
 .
 ├── apps/
-│   ├── api/                  # FastAPI 模块化单体
-│   │   ├── src/metaclass/
-│   │   │   ├── core/        # 配置、异常、日志等通用能力
-│   │   │   ├── infrastructure/ # 数据库、存储、Provider、任务执行器
-│   │   │   └── modules/     # 按 materials/content/classroom 等业务域组织
-│   │   └── tests/            # API 单元与集成测试
-│   └── web/                  # React + Vite 单页操作前端
-│       └── src/
-│           ├── app/          # 路由、布局和全局 Provider
-│           ├── features/     # 按页面能力拆分的业务功能
-│           └── shared/       # 通用 UI、API client、hooks
-├── packages/contracts/      # OpenAPI/JSON Schema 与生成类型
-├── data/                    # 本地数据，产物不提交 Git
-├── docs/                    # 架构决策和设计评审
-├── tests/e2e/               # 跨端主链路测试
-└── MetaClass_具体设计_新版.md # 产品与功能设计原稿
+│   ├── api/                  # FastAPI 后端、领域模块和测试
+│   └── web/                  # React + Vite 前端
+├── packages/contracts/      # 共享契约与生成类型预留目录
+├── data/                    # 本地上传、处理结果和 SQLite 数据（不提交）
+├── docs/                    # 架构、开发和数据处理文档
+├── output/                  # 示例数据处理产物
+├── scripts/                 # 本地启动脚本
+├── tests/e2e/               # 端到端测试预留目录
+└── tools/                   # 知识库和学习内容生成工具
 ```
 
-后端各业务域内部建议统一采用以下结构，并按需创建，避免空目录泛滥：
+后端按业务域组织在 `apps/api/src/metaclass/modules/`，包括 materials、content、presentation、question_bank、classroom 和 video。应用依赖在 `core/application.py` 统一装配。
 
-```text
-modules/<domain>/
-├── api.py          # HTTP 路由与请求/响应适配
-├── schemas.py      # Pydantic API/领域契约
-├── models.py       # 持久化模型（需要数据库时再创建）
-├── repository.py   # 数据访问接口与实现
-└── service.py      # 用例编排与业务规则
-```
+## 配置说明
 
-课堂模块可额外包含 `controller.py`、`events.py`、`actions.py` 和 `agents/`；一次性结构化生成逻辑使用 `generator` 或 `service` 命名，不包装成 Agent。
+常用配置分为以下几组：
 
-## 快速开始
+- `METACLASS_LLM_*`：课堂、内容和问题生成模型
+- `METACLASS_VISION_*`：材料页面视觉理解
+- `METACLASS_EMBEDDING_*`：问题检索向量模型
+- `METACLASS_TTS_*`：讲解语音合成
+- `METACLASS_PPT_PROVIDER`、`METACLASS_CODEX_*`、`PRESENTON_*`：PPT 生成
+- `METACLASS_MATERIAL_PARSER`、`METACLASS_MINERU_*`：材料解析
 
-项目根目录已使用 `metaclass_env` 作为 Python 虚拟环境。首次安装执行：
+完整字段和默认值见 [`.env.example`](.env.example)。
 
-```bash
-python3 -m venv metaclass_env
-source metaclass_env/bin/activate
-python -m pip install -e 'apps/api[dev]'
-uvicorn metaclass.main:app --reload
-```
+## 进一步阅读
 
-后续启动只需要：
-
-```bash
-./scripts/dev.sh
-```
-
-该脚本会先构建 Web，再由 FastAPI 在同一个 `8000` 端口托管页面与 API。访问 <http://127.0.0.1:8000>，按 `Ctrl+C` 即可关闭。
-
-访问：
-
-- 健康检查：<http://127.0.0.1:8000/health>
-- OpenAPI 文档：<http://127.0.0.1:8000/docs>
-
-运行检查：
-
-```bash
-source metaclass_env/bin/activate
-pytest -q apps/api/tests
-ruff check apps/api/src apps/api/tests
-```
-
-启动前端：
-
-```bash
-cd apps/web
-npm install
-npm run dev
-```
-
-然后访问 <http://127.0.0.1:5173>。前端默认连接 <http://127.0.0.1:8000>，可通过 `VITE_API_BASE` 修改。
-
-## MVP 范围
-
-首版只保证一条可演示的纵向闭环：
-
-1. 上传 PDF/PPTX，解析页面并保留来源引用。
-2. 构建统一 `LearningContent`。
-3. 生成 `ClassroomPlan` 与可校验的 `TeachingAction`。
-4. 创建 `ClassroomSession`，由规则 Controller 驱动 Teacher/Evaluator。
-5. 根据小测和交互证据更新“估计掌握度”。
-6. 使用页面图片、TTS、字幕合成基础讲解视频。
-
-主题生成、向量检索、完整 Presenter 重构排在主链路之后；数字人、3D 场景、复杂仿真和长期画像不进入 MVP。
-
-## 关键工程约束
-
-- `ClassroomPlan` 是不可变模板；用户提问等动态行为追加为 `SessionEvent`。
-- `TeachingAction` 使用带判别字段的联合类型，各动作拥有独立 payload。
-- 所有生成内容保留 `source_refs`，至少能追溯到材料页或文本块。
-- 学习诊断必须保存 evidence，不把模型估计包装成精确测量。
-- 默认测试使用 fake LLM/TTS provider，不依赖密钥和外网。Fake TTS 生成可播放测试音轨，接入真实语音时替换 Provider 即可。
-- 解析、视频、PPT 生成通过 job 边界执行；MVP 可使用单进程 worker，避免依赖易丢失的进程内后台任务。
-
-## 文档导航
-
-- [具体设计](MetaClass_具体设计_新版.md)：产品功能、数据对象、API 和页面设计原稿。
-- [设计评审](docs/design-review.md)：对原设计的范围收敛和架构修正。
-- [架构说明](docs/architecture.md)：当前模块、依赖方向、主流程和技术债。
-- [组员开发手册](docs/development-guide.md)：逐文件职责、修改步骤、测试和分工方式。
-- [后端说明](apps/api/README.md)：后端模块边界与扩展约定。
-- [前端说明](apps/web/README.md)：前端目录和状态管理原则。
-- [共享契约](packages/contracts/README.md)：跨端数据契约的来源与生成规则。
-
-## 推荐实现顺序
-
-1. 契约、配置、数据库与 fake provider
-2. 材料上传、解析与 `LearningContent`
-3. `ClassroomPlan`、规则 Controller 与 session event
-4. 前端课堂页和状态恢复
-5. Evaluator 与轻量学习诊断
-6. 视频链路
-7. Presenter 基础能力
-8. 主题生成、检索和 PPT 重构
+- [产品与功能设计](MetaClass_具体设计.md)
+- [架构说明](docs/architecture.md)
+- [开发手册](docs/development-guide.md)
+- [后端说明](apps/api/README.md)
+- [前端说明](apps/web/README.md)
