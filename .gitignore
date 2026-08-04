@@ -32,6 +32,7 @@ data/archive/
 # Local runtime and test artifacts
 logs/
 outputs/
+work/
 data/test-tmp/
 .codex-pytest-*/
 
