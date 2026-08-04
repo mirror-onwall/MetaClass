@@ -1,5 +1,7 @@
 import json
+import os
 import platform
+import shutil
 import subprocess
 import tempfile
 import textwrap
@@ -34,6 +36,14 @@ class PPTSkillAdapter:
     using the project's existing python-pptx dependency. The structured request
     file is kept so a richer external skill can replace this renderer later.
     """
+
+    def __init__(self, *, libreoffice_bin: str | Path | None = None) -> None:
+        configured = (
+            str(libreoffice_bin).strip()
+            if libreoffice_bin is not None
+            else os.getenv("METACLASS_LIBREOFFICE_BIN", "").strip()
+        )
+        self.libreoffice_bin = configured or None
 
     def prepare_request(
         self,
@@ -89,8 +99,7 @@ class PPTSkillAdapter:
         missing = [slide.id for slide in plan.slides if not slide.elements]
         if missing:
             raise ValueError(
-                "Declarative PPTX rendering requires elements on every slide: "
-                + ", ".join(missing)
+                "Declarative PPTX rendering requires elements on every slide: " + ", ".join(missing)
             )
         destination.parent.mkdir(parents=True, exist_ok=True)
         self._render_basic_pptx(plan, destination)
@@ -127,6 +136,7 @@ class PPTSkillAdapter:
         provider_name: str,
         provider_metadata: dict,
         external_slide_images: list[PPTSlideImage] | None = None,
+        preview_plan: PresentationPlan | None = None,
     ) -> PPTArtifact:
         """Package and preview a PPTX produced by an external presentation service."""
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -148,11 +158,13 @@ class PPTSkillAdapter:
         )
         slide_images = external_slide_images
         if slide_images is None:
+            rendering_plan = preview_plan or plan
             slide_images = self._render_slide_images(
-                plan,
+                rendering_plan,
                 pptx_path,
                 output_dir / "slides",
                 allow_placeholder=False,
+                allow_declarative_fallback=preview_plan is not None,
             )
         return PPTArtifact(
             id=f"ppt_artifact_{uuid4().hex[:12]}",
@@ -170,73 +182,191 @@ class PPTSkillAdapter:
         output_dir: Path,
         *,
         allow_placeholder: bool = True,
+        allow_declarative_fallback: bool = True,
     ) -> list[PPTSlideImage]:
         output_dir.mkdir(parents=True, exist_ok=True)
         operating_system = platform.system().lower()
+        has_declarative_scenes = all(slide.elements for slide in plan.slides)
+
+        # Codex decks already have an authoritative, validated SlideElement scene.
+        # On macOS render that scene immediately: it avoids Keynote automation
+        # permissions/timeouts and keeps the browser preview deterministic. External
+        # decks without a scene still use the native PPTX renderer chain below.
+        if operating_system == "darwin" and allow_declarative_fallback and has_declarative_scenes:
+            self._clear_rendered_slide_images(output_dir)
+            (output_dir.parent / "render_error.txt").unlink(missing_ok=True)
+            return self._render_declarative_preview_images(plan, output_dir)
+
+        renderers = []
         if operating_system == "windows":
-            try:
-                slide_images = self._render_with_powerpoint(plan, pptx_path, output_dir)
-                (output_dir.parent / "render_error.txt").unlink(missing_ok=True)
-                return slide_images
-            except (FileNotFoundError, subprocess.SubprocessError, RuntimeError) as exc:
-                # Continue to LibreOffice/PIL so generation still completes on
-                # Windows hosts without Microsoft PowerPoint.
-                powerpoint_error = exc
-            else:  # pragma: no cover - return above is the successful path
-                powerpoint_error = None
-        else:
-            powerpoint_error = None
+            renderers.append(("PowerPoint", self._render_with_powerpoint))
         if operating_system == "darwin":
-            # The bundled headless LibreOffice runtime cannot reliably access
-            # macOS system CJK fonts and renders Chinese as tofu boxes. Browser
-            # previews use our declarative PIL renderer, which loads PingFang
-            # directly; the downloadable PPTX remains unchanged.
-            # Codex decks are compiled from the same immutable SlideElement scene.
-            # Rendering that scene with PIL is therefore a faithful browser preview,
-            # not a generic placeholder. Permit it even when external providers
-            # disallow synthetic previews. Plans without scene geometry still fail
-            # closed because their real PPTX appearance cannot be reconstructed.
-            has_declarative_scenes = all(slide.elements for slide in plan.slides)
-            if not allow_placeholder and not has_declarative_scenes:
-                raise RuntimeError("Real PPTX preview rendering is unavailable on this macOS host")
-            return self._render_placeholder_images(plan, output_dir)
-        try:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                libreoffice_profile = Path(temp_dir) / "lo_profile"
-                libreoffice_profile.mkdir(parents=True, exist_ok=True)
-                subprocess.run(
-                    [
-                        "soffice",
-                        "--headless",
-                        f"-env:UserInstallation={libreoffice_profile.as_uri()}",
-                        "--convert-to",
-                        "pdf",
-                        "--outdir",
-                        temp_dir,
-                        str(pptx_path),
-                    ],
-                    check=True,
-                    capture_output=True,
-                    timeout=60,
-                )
-                pdf_path = Path(temp_dir) / f"{pptx_path.stem}.pdf"
-                if not pdf_path.exists():
-                    raise FileNotFoundError(f"Converted PDF not found: {pdf_path}")
-                slide_images = self._render_pdf_pages(plan, pdf_path, output_dir)
+            # Keynote uses macOS-native fonts and produces one PDF page per slide.
+            renderers.append(("Keynote", self._render_with_keynote))
+        renderers.append(("LibreOffice", self._render_with_libreoffice))
+
+        renderer_errors: list[tuple[str, Exception]] = []
+        for renderer_name, renderer in renderers:
+            self._clear_rendered_slide_images(output_dir)
+            try:
+                slide_images = renderer(plan, pptx_path, output_dir)
                 (output_dir.parent / "render_error.txt").unlink(missing_ok=True)
                 return slide_images
-        except (FileNotFoundError, subprocess.SubprocessError, fitz.FileDataError) as exc:
-            if powerpoint_error is not None:
-                exc = RuntimeError(f"PowerPoint: {powerpoint_error}; LibreOffice: {exc}")
-            (output_dir.parent / "render_error.txt").write_text(
-                PPTSkillAdapter._render_error_message(exc),
+            except (
+                FileNotFoundError,
+                OSError,
+                subprocess.SubprocessError,
+                fitz.FileDataError,
+                RuntimeError,
+            ) as exc:
+                renderer_errors.append((renderer_name, exc))
+
+        self._clear_rendered_slide_images(output_dir)
+        error = RuntimeError(
+            "; ".join(f"{name}: {exc}" for name, exc in renderer_errors)
+            or "No PPTX preview renderer is available"
+        )
+        (output_dir.parent / "render_error.txt").write_text(
+            "\n\n".join(
+                f"[{name}] {PPTSkillAdapter._render_error_message(exc)}"
+                for name, exc in renderer_errors
+            )
+            or PPTSkillAdapter._render_error_message(error),
+            encoding="utf-8",
+        )
+
+        if allow_declarative_fallback and has_declarative_scenes:
+            return self._render_declarative_preview_images(plan, output_dir)
+        if allow_placeholder:
+            return self._render_placeholder_images(plan, output_dir)
+        raise RuntimeError(
+            "Real PPTX preview rendering failed; placeholder previews are disabled"
+        ) from error
+
+    @staticmethod
+    def _clear_rendered_slide_images(output_dir: Path) -> None:
+        for image_path in output_dir.glob("slide_*.png"):
+            image_path.unlink(missing_ok=True)
+
+    def _resolve_libreoffice_binary(self) -> str:
+        candidates = [
+            self.libreoffice_bin,
+            shutil.which("soffice"),
+            shutil.which("libreoffice"),
+            "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+            "/opt/homebrew/bin/soffice",
+            "/usr/local/bin/soffice",
+            r"C:\Program Files\LibreOffice\program\soffice.exe",
+            r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+        ]
+        for candidate in candidates:
+            if candidate and Path(candidate).is_file():
+                return str(Path(candidate))
+        raise FileNotFoundError(
+            "LibreOffice was not found; set METACLASS_LIBREOFFICE_BIN to its soffice binary"
+        )
+
+    def _render_with_libreoffice(
+        self,
+        plan: PresentationPlan,
+        pptx_path: Path,
+        output_dir: Path,
+    ) -> list[PPTSlideImage]:
+        libreoffice = self._resolve_libreoffice_binary()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            libreoffice_profile = temp_path / "lo_profile"
+            libreoffice_profile.mkdir(parents=True, exist_ok=True)
+            completed = subprocess.run(
+                [
+                    libreoffice,
+                    "--headless",
+                    "--nologo",
+                    "--nodefault",
+                    "--nofirststartwizard",
+                    "--norestore",
+                    f"-env:UserInstallation={libreoffice_profile.as_uri()}",
+                    "--convert-to",
+                    "pdf",
+                    "--outdir",
+                    str(temp_path),
+                    str(pptx_path.resolve()),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=90,
+            )
+            pdf_path = temp_path / f"{pptx_path.stem}.pdf"
+            if not pdf_path.is_file():
+                details = "\n".join(
+                    part.strip()
+                    for part in (completed.stdout, completed.stderr)
+                    if part and part.strip()
+                )
+                raise FileNotFoundError(
+                    f"LibreOffice converted PDF was not found: {pdf_path}"
+                    + (f"\n{details}" if details else "")
+                )
+            return PPTSkillAdapter._render_pdf_pages(plan, pdf_path, output_dir)
+
+    @staticmethod
+    def _render_with_keynote(
+        plan: PresentationPlan,
+        pptx_path: Path,
+        output_dir: Path,
+    ) -> list[PPTSlideImage]:
+        osascript = Path(shutil.which("osascript") or "/usr/bin/osascript")
+        keynote_app = Path("/Applications/Keynote.app")
+        if not osascript.is_file():
+            raise FileNotFoundError("macOS osascript was not found")
+        if not keynote_app.exists():
+            raise FileNotFoundError("Keynote was not found in /Applications")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            script_path = temp_path / "render_keynote.applescript"
+            pdf_path = temp_path / "deck.pdf"
+            script_path.write_text(
+                textwrap.dedent(
+                    """
+                    on run argv
+                        set inputPath to item 1 of argv
+                        set outputPath to item 2 of argv
+                        tell application id "com.apple.iWork.Keynote"
+                            set openedDocument to open POSIX file inputPath
+                            try
+                                export openedDocument to POSIX file outputPath as PDF
+                            on error errorMessage number errorNumber
+                                close openedDocument saving no
+                                error errorMessage number errorNumber
+                            end try
+                            close openedDocument saving no
+                        end tell
+                    end run
+                    """
+                ).strip(),
                 encoding="utf-8",
             )
-            if not allow_placeholder:
-                raise RuntimeError(
-                    "Real PPTX preview rendering failed; placeholder previews are disabled"
-                ) from exc
-            return self._render_placeholder_images(plan, output_dir)
+            subprocess.run(
+                [
+                    str(osascript),
+                    str(script_path),
+                    str(pptx_path.resolve()),
+                    str(pdf_path),
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=120,
+            )
+            if not pdf_path.is_file():
+                raise FileNotFoundError(f"Keynote exported PDF was not found: {pdf_path}")
+            return PPTSkillAdapter._render_pdf_pages(plan, pdf_path, output_dir)
 
     @staticmethod
     def _render_with_powerpoint(
@@ -333,10 +463,18 @@ class PPTSkillAdapter:
 
     @staticmethod
     def _render_error_message(exc: Exception) -> str:
-        message = f"PPTX to slide image rendering fell back to PIL placeholder: {exc}"
+        message = f"PPTX to slide image rendering failed: {exc}"
         if isinstance(exc, subprocess.CalledProcessError):
-            stderr = exc.stderr.decode("utf-8", errors="replace") if exc.stderr else ""
-            stdout = exc.stdout.decode("utf-8", errors="replace") if exc.stdout else ""
+
+            def output_text(value) -> str:
+                if not value:
+                    return ""
+                if isinstance(value, bytes):
+                    return value.decode("utf-8", errors="replace")
+                return str(value)
+
+            stderr = output_text(exc.stderr)
+            stdout = output_text(exc.stdout)
             details = "\n".join(part for part in [stdout.strip(), stderr.strip()] if part)
             if details:
                 message = f"{message}\n{details}"
@@ -351,9 +489,9 @@ class PPTSkillAdapter:
         document = fitz.open(pdf_path)
         slide_images = []
         try:
+            if document.page_count != len(plan.slides):
+                raise fitz.FileDataError("Rendered slide count does not match PresentationPlan")
             for index, page in enumerate(document):
-                if index >= len(plan.slides):
-                    break
                 slide_plan = plan.slides[index]
                 image_path = output_dir / f"slide_{index + 1:03d}.png"
                 pixmap = page.get_pixmap(matrix=fitz.Matrix(1.5, 1.5), alpha=False)
@@ -369,8 +507,6 @@ class PPTSkillAdapter:
                 )
         finally:
             document.close()
-        if len(slide_images) != len(plan.slides):
-            raise fitz.FileDataError("Rendered slide count does not match PresentationPlan")
         return slide_images
 
     @staticmethod
@@ -416,18 +552,21 @@ class PPTSkillAdapter:
         size: Pt,
         color: RGBColor,
         bold: bool = False,
+        opacity: int = 100,
     ) -> None:
         latin_font, cjk_font = PPTSkillAdapter._font_faces()
         paragraph.font.size = size
         paragraph.font.bold = bold
         paragraph.font.name = latin_font
         paragraph.font.color.rgb = color
+        PPTSkillAdapter._apply_color_opacity(paragraph.font.color, opacity)
 
         run = paragraph.runs[0] if paragraph.runs else paragraph.add_run()
         run.font.name = latin_font
         run.font.size = size
         run.font.bold = bold
         run.font.color.rgb = color
+        PPTSkillAdapter._apply_color_opacity(run.font.color, opacity)
         rpr = run._r.get_or_add_rPr()
         for tag, font_name in {
             "a:latin": latin_font,
@@ -439,6 +578,22 @@ class PPTSkillAdapter:
                 element = OxmlElement(tag)
                 rpr.append(element)
             element.set("typeface", font_name)
+
+    @staticmethod
+    def _apply_color_opacity(color_format, opacity: int) -> None:
+        """Apply DrawingML alpha because python-pptx has no public transparency API."""
+
+        normalized = max(0, min(100, int(opacity)))
+        try:
+            color_element = color_format._color._xClr
+        except AttributeError:
+            return
+        for alpha in list(color_element.findall(qn("a:alpha"))):
+            color_element.remove(alpha)
+        if normalized < 100:
+            alpha = OxmlElement("a:alpha")
+            alpha.set("val", str(normalized * 1000))
+            color_element.append(alpha)
 
     @staticmethod
     def _fit_text(text: str, *, max_chars: int, max_lines: int) -> str:
@@ -454,6 +609,35 @@ class PPTSkillAdapter:
             break_on_hyphens=False,
         )
         return "\n".join(lines) if lines else clean[:max_chars]
+
+    @staticmethod
+    def _render_declarative_preview_images(
+        plan: PresentationPlan,
+        output_dir: Path,
+    ) -> list[PPTSlideImage]:
+        """Render the exact validated SlideElement scenes used to build the PPTX."""
+
+        missing = [slide.id for slide in plan.slides if not slide.elements]
+        if missing:
+            raise ValueError(
+                "Declarative preview requires elements on every slide: " + ", ".join(missing)
+            )
+
+        slide_images = []
+        for index, slide_plan in enumerate(plan.slides, start=1):
+            image_path = output_dir / f"slide_{index:03d}.png"
+            image = PPTSkillAdapter._render_scene_preview(slide_plan)
+            image.save(image_path)
+            slide_images.append(
+                PPTSlideImage(
+                    slide_id=slide_plan.id,
+                    slide_no=index,
+                    image_path=str(image_path),
+                    width=image.width,
+                    height=image.height,
+                )
+            )
+        return slide_images
 
     @staticmethod
     def _render_placeholder_images(
@@ -578,6 +762,14 @@ class PPTSkillAdapter:
                     draw.rectangle((x0, y0, x1, y1), fill="#E5E7EB", outline="#94A3B8", width=2)
                 continue
             if element.type == "text":
+                if fill:
+                    draw.rounded_rectangle(
+                        (x0, y0, x1, y1),
+                        radius=0,
+                        fill=fill,
+                        outline=(outline if style.line_color and style.line_width > 0 else None),
+                        width=max(1, round(style.line_width)),
+                    )
                 text = element.text or "\n".join(element.items)
                 font_size = max(11, round(style.font_size * 1.32))
                 clean = " ".join(text.split())
@@ -693,6 +885,24 @@ class PPTSkillAdapter:
 
         if element.type == "text":
             box = slide.shapes.add_textbox(x, y, w, h)
+            if style.fill:
+                box.fill.solid()
+                box.fill.fore_color.rgb = RGBColor.from_string(style.fill)
+                PPTSkillAdapter._apply_color_opacity(
+                    box.fill.fore_color,
+                    style.opacity,
+                )
+            else:
+                box.fill.background()
+            if style.line_color and style.line_width > 0:
+                box.line.color.rgb = RGBColor.from_string(style.line_color)
+                box.line.width = Pt(style.line_width)
+                PPTSkillAdapter._apply_color_opacity(
+                    box.line.color,
+                    style.opacity,
+                )
+            else:
+                box.line.fill.background()
             frame = box.text_frame
             frame.clear()
             frame.word_wrap = True
@@ -715,6 +925,7 @@ class PPTSkillAdapter:
                     size=Pt(style.font_size),
                     bold=style.bold,
                     color=color,
+                    opacity=style.opacity,
                 )
             return
 
@@ -729,11 +940,19 @@ class PPTSkillAdapter:
             if style.fill:
                 shape.fill.solid()
                 shape.fill.fore_color.rgb = RGBColor.from_string(style.fill)
+                PPTSkillAdapter._apply_color_opacity(
+                    shape.fill.fore_color,
+                    style.opacity,
+                )
             else:
                 shape.fill.background()
             if style.line_color and style.line_width > 0:
                 shape.line.color.rgb = RGBColor.from_string(style.line_color)
                 shape.line.width = Pt(style.line_width)
+                PPTSkillAdapter._apply_color_opacity(
+                    shape.line.color,
+                    style.opacity,
+                )
             else:
                 shape.line.fill.background()
             return
@@ -742,6 +961,10 @@ class PPTSkillAdapter:
             connector = slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, x, y, x + w, y + h)
             connector.line.color.rgb = RGBColor.from_string(style.line_color or style.color)
             connector.line.width = Pt(max(style.line_width, 1))
+            PPTSkillAdapter._apply_color_opacity(
+                connector.line.color,
+                style.opacity,
+            )
             return
 
         if element.type == "image" and element.image_path:

@@ -40,6 +40,13 @@ class PresentationTheme:
                 "cover_text": self.palette.chalk,
             },
             "allowed_colors": list(dict.fromkeys(self.palette.allowed_colors)),
+            "design_system": {
+                "grid": "12-column editorial grid with consistent outer margins and baseline rhythm",
+                "typography": "one display hierarchy and one body hierarchy; large titles, readable body, restrained bold",
+                "composition": "one dominant semantic exhibit per slide with intentional whitespace",
+                "shape_language": "few purposeful shapes; avoid UI dashboards, empty cards, and decorative blobs",
+                "continuity": "reuse title rhythm, spacing scale, and at most two accent motifs across the deck",
+            },
             "rules": list(self.rules),
         }
 
@@ -230,8 +237,7 @@ def apply_presentation_theme(
         "ink",
     )
     base_token_map = {
-        getattr(BRAND_PALETTE, name): getattr(theme.palette, name)
-        for name in token_names
+        getattr(BRAND_PALETTE, name): getattr(theme.palette, name) for name in token_names
     }
     color_token_map = {
         **base_token_map,
@@ -286,9 +292,7 @@ def apply_presentation_theme(
         slides.append(
             slide.model_copy(
                 update={
-                    "background": (
-                        theme.palette.board if index == 0 else theme.palette.paper
-                    ),
+                    "background": (theme.palette.board if index == 0 else theme.palette.paper),
                     "elements": elements,
                 }
             )

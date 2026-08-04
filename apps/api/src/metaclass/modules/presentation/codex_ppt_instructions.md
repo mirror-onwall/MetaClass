@@ -16,6 +16,8 @@ compiles it into `deck.pptx`.
 - Speaker scripts remain bound to their original slide IDs and never become
   visible slide content.
 - `suggested_visual` guides composition only and is not visible copy.
+- `layout_id` and `visual_payload` describe the intended visual structure; they
+  may guide geometry but may not introduce new visible text.
 
 ## Safe output
 
@@ -25,6 +27,13 @@ compiles it into `deck.pptx`.
 - Text elements appear in exact content order: title, then every key point.
 - Keep text inside the safe canvas, use at least 28 pt titles and 18 pt body
   copy, and do not overlap text boxes.
+- Text-box fill, border, and opacity are rendered literally. Keep text fully
+  opaque and maintain at least 4.5:1 normal-text or 3:1 large-text contrast.
+- Build one coherent editorial system across the deck. Every shape and line
+  must communicate grouping, sequence, comparison, direction, scale, or
+  emphasis; do not use empty cards, arbitrary circles, or decorative blobs.
+- Use deliberate whitespace, consistent alignment, restrained borders, and one
+  dominant semantic exhibit per slide.
 - Use only the selected theme payload supplied by MetaClass. Theme choice may
   change colors and visual direction, but never the immutable visible content.
 

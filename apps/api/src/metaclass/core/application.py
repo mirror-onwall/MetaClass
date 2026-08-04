@@ -118,7 +118,9 @@ def build_services(
         student_concurrency=settings.qa_student_concurrency,
         candidates_per_slide=settings.qa_candidates_per_slide,
     )
-    local_ppt_provider = PPTSkillAdapter()
+    local_ppt_provider = PPTSkillAdapter(
+        libreoffice_bin=settings.libreoffice_bin,
+    )
     ppt_provider = local_ppt_provider
     configured_ppt_provider = settings.ppt_provider.strip().lower()
     presenton_provider = None
