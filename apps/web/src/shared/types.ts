@@ -149,6 +149,7 @@ export type LearningContent = {
   material_id?: string;
   material_ids?: string[];
   collection_id?: string;
+  organization_mode?: "knowledge" | "source_deck";
   title: string;
   subtitle?: string;
   audience?: Record<string, unknown>;
@@ -181,6 +182,7 @@ export type ContentGenerationJob = {
   id: string;
   material_id?: string;
   collection_id?: string;
+  organization_mode?: "knowledge" | "source_deck";
   status: "queued" | "running" | "succeeded" | "failed";
   progress: number;
   step: string;
@@ -218,6 +220,14 @@ export type TeachingAction =
   | (ActionBase & {
       type: "SHOW_PAGE";
       payload: { source_ref: SourceRef; slide_no?: number };
+    })
+  | (ActionBase & {
+      type: "SHOW_SLIDE";
+      payload: {
+        presentation_resource_id: string;
+        slide_id: string;
+        slide_no: number;
+      };
     })
   | (ActionBase & {
       type: "EXPLAIN";
@@ -313,7 +323,7 @@ export type ControllerResult = {
 };
 
 export type ClassroomNavigationResult = ControllerResult & {
-  page_action: Extract<TeachingAction, { type: "SHOW_PAGE" }> | null;
+  page_action: Extract<TeachingAction, { type: "SHOW_PAGE" | "SHOW_SLIDE" }> | null;
 };
 
 export type AutoClassroomStep = {
@@ -367,10 +377,15 @@ export type PresentationPlan = {
   id: string;
   content_id: string;
   title: string;
+  mode?: "generated" | "source_deck";
+  source_material_id?: string;
+  presentation_resource_id?: string;
   slides: Array<{
     id: string;
     order: number;
     source_section_ids: string[];
+    source_page_no?: number;
+    source_kind?: "source" | "generated";
     title: string;
     key_points: string[];
     speaker_script: string;
@@ -430,12 +445,34 @@ export type PresentationPlanJob = {
   id: string;
   content_id: string;
   prepare_question_bank: boolean;
+  mode?: "generated" | "source_deck";
+  source_material_id?: string;
   status: "queued" | "running" | "succeeded" | "failed";
   progress: number;
   step: string;
   message: string;
   plan_id?: string;
   error?: string;
+};
+
+export type PresentationResource = {
+  id: string;
+  presentation_plan_id: string;
+  kind: "source_deck" | "generated_artifact";
+  source_material_id?: string;
+  artifact_id?: string;
+  source_file_hash?: string;
+  source_page_count?: number;
+  is_stale: boolean;
+  stale_reason?: string;
+  slides: Array<{
+    slide_id: string;
+    order: number;
+    kind: "source" | "generated";
+    source_page_no?: number;
+    artifact_slide_no?: number;
+    image_url?: string;
+  }>;
 };
 
 export type PPTThemeOption = {

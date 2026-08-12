@@ -610,6 +610,16 @@ def test_prepared_question_bank_runs_as_classroom_script(client: TestClient) -> 
     ).json()
     prepared = question_bank["items"][0]
 
+    missing_artifact = client.post(
+        f"/api/v1/learning-contents/{content['id']}/classroom-plans",
+        params={"presentation_plan_id": presentation["id"]},
+    )
+    assert missing_artifact.status_code == 409
+    ppt_job = client.post(f"/api/v1/presentation-plans/{presentation['id']}/ppt-jobs")
+    assert ppt_job.status_code == 202
+    finished_ppt_job = client.get(f"/api/v1/ppt-jobs/{ppt_job.json()['id']}")
+    assert finished_ppt_job.json()["status"] == "finished"
+
     classroom_plan_response = client.post(
         f"/api/v1/learning-contents/{content['id']}/classroom-plans",
         params={"presentation_plan_id": presentation["id"]},
@@ -655,7 +665,7 @@ def test_prepared_question_bank_runs_as_classroom_script(client: TestClient) -> 
     assert blocked_question.status_code == 409
     teacher_step = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
 
-    assert first.json()["action"]["type"] == "SHOW_PAGE"
+    assert first.json()["action"]["type"] == "SHOW_SLIDE"
     assert second.json()["action"]["type"] == "EXPLAIN"
     assert student_step.json()["status"] == "agent_turn"
     assert student_step.json()["directed_turn"]["turns"][0]["role"] == "student"

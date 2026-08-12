@@ -23,6 +23,7 @@ class LearningMode(StrEnum):
 
 class ActionType(StrEnum):
     SHOW_PAGE = "SHOW_PAGE"
+    SHOW_SLIDE = "SHOW_SLIDE"
     EXPLAIN = "EXPLAIN"
     ASK_QUIZ = "ASK_QUIZ"
     PROBE = "PROBE"
@@ -39,6 +40,12 @@ class ActionType(StrEnum):
 class ShowPagePayload(SchemaModel):
     source_ref: SourceRef
     slide_no: int | None = Field(default=None, ge=1)
+
+
+class ShowSlidePayload(SchemaModel):
+    presentation_resource_id: str = Field(min_length=1)
+    slide_id: str = Field(min_length=1)
+    slide_no: int = Field(ge=1)
 
 
 class ExplainPayload(SchemaModel):
@@ -100,6 +107,13 @@ class ShowPageAction(SchemaModel):
     type: Literal["SHOW_PAGE"]
     actor: Literal["system"]
     payload: ShowPagePayload
+
+
+class ShowSlideAction(SchemaModel):
+    id: str
+    type: Literal["SHOW_SLIDE"]
+    actor: Literal["system"]
+    payload: ShowSlidePayload
 
 
 class ExplainAction(SchemaModel):
@@ -181,6 +195,7 @@ class EndAction(SchemaModel):
 
 TeachingAction = Annotated[
     ShowPageAction
+    | ShowSlideAction
     | ExplainAction
     | AskQuizAction
     | ProbeAction
@@ -398,7 +413,7 @@ class ControllerResult(SchemaModel):
 
 
 class ClassroomNavigationResult(ControllerResult):
-    page_action: ShowPageAction | None = None
+    page_action: ShowPageAction | ShowSlideAction | None = None
 
 
 class AutoClassroomStep(SchemaModel):

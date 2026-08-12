@@ -73,6 +73,8 @@ class SlidePlan(SchemaModel):
     id: str = Field(min_length=1)
     order: int = Field(ge=1)
     source_section_ids: list[str] = Field(min_length=1)
+    source_page_no: int | None = Field(default=None, ge=1)
+    source_kind: Literal["source", "generated"] = "generated"
     title: str = Field(min_length=1)
     key_points: list[str] = Field(default_factory=list)
     speaker_script: str = Field(min_length=1)
@@ -90,6 +92,9 @@ class PresentationPlan(SchemaModel):
     id: str = Field(min_length=1)
     content_id: str = Field(min_length=1)
     title: str = Field(min_length=1)
+    mode: Literal["generated", "source_deck"] = "generated"
+    source_material_id: str | None = None
+    presentation_resource_id: str | None = None
     slides: list[SlidePlan] = Field(min_length=1)
     generation_source: Literal["llm", "fallback", "unknown"] = "unknown"
     generation_provider: str | None = None
@@ -138,6 +143,8 @@ class PresentationPlanJob(SchemaModel):
     id: str = Field(min_length=1)
     content_id: str = Field(min_length=1)
     prepare_question_bank: bool = True
+    mode: Literal["generated", "source_deck"] = "generated"
+    source_material_id: str | None = None
     status: PresentationPlanJobStatus = PresentationPlanJobStatus.QUEUED
     progress: int = Field(default=0, ge=0, le=100)
     step: str = "queued"
@@ -202,3 +209,31 @@ class PPTArtifact(SchemaModel):
     skill_request_path: str = Field(min_length=1)
     slide_images: list[PPTSlideImage] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class PresentationSlideResource(SchemaModel):
+    slide_id: str = Field(min_length=1)
+    order: int = Field(ge=1)
+    kind: Literal["source", "generated"]
+    source_page_no: int | None = Field(default=None, ge=1)
+    artifact_slide_no: int | None = Field(default=None, ge=1)
+    image_url: str | None = None
+
+
+class PresentationResource(SchemaModel):
+    id: str = Field(min_length=1)
+    presentation_plan_id: str = Field(min_length=1)
+    kind: Literal["source_deck", "generated_artifact"]
+    source_material_id: str | None = None
+    artifact_id: str | None = None
+    source_file_hash: str | None = None
+    source_page_count: int | None = Field(default=None, ge=0)
+    slides: list[PresentationSlideResource] = Field(default_factory=list)
+    is_stale: bool = False
+    stale_reason: str | None = None
+    created_at: datetime = Field(default_factory=utc_now)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
+class UpdateSlideScriptRequest(SchemaModel):
+    speaker_script: str = Field(min_length=1)

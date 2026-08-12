@@ -160,6 +160,7 @@ def build_services(
         data_dir,
         presentation_repository,
         contents,
+        materials,
         planner=PresentationPlanGenerator(llm),
         ppt_adapter=ppt_provider,
         question_bank_generator=question_bank_generator,

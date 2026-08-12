@@ -29,6 +29,7 @@ def test_sqlalchemy_creates_domain_tables(tmp_path) -> None:
         "page_understandings",
         "learning_contents",
         "presentation_plans",
+        "presentation_resources",
         "ppt_generation_jobs",
         "ppt_artifacts",
         "classroom_plans",
@@ -212,3 +213,82 @@ def test_material_repository_round_trip(tmp_path) -> None:
     repository.replace_pages(material.id, [replacement])
     assert repository.list_pages(material.id) == [replacement]
     database.dispose()
+
+
+def test_sqlite_upgrade_cleans_invalid_presentation_source_material_id(tmp_path) -> None:
+    from metaclass.core.application import build_services
+    from metaclass.modules.presentation.schemas import PresentationPlan, SlidePlan
+
+    services = build_services(tmp_path)
+    material = Material(
+        id="mat_cleanup",
+        filename="cleanup.pdf",
+        file_type="pdf",
+        status="parsed",
+        storage_path="data/raw/mat_cleanup/source.pdf",
+        page_count=1,
+    )
+    services.materials.repository.save_material(material)
+    content = LearningContent(
+        id="content_cleanup",
+        material_id=material.id,
+        title="Cleanup",
+        sections=[
+            LearningSection(
+                id="section_cleanup",
+                title="Cleanup",
+                summary="Cleanup",
+                source_refs=[
+                    SourceRef(
+                        material_id=material.id,
+                        page_id="page_cleanup",
+                        page_no=1,
+                    )
+                ],
+            )
+        ],
+    )
+    services.contents.repository.save(content)
+    services.presentations.repository.save_plan(
+        PresentationPlan(
+            id="presentation_cleanup",
+            content_id=content.id,
+            title="Cleanup",
+            slides=[
+                SlidePlan(
+                    id="slide_cleanup",
+                    order=1,
+                    source_section_ids=["section_cleanup"],
+                    title="Cleanup",
+                    speaker_script="Cleanup",
+                    suggested_visual="Cleanup",
+                )
+            ],
+        )
+    )
+    raw_connection = services.database.engine.raw_connection()
+    try:
+        cursor = raw_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=OFF")
+        cursor.execute(
+            "UPDATE presentation_plans "
+            "SET source_material_id = '2026-08-03 02:53:57' "
+            "WHERE id = 'presentation_cleanup'"
+        )
+        raw_connection.commit()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+    finally:
+        raw_connection.close()
+
+    services.database.create_schema()
+
+    with services.database.engine.connect() as connection:
+        source_material_id = connection.scalar(
+            text(
+                "SELECT source_material_id FROM presentation_plans "
+                "WHERE id = 'presentation_cleanup'"
+            )
+        )
+    assert source_material_id is None
+    services.database.dispose()

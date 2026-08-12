@@ -22,12 +22,14 @@ from metaclass.modules.content.schemas import (
     LearningContentDiagnostics,
     MaterialLearningContentSummary,
     LearningSection,
+    LearningSectionDraft,
     ConceptNote,
     PageRef,
     PageUnderstanding,
     PageUnderstandingDraft,
     QuizItem,
     SourceExcerpt,
+    SourceDeckLearningContentDraft,
     TeachingPoint,
     VisualOpportunity,
 )
@@ -64,6 +66,20 @@ class ContentService:
             progress=0,
             step="queued",
             message="Waiting to generate learning content",
+        )
+        self._save_job(job)
+        return job
+
+    def create_source_deck_generation_job(self, material_id: str) -> ContentGenerationJob:
+        self.materials.get(material_id)
+        job = ContentGenerationJob(
+            id=f"content_job_{uuid4().hex[:12]}",
+            material_id=material_id,
+            organization_mode="source_deck",
+            status=ContentGenerationJobStatus.QUEUED,
+            progress=0,
+            step="queued",
+            message="Waiting to reconstruct the source deck structure",
         )
         self._save_job(job)
         return job
@@ -112,11 +128,16 @@ class ContentService:
             def report_progress(progress: int, step: str, message: str) -> None:
                 self._update_job_progress(job_id, progress, step, message)
 
-            content = (
-                self.build_collection(job.collection_id, progress_callback=report_progress)
-                if job.collection_id
-                else self.build(job.material_id or "", progress_callback=report_progress)
-            )
+            if job.organization_mode == "source_deck":
+                content = self.build_source_deck(
+                    job.material_id or "", progress_callback=report_progress
+                )
+            else:
+                content = (
+                    self.build_collection(job.collection_id, progress_callback=report_progress)
+                    if job.collection_id
+                    else self.build(job.material_id or "", progress_callback=report_progress)
+                )
             job.status = ContentGenerationJobStatus.SUCCEEDED
             job.progress = 100
             job.step = "completed"
@@ -200,7 +221,11 @@ class ContentService:
             raise HTTPException(409, "Parse the material before understanding its pages")
 
         existing = self.repository.list_understandings(material_id)
-        if existing and len(existing) == len(pages) and not regenerate:
+        current_prompt_version = getattr(self.provider, "prompt_version", "v1")
+        cache_is_current = existing and all(
+            item.prompt_version == current_prompt_version for item in existing
+        )
+        if existing and len(existing) == len(pages) and cache_is_current and not regenerate:
             if page_progress:
                 page_progress(len(pages), len(pages))
             return existing
@@ -249,6 +274,262 @@ class ContentService:
             page_groups=[(material_id, page_list)],
             progress_callback=progress_callback,
         )
+
+    def build_source_deck(
+        self,
+        material_id: str,
+        *,
+        progress_callback: ProgressCallback | None = None,
+    ) -> LearningContent:
+        self._report_progress(
+            progress_callback, 8, "preparing", "Preparing the source deck structure"
+        )
+        pages = self.materials.pages(material_id)
+        if not pages:
+            raise HTTPException(409, "Parse the material before building learning content")
+        understandings = self.understand_pages(
+            material_id,
+            page_progress=lambda current, total: self._report_page_progress(
+                progress_callback, current, total, start=12, end=62
+            ),
+        )
+        self._report_progress(
+            progress_callback, 68, "extracting_knowledge_units", "Extracting knowledge units"
+        )
+        raw_units = self._knowledge_units_from_understandings(understandings)
+        knowledge_units, warnings = self._canonicalize_knowledge_units(raw_units)
+        organizer = getattr(self.provider, "organize_source_deck_learning_content", None)
+        if not organizer:
+            raise HTTPException(409, "Source-deck LearningContent organizer is unavailable")
+        self._report_progress(
+            progress_callback, 78, "reconstructing_deck", "Reconstructing source deck chapters"
+        )
+        source_draft = organizer(
+            material_id=material_id,
+            pages=pages,
+            understandings=understandings,
+            knowledge_units=knowledge_units,
+        )
+        self._validate_source_deck_draft(source_draft, pages, material_id)
+        draft = self._hydrate_source_deck_draft(
+            source_draft,
+            understandings=understandings,
+            knowledge_units=knowledge_units,
+        )
+        tree, draft = self._build_source_deck_tree(
+            tree_id=f"tree_source_{material_id.removeprefix('mat_')}",
+            draft=draft,
+            units=knowledge_units,
+        )
+        content_id = f"content_source_{material_id.removeprefix('mat_')}"
+        existing = self.repository.get(content_id)
+        content = self._content_from_draft(
+            content_id=content_id,
+            material_id=material_id,
+            draft=draft,
+            pages=pages,
+            created_at=existing.created_at if existing else utc_now(),
+            knowledge_units=knowledge_units,
+            knowledge_tree=tree,
+            quality_warnings=warnings,
+            organization_mode="source_deck",
+            version=2,
+        )
+        content = content.model_copy(
+            update={
+                "quality": self._assess_content_quality(
+                    content, expected_material_ids=[material_id]
+                )
+            }
+        )
+        self._report_progress(progress_callback, 96, "saving", "Saving source-deck content")
+        self.repository.save(content)
+        return content
+
+    @staticmethod
+    def _validate_source_deck_draft(
+        draft: SourceDeckLearningContentDraft,
+        pages: list[PageMetadata],
+        material_id: str,
+    ) -> None:
+        expected = [page.page_no for page in sorted(pages, key=lambda item: item.page_no)]
+        actual = [
+            ref.page_no
+            for section in draft.sections
+            for ref in section.page_refs
+            if ref.material_id == material_id
+        ]
+        if actual != expected:
+            raise ValueError(
+                f"Source-deck LearningContent page coverage mismatch: expected {expected}, got {actual}"
+            )
+        for section in draft.sections:
+            page_nos = [ref.page_no for ref in section.page_refs]
+            if page_nos != list(range(page_nos[0], page_nos[-1] + 1)):
+                raise ValueError("Source-deck LearningContent sections must use contiguous pages")
+        if [item.page_no for item in draft.page_flow] != expected:
+            raise ValueError("Source-deck page_flow must describe every source page in order")
+
+    @classmethod
+    def _hydrate_source_deck_draft(
+        cls,
+        draft: SourceDeckLearningContentDraft,
+        *,
+        understandings: list[PageUnderstanding],
+        knowledge_units: list[KnowledgeUnit],
+    ) -> LearningContentDraft:
+        """Convert the structural source-deck draft into the shared content contract."""
+        understanding_by_page = {item.page_no: item for item in understandings}
+        sections: list[LearningSectionDraft] = []
+        non_quiz_roles = {
+            "cover",
+            "agenda",
+            "section",
+            "transition",
+            "reference",
+            "appendix",
+        }
+        for section in draft.sections:
+            page_nos = [ref.page_no for ref in section.page_refs]
+            page_items = [understanding_by_page[page_no] for page_no in page_nos]
+            key_points = section.key_points or cls._dedupe_strings(
+                [point for item in page_items for point in item.knowledge_points]
+            )[:8]
+            quiz_items = []
+            for item in page_items:
+                if item.page_role in non_quiz_roles:
+                    continue
+                quiz_items.extend(item.quiz_items)
+                if len(quiz_items) >= 2:
+                    break
+            sections.append(
+                LearningSectionDraft(
+                    title=section.title,
+                    role=section.role,
+                    content_goal=section.content_goal,
+                    page_nos=page_nos,
+                    page_refs=section.page_refs,
+                    summary=section.summary or " ".join(item.summary for item in page_items),
+                    key_points=key_points,
+                    knowledge_points=key_points,
+                    teaching_narrative=section.teaching_approach,
+                    source_excerpts=[
+                        excerpt for item in page_items for excerpt in item.key_excerpts
+                    ][:12],
+                    formulas=[formula for item in page_items for formula in item.formulas][:8],
+                    misconceptions=[
+                        misconception
+                        for item in page_items
+                        for misconception in item.misconceptions
+                    ][:8],
+                    quiz_items=quiz_items[:2],
+                    transition_to_next=section.transition_to_next,
+                )
+            )
+        return LearningContentDraft(
+            title=draft.title,
+            subtitle=draft.subtitle,
+            objectives=draft.objectives,
+            outline=[section.title for section in draft.sections],
+            teaching_intent={
+                "organization_mode": "source_deck",
+                "goal": "按照原稿章节与页面叙事顺序组织课堂内容。",
+            },
+            material_overview={
+                "organization_mode": "source_deck",
+                "structure_summary": draft.structure_summary,
+                "detected_agenda": draft.detected_agenda,
+                "page_flow": [item.model_dump(mode="json") for item in draft.page_flow],
+            },
+            global_concepts=cls._global_concepts_from_units(knowledge_units),
+            generation_guidance={
+                "preserve_source_order": True,
+                "use_page_flow_for_narration": True,
+            },
+            sections=sections,
+        )
+
+    @staticmethod
+    def _build_source_deck_tree(
+        *,
+        tree_id: str,
+        draft: LearningContentDraft,
+        units: list[KnowledgeUnit],
+    ) -> tuple[CourseKnowledgeTree, LearningContentDraft]:
+        remaining = {unit.id: unit for unit in units}
+        nodes: list[CourseKnowledgeTreeNode] = []
+        root_ids: list[str] = []
+        previous_root: str | None = None
+        for index, section in enumerate(draft.sections, start=1):
+            root_id = f"{tree_id}_chapter_{index:02d}"
+            root_ids.append(root_id)
+            nodes.append(
+                CourseKnowledgeTreeNode(
+                    id=root_id,
+                    title=section.title,
+                    role=section.role,
+                    summary=section.summary,
+                    order=index,
+                    prerequisite_node_ids=[previous_root] if previous_root else [],
+                )
+            )
+            previous_root = root_id
+            page_nos = {ref.page_no for ref in section.page_refs}
+            matched = [
+                unit
+                for unit in remaining.values()
+                if any(ref.page_no in page_nos for ref in unit.page_refs)
+            ]
+            for unit in matched:
+                remaining.pop(unit.id, None)
+            for offset in range(0, len(matched), MAX_UNITS_PER_TOPIC_NODE):
+                chunk = matched[offset : offset + MAX_UNITS_PER_TOPIC_NODE]
+                nodes.append(
+                    CourseKnowledgeTreeNode(
+                        id=f"{root_id}_topic_{offset // MAX_UNITS_PER_TOPIC_NODE + 1:02d}",
+                        title=chunk[0].title if len(chunk) == 1 else section.title,
+                        role=chunk[0].unit_type,
+                        summary=" ".join(unit.summary for unit in chunk)[:1200],
+                        parent_id=root_id,
+                        knowledge_unit_ids=[unit.id for unit in chunk],
+                        order=offset // MAX_UNITS_PER_TOPIC_NODE + 1,
+                    )
+                )
+        if remaining:
+            root_id = f"{tree_id}_supplementary"
+            root_ids.append(root_id)
+            nodes.append(
+                CourseKnowledgeTreeNode(
+                    id=root_id,
+                    title="补充知识",
+                    role="supplementary",
+                    summary="无法稳定映射到单一原稿章节的知识单元。",
+                    order=len(root_ids),
+                    prerequisite_node_ids=[previous_root] if previous_root else [],
+                )
+            )
+            extra = list(remaining.values())
+            for offset in range(0, len(extra), MAX_UNITS_PER_TOPIC_NODE):
+                chunk = extra[offset : offset + MAX_UNITS_PER_TOPIC_NODE]
+                nodes.append(
+                    CourseKnowledgeTreeNode(
+                        id=f"{root_id}_topic_{offset // MAX_UNITS_PER_TOPIC_NODE + 1:02d}",
+                        title=chunk[0].title if len(chunk) == 1 else "补充主题",
+                        role=chunk[0].unit_type,
+                        summary=" ".join(unit.summary for unit in chunk)[:1200],
+                        parent_id=root_id,
+                        knowledge_unit_ids=[unit.id for unit in chunk],
+                        order=offset // MAX_UNITS_PER_TOPIC_NODE + 1,
+                    )
+                )
+        tree = CourseKnowledgeTree(
+            id=tree_id,
+            title=draft.title,
+            nodes=nodes,
+            root_node_ids=root_ids,
+            teaching_sequence=root_ids,
+        )
+        return tree, draft
 
     def build_collection(
         self,
@@ -1428,6 +1709,8 @@ class ContentService:
         knowledge_units: list[KnowledgeUnit] | None = None,
         knowledge_tree: CourseKnowledgeTree | None = None,
         quality_warnings: list[str] | None = None,
+        organization_mode: str = "knowledge",
+        version: int = 1,
     ) -> LearningContent:
         page_by_no = {page.page_no: page for page in pages}
         page_by_source = {(page.material_id, page.page_no): page for page in pages}
@@ -1511,6 +1794,7 @@ class ContentService:
             material_id=material_id,
             material_ids=material_ids or [material_id],
             collection_id=collection_id,
+            organization_mode=organization_mode,
             title=draft.title,
             subtitle=draft.subtitle,
             audience=draft.audience,
@@ -1523,6 +1807,7 @@ class ContentService:
             sections=sections,
             generation_guidance=draft.generation_guidance,
             quality=quality,
+            version=version,
             created_at=created_at,
             updated_at=utc_now(),
         )

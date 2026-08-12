@@ -69,6 +69,8 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [assetBusy, setAssetBusy] = useState<string | null>(null);
+  const [viewerPage, setViewerPage] = useState<number | null>(null);
+  const [viewerZoom, setViewerZoom] = useState(1);
 
   useEffect(() => {
     let active = true;
@@ -91,6 +93,29 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (viewerPage === null) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setViewerPage(null);
+      if (event.key === "ArrowLeft") {
+        setViewerPage((current) => current === null ? null : Math.max(0, current - 1));
+        setViewerZoom(1);
+      }
+      if (event.key === "ArrowRight") {
+        setViewerPage((current) => current === null ? null : Math.min(pages.length - 1, current + 1));
+        setViewerZoom(1);
+      }
+      if (event.key === "+" || event.key === "=") setViewerZoom((current) => Math.min(3, current + .25));
+      if (event.key === "-") setViewerZoom((current) => Math.max(.5, current - .25));
+    };
+    document.body.classList.add("material-viewer-open");
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.classList.remove("material-viewer-open");
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [pages.length, viewerPage]);
 
   const contentSummaryByMaterialId = useMemo(() => {
     const result = new Map<string, MaterialLearningContentSummary>();
@@ -140,6 +165,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
   async function inspect(material: Material) {
     setSelected(material);
     setPages([]);
+    setViewerPage(null);
     setDetailLoading(true);
     setError(null);
     try {
@@ -397,10 +423,21 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
               {assetBusy && <div className="asset-busy"><i />{assetBusy}</div>}
             </div>
             <div className="inspector-pages">
-              <div className="library-section-title"><span>页面预览</span><small>{detailLoading ? "LOADING" : `${pages.length} PAGES`}</small></div>
+              <div className="library-section-title"><span>原材料逐页查看</span><small>{detailLoading ? "LOADING" : `${pages.length} PAGES · 点击放大`}</small></div>
               {detailLoading ? <div className="inspector-loading">正在调取解析档案…</div> : pages.map((page) => (
                 <article key={page.id}>
-                  <img src={api.pageImage(selected.id, page.page_no)} alt={`第 ${page.page_no} 页`} loading="lazy" />
+                  <button
+                    className="inspector-page-preview"
+                    type="button"
+                    onClick={() => {
+                      setViewerPage(pages.indexOf(page));
+                      setViewerZoom(1);
+                    }}
+                    aria-label={`放大查看第 ${page.page_no} 页`}
+                  >
+                    <img src={api.pageImage(selected.id, page.page_no)} alt={`第 ${page.page_no} 页`} loading="lazy" />
+                    <span>放大查看</span>
+                  </button>
                   <div><span>PAGE {String(page.page_no).padStart(2, "0")}</span><b>{page.title || `第 ${page.page_no} 页`}</b><p>{page.raw_text || "该页面没有提取到可显示的文本。"}</p></div>
                 </article>
               ))}
@@ -408,6 +445,39 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
           </> : <div className="inspector-placeholder"><span>⌁</span><b>选择一份历史材料</b><p>这里会展示文件状态、解析页面与继续备课入口。</p></div>}
         </aside>
       </section>
+      {selected && viewerPage !== null && pages[viewerPage] && (
+        <div className="material-page-viewer" role="dialog" aria-modal="true" aria-label={`${selected.filename} 原材料查看器`}>
+          <header>
+            <div>
+              <small>ORIGINAL MATERIAL</small>
+              <b>{selected.filename}</b>
+            </div>
+            <div className="material-viewer-pagination">
+              <button type="button" disabled={viewerPage === 0} onClick={() => { setViewerPage(viewerPage - 1); setViewerZoom(1); }}>← 上一页</button>
+              <span><b>{viewerPage + 1}</b> / {pages.length}</span>
+              <button type="button" disabled={viewerPage === pages.length - 1} onClick={() => { setViewerPage(viewerPage + 1); setViewerZoom(1); }}>下一页 →</button>
+            </div>
+            <div className="material-viewer-tools">
+              <button type="button" aria-label="缩小" disabled={viewerZoom <= .5} onClick={() => setViewerZoom((current) => Math.max(.5, current - .25))}>−</button>
+              <button type="button" className="zoom-value" onClick={() => setViewerZoom(1)}>{Math.round(viewerZoom * 100)}%</button>
+              <button type="button" aria-label="放大" disabled={viewerZoom >= 3} onClick={() => setViewerZoom((current) => Math.min(3, current + .25))}>＋</button>
+              <button type="button" className="material-viewer-close" aria-label="关闭原材料查看器" onClick={() => setViewerPage(null)}>×</button>
+            </div>
+          </header>
+          <div className="material-viewer-canvas">
+            <img
+              src={api.pageImage(selected.id, pages[viewerPage].page_no)}
+              alt={`${selected.filename} 第 ${pages[viewerPage].page_no} 页`}
+              style={{ width: `${viewerZoom * 100}%` }}
+            />
+          </div>
+          <footer>
+            <span>PAGE {String(pages[viewerPage].page_no).padStart(2, "0")}</span>
+            <b>{pages[viewerPage].title || `第 ${pages[viewerPage].page_no} 页`}</b>
+            <small>方向键翻页 · ＋/－ 缩放 · Esc 关闭</small>
+          </footer>
+        </div>
+      )}
     </main>
   );
 }

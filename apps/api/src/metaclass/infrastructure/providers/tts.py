@@ -249,6 +249,9 @@ class MiniMaxTTSProvider:
                 break
             except error.HTTPError as exc:
                 detail = exc.read().decode("utf-8", errors="replace")
+                if attempt == 0 and (exc.code == 429 or 500 <= exc.code < 600):
+                    time.sleep(1.0)
+                    continue
                 raise RuntimeError(f"MiniMax TTS request failed: HTTP {exc.code} {detail}") from exc
             except (TimeoutError, error.URLError) as exc:
                 if attempt == 0:

@@ -8,6 +8,7 @@ from metaclass.modules.presentation.models import (
     PPTArtifactRecord,
     PPTGenerationJobRecord,
     PresentationPlanRecord,
+    PresentationResourceRecord,
 )
 from metaclass.modules.presentation.schemas import (
     PPTArtifact,
@@ -15,6 +16,8 @@ from metaclass.modules.presentation.schemas import (
     PPTSlideImage,
     PresentationPlan,
     PresentationPlanLibrarySummary,
+    PresentationResource,
+    PresentationSlideResource,
     SlidePlan,
 )
 
@@ -44,6 +47,10 @@ class PresentationRepository(Protocol):
 
     def get_artifact_for_plan(self, plan_id: str) -> PPTArtifact | None: ...
 
+    def save_resource(self, resource: PresentationResource) -> None: ...
+
+    def get_resource_for_plan(self, plan_id: str) -> PresentationResource | None: ...
+
 
 class SqlAlchemyPresentationRepository:
     def __init__(self, database: Database) -> None:
@@ -56,6 +63,9 @@ class SqlAlchemyPresentationRepository:
                     id=plan.id,
                     content_id=plan.content_id,
                     title=plan.title,
+                    mode=plan.mode,
+                    source_material_id=plan.source_material_id,
+                    presentation_resource_id=plan.presentation_resource_id,
                     slides=[slide.model_dump(mode="json") for slide in plan.slides],
                     generation_source=plan.generation_source,
                     generation_provider=plan.generation_provider,
@@ -165,13 +175,69 @@ class SqlAlchemyPresentationRepository:
             )
             return self._artifact(record) if record else None
 
+    def save_resource(self, resource: PresentationResource) -> None:
+        with self.database.session() as session:
+            session.merge(
+                PresentationResourceRecord(
+                    id=resource.id,
+                    presentation_plan_id=resource.presentation_plan_id,
+                    kind=resource.kind,
+                    source_material_id=resource.source_material_id,
+                    artifact_id=resource.artifact_id,
+                    source_file_hash=resource.source_file_hash,
+                    source_page_count=resource.source_page_count,
+                    slides=[slide.model_dump(mode="json") for slide in resource.slides],
+                    created_at=resource.created_at,
+                    updated_at=resource.updated_at,
+                )
+            )
+
+    def get_resource_for_plan(self, plan_id: str) -> PresentationResource | None:
+        with self.database.session() as session:
+            record = session.scalar(
+                select(PresentationResourceRecord).where(
+                    PresentationResourceRecord.presentation_plan_id == plan_id
+                )
+            )
+            if not record:
+                return None
+            return PresentationResource(
+                id=record.id,
+                presentation_plan_id=record.presentation_plan_id,
+                kind=record.kind,
+                source_material_id=record.source_material_id,
+                artifact_id=record.artifact_id,
+                source_file_hash=record.source_file_hash,
+                source_page_count=record.source_page_count,
+                slides=[
+                    PresentationSlideResource.model_validate(slide)
+                    for slide in (record.slides or [])
+                ],
+                created_at=ensure_utc(record.created_at),
+                updated_at=ensure_utc(record.updated_at),
+            )
+
     @staticmethod
     def _plan(record: PresentationPlanRecord) -> PresentationPlan:
+        mode = "generated" if record.mode == "hybrid" else record.mode or "generated"
+        slides = []
+        for payload in record.slides:
+            normalized = dict(payload)
+            if (
+                "source_kind" not in normalized
+                and mode == "source_deck"
+                and normalized.get("source_page_no")
+            ):
+                normalized["source_kind"] = "source"
+            slides.append(SlidePlan.model_validate(normalized))
         return PresentationPlan(
             id=record.id,
             content_id=record.content_id,
             title=record.title,
-            slides=[SlidePlan.model_validate(slide) for slide in record.slides],
+            mode=mode,
+            source_material_id=record.source_material_id,
+            presentation_resource_id=record.presentation_resource_id,
+            slides=slides,
             generation_source=record.generation_source or "unknown",
             generation_provider=record.generation_provider,
             generation_model=record.generation_model,

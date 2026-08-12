@@ -22,8 +22,8 @@ from metaclass.modules.classroom.schemas import (
     ProbePayload,
     ReviewAction,
     ReviewPayload,
-    ShowPageAction,
-    ShowPagePayload,
+    ShowSlideAction,
+    ShowSlidePayload,
     StudentQuestionAction,
     StudentQuestionPayload,
     TeacherQAResponseAction,
@@ -160,14 +160,20 @@ class ClassroomPlanGenerator:
                 content.sections[0].id,
             )
             section = sections[section_id]
-            source_ref = section.source_refs[0]
             prefix = f"slide_scene_{slide_no:03d}"
             actions = [
-                ShowPageAction(
+                ShowSlideAction(
                     id=f"{prefix}_show",
-                    type="SHOW_PAGE",
+                    type="SHOW_SLIDE",
                     actor="system",
-                    payload=ShowPagePayload(source_ref=source_ref, slide_no=slide_no),
+                    payload=ShowSlidePayload(
+                        presentation_resource_id=(
+                            presentation_plan.presentation_resource_id
+                            or presentation_plan.id
+                        ),
+                        slide_id=slide.id,
+                        slide_no=slide_no,
+                    ),
                 ),
                 ExplainAction(
                     id=f"{prefix}_explain",

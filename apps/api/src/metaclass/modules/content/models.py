@@ -47,6 +47,7 @@ class LearningContentRecord(Base):
     collection_id: Mapped[str | None] = mapped_column(
         ForeignKey("material_collections.id"), nullable=True, index=True
     )
+    organization_mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
     title: Mapped[str] = mapped_column(String(500))
     subtitle: Mapped[str] = mapped_column(String(500), default="")
     audience: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
