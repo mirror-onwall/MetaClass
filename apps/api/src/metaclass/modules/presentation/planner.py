@@ -13,6 +13,7 @@ from pydantic import Field, ValidationError
 from metaclass.core.schemas import SchemaModel
 from metaclass.infrastructure.providers.llm import LLMMessage, LLMProvider
 from metaclass.modules.content.schemas import LearningContent
+from metaclass.modules.materials.schemas import PageMetadata
 from metaclass.modules.presentation.layout_registry import (
     build_fallback_elements,
     registry_prompt_payload,
@@ -47,6 +48,17 @@ class PresentationPlanDraft(SchemaModel):
     slides: list[SlidePlanDraft] = Field(min_length=1)
 
 
+class SourceSlideNarrationDraft(SchemaModel):
+    page_no: int = Field(ge=1)
+    title: str = Field(min_length=1)
+    key_points: list[str] = Field(default_factory=list, max_length=6)
+    speaker_script: str = Field(min_length=1)
+
+
+class SourceSlideNarrationBatch(SchemaModel):
+    slides: list[SourceSlideNarrationDraft] = Field(min_length=1)
+
+
 class SlideSceneDraft(SchemaModel):
     background: str = Field(pattern=r"^[0-9A-Fa-f]{6}$")
     elements: list[SlideElement] = Field(min_length=1, max_length=40)
@@ -62,6 +74,9 @@ class PresentationPlanGenerator:
     def __init__(self, llm: LLMProvider | None = None) -> None:
         self.llm = llm
         self.skill_path = Path(__file__).with_name("pptx_skill") / "SKILL.md"
+        self.source_narration_prompt_path = Path(__file__).with_name(
+            "source_deck_narration_prompt.md"
+        )
 
     def generate(
         self,
@@ -94,6 +109,208 @@ class PresentationPlanGenerator:
         plan = self._generate_content_batches(content, fallback, progress_callback)
         self._report_progress(progress_callback, 35, "planning_scenes", "Designing slide layouts")
         return self._generate_scenes(content, plan, progress_callback)
+
+    def generate_from_source_deck(
+        self,
+        content: LearningContent,
+        pages: list[PageMetadata],
+        source_material_id: str,
+        progress_callback: ProgressCallback | None = None,
+    ) -> PresentationPlan:
+        """Create a one-to-one teaching plan without redesigning the uploaded deck."""
+        if not pages:
+            raise ValueError("Source PPT has no parsed pages")
+        slides = []
+        previous_section = content.sections[0]
+        for index, page in enumerate(sorted(pages, key=lambda item: item.page_no), start=1):
+            matched = [
+                section
+                for section in content.sections
+                if any(
+                    ref.material_id == source_material_id and ref.page_no == page.page_no
+                    for ref in section.page_refs
+                )
+                or any(
+                    ref.material_id == source_material_id and ref.page_no == page.page_no
+                    for ref in section.source_refs
+                )
+                or (
+                    page.page_no in section.page_nos
+                    and not section.page_refs
+                    and not section.source_refs
+                )
+            ]
+            section = matched[0] if matched else previous_section
+            previous_section = section
+            page_text = " ".join(page.raw_text.split())
+            page_summary = page_text[:500]
+            key_points = list(section.key_points or section.knowledge_points)[:5]
+            if not key_points and page_summary:
+                key_points = [page_summary[:120]]
+            script_parts = [
+                section.teaching_narrative or section.teaching_script or section.summary
+            ]
+            if page_summary and page_summary not in script_parts[0]:
+                script_parts.append(f"结合当前页面来看：{page_summary}")
+            slides.append(
+                SlidePlan(
+                    id=f"source_slide_{index:03d}",
+                    order=index,
+                    source_section_ids=[item.id for item in matched] or [section.id],
+                    source_page_no=page.page_no,
+                    source_kind="source",
+                    title=page.title.strip() or section.title or f"第 {page.page_no} 页",
+                    key_points=key_points,
+                    speaker_script="\n\n".join(part for part in script_parts if part).strip()
+                    or f"下面讲解第 {page.page_no} 页的核心内容。",
+                    suggested_visual="使用上传 PPT 的原始页面",
+                    layout="source",
+                    visual_payload=[],
+                    elements=[],
+                )
+            )
+            self._report_progress(
+                progress_callback,
+                10 + int(60 * index / len(pages)),
+                "mapping_source_slides",
+                f"Mapping source slide {index}/{len(pages)}",
+            )
+        plan = PresentationPlan(
+            id=f"presentation_plan_{uuid4().hex[:12]}",
+            content_id=content.id,
+            title=content.title,
+            mode="source_deck",
+            source_material_id=source_material_id,
+            slides=slides,
+            generation_source="fallback",
+            generation_provider="source_deck_mapper",
+        )
+        if not self.llm:
+            return plan
+        return self._enhance_source_deck_scripts(
+            content,
+            sorted(pages, key=lambda item: item.page_no),
+            plan,
+            progress_callback,
+        )
+
+    def _enhance_source_deck_scripts(
+        self,
+        content: LearningContent,
+        pages: list[PageMetadata],
+        plan: PresentationPlan,
+        progress_callback: ProgressCallback | None,
+    ) -> PresentationPlan:
+        """Generate page-specific narration in bounded batches without changing the deck."""
+        slides_by_page = {
+            slide.source_page_no: slide for slide in plan.slides if slide.source_page_no
+        }
+        sections = {section.id: section for section in content.sections}
+        failures: list[str] = []
+        successes = 0
+        batch_size = 8
+        for start in range(0, len(pages), batch_size):
+            batch = pages[start : start + batch_size]
+            payload = []
+            for page in batch:
+                slide = slides_by_page[page.page_no]
+                matched_sections = [
+                    sections[section_id]
+                    for section_id in slide.source_section_ids
+                    if section_id in sections
+                ]
+                payload.append(
+                    {
+                        "page_no": page.page_no,
+                        "page_title": page.title,
+                        "page_text": page.raw_text[:1800],
+                        "previous_page_title": (
+                            pages[page.page_no - 2].title if page.page_no > 1 else None
+                        ),
+                        "next_page_title": (
+                            pages[page.page_no].title
+                            if page.page_no < len(pages)
+                            else None
+                        ),
+                        "learning_sections": [
+                            {
+                                "id": section.id,
+                                "title": section.title,
+                                "summary": section.summary[:600],
+                                "key_points": (
+                                    section.key_points or section.knowledge_points
+                                )[:6],
+                            }
+                            for section in matched_sections
+                        ],
+                    }
+                )
+            messages = [
+                LLMMessage(
+                    role="system",
+                    content=self.source_narration_prompt_path.read_text(
+                        encoding="utf-8"
+                    ),
+                ),
+                LLMMessage(
+                    role="user",
+                    content=json.dumps(
+                        {
+                            "course_title": content.title,
+                            "course_objectives": content.objectives[:8],
+                            "pages": payload,
+                        },
+                        ensure_ascii=False,
+                    ),
+                ),
+            ]
+            try:
+                raw = self.llm.complete_json(messages, temperature=0.2)
+                draft = SourceSlideNarrationBatch.model_validate(json.loads(raw))
+                expected = {page.page_no for page in batch}
+                received = {item.page_no for item in draft.slides}
+                if received != expected:
+                    raise ValueError(
+                        f"Source narration pages mismatch: expected {sorted(expected)}, "
+                        f"received {sorted(received)}"
+                    )
+                for item in draft.slides:
+                    current = slides_by_page[item.page_no]
+                    slides_by_page[item.page_no] = current.model_copy(
+                        update={
+                            "title": item.title,
+                            "key_points": item.key_points or current.key_points,
+                            "speaker_script": item.speaker_script,
+                        }
+                    )
+                successes += 1
+            except (
+                TimeoutError,
+                json.JSONDecodeError,
+                ValidationError,
+                RuntimeError,
+                ValueError,
+            ) as exc:
+                failures.append(
+                    f"pages {batch[0].page_no}-{batch[-1].page_no}: "
+                    f"{type(exc).__name__}: {exc}"
+                )
+            self._report_progress(
+                progress_callback,
+                70 + int(20 * min(start + batch_size, len(pages)) / len(pages)),
+                "writing_source_scripts",
+                f"Writing source slide scripts ({min(start + batch_size, len(pages))}/{len(pages)})",
+            )
+        slides = [slides_by_page[page.page_no] for page in pages]
+        return plan.model_copy(
+            update={
+                "slides": slides,
+                "generation_source": "llm" if successes else "fallback",
+                "generation_provider": getattr(self.llm, "name", "unknown"),
+                "generation_model": getattr(self.llm, "model", None),
+                "fallback_reason": "; ".join(failures) or None,
+            }
+        )
 
     def _generate_content_batches(
         self,

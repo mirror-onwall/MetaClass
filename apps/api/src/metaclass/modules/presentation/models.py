@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, JSON, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from metaclass.infrastructure.database import Base
@@ -13,6 +13,13 @@ class PresentationPlanRecord(Base):
     id: Mapped[str] = mapped_column(String(64), primary_key=True)
     content_id: Mapped[str] = mapped_column(ForeignKey("learning_contents.id"), index=True)
     title: Mapped[str] = mapped_column(String(255))
+    mode: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    source_material_id: Mapped[str | None] = mapped_column(
+        ForeignKey("materials.id"), nullable=True
+    )
+    presentation_resource_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
     slides: Mapped[list[dict]] = mapped_column(JSON)
     generation_source: Mapped[str | None] = mapped_column(String(20), nullable=True)
     generation_provider: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -52,3 +59,24 @@ class PPTArtifactRecord(Base):
     skill_request_path: Mapped[str] = mapped_column(Text)
     slide_images: Mapped[list[dict]] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PresentationResourceRecord(Base):
+    __tablename__ = "presentation_resources"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    presentation_plan_id: Mapped[str] = mapped_column(
+        ForeignKey("presentation_plans.id"), unique=True, index=True
+    )
+    kind: Mapped[str] = mapped_column(String(30))
+    source_material_id: Mapped[str | None] = mapped_column(
+        ForeignKey("materials.id"), nullable=True
+    )
+    artifact_id: Mapped[str | None] = mapped_column(
+        ForeignKey("ppt_artifacts.id"), nullable=True
+    )
+    source_file_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    source_page_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    slides: Mapped[list[dict]] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

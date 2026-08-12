@@ -32,7 +32,9 @@ from metaclass.modules.classroom.schemas import (
     ClassroomState,
     CreateClassroomSessionRequest,
     GiveFeedbackAction,
-    ShowPageAction,
+    ShowSlideAction,
+    StudentQuestionAction,
+    StudentQuestionPayload,
     TeachingAction,
 )
 from metaclass.modules.classroom.service import ClassroomService
@@ -330,6 +332,90 @@ def test_presentation_plan_generator_uses_learning_content_sections() -> None:
     assert plan.slides[0].layout == "freeform"
     assert plan.slides[0].visual_payload
     assert plan.slides[0].elements
+
+
+def test_source_deck_narration_prompt_preserves_every_page() -> None:
+    class SourceNarrationLLM:
+        name = "source-narration-test"
+        model = "test-model"
+
+        def complete_json(self, messages, temperature=0.2):
+            payload = json.loads(messages[-1].content)
+            return json.dumps(
+                {
+                    "slides": [
+                        {
+                            "page_no": page["page_no"],
+                            "title": page["page_title"] or f"第 {page['page_no']} 页",
+                            "key_points": [f"要点 {page['page_no']}"],
+                            "speaker_script": f"逐页讲稿 {page['page_no']}",
+                        }
+                        for page in payload["pages"]
+                    ]
+                },
+                ensure_ascii=False,
+            )
+
+    content = LearningContent(
+        id="content_source_narration",
+        material_id="mat_source",
+        title="原稿课程",
+        sections=[
+            LearningSection(
+                id="section_source",
+                title="原稿章节",
+                summary="章节说明",
+                source_refs=[
+                    SourceRef(
+                        material_id="mat_source",
+                        page_id="page_001",
+                        page_no=1,
+                    )
+                ],
+            )
+        ],
+    )
+    pages = [
+        PageMetadata(
+            id=f"page_{page_no:03d}",
+            material_id="mat_source",
+            page_no=page_no,
+            title=f"页面 {page_no}",
+            raw_text=f"页面内容 {page_no}",
+            image_path=f"/tmp/page_{page_no:03d}.png",
+            source_refs=[
+                SourceRef(
+                    material_id="mat_source",
+                    page_id=f"page_{page_no:03d}",
+                    page_no=page_no,
+                )
+            ],
+        )
+        for page_no in (1, 2)
+    ]
+
+    plan = PresentationPlanGenerator(SourceNarrationLLM()).generate_from_source_deck(
+        content, pages, "mat_source"
+    )
+
+    assert plan.mode == "source_deck"
+    assert [slide.source_page_no for slide in plan.slides] == [1, 2]
+    assert [slide.speaker_script for slide in plan.slides] == [
+        "逐页讲稿 1",
+        "逐页讲稿 2",
+    ]
+    assert plan.generation_source == "llm"
+
+
+def test_source_deck_narration_uses_natural_style_prompt_file() -> None:
+    generator = PresentationPlanGenerator()
+    prompt = generator.source_narration_prompt_path.read_text(encoding="utf-8")
+
+    assert generator.source_narration_prompt_path.name == "source_deck_narration_prompt.md"
+    assert "不要机械逐条复述页面文字" in prompt
+    assert "`page_text`" in prompt
+    assert "像老师面对学生讲课" in prompt
+    assert '"slides"' in prompt
 
 
 def test_presentation_content_generation_uses_balanced_section_batches() -> None:
@@ -1248,7 +1334,7 @@ def test_classroom_plan_covers_every_presentation_slide() -> None:
         action
         for scene in plan.scenes
         for action in scene.actions
-        if isinstance(action, ShowPageAction)
+            if isinstance(action, ShowSlideAction)
     ]
     assert len(plan.scenes) == 10
     assert [action.payload.slide_no for action in show_actions] == list(range(1, 11))
@@ -1609,6 +1695,49 @@ def test_planned_probe_dialog_skips_recent_student_speaker() -> None:
     assert result.directed_turn is not None
     assert result.directed_turn.decision.next_agent_id == students[1].id
     assert result.directed_turn.turns[0].agent_id == students[1].id
+
+
+def test_scripted_qa_rotates_away_from_recent_preferred_student() -> None:
+    students = get_student_agent_states(
+        [StudentAgentType.DEEP_THINKER, StudentAgentType.RESEARCHER]
+    )
+    students[0].last_intent = "scripted_qa_question"
+    session = ClassroomSession(
+        id="session_scripted_rotation",
+        plan_id="plan_scripted_rotation",
+        mode="interactive",
+        student_states=students,
+        events=[
+            AgentTurnEvent(
+                id="event_recent_scripted",
+                session_id="session_scripted_rotation",
+                type="AGENT_TURN",
+                payload=AgentTurnPayload(
+                    turn=AgentTurn(
+                        agent_id=students[0].id,
+                        role="student",
+                        speech="我刚刚提出过一个问题。",
+                        intent="scripted_qa_question",
+                    )
+                ),
+            )
+        ],
+    )
+    action = StudentQuestionAction(
+        id="student_question_rotation",
+        type="STUDENT_QUESTION",
+        actor="student",
+        payload=StudentQuestionPayload(
+            qa_id="qa_rotation",
+            preferred_agent_type=StudentAgentType.DEEP_THINKER,
+            fallback_agent_types=[StudentAgentType.RESEARCHER],
+        ),
+    )
+
+    selected = ClassroomService._select_scripted_qa_student(session, action)
+
+    assert selected is not None
+    assert selected.id == students[1].id
 
 
 @pytest.mark.parametrize(

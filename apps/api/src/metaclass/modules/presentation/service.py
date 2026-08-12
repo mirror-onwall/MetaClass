@@ -6,6 +6,8 @@ from fastapi import HTTPException
 
 from metaclass.core.schemas import utc_now
 from metaclass.modules.content.service import ContentService
+from metaclass.modules.materials.schemas import MaterialType
+from metaclass.modules.materials.service import MaterialService
 from metaclass.modules.presentation.planner import PresentationPlanGenerator
 from metaclass.modules.presentation.diagnostics import diagnose_presentation_plan
 from metaclass.modules.presentation.providers import PPTProvider
@@ -19,6 +21,8 @@ from metaclass.modules.presentation.schemas import (
     PresentationPlanJobStatus,
     PresentationPlan,
     PresentationPlanDiagnosis,
+    PresentationResource,
+    PresentationSlideResource,
 )
 from metaclass.modules.presentation.themes import (
     get_presentation_theme,
@@ -35,6 +39,7 @@ class PresentationService:
         data_dir: Path,
         repository: PresentationRepository,
         contents: ContentService,
+        materials: MaterialService,
         planner: PresentationPlanGenerator | None = None,
         ppt_adapter: PPTProvider | None = None,
         question_bank_generator: QuestionBankGenerator | None = None,
@@ -43,6 +48,7 @@ class PresentationService:
         self.data_dir = data_dir
         self.repository = repository
         self.contents = contents
+        self.materials = materials
         self.planner = planner or PresentationPlanGenerator()
         self.ppt_adapter = ppt_adapter or PPTSkillAdapter()
         self.question_bank_generator = question_bank_generator
@@ -53,7 +59,9 @@ class PresentationService:
     def create_plan(self, content_id: str) -> PresentationPlan:
         content = self.contents.get(content_id)
         plan = self.planner.generate(content)
+        plan = self._attach_resource(plan)
         self.repository.save_plan(plan)
+        self._save_resource(plan)
         self._prepare_question_bank(content, plan)
         return plan
 
@@ -69,6 +77,37 @@ class PresentationService:
             progress=0,
             step="queued",
             message="Waiting to generate presentation plan",
+        )
+        self._save_plan_job(job)
+        return job
+
+    def create_source_deck_plan_job(
+        self,
+        content_id: str,
+        source_material_id: str,
+        *,
+        prepare_question_bank: bool = True,
+    ) -> PresentationPlanJob:
+        content = self.contents.get(content_id)
+        allowed_material_ids = set(content.material_ids or [content.material_id])
+        if source_material_id not in allowed_material_ids:
+            raise HTTPException(409, "Source material does not belong to LearningContent")
+        material = self.materials.get(source_material_id)
+        if material.file_type not in {MaterialType.PPTX, MaterialType.PDF}:
+            raise HTTPException(422, "Source presentation mode requires PPTX or PDF")
+        pages = self.materials.pages(source_material_id)
+        if not pages:
+            raise HTTPException(409, "Source presentation must be parsed before creating a plan")
+        job = PresentationPlanJob(
+            id=f"presentation_plan_job_{uuid4().hex[:12]}",
+            content_id=content_id,
+            prepare_question_bank=prepare_question_bank,
+            mode="source_deck",
+            source_material_id=source_material_id,
+            status=PresentationPlanJobStatus.QUEUED,
+            progress=0,
+            step="queued",
+            message="Waiting to map the uploaded PPT",
         )
         self._save_plan_job(job)
         return job
@@ -102,7 +141,20 @@ class PresentationService:
                 self._update_plan_job_progress(job_id, progress, step, message)
 
             content = self.contents.get(job.content_id)
-            plan = self.planner.generate(content, progress_callback=report_progress)
+            if job.mode == "source_deck":
+                if not job.source_material_id:
+                    raise ValueError("Source material is required for source deck mode")
+                pages = self.materials.pages(job.source_material_id)
+                plan = self.planner.generate_from_source_deck(
+                    content,
+                    pages,
+                    job.source_material_id,
+                    progress_callback=report_progress,
+                )
+                self._validate_source_deck_plan(plan, pages)
+            else:
+                plan = self.planner.generate(content, progress_callback=report_progress)
+            plan = self._attach_resource(plan)
 
             self._update_plan_job_progress(
                 job_id,
@@ -111,6 +163,7 @@ class PresentationService:
                 "Saving presentation plan",
             )
             self.repository.save_plan(plan)
+            self._save_resource(plan)
 
             if job.prepare_question_bank:
                 self._update_plan_job_progress(
@@ -173,6 +226,139 @@ class PresentationService:
             raise HTTPException(404, "Presentation plan not found")
         return plan
 
+    def update_slide_script(
+        self, plan_id: str, slide_id: str, speaker_script: str
+    ) -> PresentationPlan:
+        plan = self.get_plan(plan_id)
+        if not any(slide.id == slide_id for slide in plan.slides):
+            raise HTTPException(404, "Presentation slide not found")
+        slides = [
+            slide.model_copy(update={"speaker_script": speaker_script})
+            if slide.id == slide_id
+            else slide
+            for slide in plan.slides
+        ]
+        plan = plan.model_copy(update={"slides": slides, "updated_at": utc_now()})
+        self.repository.save_plan(plan)
+        return plan
+
+    def get_resource(self, plan_id: str) -> PresentationResource:
+        plan = self.get_plan(plan_id)
+        resource = self.repository.get_resource_for_plan(plan_id)
+        if not resource:
+            plan = self._attach_resource(plan)
+            self.repository.save_plan(plan)
+            self._save_resource(plan)
+            resource = self.repository.get_resource_for_plan(plan_id)
+        if not resource:
+            raise HTTPException(404, "Presentation resource not found")
+        if resource.source_material_id:
+            material = self.materials.get(resource.source_material_id)
+            reasons = []
+            if resource.source_file_hash != material.file_hash:
+                reasons.append("source_file_hash_changed")
+            if resource.source_page_count != material.page_count:
+                reasons.append("source_page_count_changed")
+            if reasons:
+                resource = resource.model_copy(
+                    update={
+                        "is_stale": True,
+                        "stale_reason": ",".join(reasons),
+                    }
+                )
+        slides = []
+        for slide in resource.slides:
+            image_url = None
+            if (
+                slide.kind == "source"
+                and resource.source_material_id
+                and slide.source_page_no
+            ):
+                image_url = (
+                    f"/api/v1/materials/{resource.source_material_id}/pages/"
+                    f"{slide.source_page_no}/image"
+                )
+            elif (
+                slide.kind == "generated"
+                and resource.artifact_id
+                and slide.artifact_slide_no
+            ):
+                image_url = (
+                    f"/api/v1/ppt-artifacts/{resource.artifact_id}/slides/"
+                    f"{slide.artifact_slide_no}/image"
+                )
+            slides.append(slide.model_copy(update={"image_url": image_url}))
+        return resource.model_copy(update={"slides": slides})
+
+    def _attach_resource(self, plan: PresentationPlan) -> PresentationPlan:
+        return plan.model_copy(
+            update={
+                "presentation_resource_id": (
+                    plan.presentation_resource_id
+                    or f"presentation_resource_{uuid4().hex[:12]}"
+                )
+            }
+        )
+
+    @staticmethod
+    def _validate_source_deck_plan(plan: PresentationPlan, pages: list) -> None:
+        expected = [page.page_no for page in sorted(pages, key=lambda item: item.page_no)]
+        actual = [slide.source_page_no for slide in plan.slides]
+        if plan.mode != "source_deck":
+            raise ValueError("Source deck plan must use source_deck mode")
+        if actual != expected:
+            raise ValueError(
+                f"Source deck page mapping mismatch: expected {expected}, got {actual}"
+            )
+        if any(slide.source_kind != "source" for slide in plan.slides):
+            raise ValueError("Every source deck slide must reference a source page")
+
+    def _save_resource(
+        self, plan: PresentationPlan, artifact: PPTArtifact | None = None
+    ) -> None:
+        material = (
+            self.materials.get(plan.source_material_id)
+            if plan.source_material_id
+            else None
+        )
+        kind = "source_deck" if plan.mode == "source_deck" else "generated_artifact"
+        existing = self.repository.get_resource_for_plan(plan.id)
+        resource = PresentationResource(
+            id=plan.presentation_resource_id
+            or (existing.id if existing else f"presentation_resource_{uuid4().hex[:12]}"),
+            presentation_plan_id=plan.id,
+            kind=kind,
+            source_material_id=plan.source_material_id,
+            artifact_id=artifact.id if artifact else (existing.artifact_id if existing else None),
+            source_file_hash=(
+                existing.source_file_hash
+                if existing
+                else material.file_hash
+                if material
+                else None
+            ),
+            source_page_count=(
+                existing.source_page_count
+                if existing
+                else material.page_count
+                if material
+                else None
+            ),
+            slides=[
+                PresentationSlideResource(
+                    slide_id=slide.id,
+                    order=slide.order,
+                    kind=slide.source_kind,
+                    source_page_no=slide.source_page_no,
+                    artifact_slide_no=slide.order if slide.source_kind == "generated" else None,
+                )
+                for slide in plan.slides
+            ],
+            created_at=existing.created_at if existing else utc_now(),
+            updated_at=utc_now(),
+        )
+        self.repository.save_resource(resource)
+
     def diagnose_plan(self, plan_id: str) -> PresentationPlanDiagnosis:
         plan = self.get_plan(plan_id)
         content = self.contents.get(plan.content_id)
@@ -205,6 +391,14 @@ class PresentationService:
         theme_id: str | None = None,
     ) -> PPTGenerationJob:
         plan = self.get_plan(presentation_plan_id)
+        if plan.mode == "source_deck":
+            raise HTTPException(409, "Source deck plans use the uploaded PPT directly")
+        resource = self.get_resource(plan.id)
+        if resource.is_stale:
+            raise HTTPException(
+                409,
+                f"Presentation source is stale: {resource.stale_reason}",
+            )
         try:
             theme = get_presentation_theme(theme_id)
         except ValueError as exc:
@@ -233,6 +427,7 @@ class PresentationService:
                 theme=theme,
             )
             self.repository.save_artifact(artifact)
+            self._save_resource(plan, artifact)
             job.artifact_id = artifact.id
             job.status = PPTGenerationStatus.FINISHED
             job.progress = 1.0

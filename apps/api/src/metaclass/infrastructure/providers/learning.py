@@ -4,6 +4,8 @@ import json
 import logging
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from metaclass.infrastructure.providers.llm import LLMMessage, LLMProvider
 from metaclass.modules.content.schemas import (
     CourseKnowledgeTree,
@@ -11,11 +13,30 @@ from metaclass.modules.content.schemas import (
     KnowledgeUnit,
     LearningContentDraft,
     PageUnderstandingDraft,
+    SourceDeckLearningContentDraft,
+    SourceDeckOutlineDraft,
+    SourceDeckPageFlowBatch,
+    SourceDeckPageFlowDraft,
 )
 from metaclass.modules.materials.schemas import PageMetadata
 
 
 logger = logging.getLogger(__name__)
+SOURCE_DECK_PAGE_ROLES = {
+    "cover",
+    "agenda",
+    "section",
+    "transition",
+    "concept",
+    "method",
+    "formula",
+    "example",
+    "data",
+    "summary",
+    "exercise",
+    "reference",
+    "appendix",
+}
 
 LANGUAGE_RULE = """
 Language policy: inspect the substantive source material, not isolated English terms.
@@ -45,7 +66,7 @@ class LLMLearningProvider:
     """Build page-level learning metadata from parsed material text."""
 
     name = "llm"
-    prompt_version = "contextual-page-understanding-v3"
+    prompt_version = "contextual-page-understanding-v4"
 
     def __init__(
         self,
@@ -120,7 +141,7 @@ Return only valid JSON. Do not use markdown.
 
 The JSON object must contain:
 {
-  "page_role": "cover | agenda | concept | method | formula | example | data | summary | reference | appendix",
+  "page_role": "cover | agenda | section | transition | concept | method | formula | example | data | summary | exercise | reference | appendix",
   "summary": "a concise teaching summary grounded in the current page",
   "expanded_explanation": "a teacher-facing explanation script for this page",
   "visual_description": "useful visual/layout/chart/formula observations, or empty string",
@@ -149,7 +170,7 @@ The JSON object must contain:
 }
 
 Page-understanding rules:
-- If the current page has little text, infer its teaching role from neighboring pages and visual cues.
+- If the current page has little text, infer whether it is a cover, agenda, section divider, transition, exercise, reference, or appendix page from neighboring pages and visual cues.
 - Do not invent unsupported facts, data, formulas, results, or citations.
 - expanded_explanation should help a teacher explain image-heavy pages using visual_description.
 - Extract only selected key_excerpts, not the whole page.
@@ -158,7 +179,7 @@ Page-understanding rules:
 - depends_on_pages and leads_to_pages should only include page numbers provided in the input context.
 
 Quiz design rules:
-- Generate 0 to 2 quiz_items. Use [] if the page is a title/agenda/transition page or lacks enough content.
+- Generate 0 to 2 quiz_items. Use [] if the page is a cover, agenda, section, transition, reference, or appendix page, or lacks enough content.
 - Do not ask "what is the main content of this page".
 - Prefer questions that diagnose understanding: concept distinction, cause/effect, condition, implication, common misconception, or simple application.
 - Distractors should be plausible misunderstandings, not obviously irrelevant filler.
@@ -513,6 +534,180 @@ Quiz design rules:
                 knowledge_tree=knowledge_tree,
             )
         return LearningContentDraft.model_validate(payload, extra="ignore")
+
+    def organize_source_deck_learning_content(
+        self,
+        *,
+        material_id: str,
+        pages: list[PageMetadata],
+        understandings: list,
+        knowledge_units: list[KnowledgeUnit],
+    ) -> SourceDeckLearningContentDraft:
+        """Preserve the authored deck structure instead of regrouping by knowledge topic."""
+        pages = sorted(pages, key=lambda item: item.page_no)
+        understanding_by_page = {item.page_no: item for item in understandings}
+        packets = []
+        for page in pages:
+            understanding = understanding_by_page.get(page.page_no)
+            packets.append(
+                {
+                    "material_id": material_id,
+                    "page_no": page.page_no,
+                    "title": page.title,
+                    "raw_text_excerpt": page.raw_text[:1800],
+                    "page_role": getattr(understanding, "page_role", "concept"),
+                    "summary": getattr(understanding, "summary", ""),
+                    "knowledge_points": getattr(understanding, "knowledge_points", []),
+                    "teaching_focus": getattr(understanding, "teaching_focus", []),
+                    "relations": getattr(understanding, "relations", {}),
+                    "visual_analysis": getattr(understanding, "visual_analysis", {}),
+                }
+            )
+        prompt_path = Path(__file__).parents[2] / "modules" / "content" / (
+            "source_deck_learning_content_prompt.md"
+        )
+        outline_packets = [
+            {
+                "material_id": item["material_id"],
+                "page_no": item["page_no"],
+                "title": item["title"],
+                "page_role": item["page_role"],
+                "summary": item["summary"][:500],
+                "knowledge_points": item["knowledge_points"][:5],
+                "relations": item["relations"],
+            }
+            for item in packets
+        ]
+        outline_response = self.llm.complete_json(
+            [
+                LLMMessage(
+                    role="system",
+                    content=prompt_path.read_text(encoding="utf-8"),
+                ),
+                LLMMessage(
+                    role="user",
+                    content=json.dumps(
+                        {
+                            "material_id": material_id,
+                            "pages": outline_packets,
+                            "canonical_knowledge_units": [
+                                {
+                                    "id": unit.id,
+                                    "title": unit.title,
+                                    "summary": unit.summary[:400],
+                                    "page_refs": [
+                                        ref.model_dump(mode="json") for ref in unit.page_refs
+                                    ],
+                                }
+                                for unit in knowledge_units
+                            ],
+                        },
+                        ensure_ascii=False,
+                    ),
+                ),
+            ],
+            temperature=0.15,
+        )
+        outline = SourceDeckOutlineDraft.model_validate(
+            _parse_json_object(outline_response), extra="ignore"
+        )
+        expected_pages = [page.page_no for page in pages]
+        outline_pages = [
+            ref.page_no for section in outline.sections for ref in section.page_refs
+        ]
+        if outline_pages != expected_pages:
+            raise ValueError(
+                "Source-deck outline must cover every source page exactly once and in order"
+            )
+
+        chapter_by_page = {
+            ref.page_no: section.title
+            for section in outline.sections
+            for ref in section.page_refs
+        }
+        page_flow: list[SourceDeckPageFlowDraft] = []
+        flow_prompt_path = Path(__file__).parents[2] / "modules" / "content" / (
+            "source_deck_page_flow_prompt.md"
+        )
+        batch_size = 12
+        for start in range(0, len(packets), batch_size):
+            batch = packets[start : start + batch_size]
+            flow_messages = [
+                LLMMessage(
+                    role="system",
+                    content=flow_prompt_path.read_text(encoding="utf-8"),
+                ),
+                LLMMessage(
+                    role="user",
+                    content=json.dumps(
+                        {
+                            "course_title": outline.title,
+                            "structure_summary": outline.structure_summary,
+                            "detected_agenda": outline.detected_agenda,
+                            "previous_page": packets[start - 1] if start else None,
+                            "pages": [
+                                {
+                                    **item,
+                                    "chapter_title": chapter_by_page[item["page_no"]],
+                                }
+                                for item in batch
+                            ],
+                            "next_page": (
+                                packets[start + batch_size]
+                                if start + batch_size < len(packets)
+                                else None
+                            ),
+                        },
+                        ensure_ascii=False,
+                    ),
+                ),
+            ]
+            batch_flow = None
+            for attempt in range(2):
+                try:
+                    raw = self.llm.complete_json(flow_messages, temperature=0.15)
+                    candidate = SourceDeckPageFlowBatch.model_validate(
+                        _parse_json_object(raw), extra="ignore"
+                    )
+                    expected_batch = [item["page_no"] for item in batch]
+                    if [item.page_no for item in candidate.page_flow] != expected_batch:
+                        raise ValueError("Source-deck page-flow batch page mismatch")
+                    batch_flow = candidate.page_flow
+                    break
+                except (RuntimeError, TimeoutError, ValueError, ValidationError) as exc:
+                    if attempt:
+                        logger.warning(
+                            "Source-deck page-flow batch %s-%s fell back: %s",
+                            batch[0]["page_no"],
+                            batch[-1]["page_no"],
+                            exc,
+                        )
+            if batch_flow is None:
+                batch_flow = [
+                    SourceDeckPageFlowDraft(
+                        page_no=item["page_no"],
+                        page_role=item["page_role"]
+                        if item["page_role"] in SOURCE_DECK_PAGE_ROLES
+                        else "concept",
+                        chapter_title=chapter_by_page[item["page_no"]],
+                        content_summary=item["summary"] or item["title"],
+                        teaching_purpose=(item["teaching_focus"] or [item["summary"]])[0],
+                        logic_from_previous="",
+                        leads_to_next=str(item["relations"].get("transition_to_next", "")),
+                    )
+                    for item in batch
+                ]
+            page_flow.extend(batch_flow)
+
+        return SourceDeckLearningContentDraft(
+            title=outline.title,
+            subtitle=outline.subtitle,
+            objectives=outline.objectives,
+            structure_summary=outline.structure_summary,
+            detected_agenda=outline.detected_agenda,
+            page_flow=page_flow,
+            sections=outline.sections,
+        )
 
     def build_course_knowledge_tree(
         self,

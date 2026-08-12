@@ -64,9 +64,10 @@ export function ActionView({
       </div>
     );
   }
-  if (action.type === "SHOW_PAGE") {
-    const source = action.payload.source_ref;
-    const requestedPage = action.payload.slide_no ?? source.page_no;
+  if (action.type === "SHOW_PAGE" || action.type === "SHOW_SLIDE") {
+    const requestedPage = action.type === "SHOW_SLIDE"
+      ? action.payload.slide_no
+      : action.payload.slide_no ?? action.payload.source_ref.page_no;
     const generatedEntries = Object.entries(presentationSlideImages)
       .map(([pageNo, src]) => ({ pageNo: Number(pageNo), src }))
       .sort((left, right) => left.pageNo - right.pageNo);

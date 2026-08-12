@@ -22,6 +22,7 @@ import type {
   PresentationPlanJob,
   PresentationPlan,
   PresentationPlanLibrarySummary,
+  PresentationResource,
   StudentAgentType,
   TTSArtifact,
   TTSArtifactRequest,
@@ -175,6 +176,17 @@ export const api = {
     onProgress?.(job);
     return api.waitForContentGenerationJob(job.id, onProgress);
   },
+  async buildSourceDeckContent(
+    materialId: string,
+    onProgress?: (job: ContentGenerationJob) => void,
+  ) {
+    const job = await request<ContentGenerationJob>(
+      `/api/v1/materials/${materialId}/source-deck-learning-content-jobs`,
+      { method: "POST" },
+    );
+    onProgress?.(job);
+    return api.waitForContentGenerationJob(job.id, onProgress);
+  },
   async buildCollectionContent(
     collectionId: string,
     onProgress?: (job: ContentGenerationJob) => void,
@@ -311,6 +323,41 @@ export const api = {
     onProgress?.(created);
     const finished = await api.waitForPresentationPlanJob(created.id, onProgress);
     return request<PresentationPlan>(`/api/v1/presentation-plan-jobs/${finished.id}/result`);
+  },
+  async createSourceDeckPresentationPlan(
+    contentId: string,
+    sourceMaterialId: string,
+    prepareQuestionBank = true,
+    onProgress?: (job: PresentationPlanJob) => void,
+  ) {
+    const query = new URLSearchParams({
+      source_material_id: sourceMaterialId,
+      prepare_question_bank: String(prepareQuestionBank),
+    });
+    const created = await request<PresentationPlanJob>(
+      `/api/v1/learning-contents/${contentId}/source-deck-presentation-plan-jobs?${query}`,
+      { method: "POST" },
+    );
+    onProgress?.(created);
+    const finished = await api.waitForPresentationPlanJob(created.id, onProgress);
+    return request<PresentationPlan>(`/api/v1/presentation-plan-jobs/${finished.id}/result`);
+  },
+  updateSlideSpeakerScript(planId: string, slideId: string, speakerScript: string) {
+    return request<PresentationPlan>(
+      `/api/v1/presentation-plans/${planId}/slides/${slideId}/speaker-script`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ speaker_script: speakerScript }),
+      },
+    );
+  },
+  getPresentationResource(planId: string) {
+    return request<PresentationResource>(`/api/v1/presentation-plans/${planId}/resource`);
+  },
+  presentationResourceImage(imageUrl: string) {
+    if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
+    return `${API_BASE}${imageUrl}`;
   },
   async generatePptForPlan(
     planId: string,

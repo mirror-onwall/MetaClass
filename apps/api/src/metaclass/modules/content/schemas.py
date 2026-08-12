@@ -2,6 +2,7 @@ from pydantic import Field, field_validator, model_validator
 
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
 from metaclass.core.schemas import SchemaModel, utc_now
 from metaclass.modules.materials.schemas import SourceRef
@@ -334,7 +335,7 @@ class LearningSectionDraft(SchemaModel):
     title: str = Field(min_length=1)
     page_nos: list[int] = Field(default_factory=list)
     summary: str
-    teaching_script: str
+    teaching_script: str = ""
     knowledge_points: list[str] = Field(default_factory=list)
     role: str = "concept"
     content_goal: str = ""
@@ -432,6 +433,64 @@ class LearningContentDraft(SchemaModel):
         return value
 
 
+class SourceDeckPageFlowDraft(SchemaModel):
+    page_no: int = Field(ge=1)
+    page_role: Literal[
+        "cover",
+        "agenda",
+        "section",
+        "transition",
+        "concept",
+        "method",
+        "formula",
+        "example",
+        "data",
+        "summary",
+        "exercise",
+        "reference",
+        "appendix",
+    ] = "concept"
+    chapter_title: str = Field(min_length=1)
+    content_summary: str = ""
+    teaching_purpose: str = ""
+    logic_from_previous: str = ""
+    leads_to_next: str = ""
+
+
+class SourceDeckSectionDraft(SchemaModel):
+    title: str = Field(min_length=1)
+    role: str = "concept"
+    content_goal: str = ""
+    page_refs: list[PageRef] = Field(min_length=1)
+    summary: str = ""
+    key_points: list[str] = Field(default_factory=list)
+    teaching_approach: str = ""
+    transition_to_next: str = ""
+
+
+class SourceDeckLearningContentDraft(SchemaModel):
+    title: str = Field(min_length=1)
+    subtitle: str = ""
+    objectives: list[str] = Field(default_factory=list)
+    structure_summary: str = ""
+    detected_agenda: list[str] = Field(default_factory=list)
+    page_flow: list[SourceDeckPageFlowDraft] = Field(min_length=1)
+    sections: list[SourceDeckSectionDraft] = Field(min_length=1)
+
+
+class SourceDeckOutlineDraft(SchemaModel):
+    title: str = Field(min_length=1)
+    subtitle: str = ""
+    objectives: list[str] = Field(default_factory=list)
+    structure_summary: str = ""
+    detected_agenda: list[str] = Field(default_factory=list)
+    sections: list[SourceDeckSectionDraft] = Field(min_length=1)
+
+
+class SourceDeckPageFlowBatch(SchemaModel):
+    page_flow: list[SourceDeckPageFlowDraft] = Field(min_length=1)
+
+
 class LearningSection(SchemaModel):
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)
@@ -464,6 +523,7 @@ class LearningContent(SchemaModel):
     material_id: str = Field(min_length=1)
     material_ids: list[str] = Field(default_factory=list)
     collection_id: str | None = None
+    organization_mode: Literal["knowledge", "source_deck"] = "knowledge"
     title: str = Field(min_length=1)
     subtitle: str = ""
     audience: dict = Field(default_factory=dict)
@@ -492,6 +552,7 @@ class ContentGenerationJob(SchemaModel):
     id: str = Field(min_length=1)
     material_id: str | None = None
     collection_id: str | None = None
+    organization_mode: Literal["knowledge", "source_deck"] = "knowledge"
     status: ContentGenerationJobStatus = ContentGenerationJobStatus.QUEUED
     progress: int = Field(default=0, ge=0, le=100)
     step: str = "queued"

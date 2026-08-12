@@ -19,6 +19,7 @@ from metaclass.modules.content.schemas import (
     PageUnderstanding,
     PageRef,
     QuizItemDraft,
+    SourceDeckLearningContentDraft,
     VisualOpportunity,
 )
 from metaclass.modules.content.service import ContentService
@@ -403,6 +404,160 @@ def test_collection_organizer_repairs_empty_sections_with_page_quizzes() -> None
     assert draft.sections
     assert draft.sections[0].tree_node_ids == ["node_001"]
     assert draft.sections[0].quiz_items[0].question == "What does Moran's I measure?"
+
+
+def test_source_deck_draft_is_lightweight_and_hydrated_from_page_understanding() -> None:
+    source_ref = SourceRef(
+        material_id="mat_001",
+        page_id="mat_001_page_001",
+        page_no=1,
+    )
+    draft = SourceDeckLearningContentDraft.model_validate(
+        {
+            "title": "空间分析",
+            "objectives": ["理解空间自相关"],
+            "structure_summary": "先介绍概念，再解释指标。",
+            "detected_agenda": ["空间自相关"],
+            "page_flow": [
+                {
+                    "page_no": 1,
+                    "page_role": "concept",
+                    "chapter_title": "空间自相关",
+                    "content_summary": "介绍 Moran's I。",
+                    "teaching_purpose": "建立核心概念。",
+                }
+            ],
+            "sections": [
+                {
+                    "title": "空间自相关",
+                    "content_goal": "理解 Moran's I 的作用",
+                    "page_refs": [
+                        {"material_id": "mat_001", "page_no": 1, "reason": "概念页"}
+                    ],
+                    "summary": "介绍空间自相关。",
+                    "key_points": ["Moran's I"],
+                    "teaching_approach": "先从相邻区域是否相似切入。",
+                }
+            ],
+        }
+    )
+    understanding = PageUnderstanding(
+        id="understanding_001",
+        material_id="mat_001",
+        page_id="mat_001_page_001",
+        page_no=1,
+        page_role="concept",
+        summary="Moran's I 衡量空间自相关。",
+        knowledge_points=["Moran's I"],
+        key_excerpts=[{"text": "Moran's I", "type": "definition"}],
+        formulas=[{"latex": "I = n/W"}],
+        misconceptions=[{"mistake": "只看数值大小", "correction": "结合期望值解释"}],
+        source_refs=[source_ref],
+        provider="test",
+    )
+
+    hydrated = ContentService._hydrate_source_deck_draft(
+        draft,
+        understandings=[understanding],
+        knowledge_units=[],
+    )
+
+    assert hydrated.sections[0].teaching_script == ""
+    assert hydrated.sections[0].visual_opportunities == []
+    assert hydrated.sections[0].tree_node_ids == []
+    assert hydrated.sections[0].source_excerpts[0].text == "Moran's I"
+    assert hydrated.sections[0].formulas[0].latex == "I = n/W"
+    assert hydrated.sections[0].misconceptions[0].mistake == "只看数值大小"
+    assert hydrated.material_overview["page_flow"][0]["page_no"] == 1
+
+
+def test_source_deck_structure_uses_outline_then_batched_page_flow() -> None:
+    pages = []
+    understandings = []
+    for page_no in range(1, 14):
+        source_ref = SourceRef(
+            material_id="mat_001",
+            page_id=f"mat_001_page_{page_no:03d}",
+            page_no=page_no,
+        )
+        pages.append(
+            PageMetadata(
+                id=source_ref.page_id,
+                material_id="mat_001",
+                page_no=page_no,
+                title=f"第 {page_no} 页",
+                raw_text=f"第 {page_no} 页正文",
+                image_path=f"page-{page_no}.png",
+                source_refs=[source_ref],
+            )
+        )
+        understandings.append(
+            PageUnderstanding(
+                id=f"understanding_{page_no:03d}",
+                material_id="mat_001",
+                page_id=source_ref.page_id,
+                page_no=page_no,
+                page_role="concept",
+                title=f"第 {page_no} 页",
+                summary=f"第 {page_no} 页摘要",
+                knowledge_points=[f"知识点 {page_no}"],
+                source_refs=[source_ref],
+                provider="test",
+            )
+        )
+
+    outline = {
+        "title": "长课件",
+        "structure_summary": "一个连续章节",
+        "detected_agenda": ["第一章"],
+        "sections": [
+            {
+                "title": "第一章",
+                "page_refs": [
+                    {"material_id": "mat_001", "page_no": page_no}
+                    for page_no in range(1, 14)
+                ],
+            }
+        ],
+    }
+
+    def flow_payload(start: int, end: int) -> str:
+        return json.dumps(
+            {
+                "page_flow": [
+                    {
+                        "page_no": page_no,
+                        "page_role": "concept",
+                        "chapter_title": "第一章",
+                        "content_summary": f"第 {page_no} 页摘要",
+                        "teaching_purpose": "解释当前知识点",
+                        "logic_from_previous": "承接前页" if page_no > 1 else "",
+                        "leads_to_next": "引出后页" if page_no < 13 else "",
+                    }
+                    for page_no in range(start, end + 1)
+                ]
+            },
+            ensure_ascii=False,
+        )
+
+    llm = Mock()
+    llm.model = "test-model"
+    llm.complete_json.side_effect = [
+        json.dumps(outline, ensure_ascii=False),
+        flow_payload(1, 12),
+        flow_payload(13, 13),
+    ]
+
+    draft = LLMLearningProvider(llm).organize_source_deck_learning_content(
+        material_id="mat_001",
+        pages=pages,
+        understandings=understandings,
+        knowledge_units=[],
+    )
+
+    assert llm.complete_json.call_count == 3
+    assert [item.page_no for item in draft.page_flow] == list(range(1, 14))
+    assert [ref.page_no for ref in draft.sections[0].page_refs] == list(range(1, 14))
 
 
 def test_fallback_tree_sections_reuse_page_understanding_quizzes() -> None:

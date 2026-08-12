@@ -84,6 +84,17 @@ class ClassroomService:
             presentation_plan = self.presentations.get_plan(presentation_plan_id)
             if presentation_plan.content_id != content_id:
                 raise HTTPException(409, "PresentationPlan does not belong to LearningContent")
+            resource = self.presentations.get_resource(presentation_plan_id)
+            if resource.is_stale:
+                raise HTTPException(
+                    409,
+                    f"Presentation source is stale: {resource.stale_reason}",
+                )
+            if presentation_plan.mode == "generated" and not resource.artifact_id:
+                raise HTTPException(
+                    409,
+                    "Generate the PPT artifact before creating a classroom from a generated plan",
+                )
             if self.question_banks:
                 qa_items = self.question_banks.get_for_plan(presentation_plan.id).items
         plan, meta = self.planner.generate_with_meta(content, presentation_plan, qa_items)
@@ -98,7 +109,13 @@ class ClassroomService:
         if presentation_plan_id:
             if not self.presentations:
                 raise HTTPException(409, "Presentation service is unavailable")
-            self.presentations.get_plan(presentation_plan_id)
+            presentation_plan = self.presentations.get_plan(presentation_plan_id)
+            resource = self.presentations.get_resource(presentation_plan_id)
+            if presentation_plan.mode == "generated" and not resource.artifact_id:
+                raise HTTPException(
+                    409,
+                    "Generate the PPT artifact before creating a classroom from a generated plan",
+                )
         job = ClassroomPlanJob(
             id=f"plan_job_{uuid4().hex[:12]}",
             content_id=content_id,
@@ -213,7 +230,13 @@ class ClassroomService:
             actions = [
                 action
                 for action in scene.actions
-                if action.type in {ActionType.SHOW_PAGE, ActionType.EXPLAIN, ActionType.END}
+                if action.type
+                in {
+                    ActionType.SHOW_PAGE,
+                    ActionType.SHOW_SLIDE,
+                    ActionType.EXPLAIN,
+                    ActionType.END,
+                }
             ]
             if actions:
                 scenes.append(scene.model_copy(update={"actions": actions}, deep=True))
@@ -361,7 +384,11 @@ class ClassroomService:
         scene_index, action_index, action = target
         scene = plan.scenes[scene_index]
         page_action = next(
-            (item for item in scene.actions[: action_index + 1] if item.type == "SHOW_PAGE"),
+            (
+                item
+                for item in scene.actions[: action_index + 1]
+                if item.type in {"SHOW_PAGE", "SHOW_SLIDE"}
+            ),
             None,
         )
         session.scene_index = scene_index
@@ -542,18 +569,41 @@ class ClassroomService:
             action.payload.preferred_agent_type,
             *action.payload.fallback_agent_types,
         ]
-        for agent_type in preferred_types:
-            selected = next(
-                (
-                    student
-                    for student in session.student_states
-                    if student.agent_type == agent_type
-                ),
-                None,
+        preference_rank = {
+            agent_type: index for index, agent_type in enumerate(preferred_types)
+        }
+        recent_ids: list[str] = []
+        for event in reversed(session.events):
+            if event.type != "AGENT_TURN" or event.payload.turn.role != "student":
+                continue
+            recent_ids.append(event.payload.turn.agent_id)
+            if len(recent_ids) >= 3:
+                break
+
+        candidates = [
+            student
+            for student in session.student_states
+            if student.agent_type in preference_rank
+        ] or list(session.student_states)
+        if not candidates:
+            return None
+
+        # Avoid repeatedly assigning prepared questions to the same persona.
+        # Recency is stronger than profile preference; among equally fresh
+        # students, favor someone who has not spoken and then the best fit.
+        def rank(student):
+            recent_rank = (
+                len(recent_ids) - recent_ids.index(student.id)
+                if student.id in recent_ids
+                else 0
             )
-            if selected:
-                return selected
-        return session.student_states[0] if session.student_states else None
+            return (
+                recent_rank,
+                bool(student.last_intent),
+                preference_rank.get(student.agent_type, len(preferred_types)),
+            )
+
+        return min(candidates, key=rank)
 
     @staticmethod
     def _last_student_turn_for_scripted_qa(
@@ -770,6 +820,7 @@ class ClassroomService:
         state = self._build_state(session)
         if state.current_action_type in {
             ActionType.SHOW_PAGE,
+            ActionType.SHOW_SLIDE,
             ActionType.EXPLAIN,
             ActionType.PROBE,
             ActionType.REVIEW,

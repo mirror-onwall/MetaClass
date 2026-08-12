@@ -141,7 +141,9 @@ export function useTTSNarration() {
         }
       }
     };
-    const workerCount = Math.min(3, cues.length);
+    // Real TTS providers commonly rate-limit bursts. Sequential warming keeps
+    // playback reliable and the on-demand path still retries the reached cue.
+    const workerCount = Math.min(1, cues.length);
     await Promise.all(Array.from({ length: workerCount }, worker));
   }, [prepare]);
 

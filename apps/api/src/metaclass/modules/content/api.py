@@ -44,6 +44,19 @@ def create_router(contents: ContentService) -> APIRouter:
         return job
 
     @router.post(
+        "/api/v1/materials/{material_id}/source-deck-learning-content-jobs",
+        response_model=ContentGenerationJob,
+        status_code=202,
+    )
+    async def create_source_deck_content_job(
+        material_id: str,
+        background_tasks: BackgroundTasks,
+    ) -> ContentGenerationJob:
+        job = contents.create_source_deck_generation_job(material_id)
+        background_tasks.add_task(contents.run_generation_job, job.id)
+        return job
+
+    @router.post(
         "/api/v1/material-collections/{collection_id}/learning-content-jobs",
         response_model=ContentGenerationJob,
         status_code=202,

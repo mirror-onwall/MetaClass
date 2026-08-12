@@ -11,6 +11,8 @@ from metaclass.modules.presentation.schemas import (
     PresentationPlanDiagnosis,
     PresentationPlanJob,
     PresentationPlanLibrarySummary,
+    PresentationResource,
+    UpdateSlideScriptRequest,
 )
 from metaclass.modules.presentation.service import PresentationService
 
@@ -42,6 +44,25 @@ def create_router(presentations: PresentationService) -> APIRouter:
         background_tasks.add_task(presentations.run_plan_job, job.id)
         return job
 
+    @router.post(
+        "/learning-contents/{content_id}/source-deck-presentation-plan-jobs",
+        response_model=PresentationPlanJob,
+        status_code=202,
+    )
+    async def create_source_deck_presentation_plan_job(
+        content_id: str,
+        source_material_id: str,
+        background_tasks: BackgroundTasks,
+        prepare_question_bank: bool = True,
+    ) -> PresentationPlanJob:
+        job = presentations.create_source_deck_plan_job(
+            content_id,
+            source_material_id,
+            prepare_question_bank=prepare_question_bank,
+        )
+        background_tasks.add_task(presentations.run_plan_job, job.id)
+        return job
+
     @router.get(
         "/presentation-plan-jobs/{job_id}",
         response_model=PresentationPlanJob,
@@ -66,6 +87,26 @@ def create_router(presentations: PresentationService) -> APIRouter:
     @router.get("/presentation-plans/{plan_id}", response_model=PresentationPlan)
     async def get_presentation_plan(plan_id: str) -> PresentationPlan:
         return presentations.get_plan(plan_id)
+
+    @router.patch(
+        "/presentation-plans/{plan_id}/slides/{slide_id}/speaker-script",
+        response_model=PresentationPlan,
+    )
+    async def update_slide_speaker_script(
+        plan_id: str,
+        slide_id: str,
+        payload: UpdateSlideScriptRequest,
+    ) -> PresentationPlan:
+        return presentations.update_slide_script(
+            plan_id, slide_id, payload.speaker_script
+        )
+
+    @router.get(
+        "/presentation-plans/{plan_id}/resource",
+        response_model=PresentationResource,
+    )
+    async def get_presentation_resource(plan_id: str) -> PresentationResource:
+        return presentations.get_resource(plan_id)
 
     @router.get(
         "/presentation-plan-library",
