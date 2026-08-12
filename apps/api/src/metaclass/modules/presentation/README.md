@@ -421,7 +421,14 @@ speaker_scripts.json
 
 ### macOS
 
-当前直接使用 PIL 声明式渲染预览。原因是 bundled/headless LibreOffice 在 macOS 上无法稳定访问 PingFang 等系统中文字体，可能把中文渲染成方框。
+按来源选择预览链路：
+
+1. Codex 生成的页面已经带有经过校验的最终 `SlideElement` 场景，因此直接用同一场景生成 PIL 预览，避免 Keynote 自动化权限弹窗和超时；
+2. Presenton 等没有权威声明式场景的外部 PPTX，优先用 Keynote 打开并导出逐页 PDF；
+3. Keynote 不可用时查找 LibreOffice，包括 `/Applications/LibreOffice.app/Contents/MacOS/soffice`、Homebrew 路径和 `METACLASS_LIBREOFFICE_BIN`；
+4. 外部 PPTX 的真实渲染器都不可用时保持 fail-closed，避免浏览器预览与下载文件不一致。
+
+Keynote/LibreOffice 会先导出 PDF，再由 PyMuPDF 逐页生成 PNG，并校验页数。Mac 上的 Codex 预览使用 Codex 最终设计场景，而不是生成前的原始 Plan；原 Plan 仍是标题、要点、顺序和讲稿的权威来源。
 
 ### 降级
 
@@ -430,7 +437,7 @@ Linux 上 LibreOffice 不存在、超时或转换失败时：
 - 写入 `render_error.txt`；
 - 回退到 PIL 预览。
 
-重要限制：macOS/PIL 预览不是实际 PPTX 的像素级截图，只是根据同一 `SlideElement` 数据重新绘制。最终交付前仍应在真实 PowerPoint 或可靠 LibreOffice 环境检查下载文件。
+重要限制：只有 Keynote、PowerPoint 或 LibreOffice 成功时才是实际 PPTX 渲染；PIL 是 Codex 场景的可靠降级，但不是像素级 PowerPoint 截图。
 
 PIL 预览支持基础 shape、line、image、text、table 和 chart 占位绘制，但不保证完全复现 PowerPoint 的字体替换、文本内边距、透明度、图表样式和图片裁剪。Linux 实际转换的页数不一致会触发渲染异常并进入 PIL 降级；`render_error.txt` 当前没有作为独立 API 字段暴露。
 

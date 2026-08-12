@@ -39,6 +39,7 @@ class Settings(BaseSettings):
     codex_model: str | None = None
     codex_timeout_seconds: float = 900.0
     codex_repair_attempts: int = Field(default=1, ge=0, le=2)
+    libreoffice_bin: str | None = None
     presenton_base_url: str = Field(
         default="https://api.presenton.ai",
         validation_alias=AliasChoices(

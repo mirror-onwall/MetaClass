@@ -3,16 +3,23 @@ from unittest.mock import Mock
 from zipfile import ZipFile
 
 import pytest
+import fitz
 from PIL import Image
 from pptx import Presentation
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.util import Inches, Pt
 
+from metaclass.core.config import Settings
 from metaclass.modules.presentation.providers import (
     FallbackPPTProvider,
     PresentonPPTProvider,
 )
-from metaclass.modules.presentation.schemas import PresentationPlan, SlideElement, SlidePlan
+from metaclass.modules.presentation.schemas import (
+    PPTSlideImage,
+    PresentationPlan,
+    SlideElement,
+    SlidePlan,
+)
 from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
 
 
@@ -364,9 +371,11 @@ def test_windows_preview_renders_the_final_pptx_with_powerpoint(
     monkeypatch.setattr(
         Path,
         "exists",
-        lambda path: True
-        if str(path) == r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
-        else original_exists(path),
+        lambda path: (
+            True
+            if str(path) == r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+            else original_exists(path)
+        ),
     )
     monkeypatch.setattr(
         "metaclass.modules.presentation.skill_adapter.subprocess.run",
@@ -452,6 +461,18 @@ def test_macos_external_deck_uses_declarative_scene_preview(
         "metaclass.modules.presentation.skill_adapter.platform.system",
         lambda: "Darwin",
     )
+    monkeypatch.setattr(
+        PPTSkillAdapter,
+        "_render_with_keynote",
+        lambda *args, **kwargs: pytest.fail("Codex declarative preview should not launch Keynote"),
+    )
+    monkeypatch.setattr(
+        PPTSkillAdapter,
+        "_render_with_libreoffice",
+        lambda *args, **kwargs: pytest.fail(
+            "Codex declarative preview should not launch LibreOffice"
+        ),
+    )
 
     images = PPTSkillAdapter()._render_slide_images(
         plan,
@@ -462,6 +483,211 @@ def test_macos_external_deck_uses_declarative_scene_preview(
 
     assert len(images) == 1
     assert Path(images[0].image_path).is_file()
+
+
+def test_macos_external_deck_uses_keynote_real_render(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = make_content_lock_plan()
+    deck_path = tmp_path / "deck.pptx"
+    write_pptx(deck_path, [[plan.slides[0].title, *plan.slides[0].key_points]])
+
+    def fake_keynote(plan, pptx_path, output_dir):
+        image_path = output_dir / "slide_001.png"
+        Image.new("RGB", (1600, 900), "white").save(image_path)
+        return [
+            PPTSlideImage(
+                slide_id=plan.slides[0].id,
+                slide_no=1,
+                image_path=str(image_path),
+                width=1600,
+                height=900,
+            )
+        ]
+
+    monkeypatch.setattr(
+        "metaclass.modules.presentation.skill_adapter.platform.system",
+        lambda: "Darwin",
+    )
+    monkeypatch.setattr(
+        PPTSkillAdapter,
+        "_render_with_keynote",
+        staticmethod(fake_keynote),
+    )
+    monkeypatch.setattr(
+        PPTSkillAdapter,
+        "_render_with_libreoffice",
+        lambda *args, **kwargs: pytest.fail("LibreOffice should not run after Keynote succeeds"),
+    )
+
+    images = PPTSkillAdapter()._render_slide_images(
+        plan,
+        deck_path,
+        tmp_path / "slides",
+        allow_placeholder=False,
+        allow_declarative_fallback=False,
+    )
+
+    assert len(images) == 1
+    assert (images[0].width, images[0].height) == (1600, 900)
+    assert not (tmp_path / "render_error.txt").exists()
+
+
+def test_macos_external_deck_falls_back_from_keynote_to_libreoffice(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = make_content_lock_plan()
+    deck_path = tmp_path / "deck.pptx"
+    write_pptx(deck_path, [[plan.slides[0].title, *plan.slides[0].key_points]])
+
+    def fake_libreoffice(plan, pptx_path, output_dir):
+        image_path = output_dir / "slide_001.png"
+        Image.new("RGB", (1600, 900), "white").save(image_path)
+        return [
+            PPTSlideImage(
+                slide_id=plan.slides[0].id,
+                slide_no=1,
+                image_path=str(image_path),
+                width=1600,
+                height=900,
+            )
+        ]
+
+    monkeypatch.setattr(
+        "metaclass.modules.presentation.skill_adapter.platform.system",
+        lambda: "Darwin",
+    )
+    monkeypatch.setattr(
+        PPTSkillAdapter,
+        "_render_with_keynote",
+        lambda *args, **kwargs: (_ for _ in ()).throw(FileNotFoundError("no Keynote")),
+    )
+    monkeypatch.setattr(
+        PPTSkillAdapter,
+        "_render_with_libreoffice",
+        staticmethod(fake_libreoffice),
+    )
+
+    images = PPTSkillAdapter()._render_slide_images(
+        plan,
+        deck_path,
+        tmp_path / "slides",
+        allow_placeholder=False,
+        allow_declarative_fallback=False,
+    )
+
+    assert len(images) == 1
+    assert Path(images[0].image_path).is_file()
+    assert not (tmp_path / "render_error.txt").exists()
+
+
+def test_configured_libreoffice_binary_supports_paths_with_spaces(tmp_path: Path) -> None:
+    binary = tmp_path / "LibreOffice Custom" / "soffice"
+    binary.parent.mkdir()
+    binary.write_text("stub", encoding="utf-8")
+
+    adapter = PPTSkillAdapter(libreoffice_bin=binary)
+
+    assert adapter._resolve_libreoffice_binary() == str(binary)
+
+
+def test_libreoffice_binary_is_loaded_from_dotenv(tmp_path: Path) -> None:
+    binary = tmp_path / "LibreOffice Custom" / "soffice"
+    configured_path = binary.as_posix()
+    env_file = tmp_path / ".env"
+    env_file.write_text(
+        f'METACLASS_LIBREOFFICE_BIN="{configured_path}"\n',
+        encoding="utf-8",
+    )
+
+    configured_settings = Settings(_env_file=env_file)
+
+    assert configured_settings.libreoffice_bin == configured_path
+    assert (
+        PPTSkillAdapter(libreoffice_bin=configured_settings.libreoffice_bin).libreoffice_bin
+        == configured_path
+    )
+
+
+def test_pdf_preview_rejects_extra_pages_before_binding_slide_ids(tmp_path: Path) -> None:
+    plan = make_content_lock_plan()
+    pdf_path = tmp_path / "deck.pdf"
+    document = fitz.open()
+    document.new_page()
+    document.new_page()
+    document.save(pdf_path)
+    document.close()
+
+    with pytest.raises(fitz.FileDataError, match="slide count"):
+        PPTSkillAdapter._render_pdf_pages(plan, pdf_path, tmp_path / "slides")
+
+
+def test_external_preview_uses_explicit_declarative_preview_plan(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    plan = make_content_lock_plan()
+    source_slide = plan.slides[0]
+    preview_plan = plan.model_copy(
+        update={
+            "slides": [
+                source_slide.model_copy(
+                    update={
+                        "elements": [
+                            SlideElement(
+                                type="text",
+                                x=0.08,
+                                y=0.08,
+                                w=0.84,
+                                h=0.16,
+                                text=source_slide.title,
+                            ),
+                            SlideElement(
+                                type="shape",
+                                x=0.08,
+                                y=0.3,
+                                w=0.84,
+                                h=0.42,
+                            ),
+                        ]
+                    }
+                )
+            ]
+        }
+    )
+    deck_path = tmp_path / "deck.pptx"
+    write_pptx(deck_path, [[source_slide.title, *source_slide.key_points]])
+
+    monkeypatch.setattr(
+        "metaclass.modules.presentation.skill_adapter.platform.system",
+        lambda: "Darwin",
+    )
+    monkeypatch.setattr(
+        PPTSkillAdapter,
+        "_render_with_keynote",
+        lambda *args, **kwargs: pytest.fail(
+            "Explicit declarative preview should not launch Keynote"
+        ),
+    )
+    monkeypatch.setattr(
+        PPTSkillAdapter,
+        "_render_with_libreoffice",
+        lambda *args, **kwargs: pytest.fail(
+            "Explicit declarative preview should not launch LibreOffice"
+        ),
+    )
+
+    artifact = PPTSkillAdapter().prepare_external_pptx(
+        plan=plan,
+        preview_plan=preview_plan,
+        job_id="job_macos_preview",
+        output_dir=tmp_path,
+        pptx_path=deck_path,
+        provider_name="codex",
+        provider_metadata={},
+    )
+
+    assert len(artifact.slide_images) == 1
+    assert Path(artifact.slide_images[0].image_path).is_file()
 
 
 def test_presenton_download_does_not_forward_api_key_to_external_storage(

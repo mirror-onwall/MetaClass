@@ -83,6 +83,9 @@ def test_codex_contract_uses_only_the_selected_theme() -> None:
     assert f"must be {theme.palette.paper}" in contract
     assert theme.style_direction in contract
     assert '"id": "deep_technology"' in contract
+    assert "contrast must be at least 4.5:1" in contract
+    assert "Do not add unlabeled decorative blobs" in contract
+    assert "supplied visual_payload" in contract
 
 
 def test_presenton_fallback_receives_the_selected_theme() -> None:

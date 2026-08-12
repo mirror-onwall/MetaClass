@@ -27,7 +27,7 @@ class CodexGenerationError(RuntimeError):
 class CodexPPTProvider:
     """Generate an editable PPTX with a pinned Codex non-interactive runtime."""
 
-    PROMPT_VERSION = "2026-07-21-v3-themed-structured-design"
+    PROMPT_VERSION = "2026-08-04-v4-semantic-professional-design"
 
     def __init__(
         self,
@@ -57,7 +57,7 @@ class CodexPPTProvider:
         selected_theme = theme or get_presentation_theme()
         output_dir.mkdir(parents=True, exist_ok=True)
         try:
-            pptx_path, metadata = self._generate_validated_deck(
+            pptx_path, metadata, preview_plan = self._generate_validated_deck(
                 plan=plan,
                 job_id=job_id,
                 output_dir=output_dir,
@@ -78,6 +78,7 @@ class CodexPPTProvider:
             provider_name="codex",
             provider_metadata=metadata,
             external_slide_images=None,
+            preview_plan=preview_plan,
         )
 
     def _generate_validated_deck(
@@ -87,7 +88,7 @@ class CodexPPTProvider:
         job_id: str,
         output_dir: Path,
         theme: PresentationTheme,
-    ) -> tuple[Path, dict[str, Any]]:
+    ) -> tuple[Path, dict[str, Any], PresentationPlan | None]:
         instructions_source = Path(__file__).with_name("codex_ppt_instructions.md")
         if not instructions_source.exists():
             raise CodexGenerationError("Codex PPT instructions are missing")
@@ -118,6 +119,7 @@ class CodexPPTProvider:
         run_results: list[dict[str, Any]] = []
         validation_errors: list[str] = []
         validation: dict[str, Any] | None = None
+        preview_plan: PresentationPlan | None = None
         with tempfile.TemporaryDirectory(prefix=f"metaclass-{job_id}-") as temp_dir:
             workspace = Path(temp_dir)
             plan_path = workspace / "presentation_plan.json"
@@ -158,11 +160,16 @@ class CodexPPTProvider:
                     error = "Codex modified the immutable presentation_plan.json"
                 else:
                     try:
-                        _, generation_mode = self._materialize_result(
+                        materialized_plan, generation_mode = self._materialize_result(
                             plan=plan,
                             result=result,
                             deck_path=deck_path,
                             theme=theme,
+                        )
+                        preview_plan = (
+                            materialized_plan
+                            if generation_mode == "structured-design-safe-render"
+                            else None
                         )
                         validation = validate_deck_against_plan(
                             plan,
@@ -188,22 +195,30 @@ class CodexPPTProvider:
             final_pptx_path = output_dir / "deck.pptx"
             shutil.copy2(deck_path, final_pptx_path)
 
-        return final_pptx_path, {
-            "runtime": "openai-codex-cli-bin",
-            "prompt_version": self.PROMPT_VERSION,
-            "model": self.model,
-            "theme": theme.prompt_payload(),
-            "plan_sha256": plan_hash,
-            "attempt_count": len(run_results),
-            "repair_attempts_used": max(0, len(run_results) - 1),
-            "validation_errors": validation_errors,
-            "validation": validation,
-            "responses": [self._public_result(item) for item in run_results],
-            "generation_mode": generation_mode,
-            "content_contract": "exact-visible-title-and-key-points",
-            "speaker_script_binding": "presentation-plan-slide-id",
-            "preview_source": "real-pptx-render-plan-validated",
-        }
+        return (
+            final_pptx_path,
+            {
+                "runtime": "openai-codex-cli-bin",
+                "prompt_version": self.PROMPT_VERSION,
+                "model": self.model,
+                "theme": theme.prompt_payload(),
+                "plan_sha256": plan_hash,
+                "attempt_count": len(run_results),
+                "repair_attempts_used": max(0, len(run_results) - 1),
+                "validation_errors": validation_errors,
+                "validation": validation,
+                "responses": [self._public_result(item) for item in run_results],
+                "generation_mode": generation_mode,
+                "content_contract": "exact-visible-title-and-key-points",
+                "speaker_script_binding": "presentation-plan-slide-id",
+                "preview_source": (
+                    "native-render-or-validated-slide-elements"
+                    if preview_plan is not None
+                    else "native-pptx-render"
+                ),
+            },
+            preview_plan,
+        )
 
     def _materialize_result(
         self,
@@ -243,9 +258,7 @@ class CodexPPTProvider:
             )
 
         designed_slides = []
-        for index, (expected, raw_slide) in enumerate(
-            zip(plan.slides, raw_slides, strict=True)
-        ):
+        for index, (expected, raw_slide) in enumerate(zip(plan.slides, raw_slides, strict=True)):
             if not isinstance(raw_slide, dict):
                 raise ValueError(f"Codex design slide {index + 1} is not an object")
             if raw_slide.get("slide_id") != expected.id:
@@ -254,9 +267,7 @@ class CodexPPTProvider:
                     f"expected {expected.id}, got {raw_slide.get('slide_id')}"
                 )
 
-            expected_background = (
-                theme.palette.board if index == 0 else theme.palette.paper
-            )
+            expected_background = theme.palette.board if index == 0 else theme.palette.paper
             background = str(raw_slide.get("background", "")).upper()
             if background != expected_background:
                 raise ValueError(
@@ -289,22 +300,16 @@ class CodexPPTProvider:
                         is_title=is_title,
                     )
                     if fitted_size is None:
-                        raise ValueError(
-                            f"Codex text does not fit on {expected.id}: {text[:80]}"
-                        )
+                        raise ValueError(f"Codex text does not fit on {expected.id}: {text[:80]}")
                     element = element.model_copy(
                         update={
                             "z": 50 + len(visible_texts),
-                            "style": element.style.model_copy(
-                                update={"font_size": fitted_size}
-                            ),
+                            "style": element.style.model_copy(update={"font_size": fitted_size}),
                         }
                     )
                 else:
                     if element.text:
-                        raise ValueError(
-                            f"Non-text element contains visible copy on {expected.id}"
-                        )
+                        raise ValueError(f"Non-text element contains visible copy on {expected.id}")
                     has_visual = True
                     element = element.model_copy(update={"z": min(element.z, 40)})
                 elements.append(apply_brand_palette(element, theme.palette))
@@ -318,6 +323,11 @@ class CodexPPTProvider:
             if not has_visual:
                 raise ValueError(f"Codex design contains no visual structure on {expected.id}")
 
+            CodexPPTProvider._validate_text_legibility(
+                elements,
+                expected_background,
+                expected.id,
+            )
             PresentationPlanGenerator._validate_scene_safe_zones(
                 elements,
                 expected.title,
@@ -327,9 +337,7 @@ class CodexPPTProvider:
                 elements,
                 expected.title,
             ):
-                raise ValueError(
-                    f"Codex design contains overlapping content on {expected.id}"
-                )
+                raise ValueError(f"Codex design contains overlapping content on {expected.id}")
 
             designed_slides.append(
                 expected.model_copy(
@@ -355,9 +363,7 @@ class CodexPPTProvider:
             raise ValueError("Codex design element has no style object")
         for color_key in ("color", "fill", "line_color"):
             color = style.get(color_key)
-            if not isinstance(color, str) or not re.fullmatch(
-                r"[0-9A-Fa-f]{6}", color
-            ):
+            if not isinstance(color, str) or not re.fullmatch(r"[0-9A-Fa-f]{6}", color):
                 raise ValueError(f"Invalid Codex design color: {color_key}={color!r}")
         payload = {
             "type": element_type,
@@ -371,6 +377,54 @@ class CodexPPTProvider:
             "style": style,
         }
         return SlideElement.model_validate(payload)
+
+    @staticmethod
+    def _relative_luminance(color: str) -> float:
+        channels = [int(color[index : index + 2], 16) / 255 for index in (0, 2, 4)]
+        linear = [
+            value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+            for value in channels
+        ]
+        return 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
+
+    @classmethod
+    def _contrast_ratio(cls, foreground: str, background: str) -> float:
+        lighter, darker = sorted(
+            (
+                cls._relative_luminance(foreground),
+                cls._relative_luminance(background),
+            ),
+            reverse=True,
+        )
+        return (lighter + 0.05) / (darker + 0.05)
+
+    @classmethod
+    def _validate_text_legibility(
+        cls,
+        elements: list[SlideElement],
+        slide_background: str,
+        slide_id: str,
+    ) -> None:
+        """Reject technically valid scenes that would render unreadable text."""
+
+        for element in elements:
+            if element.type != "text":
+                continue
+            style = element.style
+            if style.opacity != 100:
+                raise ValueError(
+                    f"Codex text must be fully opaque on {slide_id}: {(element.text or '')[:80]}"
+                )
+            background = style.fill or slide_background
+            ratio = cls._contrast_ratio(style.color, background)
+            large_text = style.font_size >= 24 or (style.bold and style.font_size >= 18.66)
+            minimum = 3.0 if large_text else 4.5
+            if ratio + 1e-9 < minimum:
+                raise ValueError(
+                    f"Codex text contrast is too low on {slide_id}: "
+                    f"{ratio:.2f}:1, requires {minimum:.1f}:1 for "
+                    f"{(element.text or '')[:80]}"
+                )
 
     def _execute_codex(
         self,
@@ -756,18 +810,36 @@ Safe design contract:
 - Produce one slide object per supplied slide and set status to completed.
 - Use only text, shape, and line elements. Decorative elements have text="".
 - Use at least one non-text element on every slide, but avoid dense dashboard/card grids.
-- Use a single clear composition per slide and vary silhouettes across the deck.
+- Establish one deck-wide visual system first: one title rhythm, one spacing scale, one shape
+  language, and no more than two recurring accent motifs. Vary slide compositions without
+  making the deck look like unrelated templates.
+- Use a 12-column mental grid and a consistent baseline. Align related edges precisely and
+  make whitespace intentional. Prefer one dominant exhibit plus supporting copy.
+- Every non-text element must communicate grouping, sequence, comparison, direction, scale,
+  or emphasis. Do not add unlabeled decorative blobs, empty cards, arbitrary circles, giant
+  empty frames, or ornamental connectors that do not encode the supplied meaning.
+- Turn the unchanged key-point strings themselves into meaningful nodes, stages, labels, or
+  evidence blocks. Do not merely place bullets beside unrelated decoration.
+- Follow suggested_visual and layout_id when feasible with editable geometry. If a requested
+  map, formula, photo, or chart is unavailable in supplied visual_payload, create an honest
+  schematic structure; never fake evidence or invent labels, numbers, formulas, or assets.
 - Keep all text inside x=0.055..0.945. Titles stay within y=0.05..0.20, except the first
   slide may center its title down to y=0.65. Other text stays within y=0.22..0.94.
 - Give every title box at least h=0.12. Give each body text box enough height for its full
   unchanged sentence; prefer h>=0.16 and wider fields over smaller type.
 - Text boxes must not overlap each other. Shapes may sit behind text with lower z values.
 - Title font size is at least 28; body font size is at least 18.
+- Text-box fill, line, and opacity are rendered exactly. Use line_width=0 and a fill matching
+  the slide background for unboxed editorial text. Use a deliberate contrasting fill for a
+  card or highlighted node. Text opacity must be 100.
+- Text-to-fill contrast must be at least 4.5:1 for normal text and 3:1 for large or bold text.
+- Avoid using the same three-card row, vertical timeline, or circle-and-line silhouette on
+  adjacent slides. Avoid excessive rounded rectangles and heavy borders.
 - Canvas is 16:9. First background must be {theme.palette.board}; all other backgrounds
   must be {theme.palette.paper}.
 - Apply the selected theme direction: {theme.style_direction}.
 - Use only these selected-theme colors: {allowed_colors}.
-- Follow these theme rules: {'; '.join(theme.rules)}
+- Follow these theme rules: {"; ".join(theme.rules)}
 - Populate every required schema field. For non-text elements use text="". For fields that
   are visually irrelevant to an element type, use a valid neutral palette value.
 
@@ -787,6 +859,8 @@ SELECTED_THEME:
                         "title": slide.title,
                         "key_points": slide.key_points,
                         "suggested_visual": slide.suggested_visual,
+                        "layout_id": slide.layout_id,
+                        "visual_payload": slide.visual_payload,
                     }
                     for slide in plan.slides
                 ],
