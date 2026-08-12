@@ -35,6 +35,7 @@ outputs/
 work/
 data/test-tmp/
 .codex-pytest-*/
+.tmp-edge-diagram/
 
 # OS / IDE
 .DS_Store
