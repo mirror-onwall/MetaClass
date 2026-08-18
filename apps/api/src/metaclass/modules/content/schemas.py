@@ -11,6 +11,7 @@ from metaclass.modules.materials.schemas import SourceRef
 class ContentGenerationJobStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
+    PAUSED = "paused"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
 
@@ -131,6 +132,27 @@ class PageRef(SchemaModel):
     reason: str = ""
 
 
+class TeachingSegment(SchemaModel):
+    """A contiguous, teachable beat inside one source-deck section.
+
+    The fields are optional-by-default at the containing section level so legacy
+    LearningContent and the knowledge-organized pipeline remain compatible.
+    """
+
+    id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    role: str = "concept"
+    teaching_goal: str = ""
+    summary: str = ""
+    page_refs: list[PageRef] = Field(default_factory=list)
+    knowledge_unit_ids: list[str] = Field(default_factory=list)
+    prerequisite_segment_ids: list[str] = Field(default_factory=list)
+    transition_to_next: str = ""
+    suggested_delivery: str = ""
+    interaction_opportunities: list[InteractionOpportunity] = Field(default_factory=list)
+    order: int = Field(default=1, ge=1)
+
+
 class KnowledgeRelation(SchemaModel):
     target_unit_id: str = Field(min_length=1)
     relation_type: str = "related_to"
@@ -190,6 +212,9 @@ class CourseKnowledgeTreeNode(SchemaModel):
     knowledge_unit_ids: list[str] = Field(default_factory=list)
     order: int = Field(default=1, ge=1)
     prerequisite_node_ids: list[str] = Field(default_factory=list)
+    node_type: Literal["section", "segment", "knowledge_unit"] | None = None
+    ref_id: str | None = None
+    page_refs: list[PageRef] = Field(default_factory=list)
 
 
 class CourseKnowledgeTree(SchemaModel):
@@ -221,6 +246,25 @@ class PageUnderstandingDraft(SchemaModel):
     visual_analysis: dict = Field(default_factory=dict)
     misconceptions: list[Misconception] = Field(default_factory=list)
     same_topic_pages: list[int] = Field(default_factory=list)
+
+    @field_validator("teachable_points", mode="before")
+    @classmethod
+    def discard_empty_teachable_points(cls, value):
+        if not isinstance(value, list):
+            return value
+        cleaned = []
+        for item in value:
+            if isinstance(item, str):
+                point = item.strip()
+                if point:
+                    cleaned.append({"point": point})
+                continue
+            if not isinstance(item, dict):
+                continue
+            point = str(item.get("point") or "").strip()
+            if point:
+                cleaned.append({**item, "point": point})
+        return cleaned
 
 
 class PageUnderstanding(SchemaModel):
@@ -352,6 +396,7 @@ class LearningSectionDraft(SchemaModel):
     visual_summary: str = ""
     transition_to_next: str = ""
     quiz_items: list[QuizItemDraft] = Field(default_factory=list)
+    segments: list[TeachingSegment] = Field(default_factory=list)
 
 
 class LearningContentDraft(SchemaModel):
@@ -468,6 +513,38 @@ class SourceDeckSectionDraft(SchemaModel):
     transition_to_next: str = ""
 
 
+class SourceDeckTeachingSegmentDraft(SchemaModel):
+    """LLM draft for one contiguous teaching segment inside a source section."""
+
+    title: str = Field(min_length=1)
+    role: Literal[
+        "orientation",
+        "motivation",
+        "concept",
+        "mechanism",
+        "method",
+        "derivation",
+        "comparison",
+        "application",
+        "practice",
+        "summary",
+        "reference",
+    ] = "concept"
+    teaching_goal: str = Field(min_length=1)
+    summary: str = ""
+    start_page: int = Field(ge=1)
+    end_page: int = Field(ge=1)
+    knowledge_unit_ids: list[str] = Field(default_factory=list)
+    prerequisite_segment_titles: list[str] = Field(default_factory=list)
+    suggested_delivery: str = ""
+    transition_to_next: str = ""
+
+
+class SourceDeckTeachingStructureDraft(SchemaModel):
+    section_title: str = Field(min_length=1)
+    segments: list[SourceDeckTeachingSegmentDraft] = Field(min_length=1)
+
+
 class SourceDeckLearningContentDraft(SchemaModel):
     title: str = Field(min_length=1)
     subtitle: str = ""
@@ -516,6 +593,7 @@ class LearningSection(SchemaModel):
     teaching_script: str = ""
     visual_summary: str = ""
     transition_to_next: str = ""
+    segments: list[TeachingSegment] = Field(default_factory=list)
 
 
 class LearningContent(SchemaModel):

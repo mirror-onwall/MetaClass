@@ -191,7 +191,7 @@ def get_default_student_agent_profiles() -> list[StudentAgentProfile]:
 
 
 def get_default_student_agent_states() -> list[StudentAgentState]:
-    """Create the default four classroom agents used when a session starts."""
+    """Create the complete default classroom roster used when a session starts."""
 
     return get_student_agent_states()
 
@@ -202,7 +202,7 @@ def get_student_agent_states(
     """Create the requested classroom roster while preserving selection order."""
 
     if selected_types is None:
-        selected_types = [profile.type for profile in DEFAULT_STUDENT_AGENT_PROFILES[:4]]
+        selected_types = [profile.type for profile in DEFAULT_STUDENT_AGENT_PROFILES]
     profiles_by_type = {profile.type: profile for profile in DEFAULT_STUDENT_AGENT_PROFILES}
     states = []
     seen_types: set[StudentAgentType] = set()

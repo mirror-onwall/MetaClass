@@ -290,6 +290,13 @@ class QAInteractionExecutedPayload(SchemaModel):
     teacher_answer: str = Field(min_length=1)
 
 
+class ModeSwitchedPayload(SchemaModel):
+    from_mode: LearningMode
+    to_mode: LearningMode
+    scene_index: int = Field(ge=0)
+    action_index: int = Field(ge=0)
+
+
 class AgentTurnPayload(SchemaModel):
     turn: AgentTurn
 
@@ -330,13 +337,19 @@ class QAInteractionExecutedEvent(ClassroomEventBase):
     payload: QAInteractionExecutedPayload
 
 
+class ModeSwitchedEvent(ClassroomEventBase):
+    type: Literal["MODE_SWITCHED"]
+    payload: ModeSwitchedPayload
+
+
 ClassroomEvent = Annotated[
     ActionExecutedEvent
     | QuizEvaluatedEvent
     | UserQuestionEvent
     | TeacherAnswerEvent
     | AgentTurnEvent
-    | QAInteractionExecutedEvent,
+    | QAInteractionExecutedEvent
+    | ModeSwitchedEvent,
     Field(discriminator="type"),
 ]
 
@@ -346,6 +359,7 @@ class ClassroomSession(SchemaModel):
     plan_id: str = Field(min_length=1)
     mode: LearningMode = LearningMode.LECTURE
     status: Literal["running", "completed"] = "running"
+    version: int = Field(default=0, ge=0)
     scene_index: int = Field(default=0, ge=0)
     action_index: int = Field(default=0, ge=0)
     waiting_for: Literal["quiz_answer", "free_answer"] | None = None
@@ -397,6 +411,10 @@ class CreateClassroomSessionRequest(SchemaModel):
             else item
             for item in value
         ]
+
+
+class SwitchClassroomModeRequest(CreateClassroomSessionRequest):
+    pass
 
 
 class AgentTurnRequest(SchemaModel):

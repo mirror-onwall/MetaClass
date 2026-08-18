@@ -145,6 +145,18 @@ button { color: inherit; }
 .inspector-meta b { margin-top: 6px; color: #d7dfd9; font: 10px "DM Mono", monospace; }
 .use-library-material { width: calc(100% - 40px); min-height: 44px; margin: 1px 20px 23px; padding: 0 15px; display: flex; justify-content: space-between; align-items: center; border: 0; background: var(--amber); color: #17231f; font-size: 10px; font-weight: 700; cursor: pointer; }
 .use-library-material:disabled { opacity: .35; cursor: not-allowed; }
+.delete-library-project {
+  width: calc(100% - 40px);
+  min-height: 38px;
+  margin: -13px 20px 23px;
+  border: 1px solid rgba(201,130,117,.45);
+  background: rgba(201,130,117,.08);
+  color: #dca096;
+  font-size: 9px;
+  cursor: pointer;
+}
+.delete-library-project:hover { background: rgba(201,130,117,.16); }
+.delete-library-project:disabled { opacity: .35; cursor: not-allowed; }
 .library-asset-pipeline { margin: 0 20px 24px; padding: 18px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .asset-stage { min-height: 68px; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 10px; align-items: center; margin-bottom: 8px; padding: 10px; border: 1px solid var(--line); background: rgba(255,255,255,.018); }
 .asset-stage > span { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 50%; color: var(--muted); background: rgba(255,255,255,.05); font: 8px "DM Mono", monospace; }
@@ -552,6 +564,28 @@ button { color: inherit; }
 .lesson-outline li b, .lesson-outline li small { display: block; }
 .lesson-outline li b { font-size: 10px; font-weight: 500; }
 .lesson-outline li small { margin-top: 3px; color: var(--muted); font-size: 8px; }
+.outline-section-list { max-height: 360px; margin-top: 14px; overflow: auto; }
+.outline-section-compact {
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  gap: 8px;
+  padding: 11px 0;
+  border-top: 1px solid var(--line);
+}
+.outline-section-compact > span { color: var(--amber); font: 9px "DM Mono", monospace; }
+.outline-section-compact h3 { margin: 3px 0 5px; font-size: 11px; line-height: 1.45; }
+.outline-section-compact > div > p { margin: 4px 0 0; color: var(--muted); font-size: 8px; line-height: 1.55; }
+.outline-section-compact > div > p strong,
+.outline-section-card > div > p strong { margin-right: 6px; color: var(--mint); font-weight: 500; }
+.teaching-segment-list { margin: 9px 0 0 !important; overflow: visible !important; }
+.teaching-segment-list li {
+  grid-template-columns: 34px 1fr;
+  padding: 8px 0 8px 7px;
+  border-top-color: rgba(198,171,126,.16);
+  border-left: 1px solid rgba(140,173,156,.25);
+}
+.teaching-segment-list li > span { color: var(--mint); }
+.teaching-segment-list li p { margin: 5px 0 0; color: #91a49c; font-size: 8px; line-height: 1.5; }
 .lesson-outline .knowledge-tree-list {
   display: grid;
   gap: 10px;
@@ -1520,12 +1554,80 @@ button { color: inherit; }
   box-shadow: 0 0 0 2px #b88a52, inset 0 0 24px rgba(184,138,82,.06);
 }
 
+.library-roster-modal {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgba(20, 24, 21, .68);
+  backdrop-filter: blur(8px);
+}
+.paused-job-toast { position: fixed; z-index: 115; right: 22px; bottom: 22px; display: grid; grid-template-columns: 34px minmax(190px, 1fr) auto auto; align-items: center; gap: 12px; max-width: min(760px, calc(100vw - 44px)); padding: 14px 16px; border: 1px solid rgba(174,126,62,.55); background: #e7ddcc; color: #26342d; box-shadow: 0 18px 48px rgba(20,25,21,.26); }
+.paused-job-toast > span { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #a9783d; color: #fffaf0; font-weight: 800; }
+.paused-job-toast div b, .paused-job-toast div p { display: block; margin: 0; }
+.paused-job-toast div p { margin-top: 3px; color: #667168; font-size: 11px; }
+.paused-job-toast button { padding: 9px 12px; border: 1px solid rgba(94,74,50,.28); background: transparent; color: #554b40; cursor: pointer; }
+.paused-job-toast button.resume { border-color: #9d713e; background: #9d713e; color: #fffaf0; }
+.paused-job-toast button.discard { color: #8e4138; }
+.library-in-progress-assets { margin: 8px 0 18px; padding: 14px; border: 1px solid rgba(173,124,58,.42); background: rgba(230,213,182,.34); }
+.in-progress-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.in-progress-heading > span { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #a9783d; color: #fffaf0; font-weight: 800; }
+.in-progress-heading b, .in-progress-heading small { display: block; }
+.in-progress-heading small { margin-top: 2px; color: #786b5b; font-size: 9px; }
+.library-in-progress-assets article { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 11px 0; border-top: 1px solid rgba(103,80,50,.15); }
+.library-in-progress-assets article b { font-size: 12px; }
+.library-in-progress-assets article p { margin: 3px 0 0; color: #6d756e; font-size: 9px; }
+.library-in-progress-assets article button { padding: 8px 10px; border: 1px solid #9d713e; background: #9d713e; color: #fffaf0; cursor: pointer; }
+.library-in-progress-assets article button.discard { border-color: rgba(141,65,56,.35); background: transparent; color: #8d4138; }
+.library-roster-dialog {
+  width: min(920px, 100%);
+  max-height: min(780px, calc(100vh - 56px));
+  overflow: auto;
+  border: 1px solid rgba(168, 125, 71, .56);
+  border-radius: 3px;
+  background: #e2d8c7;
+  color: #25342d;
+  box-shadow: 0 30px 80px rgba(14, 18, 15, .38);
+}
+.library-roster-dialog > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 26px 30px 20px;
+  border-bottom: 1px solid rgba(91, 72, 49, .18);
+}
+.library-roster-dialog header small { color: #9a6a30; font: 10px "DM Mono", monospace; letter-spacing: .17em; }
+.library-roster-dialog header h2 { margin: 7px 0 5px; font-size: 25px; }
+.library-roster-dialog header p { margin: 0; color: #657169; font-size: 12px; }
+.library-roster-dialog header > button { align-self: flex-start; border: 0; background: transparent; color: #6b5a46; font-size: 27px; cursor: pointer; }
+.library-roster-toolbar { display: flex; align-items: center; gap: 10px; padding: 14px 30px; }
+.library-roster-toolbar span { margin-right: auto; color: #66736c; font-size: 12px; }
+.library-roster-toolbar span b { color: #9a6a30; font-size: 17px; }
+.library-roster-toolbar button { padding: 6px 11px; border: 1px solid rgba(108, 83, 53, .25); background: rgba(255,255,255,.25); color: #5c5144; cursor: pointer; }
+.library-roster-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 0 30px 24px; }
+.library-roster-grid > button { display: grid; grid-template-columns: 58px 1fr 20px; align-items: center; gap: 13px; min-height: 86px; padding: 12px; border: 1px solid rgba(96, 78, 55, .2); background: rgba(251, 247, 237, .45); color: #26352e; text-align: left; cursor: pointer; }
+.library-roster-grid > button.selected { border-color: #a67438; background: #f4ead7; box-shadow: inset 3px 0 #a67438; }
+.library-roster-grid img { width: 58px; height: 58px; border-radius: 6px; object-fit: cover; background: #e7dfca; }
+.library-roster-grid span b, .library-roster-grid span small { display: block; }
+.library-roster-grid span b { font-size: 13px; }
+.library-roster-grid span small { margin-top: 5px; color: #69746e; font-size: 10px; line-height: 1.4; }
+.library-roster-grid i { color: #a67438; font-size: 18px; font-style: normal; text-align: center; }
+.library-roster-dialog > footer { display: flex; justify-content: flex-end; gap: 10px; padding: 18px 30px; border-top: 1px solid rgba(91, 72, 49, .18); background: rgba(203, 190, 169, .35); }
+.library-roster-dialog > footer button { min-width: 92px; padding: 11px 16px; border: 1px solid rgba(91, 72, 49, .3); background: transparent; color: #4e514b; cursor: pointer; }
+.library-roster-dialog > footer button.confirm { min-width: 210px; border-color: #9d713e; background: #9d713e; color: #fffaf0; }
+.library-roster-dialog > footer button:disabled { opacity: .42; cursor: not-allowed; }
+
 @media (max-width: 1180px) {
   .student-agent-bench .student-agent-options { grid-template-columns: repeat(2, minmax(220px, 1fr)); }
 }
 @media (max-width: 800px) {
   .student-agent-bench { padding: 16px; }
   .student-agent-bench .student-agent-options { grid-template-columns: 1fr; }
+  .library-roster-modal { padding: 12px; }
+  .library-roster-dialog > header, .library-roster-toolbar, .library-roster-dialog > footer { padding-left: 18px; padding-right: 18px; }
+  .library-roster-grid { grid-template-columns: 1fr; padding-left: 18px; padding-right: 18px; }
 }
 
 /* Light theme uses a classroom whiteboard; dark theme keeps the chalkboard. */
@@ -2100,12 +2202,30 @@ button { color: inherit; }
   border-top: 3px solid var(--amber);
   background: rgba(20,33,27,.88);
 }
+.full-outline-grid .outline-section-card { min-height: 0; align-self: start; }
 .full-outline-grid article > span { color: var(--amber); font: 18px "DM Mono", monospace; }
 .full-outline-grid article small { color: var(--mint); font: 8px "DM Mono", monospace; }
 .full-outline-grid h3 { margin: 8px 0; font-size: 19px; }
 .full-outline-grid p { margin: 0; color: #aebdb7; font-size: 11px; line-height: 1.7; }
 .full-outline-grid ul { margin: 13px 0 0; padding-left: 18px; color: #d1d8d4; font-size: 10px; line-height: 1.7; }
 .full-outline-grid blockquote { margin: 14px 0 0; padding: 8px 10px; border-left: 2px solid var(--mint); color: var(--muted); font-size: 9px; }
+.full-outline-grid .teaching-segment-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 16px !important;
+  padding: 0;
+  list-style: none;
+}
+.full-outline-grid .teaching-segment-list li {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 10px;
+  padding: 10px 0 10px 10px;
+}
+.full-outline-grid .teaching-segment-list li > span { color: var(--mint); font: 10px "DM Mono", monospace; }
+.full-outline-grid .teaching-segment-list b { display: block; font-size: 12px; }
+.full-outline-grid .teaching-segment-list small { display: block; margin-top: 4px; color: var(--muted); }
+.full-outline-grid .teaching-segment-list p { margin-top: 6px; font-size: 10px; }
 .full-tree-canvas { padding: 28px; overflow: auto; }
 .tree-course-root {
   width: min(440px, 90%);

@@ -97,6 +97,7 @@ class Database:
             "classroom_sessions": {
                 "mode": "VARCHAR(20)",
                 "student_states": "JSON",
+                "version": "INTEGER DEFAULT 0",
                 "created_at": "DATETIME",
                 "updated_at": "DATETIME",
             },
@@ -151,6 +152,9 @@ class Database:
                     )
                     connection.execute(
                         text("UPDATE classroom_sessions SET mode = 'lecture' WHERE mode IS NULL")
+                    )
+                    connection.execute(
+                        text("UPDATE classroom_sessions SET version = 0 WHERE version IS NULL")
                     )
                 if table == "ppt_artifacts":
                     connection.execute(

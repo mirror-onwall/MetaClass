@@ -325,21 +325,12 @@ class OpenAICompatibleLLMProvider:
         payload = {
             "model": self.model,
             "messages": [message.__dict__ for message in messages],
-            "temperature": temperature if temperature is not None else self.default_temperature,
+            "temperature": self._compatible_temperature(temperature),
             "response_format": {"type": "json_object"},
         }
         if self.max_tokens:
             payload["max_tokens"] = self.max_tokens
-        req = request.Request(
-            f"{self.base_url}/chat/completions",
-            data=json.dumps(payload).encode("utf-8"),
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            method="POST",
-        )
-        body = self._read_json_with_retry(req, "LLM")
+        body = self._read_chat_json_with_temperature_fallback(payload, "LLM")
 
         try:
             return str(body["choices"][0]["message"]["content"])
@@ -367,12 +358,45 @@ class OpenAICompatibleLLMProvider:
                     ],
                 }
             ],
-            "temperature": temperature if temperature is not None else self.default_temperature,
+            "temperature": self._compatible_temperature(temperature),
             "response_format": {"type": "json_object"},
         }
         if self.max_tokens:
             payload["max_tokens"] = self.max_tokens
-        req = request.Request(
+        body = self._read_chat_json_with_temperature_fallback(payload, "Vision")
+
+        try:
+            return str(body["choices"][0]["message"]["content"])
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RuntimeError(f"Unexpected vision response shape: {body}") from exc
+
+    def _compatible_temperature(self, temperature: float | None) -> float:
+        requested = temperature if temperature is not None else self.default_temperature
+        model = self.model.strip().lower()
+        if model.startswith(("gpt-5", "o1", "o3", "o4")):
+            return 1.0
+        return requested
+
+    def _read_chat_json_with_temperature_fallback(
+        self, payload: dict, label: str
+    ) -> dict:
+        try:
+            return self._read_json_with_retry(self._chat_request(payload), label)
+        except RuntimeError as exc:
+            detail = str(exc).lower()
+            if (
+                payload.get("temperature") != 1
+                and "invalid temperature" in detail
+                and "only 1 is allowed" in detail
+            ):
+                retry_payload = {**payload, "temperature": 1.0}
+                return self._read_json_with_retry(
+                    self._chat_request(retry_payload), f"{label} temperature-compatible retry"
+                )
+            raise
+
+    def _chat_request(self, payload: dict) -> request.Request:
+        return request.Request(
             f"{self.base_url}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
             headers={
@@ -381,12 +405,6 @@ class OpenAICompatibleLLMProvider:
             },
             method="POST",
         )
-        body = self._read_json_with_retry(req, "Vision")
-
-        try:
-            return str(body["choices"][0]["message"]["content"])
-        except (KeyError, IndexError, TypeError) as exc:
-            raise RuntimeError(f"Unexpected vision response shape: {body}") from exc
 
     def _read_json_with_retry(self, req: request.Request, label: str) -> dict:
         """Retry one transient connection/read timeout before failing a job."""

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { TeachingAction } from "../../shared/types";
+import type { PresentationSlideDisplay, TeachingAction } from "../../shared/types";
 
 export function ActionView({
   action,
@@ -11,7 +11,7 @@ export function ActionView({
   quizResult = null,
 }: {
   action: TeachingAction | null;
-  presentationSlideImages?: Record<number, string>;
+  presentationSlideImages?: Record<number, PresentationSlideDisplay>;
   currentSlide?: { src: string; pageNo: number; generated: boolean } | null;
   slideProgress?: {
     current: number;
@@ -68,21 +68,24 @@ export function ActionView({
     const requestedPage = action.type === "SHOW_SLIDE"
       ? action.payload.slide_no
       : action.payload.slide_no ?? action.payload.source_ref.page_no;
-    const generatedEntries = Object.entries(presentationSlideImages)
-      .map(([pageNo, src]) => ({ pageNo: Number(pageNo), src }))
+    const slideEntries = Object.entries(presentationSlideImages)
+      .map(([pageNo, image]) => ({
+        pageNo: Number(pageNo),
+        src: image.src,
+        generated: image.kind === "generated",
+      }))
       .sort((left, right) => left.pageNo - right.pageNo);
-    if (generatedEntries.length) {
-      const exact = generatedEntries.find((slide) => slide.pageNo === requestedPage);
-      const generated = exact
-        ?? (currentSlide?.generated ? currentSlide : generatedEntries.at(-1));
-      if (generated) {
-        return renderSlide({ ...generated, generated: true });
+    if (slideEntries.length) {
+      const exact = slideEntries.find((slide) => slide.pageNo === requestedPage);
+      const displayed = exact ?? currentSlide ?? slideEntries.at(-1);
+      if (displayed) {
+        return renderSlide(displayed);
       }
     }
-    if (currentSlide?.generated) return renderSlide(currentSlide);
+    if (currentSlide) return renderSlide(currentSlide);
     return (
       <div className="action-placeholder">
-        <p>正在等待生成的 PPT 页面。</p>
+        <p>正在等待 PPT 页面。</p>
       </div>
     );
   }

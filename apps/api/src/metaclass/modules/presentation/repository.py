@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from typing import Protocol
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from metaclass.infrastructure.database import Database
 from metaclass.modules.presentation.models import (
@@ -38,6 +38,10 @@ class PresentationRepository(Protocol):
     def save_job(self, job: PPTGenerationJob) -> None: ...
 
     def get_job(self, job_id: str) -> PPTGenerationJob | None: ...
+
+    def list_jobs(self) -> list[PPTGenerationJob]: ...
+
+    def delete_job(self, job_id: str) -> None: ...
 
     def save_artifact(self, artifact: PPTArtifact) -> None: ...
 
@@ -136,6 +140,39 @@ class SqlAlchemyPresentationRepository:
         with self.database.session() as session:
             record = session.get(PPTGenerationJobRecord, job_id)
             return self._job(record) if record else None
+
+    def list_jobs(self) -> list[PPTGenerationJob]:
+        with self.database.session() as session:
+            records = session.scalars(
+                select(PPTGenerationJobRecord).order_by(PPTGenerationJobRecord.updated_at.desc())
+            ).all()
+            return [self._job(record) for record in records]
+
+    def delete_job(self, job_id: str) -> None:
+        with self.database.session() as session:
+            job = session.get(PPTGenerationJobRecord, job_id)
+            if not job:
+                return
+            fallback_artifact = session.scalar(
+                select(PPTArtifactRecord)
+                .where(
+                    PPTArtifactRecord.presentation_plan_id == job.presentation_plan_id,
+                    PPTArtifactRecord.job_id != job_id,
+                )
+                .order_by(PPTArtifactRecord.created_at.desc())
+            )
+            resource = session.scalar(
+                select(PresentationResourceRecord).where(
+                    PresentationResourceRecord.presentation_plan_id
+                    == job.presentation_plan_id
+                )
+            )
+            if resource:
+                resource.artifact_id = (
+                    fallback_artifact.id if fallback_artifact else None
+                )
+            session.execute(delete(PPTArtifactRecord).where(PPTArtifactRecord.job_id == job_id))
+            session.execute(delete(PPTGenerationJobRecord).where(PPTGenerationJobRecord.id == job_id))
 
     def save_artifact(self, artifact: PPTArtifact) -> None:
         with self.database.session() as session:
