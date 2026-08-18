@@ -70,6 +70,24 @@ def create_router(presentations: PresentationService) -> APIRouter:
     async def get_presentation_plan_job(job_id: str) -> PresentationPlanJob:
         return presentations.get_plan_job(job_id)
 
+    @router.get("/presentation-plan-jobs", response_model=list[PresentationPlanJob])
+    async def list_presentation_plan_jobs() -> list[PresentationPlanJob]:
+        return presentations.list_plan_jobs()
+
+    @router.post("/presentation-plan-jobs/{job_id}/pause", response_model=PresentationPlanJob)
+    async def pause_presentation_plan_job(job_id: str) -> PresentationPlanJob:
+        return presentations.pause_plan_job(job_id)
+
+    @router.post("/presentation-plan-jobs/{job_id}/resume", response_model=PresentationPlanJob)
+    async def resume_presentation_plan_job(job_id: str, background_tasks: BackgroundTasks) -> PresentationPlanJob:
+        job = presentations.resume_plan_job(job_id)
+        background_tasks.add_task(presentations.run_plan_job, job.id)
+        return job
+
+    @router.delete("/presentation-plan-jobs/{job_id}", status_code=204)
+    async def discard_presentation_plan_job(job_id: str) -> None:
+        presentations.discard_plan_job(job_id)
+
     @router.get(
         "/presentation-plan-jobs/{job_id}/result",
         response_model=PresentationPlan,
@@ -146,6 +164,24 @@ def create_router(presentations: PresentationService) -> APIRouter:
     @router.get("/ppt-jobs/{job_id}", response_model=PPTGenerationJob)
     async def get_ppt_job(job_id: str) -> PPTGenerationJob:
         return presentations.get_ppt_job(job_id)
+
+    @router.get("/ppt-jobs", response_model=list[PPTGenerationJob])
+    async def list_ppt_jobs() -> list[PPTGenerationJob]:
+        return presentations.list_ppt_jobs()
+
+    @router.post("/ppt-jobs/{job_id}/pause", response_model=PPTGenerationJob)
+    async def pause_ppt_job(job_id: str) -> PPTGenerationJob:
+        return presentations.pause_ppt_job(job_id)
+
+    @router.post("/ppt-jobs/{job_id}/resume", response_model=PPTGenerationJob)
+    async def resume_ppt_job(job_id: str, background_tasks: BackgroundTasks) -> PPTGenerationJob:
+        job = presentations.resume_ppt_job(job_id)
+        background_tasks.add_task(presentations.run_ppt_job, job.id)
+        return job
+
+    @router.delete("/ppt-jobs/{job_id}", status_code=204)
+    async def discard_ppt_job(job_id: str) -> None:
+        presentations.discard_ppt_job(job_id)
 
     @router.get("/ppt-jobs/{job_id}/artifact", response_model=PPTArtifact)
     async def get_ppt_artifact_for_job(job_id: str) -> PPTArtifact:

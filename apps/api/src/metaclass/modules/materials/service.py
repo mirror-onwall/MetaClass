@@ -23,6 +23,7 @@ from metaclass.modules.materials.schemas import (
     MaterialCollection,
     MaterialProcessingJob,
     MaterialProcessingJobStatus,
+    MaterialStatus,
     PageMetadata,
     PageImage,
     ProcessedMaterial,
@@ -54,6 +55,23 @@ class MaterialService:
         self._cancel_events: dict[str, Event] = {}
         self._discard_on_cancel: set[str] = set()
         self._job_lock = Lock()
+        self._jobs_dir = self.data_dir / "runtime" / "material_processing" / "jobs"
+        self._restore_processing_jobs()
+
+    def _restore_processing_jobs(self) -> None:
+        if not self._jobs_dir.exists():
+            return
+        for path in self._jobs_dir.glob("*.json"):
+            try:
+                job = MaterialProcessingJob.model_validate_json(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if job.status == MaterialProcessingJobStatus.RUNNING:
+                job.status = MaterialProcessingJobStatus.PAUSED
+                job.step = "paused"
+                job.message = "服务器中断，进度已保存，可以继续"
+            self._jobs[job.id] = job
+            self._cancel_events[job.id] = Event()
 
     async def create(self, upload: UploadFile) -> Material:
         filename = safe_filename(upload.filename)
@@ -145,6 +163,14 @@ class MaterialService:
                 raise HTTPException(404, "Material processing job not found")
             return job.model_copy(deep=True)
 
+    def list_processing_jobs(self) -> list[MaterialProcessingJob]:
+        with self._job_lock:
+            return sorted(
+                (job.model_copy(deep=True) for job in self._jobs.values()),
+                key=lambda job: job.updated_at,
+                reverse=True,
+            )
+
     def processing_job_result(self, job_id: str) -> ProcessedMaterials:
         job = self.get_processing_job(job_id)
         if job.status == MaterialProcessingJobStatus.FAILED:
@@ -160,9 +186,7 @@ class MaterialService:
         ]
         return ProcessedMaterials(items=items, collection=collection)
 
-    def cancel_processing_job(
-        self, job_id: str, *, discard: bool = True
-    ) -> MaterialProcessingJob:
+    def pause_processing_job(self, job_id: str) -> MaterialProcessingJob:
         with self._job_lock:
             job = self._jobs.get(job_id)
             if not job:
@@ -174,16 +198,35 @@ class MaterialService:
                 raise HTTPException(409, "Material processing job is already finished")
             event = self._cancel_events.setdefault(job_id, Event())
             event.set()
-            if discard:
-                self._discard_on_cancel.add(job_id)
-            job.status = MaterialProcessingJobStatus.CANCELED
-            job.step = "canceled"
-            job.message = "Material processing canceled"
-            job.progress = 100
+            job.status = MaterialProcessingJobStatus.PAUSED
+            job.step = "paused"
+            job.message = "处理已暂停，当前进度已保存"
             job.error = None
             job.updated_at = utc_now()
-            self._jobs[job_id] = job.model_copy(deep=True)
-            return job.model_copy(deep=True)
+        self._save_job(job)
+        return job
+
+    def resume_processing_job(self, job_id: str) -> MaterialProcessingJob:
+        job = self.get_processing_job(job_id)
+        if job.status != MaterialProcessingJobStatus.PAUSED:
+            raise HTTPException(409, "Only paused jobs can be resumed")
+        with self._job_lock:
+            self._cancel_events[job_id] = Event()
+        job.status = MaterialProcessingJobStatus.QUEUED
+        job.step = "queued"
+        job.message = "等待从已保存进度继续"
+        self._save_job(job)
+        return job
+
+    def discard_processing_job(self, job_id: str) -> None:
+        job = self.get_processing_job(job_id)
+        if job.status == MaterialProcessingJobStatus.RUNNING:
+            raise HTTPException(409, "Pause the job before discarding it")
+        self._discard_processing_job(job)
+        with self._job_lock:
+            self._jobs.pop(job_id, None)
+            self._cancel_events.pop(job_id, None)
+        (self._jobs_dir / f"{job_id}.json").unlink(missing_ok=True)
 
     def run_processing_job(self, job_id: str) -> None:
         job = self.get_processing_job(job_id)
@@ -201,6 +244,10 @@ class MaterialService:
             for index, material_id in enumerate(job.material_ids, start=1):
                 self._raise_if_cancelled(cancel_event)
                 material = self.get(material_id)
+                if material.status == MaterialStatus.PARSED and self.pages(material_id):
+                    job.progress = min(95, 5 + int((index / total) * 90))
+                    self._save_job(job)
+                    continue
                 job.step = f"parsing:{material.filename}"
                 job.message = f"Parsing {material.filename}"
                 job.progress = min(95, 5 + int(((index - 1) / total) * 90))
@@ -217,17 +264,12 @@ class MaterialService:
             job.updated_at = utc_now()
             self._save_job(job)
         except MaterialProcessingCancelled:
-            job.status = MaterialProcessingJobStatus.CANCELED
-            job.step = "canceled"
-            job.message = "Material processing canceled"
-            job.progress = 100
+            job.status = MaterialProcessingJobStatus.PAUSED
+            job.step = "paused"
+            job.message = "处理已暂停，当前进度已保存"
             job.error = None
             job.updated_at = utc_now()
             self._save_job(job)
-            with self._job_lock:
-                discard = job_id in self._discard_on_cancel
-            if discard:
-                self._discard_processing_job(job)
         except Exception as exc:
             job.status = MaterialProcessingJobStatus.FAILED
             job.step = "failed"
@@ -241,9 +283,37 @@ class MaterialService:
         self.get(material_id)
         return self.repository.list_pages(material_id)
 
-    def parse(
-        self, material_id: str, *, cancel_event: Event | None = None
-    ) -> list[PageMetadata]:
+    def delete_project(self, material_id: str) -> None:
+        self.get(material_id)
+        try:
+            artifact_paths = self.repository.delete_material_project(material_id)
+        except ValueError as exc:
+            raise HTTPException(409, str(exc)) from exc
+        for path_value in artifact_paths:
+            path = Path(path_value)
+            try:
+                resolved = path.resolve()
+                resolved.relative_to(self.data_dir.resolve())
+            except (OSError, ValueError):
+                continue
+            if resolved.is_file():
+                resolved.unlink(missing_ok=True)
+        shutil.rmtree(self.data_dir / "raw" / material_id, ignore_errors=True)
+        shutil.rmtree(self.data_dir / "processed" / material_id, ignore_errors=True)
+        checkpoint = (
+            self.data_dir
+            / "runtime"
+            / "content_generation"
+            / "checkpoints"
+            / f"source_deck_{material_id}.json"
+        )
+        checkpoint.unlink(missing_ok=True)
+        narration_dir = self.data_dir / "runtime" / "presentation_narration"
+        if narration_dir.exists():
+            for narration_checkpoint in narration_dir.glob(f"*_{material_id}.json"):
+                narration_checkpoint.unlink(missing_ok=True)
+
+    def parse(self, material_id: str, *, cancel_event: Event | None = None) -> list[PageMetadata]:
         material = self.get(material_id)
         material.status = "parsing"
         material.updated_at = utc_now()
@@ -289,6 +359,11 @@ class MaterialService:
     def _save_job(self, job: MaterialProcessingJob) -> None:
         with self._job_lock:
             self._jobs[job.id] = job.model_copy(deep=True)
+            self._jobs_dir.mkdir(parents=True, exist_ok=True)
+            path = self._jobs_dir / f"{job.id}.json"
+            temporary = path.with_suffix(".json.tmp")
+            temporary.write_text(job.model_dump_json(indent=2), encoding="utf-8")
+            temporary.replace(path)
 
     @staticmethod
     def _sha256(path: Path) -> str:
@@ -372,9 +447,7 @@ class MaterialService:
             image_path = (
                 page_images[number - 1]
                 if number <= len(page_images)
-                else self._placeholder(
-                    self.data_dir / "processed" / material.id / "pages", number
-                )
+                else self._placeholder(self.data_dir / "processed" / material.id / "pages", number)
             )
             pages.append(
                 self._metadata(
@@ -416,7 +489,9 @@ class MaterialService:
                     if extension == "jpeg":
                         extension = "jpg"
                     image_id = f"{material.id}_page_{page_no:03d}_image_{image_index:02d}"
-                    image_path = output_dir / f"page_{page_no:03d}_image_{image_index:02d}.{extension}"
+                    image_path = (
+                        output_dir / f"page_{page_no:03d}_image_{image_index:02d}.{extension}"
+                    )
                     image_path.write_bytes(image_bytes)
                     result.setdefault(page_no, []).append(
                         PageImage(

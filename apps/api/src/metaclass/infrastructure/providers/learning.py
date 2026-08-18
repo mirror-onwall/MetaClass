@@ -12,11 +12,14 @@ from metaclass.modules.content.schemas import (
     KnowledgeCanonicalizationDraft,
     KnowledgeUnit,
     LearningContentDraft,
+    PageRef,
     PageUnderstandingDraft,
     SourceDeckLearningContentDraft,
     SourceDeckOutlineDraft,
     SourceDeckPageFlowBatch,
     SourceDeckPageFlowDraft,
+    SourceDeckSectionDraft,
+    SourceDeckTeachingStructureDraft,
 )
 from metaclass.modules.materials.schemas import PageMetadata
 
@@ -39,13 +42,13 @@ SOURCE_DECK_PAGE_ROLES = {
 }
 
 LANGUAGE_RULE = """
-Language policy: inspect the substantive source material, not isolated English terms.
-If the material is Chinese or mixes Chinese and English, write every explanatory field,
-title, summary, teaching script, question, option, label, and recommendation in natural
-Simplified Chinese. Preserve necessary formulas, symbols, proper nouns, and technical terms.
-Use English output only when the substantive source material is entirely or overwhelmingly
-English and contains no meaningful Chinese teaching content. Never mix English UI-style
-labels or instructions into an otherwise Chinese result.
+Language policy for display-facing fields: source evidence may be Chinese, English, or mixed,
+but write every generated title, summary, explanation, teaching goal, question, option, label,
+and recommendation in natural Simplified Chinese so the product UI is consistently Chinese.
+Preserve necessary English technical terms, proper nouns, acronyms, formulas, and symbols after
+or alongside their Chinese name. Source excerpts must remain faithful to the source language.
+Do not turn an English source sentence into an English display title; summarize its meaning in
+Chinese instead.
 """
 
 
@@ -66,7 +69,7 @@ class LLMLearningProvider:
     """Build page-level learning metadata from parsed material text."""
 
     name = "llm"
-    prompt_version = "contextual-page-understanding-v4"
+    prompt_version = "contextual-page-understanding-v5"
 
     def __init__(
         self,
@@ -130,11 +133,10 @@ class LLMLearningProvider:
             "previous_page": self._page_context(previous_page),
             "next_page": self._page_context(next_page),
         }
-        response = self.llm.complete_json(
-            [
-                LLMMessage(
-                    role="system",
-                    content="""You are a teaching-content analyst for MetaClass.
+        messages = [
+            LLMMessage(
+                role="system",
+                content="""You are a teaching-content analyst for MetaClass.
 
 Read one parsed PDF/PPT page with its neighboring page context and optional visual description.
 Return only valid JSON. Do not use markdown.
@@ -170,6 +172,8 @@ The JSON object must contain:
 }
 
 Page-understanding rules:
+- Use the exact snake_case field names shown above. In particular, output `page_role`, not
+  `page-role`, and always include a non-empty `summary` string.
 - If the current page has little text, infer whether it is a cover, agenda, section divider, transition, exercise, reference, or appendix page from neighboring pages and visual cues.
 - Do not invent unsupported facts, data, formulas, results, or citations.
 - expanded_explanation should help a teacher explain image-heavy pages using visual_description.
@@ -177,6 +181,9 @@ Page-understanding rules:
 - Put formulas into formulas instead of burying them in summary.
 - Formula variables must be objects with symbol and meaning fields, not bare strings.
 - depends_on_pages and leads_to_pages should only include page numbers provided in the input context.
+- Every teachable_points item must contain a non-empty, specific `point`. Never output
+  `{\"point\": \"\"}` or a whitespace-only point. If this page has no independently teachable
+  point, return `teachable_points: []` instead of an empty placeholder object.
 
 Quiz design rules:
 - Generate 0 to 2 quiz_items. Use [] if the page is a cover, agenda, section, transition, reference, or appendix page, or lacks enough content.
@@ -186,16 +193,62 @@ Quiz design rules:
 - Every question and explanation must be answerable from the page text only.
 - Keep questions concise and suitable for a classroom checkpoint.
 """
-                    + LANGUAGE_RULE,
-                ),
-                LLMMessage(
-                    role="user",
-                    content=json.dumps(payload, ensure_ascii=False),
-                ),
-            ],
-            temperature=0.2,
+                + LANGUAGE_RULE,
+            ),
+            LLMMessage(
+                role="user",
+                content=json.dumps(payload, ensure_ascii=False),
+            ),
+        ]
+        for attempt in range(2):
+            try:
+                response = self.llm.complete_json(messages, temperature=0.2)
+                response_payload = _parse_json_object(response)
+                normalized = {
+                    str(key).strip().replace("-", "_"): value
+                    for key, value in response_payload.items()
+                }
+                return PageUnderstandingDraft.model_validate(normalized, extra="ignore")
+            except (RuntimeError, TimeoutError, ValueError, ValidationError) as exc:
+                if not attempt:
+                    messages.append(
+                        LLMMessage(
+                            role="user",
+                            content=(
+                                "Your previous response failed PageUnderstandingDraft validation: "
+                                f"{exc}. Return the complete corrected JSON object using the exact "
+                                "snake_case fields from the schema. `summary` is required and must "
+                                "be a non-empty string grounded in the current page."
+                            ),
+                        )
+                    )
+                    continue
+                logger.warning(
+                    "Page %s understanding used deterministic fallback after invalid LLM output: %s",
+                    page_no,
+                    exc,
+                )
+        return self._fallback_page_understanding(
+            title=title,
+            raw_text=raw_text,
+            visual_description=visual_description,
         )
-        return PageUnderstandingDraft.model_validate_json(response, extra="ignore")
+
+    @staticmethod
+    def _fallback_page_understanding(
+        *, title: str, raw_text: str, visual_description: str
+    ) -> PageUnderstandingDraft:
+        text = " ".join(raw_text.split())
+        summary = text[:600] or title.strip() or "该页用于承接课程内容。"
+        point = title.strip() or text[:120]
+        return PageUnderstandingDraft(
+            summary=summary,
+            expanded_explanation=summary,
+            visual_description=visual_description,
+            knowledge_points=[point] if point else [],
+            teaching_focus=[point] if point else [],
+            page_role="concept",
+        )
 
     def organize_learning_content(
         self,
@@ -287,18 +340,11 @@ Quiz design rules:
         sections = []
         for index, node in enumerate(teaching_nodes, start=1):
             units = [
-                unit_by_id[unit_id]
-                for unit_id in node.knowledge_unit_ids
-                if unit_id in unit_by_id
+                unit_by_id[unit_id] for unit_id in node.knowledge_unit_ids if unit_id in unit_by_id
             ]
-            source_refs = [
-                ref for unit in units for ref in unit.source_refs
-            ]
-            page_refs = [
-                ref for unit in units for ref in unit.page_refs
-            ] or [
-                {"material_id": ref.material_id, "page_no": ref.page_no}
-                for ref in source_refs
+            source_refs = [ref for unit in units for ref in unit.source_refs]
+            page_refs = [ref for unit in units for ref in unit.page_refs] or [
+                {"material_id": ref.material_id, "page_no": ref.page_no} for ref in source_refs
             ]
             quiz_items = []
             seen_questions = set()
@@ -412,9 +458,7 @@ Quiz design rules:
             "global_concepts": [],
             "generation_guidance": {},
             "quality": {
-                "warnings": [
-                    "LLM organizer returned empty sections; repaired from knowledge tree."
-                ]
+                "warnings": ["LLM organizer returned empty sections; repaired from knowledge tree."]
             },
             "sections": sections,
         }
@@ -563,8 +607,11 @@ Quiz design rules:
                     "visual_analysis": getattr(understanding, "visual_analysis", {}),
                 }
             )
-        prompt_path = Path(__file__).parents[2] / "modules" / "content" / (
-            "source_deck_learning_content_prompt.md"
+        prompt_path = (
+            Path(__file__).parents[2]
+            / "modules"
+            / "content"
+            / ("source_deck_learning_content_prompt.md")
         )
         outline_packets = [
             {
@@ -578,56 +625,83 @@ Quiz design rules:
             }
             for item in packets
         ]
-        outline_response = self.llm.complete_json(
-            [
-                LLMMessage(
-                    role="system",
-                    content=prompt_path.read_text(encoding="utf-8"),
+        outline_messages = [
+            LLMMessage(
+                role="system",
+                content=prompt_path.read_text(encoding="utf-8"),
+            ),
+            LLMMessage(
+                role="user",
+                content=json.dumps(
+                    {
+                        "material_id": material_id,
+                        "page_count": len(outline_packets),
+                        "first_page_no": outline_packets[0]["page_no"],
+                        "last_page_no": outline_packets[-1]["page_no"],
+                        "expected_page_nos": [item["page_no"] for item in outline_packets],
+                        "pages": outline_packets,
+                        "canonical_knowledge_units": [
+                            {
+                                "id": unit.id,
+                                "title": unit.title,
+                                "summary": unit.summary[:400],
+                                "page_refs": [
+                                    ref.model_dump(mode="json") for ref in unit.page_refs
+                                ],
+                            }
+                            for unit in knowledge_units
+                        ],
+                    },
+                    ensure_ascii=False,
                 ),
-                LLMMessage(
-                    role="user",
-                    content=json.dumps(
-                        {
-                            "material_id": material_id,
-                            "pages": outline_packets,
-                            "canonical_knowledge_units": [
-                                {
-                                    "id": unit.id,
-                                    "title": unit.title,
-                                    "summary": unit.summary[:400],
-                                    "page_refs": [
-                                        ref.model_dump(mode="json") for ref in unit.page_refs
-                                    ],
-                                }
-                                for unit in knowledge_units
-                            ],
-                        },
-                        ensure_ascii=False,
-                    ),
-                ),
-            ],
-            temperature=0.15,
-        )
-        outline = SourceDeckOutlineDraft.model_validate(
-            _parse_json_object(outline_response), extra="ignore"
-        )
-        expected_pages = [page.page_no for page in pages]
-        outline_pages = [
-            ref.page_no for section in outline.sections for ref in section.page_refs
+            ),
         ]
-        if outline_pages != expected_pages:
-            raise ValueError(
-                "Source-deck outline must cover every source page exactly once and in order"
+        expected_pages = [page.page_no for page in pages]
+        outline = None
+        for attempt in range(2):
+            outline_response = self.llm.complete_json(outline_messages, temperature=0.15)
+            candidate = SourceDeckOutlineDraft.model_validate(
+                _parse_json_object(outline_response), extra="ignore"
+            )
+            outline_pages = [
+                ref.page_no for section in candidate.sections for ref in section.page_refs
+            ]
+            if outline_pages == expected_pages:
+                outline = candidate
+                break
+            if not attempt:
+                missing_pages = [
+                    page_no for page_no in expected_pages if page_no not in outline_pages
+                ]
+                duplicate_pages = sorted(
+                    {page_no for page_no in outline_pages if outline_pages.count(page_no) > 1}
+                )
+                outline_messages.append(
+                    LLMMessage(
+                        role="user",
+                        content=(
+                            "Your previous outline was invalid. Return the complete corrected JSON. "
+                            f"Expected flattened page_nos exactly {expected_pages}; received "
+                            f"{outline_pages}. Missing pages: {missing_pages}. Duplicate pages: "
+                            f"{duplicate_pages}. Every page must appear once, in order. Rebuild all "
+                            "section page_refs, then internally flatten and compare them item by item "
+                            "with expected_page_nos before responding."
+                        ),
+                    )
+                )
+        if outline is None:
+            outline = self._repair_source_deck_outline(
+                candidate,
+                material_id=material_id,
+                expected_pages=expected_pages,
             )
 
         chapter_by_page = {
-            ref.page_no: section.title
-            for section in outline.sections
-            for ref in section.page_refs
+            ref.page_no: section.title for section in outline.sections for ref in section.page_refs
         }
         page_flow: list[SourceDeckPageFlowDraft] = []
-        flow_prompt_path = Path(__file__).parents[2] / "modules" / "content" / (
-            "source_deck_page_flow_prompt.md"
+        flow_prompt_path = (
+            Path(__file__).parents[2] / "modules" / "content" / ("source_deck_page_flow_prompt.md")
         )
         batch_size = 12
         for start in range(0, len(packets), batch_size):
@@ -708,6 +782,53 @@ Quiz design rules:
             page_flow=page_flow,
             sections=outline.sections,
         )
+
+    @staticmethod
+    def _repair_source_deck_outline(
+        outline: SourceDeckOutlineDraft,
+        *,
+        material_id: str,
+        expected_pages: list[int],
+    ) -> SourceDeckOutlineDraft:
+        """Preserve proposed section semantics while repairing page coverage deterministically."""
+        if not expected_pages or not outline.sections:
+            raise ValueError("Cannot repair an empty source-deck outline")
+        valid_pages = set(expected_pages)
+        starts_and_sections = []
+        for section in outline.sections:
+            referenced = sorted(
+                {ref.page_no for ref in section.page_refs if ref.page_no in valid_pages}
+            )
+            if referenced:
+                starts_and_sections.append((referenced[0], section))
+        if not starts_and_sections:
+            raise ValueError("Source-deck outline has no valid section boundary")
+        starts_and_sections.sort(key=lambda item: item[0])
+        deduped = []
+        for start, section in starts_and_sections:
+            if deduped and deduped[-1][0] == start:
+                continue
+            deduped.append((start, section))
+        if deduped[0][0] != expected_pages[0]:
+            deduped[0] = (expected_pages[0], deduped[0][1])
+        repaired_sections = []
+        for index, (start, section) in enumerate(deduped):
+            end = deduped[index + 1][0] - 1 if index + 1 < len(deduped) else expected_pages[-1]
+            repaired_sections.append(
+                section.model_copy(
+                    update={
+                        "page_refs": [
+                            PageRef(material_id=material_id, page_no=page_no)
+                            for page_no in expected_pages
+                            if start <= page_no <= end
+                        ]
+                    }
+                )
+            )
+        logger.warning(
+            "Source-deck outline page coverage was repaired deterministically using section starts"
+        )
+        return outline.model_copy(update={"sections": repaired_sections})
 
     def build_course_knowledge_tree(
         self,
@@ -791,6 +912,82 @@ Quiz design rules:
             temperature=0.1,
         )
         return KnowledgeCanonicalizationDraft.model_validate_json(response, extra="ignore")
+
+    def canonicalize_source_deck_knowledge_units(
+        self, units: list[KnowledgeUnit]
+    ) -> KnowledgeCanonicalizationDraft:
+        payload = [
+            {
+                "id": unit.id,
+                "title": unit.title,
+                "unit_type": unit.unit_type,
+                "summary": unit.summary,
+                "keywords": unit.keywords,
+                "page_refs": [ref.model_dump(mode="json") for ref in unit.page_refs],
+            }
+            for unit in units
+        ]
+        prompt_path = (
+            Path(__file__).parents[2]
+            / "modules"
+            / "content"
+            / ("source_deck_knowledge_unit_prompt.md")
+        )
+        response = self.llm.complete_json(
+            [
+                LLMMessage(
+                    role="system",
+                    content=prompt_path.read_text(encoding="utf-8") + LANGUAGE_RULE,
+                ),
+                LLMMessage(
+                    role="user",
+                    content=json.dumps({"knowledge_units": payload}, ensure_ascii=False),
+                ),
+            ],
+            temperature=0.1,
+        )
+        return KnowledgeCanonicalizationDraft.model_validate_json(response, extra="ignore")
+
+    def plan_source_deck_teaching_segments(
+        self,
+        *,
+        section: SourceDeckSectionDraft,
+        page_flow: list[SourceDeckPageFlowDraft],
+        knowledge_units: list[KnowledgeUnit],
+        previous_section_title: str = "",
+        next_section_title: str = "",
+    ) -> SourceDeckTeachingStructureDraft:
+        prompt_path = (
+            Path(__file__).parents[2]
+            / "modules"
+            / "content"
+            / ("source_deck_teaching_structure_prompt.md")
+        )
+        response = self.llm.complete_json(
+            [
+                LLMMessage(
+                    role="system",
+                    content=prompt_path.read_text(encoding="utf-8"),
+                ),
+                LLMMessage(
+                    role="user",
+                    content=json.dumps(
+                        {
+                            "section": section.model_dump(mode="json"),
+                            "previous_section_title": previous_section_title,
+                            "next_section_title": next_section_title,
+                            "page_flow": [item.model_dump(mode="json") for item in page_flow],
+                            "candidate_knowledge_units": [
+                                unit.model_dump(mode="json") for unit in knowledge_units
+                            ],
+                        },
+                        ensure_ascii=False,
+                    ),
+                ),
+            ],
+            temperature=0.15,
+        )
+        return SourceDeckTeachingStructureDraft.model_validate_json(response, extra="ignore")
 
     @staticmethod
     def _page_context(page: PageMetadata | None) -> dict | None:

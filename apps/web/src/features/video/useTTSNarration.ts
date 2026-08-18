@@ -32,6 +32,7 @@ export function useTTSNarration() {
   const artifactCacheRef = useRef(new Map<string, TTSArtifact>());
   const audioCacheRef = useRef(new Map<string, AudioBuffer>());
   const pendingRef = useRef(new Map<string, Promise<PreparedNarration>>());
+  const unavailableReasonRef = useRef<string | null>(null);
   const requestVersionRef = useRef(0);
   const settleRef = useRef<((result: NarrationResult) => void) | null>(null);
   const pauseRequestedRef = useRef(false);
@@ -90,6 +91,7 @@ export function useTTSNarration() {
   }, [stopProgressTimer]);
 
   const prepare = useCallback(async (nextCue: NarrationCue): Promise<PreparedNarration> => {
+    if (unavailableReasonRef.current) throw new Error(unavailableReasonRef.current);
     const text = nextCue.text.trim();
     if (!text) throw new Error("语音文本为空");
     const cacheKey = narrationCacheKey(nextCue);
@@ -163,8 +165,12 @@ export function useTTSNarration() {
       ({ audioBuffer } = await prepare(nextCue));
     } catch (caught) {
       if (requestVersion !== requestVersionRef.current) return "cancelled";
+      const message = caught instanceof Error ? caught.message : "语音生成失败";
+      if (/余额不足|quota|insufficient|payment|402|405/i.test(message)) {
+        unavailableReasonRef.current = message;
+      }
       setStatus("error");
-      setError(caught instanceof Error ? caught.message : "语音生成失败");
+      setError(message);
       return "failed";
     }
 

@@ -44,7 +44,7 @@ export type MaterialCollection = {
 
 export type MaterialProcessingJob = {
   id: string;
-  status: "queued" | "running" | "succeeded" | "failed" | "canceled";
+  status: "queued" | "running" | "succeeded" | "failed" | "paused" | "canceled";
   progress: number;
   step: string;
   message: string;
@@ -99,6 +99,9 @@ export type KnowledgeUnit = {
   aliases: string[];
   keywords: string[];
   source_excerpts: SourceExcerpt[];
+  formulas?: Array<Record<string, unknown>>;
+  examples?: Array<Record<string, unknown>>;
+  misconceptions?: Array<Record<string, unknown>>;
   source_refs: SourceRef[];
   page_refs: PageRef[];
   source_unit_ids: string[];
@@ -116,6 +119,9 @@ export type CourseKnowledgeTreeNode = {
   knowledge_unit_ids: string[];
   order: number;
   prerequisite_node_ids: string[];
+  node_type?: "section" | "segment" | "knowledge_unit";
+  ref_id?: string;
+  page_refs?: PageRef[];
 };
 
 export type CourseKnowledgeTree = {
@@ -126,6 +132,21 @@ export type CourseKnowledgeTree = {
   teaching_sequence: string[];
   orphan_unit_ids: string[];
   warnings: string[];
+};
+
+export type TeachingSegment = {
+  id: string;
+  title: string;
+  role: string;
+  teaching_goal?: string;
+  summary?: string;
+  page_refs: PageRef[];
+  knowledge_unit_ids: string[];
+  prerequisite_segment_ids: string[];
+  transition_to_next?: string;
+  suggested_delivery?: string;
+  interaction_opportunities?: Array<Record<string, unknown>>;
+  order: number;
 };
 
 export type LearningSection = {
@@ -142,6 +163,7 @@ export type LearningSection = {
   page_refs?: PageRef[];
   tree_node_ids?: string[];
   quiz_items: QuizItem[];
+  segments?: TeachingSegment[];
 };
 
 export type LearningContent = {
@@ -183,7 +205,7 @@ export type ContentGenerationJob = {
   material_id?: string;
   collection_id?: string;
   organization_mode?: "knowledge" | "source_deck";
-  status: "queued" | "running" | "succeeded" | "failed";
+  status: "queued" | "running" | "paused" | "succeeded" | "failed";
   progress: number;
   step: string;
   message: string;
@@ -276,6 +298,7 @@ export type ClassroomSession = {
   plan_id: string;
   mode: LearningMode;
   status: "running" | "completed";
+  version: number;
   waiting_for: "quiz_answer" | "free_answer" | null;
   student_states: StudentAgentState[];
   mastery: Mastery[];
@@ -285,7 +308,7 @@ export type ClassroomPlanJob = {
   id: string;
   content_id: string;
   presentation_plan_id?: string;
-  status: "queued" | "running" | "succeeded" | "failed";
+  status: "queued" | "running" | "paused" | "succeeded" | "failed";
   step: "queued" | "planning" | "persisting" | "completed" | "failed";
   progress: number;
   message: string;
@@ -447,7 +470,7 @@ export type PresentationPlanJob = {
   prepare_question_bank: boolean;
   mode?: "generated" | "source_deck";
   source_material_id?: string;
-  status: "queued" | "running" | "succeeded" | "failed";
+  status: "queued" | "running" | "paused" | "succeeded" | "failed";
   progress: number;
   step: string;
   message: string;
@@ -475,6 +498,11 @@ export type PresentationResource = {
   }>;
 };
 
+export type PresentationSlideDisplay = {
+  src: string;
+  kind: "source" | "generated";
+};
+
 export type PPTThemeOption = {
   id: string;
   name: string;
@@ -494,7 +522,7 @@ export type PPTGenerationJob = {
   id: string;
   presentation_plan_id: string;
   theme_id: string;
-  status: "queued" | "running" | "waiting_for_skill" | "finished" | "failed";
+  status: "queued" | "running" | "waiting_for_skill" | "paused" | "finished" | "failed";
   progress: number;
   artifact_id?: string;
   error?: string;

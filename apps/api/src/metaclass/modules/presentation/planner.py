@@ -12,7 +12,7 @@ from pydantic import Field, ValidationError
 
 from metaclass.core.schemas import SchemaModel
 from metaclass.infrastructure.providers.llm import LLMMessage, LLMProvider
-from metaclass.modules.content.schemas import LearningContent
+from metaclass.modules.content.schemas import LearningContent, LearningSection, TeachingSegment
 from metaclass.modules.materials.schemas import PageMetadata
 from metaclass.modules.presentation.layout_registry import (
     build_fallback_elements,
@@ -66,6 +66,7 @@ class SlideSceneDraft(SchemaModel):
 
 logger = logging.getLogger(__name__)
 ProgressCallback = Callable[[int, str, str], None]
+NarrationCheckpointCallback = Callable[[str, SourceSlideNarrationBatch], None]
 
 
 class PresentationPlanGenerator:
@@ -116,6 +117,8 @@ class PresentationPlanGenerator:
         pages: list[PageMetadata],
         source_material_id: str,
         progress_callback: ProgressCallback | None = None,
+        completed_narration: dict[str, SourceSlideNarrationBatch] | None = None,
+        narration_checkpoint_callback: NarrationCheckpointCallback | None = None,
     ) -> PresentationPlan:
         """Create a one-to-one teaching plan without redesigning the uploaded deck."""
         if not pages:
@@ -192,6 +195,8 @@ class PresentationPlanGenerator:
             sorted(pages, key=lambda item: item.page_no),
             plan,
             progress_callback,
+            completed_narration=completed_narration,
+            narration_checkpoint_callback=narration_checkpoint_callback,
         )
 
     def _enhance_source_deck_scripts(
@@ -200,57 +205,52 @@ class PresentationPlanGenerator:
         pages: list[PageMetadata],
         plan: PresentationPlan,
         progress_callback: ProgressCallback | None,
+        *,
+        completed_narration: dict[str, SourceSlideNarrationBatch] | None = None,
+        narration_checkpoint_callback: NarrationCheckpointCallback | None = None,
     ) -> PresentationPlan:
-        """Generate page-specific narration in bounded batches without changing the deck."""
+        """Generate one continuous narration batch per teaching segment."""
         slides_by_page = {
             slide.source_page_no: slide for slide in plan.slides if slide.source_page_no
         }
-        sections = {section.id: section for section in content.sections}
+        units_by_id = {unit.id: unit for unit in content.knowledge_units}
+        page_flow = {
+            item["page_no"]: item
+            for item in content.material_overview.get("page_flow", [])
+            if isinstance(item, dict) and isinstance(item.get("page_no"), int)
+        }
+        batches = self._source_narration_batches(content, pages)
         failures: list[str] = []
         successes = 0
-        batch_size = 8
-        for start in range(0, len(pages), batch_size):
-            batch = pages[start : start + batch_size]
-            payload = []
-            for page in batch:
-                slide = slides_by_page[page.page_no]
-                matched_sections = [
-                    sections[section_id]
-                    for section_id in slide.source_section_ids
-                    if section_id in sections
-                ]
-                payload.append(
-                    {
-                        "page_no": page.page_no,
-                        "page_title": page.title,
-                        "page_text": page.raw_text[:1800],
-                        "previous_page_title": (
-                            pages[page.page_no - 2].title if page.page_no > 1 else None
-                        ),
-                        "next_page_title": (
-                            pages[page.page_no].title
-                            if page.page_no < len(pages)
-                            else None
-                        ),
-                        "learning_sections": [
-                            {
-                                "id": section.id,
-                                "title": section.title,
-                                "summary": section.summary[:600],
-                                "key_points": (
-                                    section.key_points or section.knowledge_points
-                                )[:6],
-                            }
-                            for section in matched_sections
-                        ],
-                    }
-                )
+        completed_pages = 0
+        for batch_index, (section, segment, batch) in enumerate(batches):
+            checkpoint_key = segment.id if segment else f"legacy_{section.id}"
+            previous_scripts = [
+                {
+                    "page_no": page.page_no,
+                    "speaker_script": slides_by_page[page.page_no].speaker_script,
+                }
+                for page in pages[max(0, completed_pages - 2) : completed_pages]
+            ]
+            next_segment = batches[batch_index + 1][1] if batch_index + 1 < len(batches) else None
+            segment_units = [
+                units_by_id[unit_id]
+                for unit_id in (segment.knowledge_unit_ids if segment else [])
+                if unit_id in units_by_id
+            ]
+            payload = [
+                {
+                    "page_no": page.page_no,
+                    "page_title": page.title,
+                    "page_text": page.raw_text[:1800],
+                    "page_flow": page_flow.get(page.page_no),
+                }
+                for page in batch
+            ]
             messages = [
                 LLMMessage(
                     role="system",
-                    content=self.source_narration_prompt_path.read_text(
-                        encoding="utf-8"
-                    ),
+                    content=self.source_narration_prompt_path.read_text(encoding="utf-8"),
                 ),
                 LLMMessage(
                     role="user",
@@ -258,15 +258,45 @@ class PresentationPlanGenerator:
                         {
                             "course_title": content.title,
                             "course_objectives": content.objectives[:8],
+                            "current_section": {
+                                "id": section.id,
+                                "title": section.title,
+                                "learning_goal": section.content_goal,
+                                "summary": section.summary,
+                            },
+                            "current_segment": (
+                                segment.model_dump(mode="json")
+                                if segment
+                                else {
+                                    "id": f"legacy_{section.id}",
+                                    "title": section.title,
+                                    "teaching_goal": section.content_goal,
+                                    "summary": section.summary,
+                                }
+                            ),
+                            "segment_knowledge_units": [
+                                unit.model_dump(mode="json") for unit in segment_units
+                            ],
                             "pages": payload,
+                            "previous_segment_tail_scripts": previous_scripts,
+                            "next_segment": (
+                                {
+                                    "title": next_segment.title,
+                                    "teaching_goal": next_segment.teaching_goal,
+                                }
+                                if next_segment
+                                else None
+                            ),
                         },
                         ensure_ascii=False,
                     ),
                 ),
             ]
             try:
-                raw = self.llm.complete_json(messages, temperature=0.2)
-                draft = SourceSlideNarrationBatch.model_validate(json.loads(raw))
+                draft = (completed_narration or {}).get(checkpoint_key)
+                if draft is None:
+                    raw = self.llm.complete_json(messages, temperature=0.2)
+                    draft = SourceSlideNarrationBatch.model_validate(json.loads(raw))
                 expected = {page.page_no for page in batch}
                 received = {item.page_no for item in draft.slides}
                 if received != expected:
@@ -283,6 +313,9 @@ class PresentationPlanGenerator:
                             "speaker_script": item.speaker_script,
                         }
                     )
+                if checkpoint_key not in (completed_narration or {}):
+                    if narration_checkpoint_callback:
+                        narration_checkpoint_callback(checkpoint_key, draft)
                 successes += 1
             except (
                 TimeoutError,
@@ -292,14 +325,16 @@ class PresentationPlanGenerator:
                 ValueError,
             ) as exc:
                 failures.append(
-                    f"pages {batch[0].page_no}-{batch[-1].page_no}: "
+                    f"segment {segment.id if segment else section.id} "
+                    f"(pages {batch[0].page_no}-{batch[-1].page_no}): "
                     f"{type(exc).__name__}: {exc}"
                 )
+            completed_pages += len(batch)
             self._report_progress(
                 progress_callback,
-                70 + int(20 * min(start + batch_size, len(pages)) / len(pages)),
+                70 + int(20 * completed_pages / len(pages)),
                 "writing_source_scripts",
-                f"Writing source slide scripts ({min(start + batch_size, len(pages))}/{len(pages)})",
+                f"Writing source slide scripts ({completed_pages}/{len(pages)})",
             )
         slides = [slides_by_page[page.page_no] for page in pages]
         return plan.model_copy(
@@ -311,6 +346,43 @@ class PresentationPlanGenerator:
                 "fallback_reason": "; ".join(failures) or None,
             }
         )
+
+    @staticmethod
+    def _source_narration_batches(
+        content: LearningContent,
+        pages: list[PageMetadata],
+    ) -> list[tuple[LearningSection, TeachingSegment | None, list[PageMetadata]]]:
+        pages_by_no = {page.page_no: page for page in pages}
+        batches = []
+        assigned: set[int] = set()
+        for section in content.sections:
+            if section.segments:
+                for segment in sorted(section.segments, key=lambda item: item.order):
+                    segment_pages = [
+                        pages_by_no[ref.page_no]
+                        for ref in segment.page_refs
+                        if ref.page_no in pages_by_no and ref.page_no not in assigned
+                    ]
+                    if segment_pages:
+                        batches.append((section, segment, segment_pages))
+                        assigned.update(page.page_no for page in segment_pages)
+                continue
+            refs = section.page_refs or [
+                ref for ref in section.source_refs if ref.page_no in pages_by_no
+            ]
+            section_pages = [
+                pages_by_no[ref.page_no]
+                for ref in refs
+                if ref.page_no in pages_by_no and ref.page_no not in assigned
+            ]
+            if section_pages:
+                batches.append((section, None, section_pages))
+                assigned.update(page.page_no for page in section_pages)
+        for page in pages:
+            if page.page_no not in assigned:
+                section = content.sections[0]
+                batches.append((section, None, [page]))
+        return batches
 
     def _generate_content_batches(
         self,
@@ -577,9 +649,7 @@ class PresentationPlanGenerator:
         candidates.extend(point.strip() for point in section.key_points if point.strip())
         candidates.extend(point.strip() for point in section.knowledge_points if point.strip())
         candidates.extend(
-            excerpt.text.strip()
-            for excerpt in section.source_excerpts
-            if excerpt.text.strip()
+            excerpt.text.strip() for excerpt in section.source_excerpts if excerpt.text.strip()
         )
         if not candidates and section.summary.strip():
             candidates.append(section.summary.strip())
@@ -627,15 +697,10 @@ class PresentationPlanGenerator:
                     source_section_ids=source_section_ids,
                     title=self._clean_internal_meta_text(slide.title),
                     key_points=[
-                        self._clean_internal_meta_text(point)
-                        for point in slide.key_points[:6]
+                        self._clean_internal_meta_text(point) for point in slide.key_points[:6]
                     ],
-                    speaker_script=self._clean_internal_meta_text(
-                        slide.speaker_script
-                    ),
-                    suggested_visual=self._clean_internal_meta_text(
-                        slide.suggested_visual
-                    ),
+                    speaker_script=self._clean_internal_meta_text(slide.speaker_script),
+                    suggested_visual=self._clean_internal_meta_text(slide.suggested_visual),
                     layout=(
                         slide.layout
                         if slide.elements
@@ -750,16 +815,13 @@ PPT_CONTENT_BATCH
                 "content_goal": section.content_goal,
                 "summary": self._clean_internal_meta_text(section.summary)[:900],
                 "key_points": [
-                    self._clean_internal_meta_text(point)
-                    for point in section.key_points[:8]
+                    self._clean_internal_meta_text(point) for point in section.key_points[:8]
                 ],
                 "knowledge_points": section.knowledge_points[:10],
-                "teaching_narrative": self._clean_internal_meta_text(
-                    section.teaching_narrative
-                )[:1200],
-                "teaching_script": self._clean_internal_meta_text(
-                    section.teaching_script
-                )[:1500],
+                "teaching_narrative": self._clean_internal_meta_text(section.teaching_narrative)[
+                    :1200
+                ],
+                "teaching_script": self._clean_internal_meta_text(section.teaching_script)[:1500],
                 "source_excerpts": [
                     {
                         "id": item.id,
@@ -988,9 +1050,9 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                         "teaching_narrative": self._clean_internal_meta_text(
                             section.teaching_narrative
                         )[:1200],
-                        "teaching_script": self._clean_internal_meta_text(
-                            section.teaching_script
-                        )[:1500],
+                        "teaching_script": self._clean_internal_meta_text(section.teaching_script)[
+                            :1500
+                        ],
                         "source_excerpts": [
                             excerpt.model_dump(mode="json")
                             for excerpt in section.source_excerpts[:12]
@@ -1091,9 +1153,7 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                     is_title=is_title,
                 )
                 if fitted_size is None:
-                    raise ValueError(
-                        f"text does not fit its box at minimum font size: {text[:60]}"
-                    )
+                    raise ValueError(f"text does not fit its box at minimum font size: {text[:60]}")
                 updates.update(
                     {
                         "text": text,
@@ -1114,9 +1174,7 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
 
         if not has_visual:
             raise ValueError("scene contains no non-text visual element")
-        self._validate_scene_safe_zones(
-            elements, slide.title, allow_centered_title=index == 0
-        )
+        self._validate_scene_safe_zones(elements, slide.title, allow_centered_title=index == 0)
         if self._has_unsafe_scene_collisions(elements, slide.title):
             raise ValueError("scene contains overlapping content objects after text fitting")
         background = BRAND_PALETTE.board if index == 0 else BRAND_PALETTE.paper
@@ -1130,9 +1188,7 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
     ) -> bool:
         """Reject collisions between content objects while allowing text on card shapes."""
         content = [
-            element
-            for element in elements
-            if element.type in {"text", "image", "table", "chart"}
+            element for element in elements if element.type in {"text", "image", "table", "chart"}
         ]
         for index, left in enumerate(content):
             for right in content[index + 1 :]:
@@ -1160,7 +1216,10 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                 continue
             text = element.text or "\n".join(element.items)
             is_title = element.type == "text" and cls._looks_like_title(text, slide_title)
-            if element.x < rules.canvas_margin_x or element.x + element.w > 1 - rules.canvas_margin_x:
+            if (
+                element.x < rules.canvas_margin_x
+                or element.x + element.w > 1 - rules.canvas_margin_x
+            ):
                 raise ValueError("content element violates horizontal canvas margin")
             if is_title:
                 title_bottom = 0.65 if allow_centered_title else rules.title_bottom

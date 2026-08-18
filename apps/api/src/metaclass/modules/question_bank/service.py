@@ -28,6 +28,13 @@ class QuestionBankService:
     def generate_for_plan(self, plan_id: str) -> QuestionBank:
         plan = self.presentations.get_plan(plan_id)
         content = self.contents.get(plan.content_id)
+        existing = self.repository.list_for_plan(plan.id)
+        if existing:
+            return QuestionBank(
+                presentation_plan_id=plan.id,
+                content_id=content.id,
+                items=existing,
+            )
         items = self.generator.generate(content, plan)
         self.repository.replace_for_plan(plan.id, items)
         return QuestionBank(

@@ -3,29 +3,137 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import pytest
+
 from metaclass.infrastructure.providers.fake import FakeLearningProvider
-from metaclass.infrastructure.providers.llm import GeminiVisionProvider
+from metaclass.infrastructure.providers.llm import (
+    GeminiVisionProvider,
+    LLMMessage,
+    OpenAICompatibleLLMProvider,
+)
 from metaclass.infrastructure.providers.learning import LLMLearningProvider
 from metaclass.modules.content.schemas import (
     CourseKnowledgeTree,
     CourseKnowledgeTreeNode,
     KnowledgeCanonicalizationDraft,
     KnowledgeMergeGroup,
+    KnowledgeRelation,
     KnowledgeRelationDraft,
     KnowledgeUnit,
     LearningContent,
     LearningContentDraft,
     LearningSection,
     PageUnderstanding,
+    PageUnderstandingDraft,
     PageRef,
     QuizItemDraft,
     SourceDeckLearningContentDraft,
+    SourceDeckOutlineDraft,
+    SourceDeckTeachingStructureDraft,
+    TeachingSegment,
     VisualOpportunity,
 )
 from metaclass.modules.content.service import ContentService
-from metaclass.modules.materials.schemas import PageImage, PageMetadata, SourceRef
+from metaclass.modules.materials.schemas import Material, PageImage, PageMetadata, SourceRef
 from metaclass.modules.materials.service import MaterialService
 from metaclass.modules.video.service import VideoService
+
+
+def test_page_understanding_is_saved_per_page_and_resumes_after_failure(
+    tmp_path: Path,
+) -> None:
+    material_id = "mat_resume"
+    pages = [
+        PageMetadata(
+            id=f"page_{page_no}",
+            material_id=material_id,
+            page_no=page_no,
+            title=f"Page {page_no}",
+            raw_text=f"Content {page_no}",
+            image_path=str(tmp_path / f"{page_no}.png"),
+            source_refs=[
+                SourceRef(
+                    material_id=material_id,
+                    page_id=f"page_{page_no}",
+                    page_no=page_no,
+                )
+            ],
+        )
+        for page_no in range(1, 4)
+    ]
+    material = Material(
+        id=material_id,
+        filename="resume.pdf",
+        file_type="pdf",
+        file_hash="resume-hash",
+        status="parsed",
+        storage_path=str(tmp_path / "resume.pdf"),
+        page_count=3,
+    )
+    materials = SimpleNamespace(
+        data_dir=tmp_path,
+        get=lambda _: material,
+        pages=lambda _: pages,
+    )
+    stored: dict[str, PageUnderstanding] = {}
+    repository = Mock()
+    repository.list_understandings.side_effect = lambda _: sorted(
+        stored.values(), key=lambda item: item.page_no
+    )
+    repository.save_understandings.side_effect = lambda items: stored.update(
+        {item.page_id: item for item in items}
+    )
+    calls: list[int] = []
+
+    def understand_page(title: str, raw_text: str, page_no: int) -> PageUnderstandingDraft:
+        calls.append(page_no)
+        if page_no == 2 and calls.count(2) == 1:
+            raise RuntimeError("temporary model failure")
+        return PageUnderstandingDraft(
+            summary=f"Summary {page_no}", knowledge_points=[f"Point {page_no}"]
+        )
+
+    provider = SimpleNamespace(
+        name="test",
+        model="test-model",
+        prompt_version="resume-v1",
+        understand_page=understand_page,
+    )
+    service = ContentService(repository, materials, provider)
+
+    with pytest.raises(RuntimeError, match="temporary model failure"):
+        service.understand_pages(material_id)
+    assert list(stored) == ["page_1"]
+
+    result = service.understand_pages(material_id)
+
+    assert [item.page_no for item in result] == [1, 2, 3]
+    assert calls == [1, 2, 2, 3]
+    assert repository.save_understandings.call_count == 3
+
+
+def test_content_job_state_survives_restart_and_pauses_running_job(
+    tmp_path: Path,
+) -> None:
+    material = Material(
+        id="mat_job",
+        filename="job.pdf",
+        file_type="pdf",
+        status="parsed",
+        storage_path=str(tmp_path / "job.pdf"),
+    )
+    materials = SimpleNamespace(data_dir=tmp_path, get=lambda _: material)
+    first = ContentService(Mock(), materials, Mock())
+    job = first.create_source_deck_generation_job(material.id)
+    job.status = "running"
+    job.step = "understanding_pages"
+    first._save_job(job)
+
+    restored = ContentService(Mock(), materials, Mock()).get_generation_job(job.id)
+
+    assert restored.status == "paused"
+    assert restored.step == "paused"
+    assert restored.error is None
 
 
 def test_video_generation_failure_is_persisted_as_failed_job(tmp_path: Path) -> None:
@@ -278,9 +386,7 @@ def test_incomplete_llm_course_tree_is_completed_with_supplementary_nodes() -> N
     completed = service._complete_course_knowledge_tree(tree, units)
 
     ContentService._validate_course_knowledge_tree(completed, units)
-    assigned = {
-        unit_id for node in completed.nodes for unit_id in node.knowledge_unit_ids
-    }
+    assigned = {unit_id for node in completed.nodes for unit_id in node.knowledge_unit_ids}
     assert assigned == {"ku_001", "ku_002"}
     assert any("supplementary" in node.id for node in completed.nodes)
 
@@ -302,9 +408,7 @@ def test_learning_content_draft_normalizes_common_llm_shape_errors() -> None:
                     "page_nos": [1],
                     "summary": "YOLO is a one-stage detector.",
                     "teaching_script": "Explain grid prediction.",
-                    "visual_opportunities": [
-                        {"description": "Show grid layout.", "priority": 1}
-                    ],
+                    "visual_opportunities": [{"description": "Show grid layout.", "priority": 1}],
                     "quiz_items": [
                         {
                             "question": "Which option describes YOLO?",
@@ -431,9 +535,7 @@ def test_source_deck_draft_is_lightweight_and_hydrated_from_page_understanding()
                 {
                     "title": "空间自相关",
                     "content_goal": "理解 Moran's I 的作用",
-                    "page_refs": [
-                        {"material_id": "mat_001", "page_no": 1, "reason": "概念页"}
-                    ],
+                    "page_refs": [{"material_id": "mat_001", "page_no": 1, "reason": "概念页"}],
                     "summary": "介绍空间自相关。",
                     "key_points": ["Moran's I"],
                     "teaching_approach": "先从相邻区域是否相似切入。",
@@ -514,8 +616,7 @@ def test_source_deck_structure_uses_outline_then_batched_page_flow() -> None:
             {
                 "title": "第一章",
                 "page_refs": [
-                    {"material_id": "mat_001", "page_no": page_no}
-                    for page_no in range(1, 14)
+                    {"material_id": "mat_001", "page_no": page_no} for page_no in range(1, 14)
                 ],
             }
         ],
@@ -558,6 +659,491 @@ def test_source_deck_structure_uses_outline_then_batched_page_flow() -> None:
     assert llm.complete_json.call_count == 3
     assert [item.page_no for item in draft.page_flow] == list(range(1, 14))
     assert [ref.page_no for ref in draft.sections[0].page_refs] == list(range(1, 14))
+
+
+def test_source_deck_outline_retries_once_when_page_coverage_is_invalid() -> None:
+    pages = [
+        PageMetadata(
+            id=f"page_{page_no:03d}",
+            material_id="mat_001",
+            page_no=page_no,
+            title=f"页面 {page_no}",
+            raw_text=f"内容 {page_no}",
+            image_path=f"page-{page_no}.png",
+            source_refs=[
+                SourceRef(
+                    material_id="mat_001",
+                    page_id=f"page_{page_no:03d}",
+                    page_no=page_no,
+                )
+            ],
+        )
+        for page_no in (1, 2)
+    ]
+    invalid_outline = json.dumps(
+        {
+            "title": "课程",
+            "sections": [
+                {
+                    "title": "第一章",
+                    "page_refs": [{"material_id": "mat_001", "page_no": 1}],
+                }
+            ],
+        }
+    )
+    valid_outline = json.dumps(
+        {
+            "title": "课程",
+            "sections": [
+                {
+                    "title": "第一章",
+                    "page_refs": [
+                        {"material_id": "mat_001", "page_no": page_no} for page_no in (1, 2)
+                    ],
+                }
+            ],
+        }
+    )
+    flow = json.dumps(
+        {
+            "page_flow": [
+                {
+                    "page_no": page_no,
+                    "page_role": "concept",
+                    "chapter_title": "第一章",
+                }
+                for page_no in (1, 2)
+            ]
+        }
+    )
+    llm = Mock()
+    llm.model = "test-model"
+    llm.complete_json.side_effect = [invalid_outline, valid_outline, flow]
+
+    draft = LLMLearningProvider(llm).organize_source_deck_learning_content(
+        material_id="mat_001",
+        pages=pages,
+        understandings=[],
+        knowledge_units=[],
+    )
+
+    assert llm.complete_json.call_count == 3
+    repair_message = llm.complete_json.call_args_list[1].args[0][-1].content
+    assert "Expected flattened page_nos exactly [1, 2]" in repair_message
+    assert "Missing pages: [2]" in repair_message
+    assert [ref.page_no for ref in draft.sections[0].page_refs] == [1, 2]
+
+
+def test_source_deck_outline_prompt_and_payload_require_exact_page_enumeration() -> None:
+    prompt_path = (
+        Path(__file__).parents[1]
+        / "src"
+        / "metaclass"
+        / "modules"
+        / "content"
+        / "source_deck_learning_content_prompt.md"
+    )
+    prompt = prompt_path.read_text(encoding="utf-8")
+    assert "逐页显式输出" in prompt
+    assert "flattened_page_nos" in prompt
+    assert "逐项完全相等" in prompt
+    assert "不得因为页面是封面" in prompt
+
+    page = PageMetadata(
+        id="page_001",
+        material_id="mat_001",
+        page_no=1,
+        title="封面",
+        raw_text="课程封面",
+        image_path="page-1.png",
+        source_refs=[SourceRef(material_id="mat_001", page_id="page_001", page_no=1)],
+    )
+    llm = Mock()
+    llm.model = "test-model"
+    llm.complete_json.side_effect = [
+        json.dumps(
+            {
+                "title": "课程",
+                "sections": [
+                    {
+                        "title": "导入",
+                        "page_refs": [{"material_id": "mat_001", "page_no": 1}],
+                    }
+                ],
+            }
+        ),
+        json.dumps(
+            {
+                "page_flow": [
+                    {
+                        "page_no": 1,
+                        "page_role": "cover",
+                        "chapter_title": "导入",
+                    }
+                ]
+            }
+        ),
+    ]
+
+    LLMLearningProvider(llm).organize_source_deck_learning_content(
+        material_id="mat_001",
+        pages=[page],
+        understandings=[],
+        knowledge_units=[],
+    )
+
+    payload = json.loads(llm.complete_json.call_args_list[0].args[0][1].content)
+    assert payload["page_count"] == 1
+    assert payload["first_page_no"] == 1
+    assert payload["last_page_no"] == 1
+    assert payload["expected_page_nos"] == [1]
+
+
+def test_source_deck_outline_repair_preserves_titles_and_fills_contiguous_ranges() -> None:
+    outline = SourceDeckOutlineDraft.model_validate(
+        {
+            "title": "时间序列",
+            "sections": [
+                {
+                    "title": "基础",
+                    "page_refs": [
+                        {"material_id": "mat_001", "page_no": 1},
+                        {"material_id": "mat_001", "page_no": 3},
+                    ],
+                },
+                {
+                    "title": "方法",
+                    "page_refs": [
+                        {"material_id": "mat_001", "page_no": 5},
+                        {"material_id": "mat_001", "page_no": 7},
+                    ],
+                },
+            ],
+        }
+    )
+
+    repaired = LLMLearningProvider._repair_source_deck_outline(
+        outline,
+        material_id="mat_001",
+        expected_pages=list(range(1, 9)),
+    )
+
+    assert [section.title for section in repaired.sections] == ["基础", "方法"]
+    assert [[ref.page_no for ref in section.page_refs] for section in repaired.sections] == [
+        list(range(1, 5)),
+        list(range(5, 9)),
+    ]
+
+
+def test_source_deck_teaching_segments_retry_then_store_valid_result() -> None:
+    source = SourceDeckLearningContentDraft.model_validate(
+        {
+            "title": "时间序列",
+            "page_flow": [
+                {
+                    "page_no": page_no,
+                    "page_role": "concept",
+                    "chapter_title": "趋势分析",
+                    "content_summary": f"第 {page_no} 页",
+                }
+                for page_no in range(1, 7)
+            ],
+            "sections": [
+                {
+                    "title": "趋势分析",
+                    "page_refs": [
+                        {"material_id": "mat_001", "page_no": page_no} for page_no in range(1, 7)
+                    ],
+                }
+            ],
+        }
+    )
+    invalid = SourceDeckTeachingStructureDraft.model_validate(
+        {
+            "section_title": "趋势分析",
+            "segments": [
+                {
+                    "title": "趋势定义",
+                    "teaching_goal": "理解趋势",
+                    "start_page": 1,
+                    "end_page": 2,
+                }
+            ],
+        }
+    )
+    valid = SourceDeckTeachingStructureDraft.model_validate(
+        {
+            "section_title": "趋势分析",
+            "segments": [
+                {
+                    "title": "趋势的直观含义",
+                    "teaching_goal": "建立直觉",
+                    "start_page": 1,
+                    "end_page": 3,
+                    "knowledge_unit_ids": ["ku_trend"],
+                },
+                {
+                    "title": "趋势的估计方法",
+                    "role": "method",
+                    "teaching_goal": "掌握估计方法",
+                    "start_page": 4,
+                    "end_page": 6,
+                    "prerequisite_segment_titles": ["趋势的直观含义"],
+                },
+            ],
+        }
+    )
+    provider = Mock()
+    provider.plan_source_deck_teaching_segments.side_effect = [invalid, valid]
+    service = ContentService(Mock(), Mock(), provider)
+    unit = KnowledgeUnit(
+        id="ku_trend",
+        title="趋势定义",
+        page_refs=[PageRef(material_id="mat_001", page_no=2)],
+    )
+
+    segments_by_section, warnings = service._build_source_deck_teaching_segments(
+        source, knowledge_units=[unit]
+    )
+    understandings = [
+        PageUnderstanding(
+            id=f"understanding_{page_no:03d}",
+            material_id="mat_001",
+            page_id=f"page_{page_no:03d}",
+            page_no=page_no,
+            summary=f"第 {page_no} 页",
+            source_refs=[
+                SourceRef(
+                    material_id="mat_001",
+                    page_id=f"page_{page_no:03d}",
+                    page_no=page_no,
+                )
+            ],
+            provider="test",
+        )
+        for page_no in range(1, 7)
+    ]
+    hydrated = service._hydrate_source_deck_draft(
+        source,
+        understandings=understandings,
+        knowledge_units=[unit],
+        segments_by_section=segments_by_section,
+    )
+
+    assert provider.plan_source_deck_teaching_segments.call_count == 2
+    assert warnings == []
+    assert [segment.title for segment in hydrated.sections[0].segments] == [
+        "趋势的直观含义",
+        "趋势的估计方法",
+    ]
+    assert hydrated.sections[0].segments[1].prerequisite_segment_ids == ["segment_001_01"]
+
+
+def test_source_deck_teaching_segments_reject_unit_from_another_section() -> None:
+    source = SourceDeckLearningContentDraft.model_validate(
+        {
+            "title": "时间序列",
+            "page_flow": [
+                {
+                    "page_no": page_no,
+                    "page_role": "concept",
+                    "chapter_title": "第一节" if page_no == 1 else "第二节",
+                }
+                for page_no in (1, 2)
+            ],
+            "sections": [
+                {
+                    "title": "第一节",
+                    "page_refs": [{"material_id": "mat_001", "page_no": 1}],
+                },
+                {
+                    "title": "第二节",
+                    "page_refs": [{"material_id": "mat_001", "page_no": 2}],
+                },
+            ],
+        }
+    )
+    foreign_unit = KnowledgeUnit(
+        id="ku_second",
+        title="第二节知识",
+        page_refs=[PageRef(material_id="mat_001", page_no=2)],
+    )
+    provider = Mock()
+    provider.plan_source_deck_teaching_segments.return_value = (
+        SourceDeckTeachingStructureDraft.model_validate(
+            {
+                "section_title": "第一节",
+                "segments": [
+                    {
+                        "title": "第一节",
+                        "teaching_goal": "讲解第一节",
+                        "start_page": 1,
+                        "end_page": 1,
+                        "knowledge_unit_ids": ["ku_second"],
+                    }
+                ],
+            }
+        )
+    )
+    service = ContentService(Mock(), Mock(), provider)
+
+    segments_by_section, warnings = service._build_source_deck_teaching_segments(
+        source, knowledge_units=[foreign_unit]
+    )
+
+    assert provider.plan_source_deck_teaching_segments.call_count == 4
+    assert len(warnings) == 2
+    assert segments_by_section[1][0].knowledge_unit_ids == []
+    assert segments_by_section[2][0].knowledge_unit_ids == ["ku_second"]
+
+
+def test_source_deck_tree_is_deterministic_view_of_sections_segments_and_units() -> None:
+    def pages(start: int, end: int) -> list[PageRef]:
+        return [
+            PageRef(material_id="mat_001", page_no=page_no) for page_no in range(start, end + 1)
+        ]
+
+    first_unit = KnowledgeUnit(
+        id="ku_definition",
+        title="趋势成分的定义",
+        summary="区分长期变化与短期波动。",
+        page_refs=pages(1, 2),
+    )
+    second_unit = KnowledgeUnit(
+        id="ku_estimation",
+        title="长期趋势的形式与估计",
+        unit_type="method",
+        summary="使用回归形式估计长期趋势。",
+        page_refs=pages(3, 4),
+        relations=[
+            KnowledgeRelation(
+                target_unit_id="ku_definition",
+                relation_type="builds_on",
+            )
+        ],
+    )
+    third_unit = KnowledgeUnit(
+        id="ku_seasonal",
+        title="季节变动的识别",
+        summary="识别固定周期内的重复模式。",
+        page_refs=pages(5, 6),
+    )
+    draft = LearningContentDraft.model_validate(
+        {
+            "title": "时间序列分析",
+            "sections": [
+                {
+                    "title": "趋势分析",
+                    "summary": "先定义趋势，再介绍估计。",
+                    "page_refs": [ref.model_dump() for ref in pages(1, 4)],
+                    "segments": [
+                        TeachingSegment(
+                            id="segment_001_01",
+                            title="趋势成分的定义",
+                            summary="区分长期变化与短期波动。",
+                            page_refs=pages(1, 2),
+                            knowledge_unit_ids=["ku_definition"],
+                            order=1,
+                        ),
+                        TeachingSegment(
+                            id="segment_001_02",
+                            title="长期趋势的形式与估计",
+                            summary="使用回归形式估计长期趋势。",
+                            page_refs=pages(3, 4),
+                            knowledge_unit_ids=["ku_estimation"],
+                            prerequisite_segment_ids=["segment_001_01"],
+                            order=2,
+                        ),
+                    ],
+                },
+                {
+                    "title": "季节变动",
+                    "summary": "认识周期重复模式。",
+                    "page_refs": [ref.model_dump() for ref in pages(5, 6)],
+                    "segments": [
+                        TeachingSegment(
+                            id="segment_002_01",
+                            title="季节变动的识别",
+                            summary="识别固定周期内的重复模式。",
+                            page_refs=pages(5, 6),
+                            knowledge_unit_ids=["ku_seasonal"],
+                            order=1,
+                        )
+                    ],
+                },
+            ],
+        }
+    )
+
+    tree, updated = ContentService._build_source_deck_tree(
+        tree_id="tree_source_time_series",
+        draft=draft,
+        units=[first_unit, second_unit, third_unit],
+    )
+
+    section_nodes = [node for node in tree.nodes if node.node_type == "section"]
+    segment_nodes = [node for node in tree.nodes if node.node_type == "segment"]
+    unit_nodes = [node for node in tree.nodes if node.node_type == "knowledge_unit"]
+    assert [node.title for node in section_nodes] == ["趋势分析", "季节变动"]
+    assert [node.title for node in segment_nodes] == [
+        "趋势成分的定义",
+        "长期趋势的形式与估计",
+        "季节变动的识别",
+    ]
+    assert [node.title for node in unit_nodes] == [
+        "趋势成分的定义",
+        "长期趋势的形式与估计",
+        "季节变动的识别",
+    ]
+    assert {node.ref_id for node in unit_nodes} == {
+        "ku_definition",
+        "ku_estimation",
+        "ku_seasonal",
+    }
+    assert tree.root_node_ids == [node.id for node in section_nodes]
+    assert updated.sections[0].tree_node_ids == [section_nodes[0].id]
+    segment_by_ref = {node.ref_id: node for node in segment_nodes}
+    assert segment_by_ref["segment_001_02"].prerequisite_node_ids == [
+        segment_by_ref["segment_001_01"].id
+    ]
+    unit_by_ref = {node.ref_id: node for node in unit_nodes}
+    assert unit_by_ref["ku_estimation"].prerequisite_node_ids == [unit_by_ref["ku_definition"].id]
+
+
+def test_source_deck_tree_assigns_unlisted_unit_by_page_containment() -> None:
+    segment = TeachingSegment(
+        id="segment_001_01",
+        title="趋势定义",
+        page_refs=[PageRef(material_id="mat_001", page_no=1)],
+    )
+    draft = LearningContentDraft.model_validate(
+        {
+            "title": "时间序列",
+            "sections": [
+                {
+                    "title": "趋势分析",
+                    "summary": "定义趋势成分。",
+                    "page_refs": [{"material_id": "mat_001", "page_no": 1}],
+                    "segments": [segment.model_dump()],
+                }
+            ],
+        }
+    )
+    unit = KnowledgeUnit(
+        id="ku_trend",
+        title="趋势定义",
+        page_refs=[PageRef(material_id="mat_001", page_no=1)],
+    )
+
+    tree, _ = ContentService._build_source_deck_tree(
+        tree_id="tree_source_time_series", draft=draft, units=[unit]
+    )
+
+    unit_node = next(node for node in tree.nodes if node.node_type == "knowledge_unit")
+    segment_node = next(node for node in tree.nodes if node.node_type == "segment")
+    assert unit_node.parent_id == segment_node.id
+    assert unit_node.title == unit.title
+    assert unit_node.page_refs == unit.page_refs
 
 
 def test_fallback_tree_sections_reuse_page_understanding_quizzes() -> None:
@@ -700,6 +1286,159 @@ def test_llm_learning_provider_parses_knowledge_canonicalization() -> None:
     assert draft.groups[0].confidence == 0.95
 
 
+def test_source_deck_units_exclude_navigation_and_keep_reference_and_practice() -> None:
+    service = ContentService(Mock(), Mock(), Mock())
+
+    def understanding(page_no: int, role: str, title: str) -> PageUnderstanding:
+        ref = SourceRef(
+            material_id="mat_001",
+            page_id=f"page_{page_no:03d}",
+            page_no=page_no,
+        )
+        return PageUnderstanding(
+            id=f"understanding_{page_no:03d}",
+            material_id="mat_001",
+            page_id=ref.page_id,
+            page_no=page_no,
+            page_role=role,
+            title=title,
+            summary=title,
+            knowledge_points=[title],
+            source_refs=[ref],
+            provider="test",
+        )
+
+    units = service._source_deck_knowledge_units_from_understandings(
+        [
+            understanding(1, "agenda", "课程目录"),
+            understanding(2, "concept", "趋势定义"),
+            understanding(3, "reference", "参考文献"),
+            understanding(4, "exercise", "预测练习"),
+        ]
+    )
+
+    assert [unit.title for unit in units] == ["趋势定义", "参考文献", "预测练习"]
+    assert [unit.unit_type for unit in units] == ["concept", "reference", "practice"]
+
+
+def test_source_deck_local_merge_requires_contiguous_pages() -> None:
+    service = ContentService(Mock(), Mock(), Mock())
+
+    def unit(unit_id: str, page_no: int, title: str) -> KnowledgeUnit:
+        return KnowledgeUnit(
+            id=unit_id,
+            title=title,
+            unit_type="concept",
+            summary=title,
+            keywords=["趋势"],
+            page_refs=[PageRef(material_id="mat_001", page_no=page_no)],
+        )
+
+    merged = service._merge_source_deck_knowledge_units(
+        [
+            unit("page_017", 17, "趋势成分"),
+            unit("page_018", 18, "趋势成分"),
+            unit("page_044", 44, "趋势成分"),
+        ]
+    )
+
+    assert len(merged) == 2
+    assert [ref.page_no for ref in merged[0].page_refs] == [17, 18]
+    assert [ref.page_no for ref in merged[1].page_refs] == [44]
+
+
+def test_source_deck_canonicalization_rejects_non_contiguous_group() -> None:
+    service = ContentService(Mock(), Mock(), Mock())
+    units = [
+        KnowledgeUnit(
+            id="trend_definition",
+            title="趋势成分的定义",
+            page_refs=[PageRef(material_id="mat_001", page_no=17)],
+        ),
+        KnowledgeUnit(
+            id="trend_estimation",
+            title="长期趋势的形式与回归估计",
+            page_refs=[PageRef(material_id="mat_001", page_no=44)],
+        ),
+    ]
+    invalid = KnowledgeCanonicalizationDraft(
+        groups=[
+            KnowledgeMergeGroup(
+                id="trend_all",
+                title="趋势分析",
+                unit_ids=["trend_definition", "trend_estimation"],
+            )
+        ]
+    )
+
+    with pytest.raises(ValueError, match="contiguous pages"):
+        service._validate_source_deck_canonical_groups(units, invalid)
+
+
+def test_source_deck_canonicalization_keeps_builds_on_relation() -> None:
+    service = ContentService(Mock(), Mock(), Mock())
+    units = [
+        KnowledgeUnit(
+            id="trend_definition",
+            title="趋势成分的定义",
+            page_refs=[PageRef(material_id="mat_001", page_no=17)],
+        ),
+        KnowledgeUnit(
+            id="trend_estimation",
+            title="长期趋势的形式与回归估计",
+            unit_type="method",
+            page_refs=[PageRef(material_id="mat_001", page_no=44)],
+        ),
+    ]
+    draft = KnowledgeCanonicalizationDraft(
+        groups=[
+            KnowledgeMergeGroup(
+                id="trend_definition_group",
+                title="趋势成分的定义",
+                unit_ids=["trend_definition"],
+            ),
+            KnowledgeMergeGroup(
+                id="trend_estimation_group",
+                title="长期趋势的形式与回归估计",
+                unit_ids=["trend_estimation"],
+                unit_type="method",
+            ),
+        ],
+        relations=[
+            KnowledgeRelationDraft(
+                source_group_id="trend_estimation_group",
+                target_group_id="trend_definition_group",
+                relation_type="builds_on",
+                reason="长期趋势估计建立在趋势概念之上。",
+            )
+        ],
+    )
+
+    service._validate_source_deck_canonical_groups(units, draft)
+    result = service._apply_canonicalization(units, draft)
+    advanced = next(unit for unit in result if unit.id == "trend_estimation_group")
+
+    assert advanced.relations[0].relation_type == "builds_on"
+    assert advanced.relations[0].target_unit_id == "trend_definition_group"
+
+
+def test_source_deck_knowledge_unit_prompt_requires_contiguous_merges() -> None:
+    prompt_path = (
+        Path(__file__).parents[1]
+        / "src"
+        / "metaclass"
+        / "modules"
+        / "content"
+        / "source_deck_knowledge_unit_prompt.md"
+    )
+    prompt = prompt_path.read_text(encoding="utf-8")
+
+    assert "第 17 页" in prompt
+    assert "第 44 页" in prompt
+    assert "builds_on" in prompt
+    assert "不得仅因关键词" in prompt
+
+
 def test_llm_learning_provider_parses_course_knowledge_tree() -> None:
     llm = Mock()
     llm.model = "test-model"
@@ -819,6 +1558,81 @@ def test_llm_learning_provider_parses_page_understanding() -> None:
     ]
     assert draft.quiz_items[0].question == "What must be true before multiplying two matrices?"
     llm.complete_json.assert_called_once()
+
+
+def test_page_understanding_retries_missing_summary_and_normalizes_field_names() -> None:
+    llm = Mock()
+    llm.model = "test-model"
+    llm.complete_json.side_effect = [
+        '{"page-role":"x"}',
+        '{"page-role":"concept","summary":"趋势是序列的长期变化。"}',
+    ]
+
+    draft = LLMLearningProvider(llm).understand_page("趋势分析", "趋势反映时间序列的长期变化。", 1)
+
+    assert llm.complete_json.call_count == 2
+    assert draft.page_role == "concept"
+    assert draft.summary == "趋势是序列的长期变化。"
+    repair_message = llm.complete_json.call_args_list[1].args[0][-1].content
+    assert "summary` is required" in repair_message
+
+
+def test_page_understanding_falls_back_after_two_invalid_responses() -> None:
+    llm = Mock()
+    llm.model = "test-model"
+    llm.complete_json.side_effect = ['{"page-role":"x"}', '{"page_role":"concept"}']
+
+    draft = LLMLearningProvider(llm).understand_page("趋势分析", "趋势反映时间序列的长期变化。", 1)
+
+    assert llm.complete_json.call_count == 2
+    assert draft.summary == "趋势反映时间序列的长期变化。"
+    assert draft.knowledge_points == ["趋势分析"]
+
+
+def test_openai_compatible_provider_uses_temperature_one_for_restricted_models() -> None:
+    provider = OpenAICompatibleLLMProvider(
+        base_url="https://example.test/v1",
+        api_key="test-key-12345",
+        model="gpt-5.5",
+    )
+    captured = []
+
+    def read(req, label):
+        captured.append(json.loads(req.data.decode("utf-8")))
+        return {"choices": [{"message": {"content": '{"ok":true}'}}]}
+
+    provider._read_json_with_retry = read
+
+    result = provider.complete_json([LLMMessage(role="user", content="test")], temperature=0.15)
+
+    assert result == '{"ok":true}'
+    assert captured[0]["temperature"] == 1.0
+
+
+def test_openai_compatible_provider_retries_temperature_specific_400_once() -> None:
+    provider = OpenAICompatibleLLMProvider(
+        base_url="https://example.test/v1",
+        api_key="test-key-12345",
+        model="custom-reasoning-model",
+    )
+    captured = []
+
+    def read(req, label):
+        payload = json.loads(req.data.decode("utf-8"))
+        captured.append(payload)
+        if len(captured) == 1:
+            raise RuntimeError(
+                'LLM request failed: HTTP 400 {"error":{"message":'
+                '"invalid temperature: only 1 is allowed for this model"}}'
+            )
+        return {"choices": [{"message": {"content": '{"ok":true}'}}]}
+
+    provider._read_json_with_retry = read
+
+    result = provider.complete_json([LLMMessage(role="user", content="test")], temperature=0.2)
+
+    assert result == '{"ok":true}'
+    assert [payload["temperature"] for payload in captured] == [0.2, 1.0]
 
 
 def test_llm_learning_provider_describes_visual_and_organizes_content(tmp_path: Path) -> None:

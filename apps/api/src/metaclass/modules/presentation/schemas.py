@@ -13,6 +13,7 @@ DEFAULT_PPT_THEME_ID = "academic_blue"
 class PPTGenerationStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
+    PAUSED = "paused"
     WAITING_FOR_SKILL = "waiting_for_skill"
     FINISHED = "finished"
     FAILED = "failed"
@@ -21,6 +22,7 @@ class PPTGenerationStatus(StrEnum):
 class PresentationPlanJobStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
+    PAUSED = "paused"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
 

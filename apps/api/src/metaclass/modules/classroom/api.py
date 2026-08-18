@@ -1,4 +1,4 @@
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Header
 
 from metaclass.modules.classroom.agent_schemas import AgentTurn, DirectedAgentTurn
 from metaclass.modules.classroom.schemas import (
@@ -16,6 +16,7 @@ from metaclass.modules.classroom.schemas import (
     CreateClassroomSessionRequest,
     LearningMode,
     QuestionRequest,
+    SwitchClassroomModeRequest,
 )
 from metaclass.modules.classroom.service import ClassroomService
 
@@ -50,6 +51,15 @@ def create_router(classrooms: ClassroomService) -> APIRouter:
     @router.get("/classroom-plan-jobs/{job_id}", response_model=ClassroomPlanJob)
     async def get_plan_job(job_id: str) -> ClassroomPlanJob:
         return classrooms.get_plan_job(job_id)
+
+    @router.get(
+        "/learning-contents/{content_id}/latest-classroom-plan-job",
+        response_model=ClassroomPlanJob,
+    )
+    async def get_latest_plan_job(
+        content_id: str, presentation_plan_id: str | None = None
+    ) -> ClassroomPlanJob:
+        return classrooms.get_latest_plan_job(content_id, presentation_plan_id)
 
     @router.get("/classroom-plans/{plan_id}", response_model=ClassroomPlan)
     async def get_plan(plan_id: str) -> ClassroomPlan:
@@ -107,11 +117,43 @@ def create_router(classrooms: ClassroomService) -> APIRouter:
         return classrooms.get_state(session_id)
 
     @router.post(
+        "/classroom-sessions/{session_id}/mode",
+        response_model=ClassroomSession,
+    )
+    async def switch_mode(
+        session_id: str,
+        request: SwitchClassroomModeRequest,
+        request_id: str | None = Header(default=None, alias="X-Request-ID"),
+        expected_version: int | None = Header(
+            default=None, alias="X-Expected-Session-Version"
+        ),
+    ) -> ClassroomSession:
+        if request_id is None or expected_version is None:
+            return classrooms.switch_mode(
+                session_id, request.mode, request.student_agent_types
+            )
+        return classrooms.execute_mode_switch(
+            session_id,
+            request.mode,
+            request.student_agent_types,
+            request_id,
+            expected_version,
+        )
+
+    @router.post(
         "/classroom-sessions/{session_id}/next",
         response_model=ControllerResult,
     )
-    async def next_action(session_id: str) -> ControllerResult:
-        return classrooms.next(session_id)
+    async def next_action(
+        session_id: str,
+        request_id: str | None = Header(default=None, alias="X-Request-ID"),
+        expected_version: int | None = Header(
+            default=None, alias="X-Expected-Session-Version"
+        ),
+    ) -> ControllerResult:
+        if request_id is None or expected_version is None:
+            return classrooms.next(session_id)
+        return classrooms.execute_next(session_id, request_id, expected_version)
 
     @router.post(
         "/classroom-sessions/{session_id}/navigation/{direction}",
@@ -124,22 +166,52 @@ def create_router(classrooms: ClassroomService) -> APIRouter:
         "/classroom-sessions/{session_id}/auto-step",
         response_model=AutoClassroomStep,
     )
-    async def auto_step(session_id: str) -> AutoClassroomStep:
-        return classrooms.auto_step(session_id)
+    async def auto_step(
+        session_id: str,
+        request_id: str | None = Header(default=None, alias="X-Request-ID"),
+        expected_version: int | None = Header(
+            default=None, alias="X-Expected-Session-Version"
+        ),
+    ) -> AutoClassroomStep:
+        if request_id is None or expected_version is None:
+            return classrooms.auto_step(session_id)
+        return classrooms.execute_auto_step(session_id, request_id, expected_version)
 
     @router.post(
         "/classroom-sessions/{session_id}/answers",
         response_model=ControllerResult,
     )
-    async def submit_answer(session_id: str, request: AnswerRequest) -> ControllerResult:
-        return classrooms.answer(session_id, request.selected_index)
+    async def submit_answer(
+        session_id: str,
+        request: AnswerRequest,
+        request_id: str | None = Header(default=None, alias="X-Request-ID"),
+        expected_version: int | None = Header(
+            default=None, alias="X-Expected-Session-Version"
+        ),
+    ) -> ControllerResult:
+        if request_id is None or expected_version is None:
+            return classrooms.answer(session_id, request.selected_index)
+        return classrooms.execute_answer(
+            session_id, request.selected_index, request_id, expected_version
+        )
 
     @router.post(
         "/classroom-sessions/{session_id}/questions",
         response_model=ControllerResult,
     )
-    async def ask_question(session_id: str, request: QuestionRequest) -> ControllerResult:
-        return classrooms.answer_question(session_id, request.question)
+    async def ask_question(
+        session_id: str,
+        request: QuestionRequest,
+        request_id: str | None = Header(default=None, alias="X-Request-ID"),
+        expected_version: int | None = Header(
+            default=None, alias="X-Expected-Session-Version"
+        ),
+    ) -> ControllerResult:
+        if request_id is None or expected_version is None:
+            return classrooms.answer_question(session_id, request.question)
+        return classrooms.execute_question(
+            session_id, request.question, request_id, expected_version
+        )
 
     @router.post(
         "/classroom-sessions/{session_id}/teacher-turn",

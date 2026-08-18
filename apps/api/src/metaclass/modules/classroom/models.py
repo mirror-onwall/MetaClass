@@ -57,6 +57,7 @@ class ClassroomSessionRecord(Base):
     plan_id: Mapped[str] = mapped_column(ForeignKey("classroom_plans.id"), index=True)
     mode: Mapped[str] = mapped_column(String(20), default="lecture")
     status: Mapped[str] = mapped_column(String(20), index=True)
+    version: Mapped[int] = mapped_column(Integer, default=0)
     scene_index: Mapped[int] = mapped_column(Integer)
     action_index: Mapped[int] = mapped_column(Integer)
     waiting_for: Mapped[str | None] = mapped_column(String(30), nullable=True)
@@ -66,3 +67,16 @@ class ClassroomSessionRecord(Base):
     events: Mapped[list[dict[str, Any]]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ClassroomRequestRecord(Base):
+    __tablename__ = "classroom_requests"
+
+    request_id: Mapped[str] = mapped_column(String(100), primary_key=True)
+    session_id: Mapped[str] = mapped_column(
+        ForeignKey("classroom_sessions.id"), index=True
+    )
+    operation: Mapped[str] = mapped_column(String(30))
+    expected_version: Mapped[int] = mapped_column(Integer)
+    response: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
