@@ -464,6 +464,32 @@ export type ClassroomPlanLibrarySummary = {
   action_count: number;
 };
 
+export type ClassroomQA = {
+  id: string;
+  presentation_plan_id: string;
+  content_id: string;
+  slide_id: string;
+  slide_order: number;
+  agent_type: StudentAgentType;
+  student_profile_id: string;
+  knowledge_point: string;
+  canonical_question: string;
+  student_question: string;
+  canonical_answer: string;
+  teacher_answer: string;
+  moment: "before_explanation" | "during_explanation" | "after_explanation" | "before_next_slide";
+  placement_reason: string;
+  source_refs: SourceRef[];
+  status: "approved" | "rejected";
+  created_at: string;
+};
+
+export type QuestionBank = {
+  presentation_plan_id: string;
+  content_id: string;
+  items: ClassroomQA[];
+};
+
 export type PresentationPlanJob = {
   id: string;
   content_id: string;

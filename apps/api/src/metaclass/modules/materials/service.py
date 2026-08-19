@@ -286,10 +286,10 @@ class MaterialService:
     def delete_project(self, material_id: str) -> None:
         self.get(material_id)
         try:
-            artifact_paths = self.repository.delete_material_project(material_id)
+            cleanup = self.repository.delete_material_project(material_id)
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
-        for path_value in artifact_paths:
+        for path_value in cleanup.file_paths:
             path = Path(path_value)
             try:
                 resolved = path.resolve()
@@ -298,6 +298,16 @@ class MaterialService:
                 continue
             if resolved.is_file():
                 resolved.unlink(missing_ok=True)
+        presentations_root = self.data_dir / "generated" / "presentations"
+        for job_id in cleanup.presentation_job_ids:
+            output_dir = presentations_root / job_id
+            try:
+                resolved_output_dir = output_dir.resolve()
+                resolved_output_dir.relative_to(presentations_root.resolve())
+            except (OSError, ValueError):
+                continue
+            if resolved_output_dir != presentations_root.resolve():
+                shutil.rmtree(resolved_output_dir, ignore_errors=True)
         shutil.rmtree(self.data_dir / "raw" / material_id, ignore_errors=True)
         shutil.rmtree(self.data_dir / "processed" / material_id, ignore_errors=True)
         checkpoint = (

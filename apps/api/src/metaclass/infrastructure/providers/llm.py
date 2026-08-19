@@ -320,6 +320,7 @@ class OpenAICompatibleLLMProvider:
         self.default_temperature = default_temperature
         self.max_tokens = max_tokens
         self.ssl_context = ssl.create_default_context(cafile=certifi.where())
+        self._requires_temperature_one = self._model_requires_temperature_one(model)
 
     def complete_json(self, messages: list[LLMMessage], *, temperature: float = 0.2) -> str:
         payload = {
@@ -372,10 +373,22 @@ class OpenAICompatibleLLMProvider:
 
     def _compatible_temperature(self, temperature: float | None) -> float:
         requested = temperature if temperature is not None else self.default_temperature
-        model = self.model.strip().lower()
-        if model.startswith(("gpt-5", "o1", "o3", "o4")):
+        if self._requires_temperature_one:
             return 1.0
         return requested
+
+    @staticmethod
+    def _model_requires_temperature_one(model: str) -> bool:
+        """Return known model capabilities without forcing unrelated models.
+
+        Hosted model names often include an owner prefix, such as
+        ``moonshotai/kimi-k3``. Unknown models are discovered from an explicit
+        upstream validation error and cached on this provider instance instead.
+        """
+        model_name = model.strip().lower().rsplit("/", 1)[-1]
+        return model_name.startswith(
+            ("gpt-5", "o1", "o3", "o4", "kimi-k2", "kimi-k3")
+        )
 
     def _read_chat_json_with_temperature_fallback(
         self, payload: dict, label: str
@@ -389,6 +402,9 @@ class OpenAICompatibleLLMProvider:
                 and "invalid temperature" in detail
                 and "only 1 is allowed" in detail
             ):
+                # Remember the capability so later requests for an unknown or
+                # newly released model do not repeat the same failed probe.
+                self._requires_temperature_one = True
                 retry_payload = {**payload, "temperature": 1.0}
                 return self._read_json_with_retry(
                     self._chat_request(retry_payload), f"{label} temperature-compatible retry"

@@ -17,6 +17,7 @@ import type {
   PPTGenerationJob,
   MaterialProcessingJob,
   StudentAgentType,
+  ClassroomQA,
 } from "../../shared/types";
 
 type LibraryPageProps = {
@@ -49,6 +50,13 @@ const statusCopy: Record<Material["status"], string> = {
   parsing: "解析中",
   parsed: "已解析",
   failed: "解析失败",
+};
+
+const qaMomentCopy: Record<ClassroomQA["moment"], string> = {
+  before_explanation: "讲解前",
+  during_explanation: "讲解中",
+  after_explanation: "讲解后",
+  before_next_slide: "翻页前",
 };
 
 function displayDate(value?: string) {
@@ -87,6 +95,12 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
     plan: PresentationPlanLibrarySummary;
   } | null>(null);
   const [draftStudentTypes, setDraftStudentTypes] = useState<StudentAgentType[]>(defaultStudentAgentTypes);
+  const [qaViewer, setQaViewer] = useState<{
+    plan: PresentationPlanLibrarySummary;
+    items: ClassroomQA[];
+    loading: boolean;
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -398,6 +412,24 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
     await openClassroomAsset(draft.material, draft.contentId, draft.plan, undefined, draftStudentTypes);
   }
 
+  async function viewQuestionBank(plan: PresentationPlanLibrarySummary) {
+    setQaViewer({ plan, items: [], loading: true });
+    try {
+      const bank = await api.getQuestionBank(plan.id);
+      setQaViewer((current) => current?.plan.id === plan.id
+        ? { ...current, items: bank.items, loading: false }
+        : current);
+    } catch (reason) {
+      setQaViewer((current) => current?.plan.id === plan.id
+        ? {
+            ...current,
+            loading: false,
+            error: reason instanceof Error ? reason.message : "QA 问答对读取失败",
+          }
+        : current);
+    }
+  }
+
   return (
     <main className="library-page">
       <header className="library-shell-header">
@@ -572,7 +604,12 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                     );
                     return <div className="asset-plan-group" key={plan.id}>
                       <div className="asset-plan-heading"><span>PLAN</span><b>{plan.title}</b><small>{plan.slide_count} 页{plan.artifact_id ? " · PPT 已就绪" : ""}</small></div>
-                      <button className="asset-primary-action" disabled={!!assetBusy} onClick={() => prepareNewClassroom(selected, contentSummary.content_id, plan)}>创建互动课堂</button>
+                      <div className="asset-plan-actions">
+                        <button className="asset-primary-action" disabled={!!assetBusy} onClick={() => prepareNewClassroom(selected, contentSummary.content_id, plan)}>创建互动课堂</button>
+                        <button className="asset-qa-action" disabled={!!assetBusy} onClick={() => viewQuestionBank(plan)}>
+                          <span>查看 QA 问答对</span><small>Q / A</small>
+                        </button>
+                      </div>
                       {scripts.map((script) => <button className="asset-script-action" disabled={!!assetBusy} key={script.id} onClick={() => openClassroomAsset(selected, contentSummary.content_id, plan, script.id)}>
                         <span>▶ 播放已保存剧本</span><small>{script.scene_count} 场景 · {script.action_count} 动作</small>
                       </button>)}
@@ -645,6 +682,56 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                 用 {draftStudentTypes.length} 位学生创建课堂
               </button>
             </footer>
+          </div>
+        </div>
+      )}
+      {qaViewer && (
+        <div className="library-qa-modal" role="dialog" aria-modal="true" aria-labelledby="library-qa-title">
+          <div className="library-qa-dialog">
+            <header>
+              <div>
+                <small>PREPARED CLASSROOM DIALOGUE</small>
+                <h2 id="library-qa-title">QA 问答对</h2>
+                <p>{qaViewer.plan.title} · {qaViewer.plan.slide_count} 页演示规划</p>
+              </div>
+              <div className="library-qa-count"><b>{qaViewer.items.length}</b><span>PAIRS</span></div>
+              <button type="button" aria-label="关闭 QA 问答对" onClick={() => setQaViewer(null)}>×</button>
+            </header>
+            <div className="library-qa-body">
+              {qaViewer.loading ? (
+                <div className="library-qa-empty loading"><i />正在调取课堂问答档案…</div>
+              ) : qaViewer.error ? (
+                <div className="library-qa-empty"><b>读取失败</b><p>{qaViewer.error}</p></div>
+              ) : qaViewer.items.length ? (
+                qaViewer.items.map((item, index) => {
+                  const agent = studentAgentChoices.find((choice) => choice.type === item.agent_type);
+                  return <article className="library-qa-card" key={item.id}>
+                    <div className="library-qa-index">{String(index + 1).padStart(2, "0")}</div>
+                    <div className="library-qa-meta">
+                      <span>SLIDE {String(item.slide_order).padStart(2, "0")}</span>
+                      <span>{qaMomentCopy[item.moment]}</span>
+                      <span className={item.status}>{item.status === "approved" ? "已采用" : "未采用"}</span>
+                    </div>
+                    <div className="library-qa-exchange">
+                      <section className="student">
+                        {agent && <img src={agent.avatar} alt="" />}
+                        <div><small>{agent ? `${agent.studentName} · ${agent.name}` : item.student_profile_id}</small><p>{item.student_question}</p></div>
+                      </section>
+                      <section className="teacher">
+                        <span>师</span>
+                        <div><small>芊芊老师 · PREPARED ANSWER</small><p>{item.teacher_answer}</p></div>
+                      </section>
+                    </div>
+                    <footer><b>{item.knowledge_point}</b><span>{item.placement_reason}</span></footer>
+                  </article>;
+                })
+              ) : (
+                <div className="library-qa-empty">
+                  <span>Q / A</span><b>这个演示规划还没有 QA 问答对</b>
+                  <p>创建演示规划时未生成题库，或题库中没有可用的已保存问答。</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

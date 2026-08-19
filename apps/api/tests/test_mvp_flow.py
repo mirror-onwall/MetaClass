@@ -510,7 +510,7 @@ def test_presentation_plan_and_ppt_skill_request_flow(client: TestClient) -> Non
         if slide["id"] == prepared_question["slide_id"]
     )
     assert prepared_question["teacher_answer"] != source_slide["speaker_script"]
-    assert prepared_question["canonical_question"] in prepared_question["teacher_answer"]
+    assert prepared_question["knowledge_point"] in prepared_question["teacher_answer"]
     assert prepared_question["moment"] == "after_explanation"
 
     search = client.get(

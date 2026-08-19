@@ -1,4 +1,5 @@
 from datetime import timezone
+from dataclasses import dataclass
 from typing import Protocol
 
 from sqlalchemy import delete, select
@@ -28,6 +29,12 @@ from metaclass.modules.question_bank.models import ClassroomQARecord
 from metaclass.modules.video.models import VideoJobRecord, VideoResultRecord
 
 
+@dataclass(frozen=True)
+class MaterialProjectCleanup:
+    file_paths: list[str]
+    presentation_job_ids: list[str]
+
+
 class MaterialRepository(Protocol):
     def save_material(self, material: Material) -> None: ...
 
@@ -37,7 +44,7 @@ class MaterialRepository(Protocol):
 
     def delete_material(self, material_id: str) -> None: ...
 
-    def delete_material_project(self, material_id: str) -> list[str]: ...
+    def delete_material_project(self, material_id: str) -> MaterialProjectCleanup: ...
 
     def save_collection(self, collection: MaterialCollection) -> None: ...
 
@@ -113,7 +120,7 @@ class SqlAlchemyMaterialRepository:
             session.execute(delete(PageRecord).where(PageRecord.material_id == material_id))
             session.execute(delete(MaterialRecord).where(MaterialRecord.id == material_id))
 
-    def delete_material_project(self, material_id: str) -> list[str]:
+    def delete_material_project(self, material_id: str) -> MaterialProjectCleanup:
         with self.database.session() as session:
             # `material_ids` is currently stored as JSON, so the database cannot
             # enforce a foreign key for every member. Inspect all content records
@@ -163,7 +170,15 @@ class SqlAlchemyMaterialRepository:
             file_paths = [
                 path
                 for item in artifacts
-                for path in [item.pptx_path, item.skill_request_path]
+                for path in [
+                    item.pptx_path,
+                    item.skill_request_path,
+                    *[
+                        slide.get("image_path")
+                        for slide in (item.slide_images or [])
+                        if isinstance(slide, dict)
+                    ],
+                ]
                 if path
             ] + [
                 path
@@ -265,7 +280,10 @@ class SqlAlchemyMaterialRepository:
                 else:
                     session.delete(collection)
             session.execute(delete(MaterialRecord).where(MaterialRecord.id == material_id))
-            return file_paths
+            return MaterialProjectCleanup(
+                file_paths=file_paths,
+                presentation_job_ids=ppt_job_ids,
+            )
 
     def save_collection(self, collection: MaterialCollection) -> None:
         with self.database.session() as session:

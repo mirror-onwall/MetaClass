@@ -1043,6 +1043,8 @@ def test_question_bank_student_receives_course_history_and_teacher_receives_cour
     QuestionBankGenerator(llm)._teacher_answers(content, plan, [candidate])
     teacher_messages = llm.complete_json.call_args.args[0]
     assert "整节课的 PPT 页面内容、全部讲稿和 LearningContent" in teacher_messages[0].content
+    assert "先判断学生真正卡住的是概念、原因、区别、步骤还是应用" in teacher_messages[0].content
+    assert "第一句话就进入实质内容" in teacher_messages[0].content
     assert "这是第一页讲稿" in teacher_messages[1].content
     assert "LearningContent 中的完整课程材料" in teacher_messages[1].content
 
@@ -1053,6 +1055,60 @@ def test_question_bank_student_receives_course_history_and_teacher_receives_cour
         "slide_001",
         "slide_002",
     ]
+
+
+def test_question_bank_fallback_questions_follow_student_profiles() -> None:
+    slide = SlidePlan(
+        id="slide_fallback_questions",
+        order=1,
+        source_section_ids=["section_001"],
+        title="聚类分析",
+        key_points=["簇内相似度高、簇间相似度低"],
+        speaker_script="介绍聚类质量的基本判断标准。",
+        suggested_visual="聚类示意图",
+    )
+    profiles = get_default_student_agent_profiles()
+    questions = [
+        QuestionBankGenerator._fallback_candidate(slide, profile).canonical_question
+        for profile in profiles
+    ]
+
+    assert len(set(questions)) == len(profiles)
+    assert not any(question.endswith("为什么成立？") for question in questions)
+    assert any("实际" in question for question in questions)
+    assert any("区分" in question for question in questions)
+
+
+def test_question_bank_student_batches_use_only_recent_context() -> None:
+    slides = [
+        SlidePlan(
+            id=f"slide_context_{index}",
+            order=index,
+            source_section_ids=["section_001"],
+            title=f"第 {index} 页",
+            key_points=[f"知识点 {index}"],
+            speaker_script=f"第 {index} 页讲稿",
+            suggested_visual="示意图",
+        )
+        for index in range(1, 7)
+    ]
+    plan = PresentationPlan(
+        id="presentation_bounded_context",
+        content_id="content_bounded_context",
+        title="有限上下文",
+        slides=slides,
+    )
+    profile = get_default_student_agent_profiles()[0]
+
+    messages = QuestionBankGenerator._student_batch_messages(plan, profile, [slides[-1]])
+    checkpoint = json.loads(messages[1].content)["checkpoints"][0]
+
+    assert [item["slide_id"] for item in checkpoint["course_so_far"]] == [
+        "slide_context_4",
+        "slide_context_5",
+        "slide_context_6",
+    ]
+    assert "第 1 页讲稿" not in messages[1].content
 
 
 def test_question_bank_batches_students_in_parallel_and_teacher_once() -> None:
@@ -1066,7 +1122,7 @@ def test_question_bank_batches_students_in_parallel_and_teacher_once() -> None:
 
         def complete_json(self, messages, temperature=0.0):
             system = messages[0].content
-            if "一次性完成整节课各阶段" in system:
+            if "一小批课堂页面" in system:
                 with self.lock:
                     self.student_calls += 1
                 self.student_barrier.wait(timeout=3)

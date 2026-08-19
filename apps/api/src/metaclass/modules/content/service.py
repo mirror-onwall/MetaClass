@@ -582,7 +582,7 @@ class ContentService:
                 )
             }
         )
-        self.repository.save(content)
+        content = self.repository.save(content)
         self._report_progress(progress_callback, 96, "saving", "Source-deck content saved")
         self._clear_source_checkpoint(material_id)
         return content
@@ -1309,7 +1309,7 @@ class ContentService:
                         )
                     }
                 )
-                self.repository.save(content)
+                content = self.repository.save(content)
                 self._report_progress(progress_callback, 96, "saving", "Learning content saved")
                 return content
             except ContentGenerationPaused:
@@ -1344,7 +1344,7 @@ class ContentService:
                 )
             }
         )
-        self.repository.save(content)
+        content = self.repository.save(content)
         self._report_progress(progress_callback, 96, "saving", "Learning content saved")
         return content
 

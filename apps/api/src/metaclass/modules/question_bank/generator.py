@@ -10,6 +10,7 @@ from pydantic import TypeAdapter, ValidationError
 from metaclass.infrastructure.providers.llm import LLMMessage, LLMProvider
 from metaclass.modules.classroom.agent_schemas import (
     StudentAgentProfile,
+    StudentAgentType,
     get_default_student_agent_profiles,
 )
 from metaclass.modules.content.schemas import LearningContent
@@ -24,6 +25,9 @@ from metaclass.modules.question_bank.schemas import (
 
 class QuestionBankGenerator:
     """Three-stage lesson preparation: students ask, teacher answers, controller places."""
+
+    STUDENT_SLIDES_PER_BATCH = 8
+    STUDENT_CONTEXT_WINDOW = 3
 
     def __init__(
         self,
@@ -92,8 +96,8 @@ class QuestionBankGenerator:
                 for slide in plan.slides
             ]
 
-        # One model request per student profile. The eight independent profiles
-        # run concurrently, so latency is close to the slowest profile request.
+        # Profiles run concurrently. Each profile splits a long deck into small,
+        # sequential requests so prompt size stays bounded.
         results: dict[str, list[QuestionCandidate]] = {}
         with ThreadPoolExecutor(
             max_workers=min(self.student_concurrency, len(profiles))
@@ -120,47 +124,59 @@ class QuestionBankGenerator:
     ) -> list[QuestionCandidate]:
         if not self.llm:
             return [self._fallback_candidate(slide, profile) for slide in plan.slides]
-        slides_by_id = {slide.id: slide for slide in plan.slides}
-        try:
-            raw = self.llm.complete_json(
-                self._student_batch_messages(plan, profile), temperature=0.45
-            )
-            payload = json.loads(raw)
-            if not isinstance(payload, dict) or not isinstance(payload.get("questions"), list):
-                raise ValueError("Student batch response must contain a questions list")
-            questions = payload["questions"]
-            counts: dict[str, int] = {}
-            items = []
-            for question in questions:
-                slide_id = str(question["slide_id"])
-                slide = slides_by_id.get(slide_id)
-                if not slide or counts.get(slide_id, 0) >= 2:
-                    continue
-                counts[slide_id] = counts.get(slide_id, 0) + 1
-                items.append(
-                    QuestionCandidate(
-                        candidate_id=(
-                            f"candidate_{slide.id}_{profile.type.value}_"
-                            f"{counts[slide_id]}"
-                        ),
-                        slide_id=slide.id,
-                        slide_order=slide.order,
-                        agent_type=profile.type,
-                        student_profile_id=profile.id,
-                        knowledge_point=str(question["knowledge_point"]),
-                        canonical_question=str(question["canonical_question"]),
-                        student_question=str(question["student_question"]),
-                        reason=str(question["reason"]),
-                    )
+        items = []
+        for start in range(0, len(plan.slides), self.STUDENT_SLIDES_PER_BATCH):
+            batch = plan.slides[start : start + self.STUDENT_SLIDES_PER_BATCH]
+            batch_slides = {slide.id: slide for slide in batch}
+            try:
+                raw = self.llm.complete_json(
+                    self._student_batch_messages(plan, profile, batch), temperature=0.45
                 )
-            return items
-        except (KeyError, TypeError, ValueError, json.JSONDecodeError, ValidationError):
-            return [self._fallback_candidate(slide, profile) for slide in plan.slides]
+                payload = json.loads(raw)
+                if not isinstance(payload, dict) or not isinstance(payload.get("questions"), list):
+                    raise ValueError("Student batch response must contain a questions list")
+                counts: dict[str, int] = {}
+                for question in payload["questions"]:
+                    slide_id = str(question["slide_id"])
+                    slide = batch_slides.get(slide_id)
+                    if not slide or counts.get(slide_id, 0) >= 2:
+                        continue
+                    counts[slide_id] = counts.get(slide_id, 0) + 1
+                    items.append(
+                        QuestionCandidate(
+                            candidate_id=(
+                                f"candidate_{slide.id}_{profile.type.value}_"
+                                f"{counts[slide_id]}"
+                            ),
+                            slide_id=slide.id,
+                            slide_order=slide.order,
+                            agent_type=profile.type,
+                            student_profile_id=profile.id,
+                            knowledge_point=str(question["knowledge_point"]),
+                            canonical_question=str(question["canonical_question"]),
+                            student_question=str(question["student_question"]),
+                            reason=str(question["reason"]),
+                        )
+                    )
+            except (
+                RuntimeError,
+                TimeoutError,
+                KeyError,
+                TypeError,
+                ValueError,
+                json.JSONDecodeError,
+                ValidationError,
+            ):
+                # Degrade only the failed page batch. Later batches still get a
+                # chance to use the model and produce profile-specific questions.
+                items.extend(self._fallback_candidate(slide, profile) for slide in batch)
+        return items
 
     @staticmethod
     def _student_batch_messages(
         plan: PresentationPlan,
         profile: StudentAgentProfile,
+        checkpoint_slides: list[SlidePlan] | None = None,
     ) -> list[LLMMessage]:
         system = f"""你是备课阶段的学生智能体，不是在课堂现场自由聊天。
 
@@ -171,15 +187,21 @@ class QuestionBankGenerator:
 - 学习目标：{profile.learning_goal}
 - 表达风格：{profile.response_style}
 
-你需要一次性完成整节课各阶段的提问准备。输入中的每个 checkpoint 都是一个独立的听课时刻；生成该 checkpoint 的问题时，只能使用它自己的 course_so_far，其中只包含当前页及此前页面和讲稿。严禁把其他 checkpoint 中更晚页面的信息用于较早页面的问题。
+你需要完成一小批课堂页面的提问准备。输入中的每个 checkpoint 都是一个独立的听课时刻；course_so_far 只提供当前页和最近几页的必要上下文。只能依据该 checkpoint 的内容提问，严禁使用其他 checkpoint 中更晚页面的信息。
 每个 checkpoint 提出 0-2 个在当时进度下真实仍会产生、且能推动理解的问题。可以联系此前页面与当前页面的关系，但不能使用未来知识，不要重复已经直接回答的内容，也不要考无关冷知识。
+先判断这个学生在当前页最可能出现哪一种真实困惑，再决定是否提问以及如何提问。问题可以用于澄清概念、比较区别、索要例子、理解条件与边界、梳理步骤、检查图表、联系实际应用或衔接前后内容；应体现学生画像，不要把所有知识点都改写成追问原因或“为什么成立”。
+同一个学生跨页面的问题也应随页面内容变化。定义页更适合澄清与辨析，流程页更适合追问步骤和关键节点，案例页更适合迁移与应用，图表页更适合询问读图方式，结论页才可能追问依据、条件或例外。
 canonical_question 使用中性标准问法；student_question 保持同一含义并符合你的画像。没有值得问的问题可以不输出该页。
 
 只输出 JSON：
 {{"questions":[{{"slide_id":"问题所属当前页 ID","knowledge_point":"知识点","canonical_question":"标准问题","student_question":"画像化问法","reason":"当时为什么会产生疑问"}}]}}
 """
         checkpoints = []
-        for index, slide in enumerate(plan.slides):
+        slides = checkpoint_slides if checkpoint_slides is not None else plan.slides
+        slide_indexes = {slide.id: index for index, slide in enumerate(plan.slides)}
+        for slide in slides:
+            index = slide_indexes[slide.id]
+            context_start = max(0, index - QuestionBankGenerator.STUDENT_CONTEXT_WINDOW + 1)
             checkpoints.append(
                 {
                     "current_slide_id": slide.id,
@@ -193,7 +215,7 @@ canonical_question 使用中性标准问法；student_question 保持同一含�
                             "visual_content": item.visual_payload,
                             "speaker_script": item.speaker_script,
                         }
-                        for item in plan.slides[: index + 1]
+                        for item in plan.slides[context_start : index + 1]
                     ],
                 }
             )
@@ -255,6 +277,7 @@ canonical_question 使用中性标准问法；student_question 保持同一含�
 
 请假设你在上课前不知道这部分知识，现在已经按顺序看完从课程开始到当前页的全部 PPT，并听完这些页面对应的老师讲稿。提出 0-2 个你在当前进度下真实仍会产生、且能推动理解的问题。
 你可以联系此前页面与当前页面的关系，追问概念衔接、前后结论、因果机制或潜在矛盾；但问题必须以截至当前页已经讲过的内容为基础，不能使用未来页面的信息，也不要考老师无关的冷知识。
+先识别当前内容最适合产生的疑问类型，再自然提问。可选择概念澄清、相近概念辨析、具体例子、条件与边界、操作步骤、图表解读、实际应用或前后衔接，不要默认把每个知识点都写成追问原因。
 不要重复此前页面或当前页面已经直接回答的问题。问题原则上归属当前页；只有当疑问来自前后内容的联系时，才在 reason 中说明关联了哪些此前页面。
 canonical_question 使用中性、清晰的标准问法；student_question 保持同一含义，但按你的学生画像自然表达。
 如果本页内容已经非常清楚、没有值得问的问题，返回空数组。
@@ -293,7 +316,18 @@ canonical_question 使用中性、清晰的标准问法；student_question 保�
         slide: SlidePlan, profile: StudentAgentProfile
     ) -> QuestionCandidate:
         point = (slide.key_points or [slide.title])[0]
-        question = f"{point.rstrip('。')}为什么成立？"
+        point = point.rstrip("。")
+        questions = {
+            StudentAgentType.ATMOSPHERE_REGULATOR: f"能不能用一个生活化的例子说明{point}？",
+            StudentAgentType.DEEP_THINKER: f"{point}需要满足哪些条件，遇到什么情况会不适用？",
+            StudentAgentType.NOTE_TAKER: f"如果把{point}整理成笔记，最关键的要点有哪些？",
+            StudentAgentType.RESEARCHER: f"{point}在真实研究或业务场景中通常怎么应用？",
+            StudentAgentType.FOUNDATION_WEAK: f"{point}能不能拆开一步一步解释？",
+            StudentAgentType.SILENT_OBSERVER: f"可以用一个具体例子再说明一下{point}吗？",
+            StudentAgentType.CONCEPT_CONFUSED: f"{point}和前面相近的概念应该怎么区分？",
+            StudentAgentType.PRACTICAL_APPLIER: f"实际操作时，{point}具体要怎么做？",
+        }
+        question = questions[profile.type]
         return QuestionCandidate(
             candidate_id=f"candidate_{slide.id}_{profile.type.value}_1",
             slide_id=slide.id,
@@ -303,7 +337,7 @@ canonical_question 使用中性、清晰的标准问法；student_question 保�
             knowledge_point=point,
             canonical_question=question,
             student_question=question,
-            reason="该问题检查页面核心结论背后的原因。",
+            reason=f"该问题体现{profile.display_name}在当前知识点上的典型学习需求。",
         )
 
     def _teacher_answers(
@@ -334,7 +368,9 @@ canonical_question 使用中性、清晰的标准问法；student_question 保�
 你会获得整节课的 PPT 页面内容、全部讲稿和 LearningContent。请先综合课程结构、当前页、前后页面和已有材料，再结合你作为教师掌握的可靠通用知识准备答案。
 你可以补充材料没有展开、但对解释问题必要且稳定可靠的定义、原因、机制、例子或辨析；不得虚构具体数据、实验结果、文献观点、人物言论或不确定事实。
 回答不能与 LearningContent 或整套 PPT 的课程口径冲突。若问题依赖无法确认的特定事实，设置 answerable=false；不要为了回答而猜测。
-canonical_answer 是准确完整的标准答案；teacher_answer 是课堂上自然、简洁、直接针对该问题的回答。必须先回应学生具体问了什么，不能复述整页讲稿、不能重新做课程开场、不能用与不同问题相同的通用段落代替答案。
+canonical_answer 是准确完整的标准答案；teacher_answer 是课堂上自然、简洁、直接回应该问题的口语回答。先判断学生真正卡住的是概念、原因、区别、步骤还是应用，再像现场教师一样顺着这个困惑作答，而不是套用统一的答题格式。
+回答的第一句话就进入实质内容。根据问题最合适的解释路径自然组织语言：可以直接给结论后解释原因，可以从学生容易混淆的地方澄清，可以借一个贴切例子说明，也可以通过对比或分步骤推导帮助理解。是否承接学生的原话、是否给予肯定，都由具体语境决定。
+一批回答读起来应像老师分别听完不同学生的问题后作出的真实回应：语气连贯、有交流感，详略和节奏随问题变化。不要复述整页讲稿、重新做课程开场，也不要把不同问题填进同一段模板。
 只输出 JSON：{"answers":[{"candidate_id":"...","canonical_answer":"...","teacher_answer":"...","answerable":true}]}"""
         user = {
             "course_presentation": [
@@ -357,7 +393,7 @@ canonical_answer 是准确完整的标准答案；teacher_answer 是课堂上自
                     LLMMessage(role="system", content=system),
                     LLMMessage(role="user", content=json.dumps(user, ensure_ascii=False)),
                 ],
-                temperature=0.2,
+                temperature=0.45,
             )
             payload = json.loads(raw)
             prepared = TypeAdapter(list[TeacherPreparedAnswer]).validate_python(
@@ -379,10 +415,14 @@ canonical_answer 是准确完整的标准答案；teacher_answer 是课堂上自
     ) -> TeacherPreparedAnswer:
         slide = next(item for item in plan.slides if item.id == candidate.slide_id)
         evidence = "；".join(slide.key_points[:2]).strip() or slide.title
-        answer = (
-            f"针对“{candidate.canonical_question}”，可以先抓住"
-            f"{candidate.knowledge_point}这个关键点：{evidence}。"
+        openings = (
+            f"先看最关键的一点：{candidate.knowledge_point}。",
+            f"这里可以从{candidate.knowledge_point}入手理解。",
+            f"把{candidate.knowledge_point}抓住，这个疑问就清楚了。",
+            f"简单说，关键就在{candidate.knowledge_point}。",
         )
+        opening = openings[sum(map(ord, candidate.candidate_id)) % len(openings)]
+        answer = f"{opening}{evidence}。"
         return TeacherPreparedAnswer(
             candidate_id=candidate.candidate_id,
             canonical_answer=answer,

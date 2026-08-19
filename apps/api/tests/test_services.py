@@ -1609,6 +1609,29 @@ def test_openai_compatible_provider_uses_temperature_one_for_restricted_models()
     assert captured[0]["temperature"] == 1.0
 
 
+@pytest.mark.parametrize(
+    "model",
+    ["kimi-k3", "moonshotai/kimi-k3-preview", "kimi-k2.5"],
+)
+def test_openai_compatible_provider_uses_temperature_one_for_kimi_models(model) -> None:
+    provider = OpenAICompatibleLLMProvider(
+        base_url="https://example.test/v1",
+        api_key="test-key-12345",
+        model=model,
+    )
+    captured = []
+
+    def read(req, label):
+        captured.append(json.loads(req.data.decode("utf-8")))
+        return {"choices": [{"message": {"content": '{"ok":true}'}}]}
+
+    provider._read_json_with_retry = read
+
+    provider.complete_json([LLMMessage(role="user", content="test")], temperature=0.2)
+
+    assert captured[0]["temperature"] == 1.0
+
+
 def test_openai_compatible_provider_retries_temperature_specific_400_once() -> None:
     provider = OpenAICompatibleLLMProvider(
         base_url="https://example.test/v1",
@@ -1633,6 +1656,10 @@ def test_openai_compatible_provider_retries_temperature_specific_400_once() -> N
 
     assert result == '{"ok":true}'
     assert [payload["temperature"] for payload in captured] == [0.2, 1.0]
+
+    provider.complete_json([LLMMessage(role="user", content="again")], temperature=0.3)
+
+    assert captured[-1]["temperature"] == 1.0
 
 
 def test_llm_learning_provider_describes_visual_and_organizes_content(tmp_path: Path) -> None:

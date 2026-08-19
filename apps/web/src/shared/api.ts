@@ -26,6 +26,7 @@ import type {
   StudentAgentType,
   TTSArtifact,
   TTSArtifactRequest,
+  QuestionBank,
   VideoJob,
   VideoResult,
 } from "./types";
@@ -334,7 +335,7 @@ export const api = {
     return request(`/api/v1/presentation-plans/${planId}/question-bank`, { method: "POST" });
   },
   getQuestionBank(planId: string) {
-    return request<{ items: unknown[] }>(`/api/v1/presentation-plans/${planId}/question-bank`);
+    return request<QuestionBank>(`/api/v1/presentation-plans/${planId}/question-bank`);
   },
   createLectureVariant(planId: string) {
     return request<{ id: string }>(`/api/v1/classroom-plans/${planId}/lecture-variant`, {
@@ -579,11 +580,12 @@ export const api = {
       body: JSON.stringify({ question }),
     });
   },
-  createTTSArtifact(payload: TTSArtifactRequest) {
+  createTTSArtifact(payload: TTSArtifactRequest, timeoutMs = 5_000) {
     return request<TTSArtifact>("/api/v1/tts-artifacts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      timeoutMs,
     });
   },
   ttsAudio(audioUrl: string) {

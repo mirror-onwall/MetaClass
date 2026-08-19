@@ -26,6 +26,7 @@ from metaclass.modules.materials.schemas import (
 from metaclass.modules.presentation.schemas import (
     PPTArtifact,
     PPTGenerationJob,
+    PPTSlideImage,
     PresentationPlan,
     PresentationResource,
     PresentationSlideResource,
@@ -80,6 +81,75 @@ def test_build_services_can_skip_schema_creation(tmp_path) -> None:
     services = build_services(tmp_path, create_schema=False)
     assert inspect(services.database.engine).get_table_names() == []
     services.database.dispose()
+
+
+def test_learning_content_save_reuses_material_version_identity(tmp_path) -> None:
+    database = Database.from_sqlite_path(tmp_path / "content-upsert.db")
+    database.create_schema()
+    repository = SqlAlchemyContentRepository(database)
+    SqlAlchemyMaterialRepository(database).save_material(
+        Material(
+            id="mat_upsert",
+            filename="upsert.pdf",
+            file_type="pdf",
+            status="parsed",
+            storage_path="data/raw/mat_upsert/upsert.pdf",
+        )
+    )
+    original = LearningContent(
+        id="content_legacy_id",
+        material_id="mat_upsert",
+        title="Original",
+        sections=[
+            LearningSection(
+                id="section_original",
+                title="Original",
+                summary="Original",
+                source_refs=[
+                    SourceRef(
+                        material_id="mat_upsert",
+                        page_id="page_upsert",
+                        page_no=1,
+                    )
+                ],
+            )
+        ],
+    )
+    repository.save(original)
+
+    replacement = LearningContent(
+        id="content_deterministic_id",
+        material_id=original.material_id,
+        title="Regenerated",
+        sections=[
+            LearningSection(
+                id="section_rebuilt",
+                title="Rebuilt",
+                summary="Rebuilt",
+                source_refs=[
+                    SourceRef(
+                        material_id="mat_upsert",
+                        page_id="page_upsert",
+                        page_no=1,
+                    )
+                ],
+            )
+        ],
+    )
+    persisted = repository.save(replacement)
+
+    assert persisted.id == original.id
+    assert persisted.created_at == original.created_at
+    assert repository.get(original.id).title == "Regenerated"
+    assert repository.get(replacement.id) is None
+    with database.engine.connect() as connection:
+        assert connection.scalar(
+            text(
+                "SELECT COUNT(*) FROM learning_contents "
+                "WHERE material_id = 'mat_upsert' AND version = 1"
+            )
+        ) == 1
+    database.dispose()
 
 
 def test_sqlite_path_is_resolved_to_absolute_path(tmp_path, monkeypatch) -> None:
@@ -397,6 +467,40 @@ def test_delete_material_project_removes_related_content_plan_pages_and_files(tm
         ],
     )
     services.presentations.repository.save_plan(plan)
+    job = PPTGenerationJob(
+        id="ppt_job_delete",
+        presentation_plan_id=plan.id,
+    )
+    services.presentations.repository.save_job(job)
+    artifact_dir = tmp_path / "generated" / "presentations" / job.id
+    slides_dir = artifact_dir / "slides"
+    intermediate_dir = artifact_dir / "render-temp"
+    slides_dir.mkdir(parents=True)
+    intermediate_dir.mkdir()
+    pptx_path = artifact_dir / "deck.pptx"
+    request_path = artifact_dir / "skill_request.json"
+    slide_path = slides_dir / "slide_001.png"
+    intermediate_path = intermediate_dir / "layout-cache.json"
+    for path in (pptx_path, request_path, slide_path, intermediate_path):
+        path.write_bytes(b"generated")
+    services.presentations.repository.save_artifact(
+        PPTArtifact(
+            id="artifact_delete",
+            job_id=job.id,
+            presentation_plan_id=plan.id,
+            pptx_path=str(pptx_path),
+            skill_request_path=str(request_path),
+            slide_images=[
+                PPTSlideImage(
+                    slide_id="slide_delete",
+                    slide_no=1,
+                    image_path=str(slide_path),
+                    width=1280,
+                    height=720,
+                )
+            ],
+        )
+    )
 
     services.materials.delete_project(material_id)
 
@@ -405,6 +509,7 @@ def test_delete_material_project_removes_related_content_plan_pages_and_files(tm
     assert services.presentations.repository.get_plan(plan.id) is None
     assert not material_dir.exists()
     assert not processed_dir.exists()
+    assert not artifact_dir.exists()
     services.database.dispose()
 
 

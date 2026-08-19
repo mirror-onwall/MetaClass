@@ -936,16 +936,8 @@ function App() {
       for (const cue of cues) {
         const result = await narration.play(cue);
         if (cancelled || result === "cancelled") return;
-        if (result === "blocked") {
-          playbackVersionRef.current += 1;
-          autoPlayingRef.current = false;
-          setAutoPlaying(false);
-          setError("浏览器尚未启用声音，请点击开始自动课堂重试");
-          narratedStepRef.current = null;
-          return;
-        }
-        if (result === "failed") {
-          setError("语音暂时不可用，课堂已切换为无声模式并继续推进");
+        if (result === "failed" || result === "blocked") {
+          setError("语音不可用，已切换为纯文字模式并继续课堂");
         }
       }
       if (
@@ -1582,12 +1574,12 @@ function App() {
         agentId: "teacher",
         role: "teacher",
       });
-      if (transitionResult === "blocked" || transitionResult === "cancelled") return;
+      if (transitionResult === "cancelled") return;
       const replayResult = await narration.play({
         ...interruptedCue,
         id: `${interruptedCue.id}:replay:${Date.now()}`,
       });
-      if (replayResult === "blocked" || replayResult === "cancelled") return;
+      if (replayResult === "cancelled") return;
       if (replayResult === "failed") {
         setError("被打断的讲解语音暂时无法重播，课堂将继续推进");
       }
@@ -1601,7 +1593,14 @@ function App() {
       return;
     }
     if (narration.status === "paused") {
-      await narration.resume();
+      const resumed = await narration.resume();
+      if (!resumed) {
+        narration.stop();
+        playbackVersionRef.current += 1;
+        const playbackVersion = playbackVersionRef.current;
+        setError("语音无法恢复，已切换为纯文字模式并继续课堂");
+        await autoStep(playbackVersion);
+      }
       return;
     }
     narration.unlock();
@@ -1728,11 +1727,11 @@ function App() {
       if (narrationResult === "failed") {
         setError("小测反馈文字已显示，但老师语音暂时不可用");
       }
-      feedbackNarrationFinished = narrationResult === "ended";
+      feedbackNarrationFinished = narrationResult !== "cancelled";
     }
     // Never turn the page while quiz feedback is still speaking. If playback is
-    // blocked or fails, keep the class stopped so the learner can read the full
-    // feedback and explicitly continue instead of silently skipping ahead.
+    // unavailable, the visible feedback remains authoritative and the classroom
+    // continues in text-only mode.
     if (result.session.status !== "completed" && feedbackNarrationFinished) {
       playbackVersionRef.current += 1;
       const playbackVersion = playbackVersionRef.current;
