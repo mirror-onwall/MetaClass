@@ -69,6 +69,7 @@ class Database:
             "learning_contents": {
                 "material_ids": "JSON",
                 "collection_id": "VARCHAR(64)",
+                "organization_mode": "VARCHAR(20)",
                 "subtitle": "VARCHAR(500)",
                 "audience": "JSON",
                 "teaching_intent": "JSON",
@@ -96,6 +97,7 @@ class Database:
             "classroom_sessions": {
                 "mode": "VARCHAR(20)",
                 "student_states": "JSON",
+                "version": "INTEGER DEFAULT 0",
                 "created_at": "DATETIME",
                 "updated_at": "DATETIME",
             },
@@ -109,6 +111,9 @@ class Database:
                 "theme_id": "VARCHAR(64)",
             },
             "presentation_plans": {
+                "mode": "VARCHAR(20)",
+                "source_material_id": "VARCHAR(64)",
+                "presentation_resource_id": "VARCHAR(64)",
                 "generation_source": "VARCHAR(20)",
                 "generation_provider": "VARCHAR(100)",
                 "generation_model": "VARCHAR(200)",
@@ -148,6 +153,9 @@ class Database:
                     connection.execute(
                         text("UPDATE classroom_sessions SET mode = 'lecture' WHERE mode IS NULL")
                     )
+                    connection.execute(
+                        text("UPDATE classroom_sessions SET version = 0 WHERE version IS NULL")
+                    )
                 if table == "ppt_artifacts":
                     connection.execute(
                         text(
@@ -164,6 +172,43 @@ class Database:
                             "WHERE theme_id IS NULL"
                         )
                     )
+                if table == "presentation_plans":
+                    connection.execute(
+                        text(
+                            "UPDATE presentation_plans "
+                            "SET source_material_id = NULL "
+                            "WHERE source_material_id IS NOT NULL "
+                            "AND NOT EXISTS ("
+                            "SELECT 1 FROM materials "
+                            "WHERE materials.id = presentation_plans.source_material_id"
+                            ")"
+                        )
+                    )
+                    connection.execute(
+                        text(
+                            "UPDATE presentation_plans "
+                            "SET source_material_id = ("
+                            "SELECT learning_contents.material_id "
+                            "FROM learning_contents "
+                            "WHERE learning_contents.id = presentation_plans.content_id"
+                            ") "
+                            "WHERE mode = 'source_deck' "
+                            "AND source_material_id IS NULL"
+                        )
+                    )
+                    connection.execute(
+                        text(
+                            "UPDATE presentation_plans SET mode = 'generated' "
+                            "WHERE mode = 'hybrid'"
+                        )
+                    )
+                if table == "presentation_resources":
+                    connection.execute(
+                        text(
+                            "UPDATE presentation_resources SET kind = 'generated_artifact' "
+                            "WHERE kind = 'hybrid'"
+                        )
+                    )
                 if table == "page_metadata":
                     connection.execute(
                         text(
@@ -173,6 +218,12 @@ class Database:
                         )
                     )
                 if table == "learning_contents":
+                    connection.execute(
+                        text(
+                            "UPDATE learning_contents SET organization_mode = 'knowledge' "
+                            "WHERE organization_mode IS NULL"
+                        )
+                    )
                     connection.execute(
                         text(
                             "UPDATE learning_contents "
@@ -253,37 +304,7 @@ class Database:
                             "WHERE quiz_items IS NULL"
                         )
                     )
-                for name in columns:
-                    if name in {
-                        "file_hash",
-                        "material_ids",
-                        "collection_id",
-                        "subtitle",
-                        "audience",
-                        "teaching_intent",
-                        "material_overview",
-                        "global_concepts",
-                        "knowledge_units",
-                        "knowledge_tree",
-                        "generation_guidance",
-                        "quality",
-                        "page_role",
-                        "title",
-                        "teachable_points",
-                        "key_excerpts",
-                        "concepts",
-                        "formulas",
-                        "visual_analysis",
-                        "misconceptions",
-                        "relations",
-                        "student_states",
-                        "mode",
-                        "slide_images",
-                        "quiz_items",
-                        "embedded_images",
-                        "theme_id",
-                    }:
-                        continue
+                for name in {"created_at", "updated_at"}.intersection(columns):
                     connection.execute(
                         text(f"UPDATE {table} SET {name} = CURRENT_TIMESTAMP WHERE {name} IS NULL")
                     )

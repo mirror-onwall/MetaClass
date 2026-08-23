@@ -22,6 +22,7 @@ import type {
   PresentationPlanJob,
   PresentationPlan,
   PresentationPlanLibrarySummary,
+  PresentationResource,
   StudentAgentType,
   TTSArtifact,
   TTSArtifactRequest,
@@ -59,6 +60,14 @@ async function request<T>(path: string, init?: RequestOptions): Promise<T> {
 }
 
 const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
+function classroomCommandHeaders(expectedVersion: number) {
+  return {
+    "X-Request-ID": globalThis.crypto?.randomUUID?.()
+      ?? `classroom-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    "X-Expected-Session-Version": String(expectedVersion),
+  };
+}
 
 async function poll<T>(
   load: () => Promise<T>,
@@ -107,14 +116,23 @@ export const api = {
   getMaterialProcessingJob(jobId: string) {
     return request<MaterialProcessingJob>(`/api/v1/materials/processing-jobs/${jobId}`);
   },
+  listMaterialProcessingJobs() {
+    return request<MaterialProcessingJob[]>("/api/v1/materials/processing-jobs");
+  },
   getMaterialProcessingJobResult(jobId: string) {
     return request<ProcessedMaterials>(`/api/v1/materials/processing-jobs/${jobId}/result`);
   },
-  cancelMaterialProcessingJob(jobId: string) {
+  pauseMaterialProcessingJob(jobId: string) {
     return request<MaterialProcessingJob>(
-      `/api/v1/materials/processing-jobs/${jobId}/cancel`,
+      `/api/v1/materials/processing-jobs/${jobId}/pause`,
       { method: "POST" },
     );
+  },
+  resumeMaterialProcessingJob(jobId: string) {
+    return request<MaterialProcessingJob>(`/api/v1/materials/processing-jobs/${jobId}/resume`, { method: "POST" });
+  },
+  discardMaterialProcessingJob(jobId: string) {
+    return request<void>(`/api/v1/materials/processing-jobs/${jobId}`, { method: "DELETE" });
   },
   async waitForMaterialProcessingJob(
     jobId: string,
@@ -128,11 +146,18 @@ export const api = {
         throw new Error(job.error ?? "材料解析任务失败");
       }
       if (job.status === "canceled") throw new Error("材料处理已取消");
+      if (job.status === "paused") throw new Error("任务已暂停，进度已经保存");
       await wait(1500);
     }
   },
   listMaterials() {
     return request<Material[]>("/api/v1/materials");
+  },
+  deleteMaterial(materialId: string) {
+    return request<{ material_id: string; deleted: boolean }>(
+      `/api/v1/materials/${materialId}`,
+      { method: "DELETE" },
+    );
   },
   listMaterialCollections() {
     return request<MaterialCollection[]>("/api/v1/materials/collections");
@@ -175,6 +200,17 @@ export const api = {
     onProgress?.(job);
     return api.waitForContentGenerationJob(job.id, onProgress);
   },
+  async buildSourceDeckContent(
+    materialId: string,
+    onProgress?: (job: ContentGenerationJob) => void,
+  ) {
+    const job = await request<ContentGenerationJob>(
+      `/api/v1/materials/${materialId}/source-deck-learning-content-jobs`,
+      { method: "POST" },
+    );
+    onProgress?.(job);
+    return api.waitForContentGenerationJob(job.id, onProgress);
+  },
   async buildCollectionContent(
     collectionId: string,
     onProgress?: (job: ContentGenerationJob) => void,
@@ -189,8 +225,20 @@ export const api = {
   getContentGenerationJob(jobId: string) {
     return request<ContentGenerationJob>(`/api/v1/learning-content-jobs/${jobId}`);
   },
+  listContentGenerationJobs() {
+    return request<ContentGenerationJob[]>("/api/v1/learning-content-jobs");
+  },
   getContentGenerationJobResult(jobId: string) {
     return request<LearningContent>(`/api/v1/learning-content-jobs/${jobId}/result`);
+  },
+  pauseContentGenerationJob(jobId: string) {
+    return request<ContentGenerationJob>(`/api/v1/learning-content-jobs/${jobId}/pause`, { method: "POST" });
+  },
+  resumeContentGenerationJob(jobId: string) {
+    return request<ContentGenerationJob>(`/api/v1/learning-content-jobs/${jobId}/resume`, { method: "POST" });
+  },
+  discardContentGenerationJob(jobId: string) {
+    return request<void>(`/api/v1/learning-content-jobs/${jobId}`, { method: "DELETE" });
   },
   getContentDiagnostics(contentId: string) {
     return request<LearningContentDiagnostics>(
@@ -211,6 +259,7 @@ export const api = {
       if (job.status === "failed") {
         throw new Error(job.error ?? "学习内容生成任务失败");
       }
+      if (job.status === "paused") throw new Error("任务已暂停，进度已经保存");
       await wait(1500);
     }
   },
@@ -221,27 +270,65 @@ export const api = {
     studentAgentTypes?: StudentAgentType[],
     onProgress?: (job: ClassroomPlanJob) => void,
   ) {
+    const created = await api.createClassroomPlanJob(
+      contentId, presentationPlanId, onProgress,
+    );
+    return api.resumeClassroomPlanJob(
+      created.id,
+      mode,
+      studentAgentTypes,
+      onProgress,
+    );
+  },
+  async createClassroomPlanJob(
+    contentId: string,
+    presentationPlanId: string,
+    onProgress?: (job: ClassroomPlanJob) => void,
+  ) {
     const created = await request<ClassroomPlanJob>(
       `/api/v1/learning-contents/${contentId}/classroom-plan-jobs?presentation_plan_id=${encodeURIComponent(presentationPlanId)}`,
       { method: "POST" },
     );
     onProgress?.(created);
-    const job = await poll(
-      async () => {
-        const value = await request<ClassroomPlanJob>(
-          `/api/v1/classroom-plan-jobs/${created.id}`,
-        );
-        onProgress?.(value);
-        return value;
-      },
-      (value) => value.status === "succeeded" && Boolean(value.plan_id),
-      (value) => (value.status === "failed" ? value.error || value.message : undefined),
+    return created;
+  },
+  getClassroomPlanJob(jobId: string) {
+    return request<ClassroomPlanJob>(`/api/v1/classroom-plan-jobs/${jobId}`);
+  },
+  getLatestClassroomPlanJob(contentId: string, presentationPlanId: string) {
+    const query = new URLSearchParams({ presentation_plan_id: presentationPlanId });
+    return request<ClassroomPlanJob>(
+      `/api/v1/learning-contents/${contentId}/latest-classroom-plan-job?${query}`,
     );
+  },
+  async resumeClassroomPlanJob(
+    jobId: string,
+    mode: LearningMode,
+    studentAgentTypes?: StudentAgentType[],
+    onProgress?: (job: ClassroomPlanJob) => void,
+  ) {
+    const job = await api.waitForClassroomPlanJob(jobId, onProgress);
     return request<ClassroomSession>(`/api/v1/classroom-plans/${job.plan_id}/sessions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode, student_agent_types: studentAgentTypes }),
     });
+  },
+  async waitForClassroomPlanJob(
+    jobId: string,
+    onProgress?: (job: ClassroomPlanJob) => void,
+  ) {
+    let job: ClassroomPlanJob;
+    for (;;) {
+      job = await api.getClassroomPlanJob(jobId);
+      onProgress?.(job);
+      if (job.status === "failed") {
+        throw new Error(job.error ?? job.message ?? "课堂计划生成失败");
+      }
+      if (job.status === "succeeded" && job.plan_id) break;
+      await wait(1500);
+    }
+    return job as ClassroomPlanJob & { plan_id: string };
   },
   generateQuestionBank(planId: string) {
     return request(`/api/v1/presentation-plans/${planId}/question-bank`, { method: "POST" });
@@ -268,6 +355,24 @@ export const api = {
   replaySession(sessionId: string) {
     return request<ClassroomSession>(`/api/v1/classroom-sessions/${sessionId}/replay`, {
       method: "POST",
+    });
+  },
+  getClassroomSession(sessionId: string) {
+    return request<ClassroomSession>(`/api/v1/classroom-sessions/${sessionId}`);
+  },
+  switchClassroomMode(
+    sessionId: string,
+    mode: LearningMode,
+    expectedVersion: number,
+    studentAgentTypes?: StudentAgentType[],
+  ) {
+    return request<ClassroomSession>(`/api/v1/classroom-sessions/${sessionId}/mode`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...classroomCommandHeaders(expectedVersion),
+      },
+      body: JSON.stringify({ mode, student_agent_types: studentAgentTypes }),
     });
   },
   async createPresentationDeck(
@@ -312,6 +417,41 @@ export const api = {
     const finished = await api.waitForPresentationPlanJob(created.id, onProgress);
     return request<PresentationPlan>(`/api/v1/presentation-plan-jobs/${finished.id}/result`);
   },
+  async createSourceDeckPresentationPlan(
+    contentId: string,
+    sourceMaterialId: string,
+    prepareQuestionBank = true,
+    onProgress?: (job: PresentationPlanJob) => void,
+  ) {
+    const query = new URLSearchParams({
+      source_material_id: sourceMaterialId,
+      prepare_question_bank: String(prepareQuestionBank),
+    });
+    const created = await request<PresentationPlanJob>(
+      `/api/v1/learning-contents/${contentId}/source-deck-presentation-plan-jobs?${query}`,
+      { method: "POST" },
+    );
+    onProgress?.(created);
+    const finished = await api.waitForPresentationPlanJob(created.id, onProgress);
+    return request<PresentationPlan>(`/api/v1/presentation-plan-jobs/${finished.id}/result`);
+  },
+  updateSlideSpeakerScript(planId: string, slideId: string, speakerScript: string) {
+    return request<PresentationPlan>(
+      `/api/v1/presentation-plans/${planId}/slides/${slideId}/speaker-script`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ speaker_script: speakerScript }),
+      },
+    );
+  },
+  getPresentationResource(planId: string) {
+    return request<PresentationResource>(`/api/v1/presentation-plans/${planId}/resource`);
+  },
+  presentationResourceImage(imageUrl: string) {
+    if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
+    return `${API_BASE}${imageUrl}`;
+  },
   async generatePptForPlan(
     planId: string,
     themeId: string,
@@ -347,6 +487,18 @@ export const api = {
   getPptJob(jobId: string) {
     return request<PPTGenerationJob>(`/api/v1/ppt-jobs/${jobId}`);
   },
+  listPptJobs() {
+    return request<PPTGenerationJob[]>("/api/v1/ppt-jobs");
+  },
+  pausePptJob(jobId: string) {
+    return request<PPTGenerationJob>(`/api/v1/ppt-jobs/${jobId}/pause`, { method: "POST" });
+  },
+  resumePptJob(jobId: string) {
+    return request<PPTGenerationJob>(`/api/v1/ppt-jobs/${jobId}/resume`, { method: "POST" });
+  },
+  discardPptJob(jobId: string) {
+    return request<void>(`/api/v1/ppt-jobs/${jobId}`, { method: "DELETE" });
+  },
   async waitForPptJob(
     jobId: string,
     onProgress?: (job: PPTGenerationJob) => void,
@@ -358,11 +510,27 @@ export const api = {
       if (job.status === "failed") {
         throw new Error(job.error ?? "PPT 生成失败");
       }
+      if (job.status === "paused") throw new Error("任务已暂停，进度已经保存");
       await wait(1500);
     }
   },
   getPresentationPlanJob(jobId: string) {
     return request<PresentationPlanJob>(`/api/v1/presentation-plan-jobs/${jobId}`);
+  },
+  listPresentationPlanJobs() {
+    return request<PresentationPlanJob[]>("/api/v1/presentation-plan-jobs");
+  },
+  getPresentationPlanJobResult(jobId: string) {
+    return request<PresentationPlan>(`/api/v1/presentation-plan-jobs/${jobId}/result`);
+  },
+  pausePresentationPlanJob(jobId: string) {
+    return request<PresentationPlanJob>(`/api/v1/presentation-plan-jobs/${jobId}/pause`, { method: "POST" });
+  },
+  resumePresentationPlanJob(jobId: string) {
+    return request<PresentationPlanJob>(`/api/v1/presentation-plan-jobs/${jobId}/resume`, { method: "POST" });
+  },
+  discardPresentationPlanJob(jobId: string) {
+    return request<void>(`/api/v1/presentation-plan-jobs/${jobId}`, { method: "DELETE" });
   },
   async waitForPresentationPlanJob(
     jobId: string,
@@ -375,12 +543,14 @@ export const api = {
       if (job.status === "failed") {
         throw new Error(job.error ?? "PPT 规划生成任务失败");
       }
+      if (job.status === "paused") throw new Error("任务已暂停，进度已经保存");
       await wait(1500);
     }
   },
-  next(sessionId: string) {
+  next(sessionId: string, expectedVersion: number) {
     return request<ControllerResult>(`/api/v1/classroom-sessions/${sessionId}/next`, {
       method: "POST",
+      headers: classroomCommandHeaders(expectedVersion),
     });
   },
   navigate(sessionId: string, direction: "previous" | "next") {
@@ -389,22 +559,23 @@ export const api = {
       { method: "POST" },
     );
   },
-  autoStep(sessionId: string) {
+  autoStep(sessionId: string, expectedVersion: number) {
     return request<AutoClassroomStep>(`/api/v1/classroom-sessions/${sessionId}/auto-step`, {
       method: "POST",
+      headers: classroomCommandHeaders(expectedVersion),
     });
   },
-  answer(sessionId: string, selectedIndex: number) {
+  answer(sessionId: string, selectedIndex: number, expectedVersion: number) {
     return request<ControllerResult>(`/api/v1/classroom-sessions/${sessionId}/answers`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...classroomCommandHeaders(expectedVersion) },
       body: JSON.stringify({ selected_index: selectedIndex }),
     });
   },
-  ask(sessionId: string, question: string) {
+  ask(sessionId: string, question: string, expectedVersion: number) {
     return request<ControllerResult>(`/api/v1/classroom-sessions/${sessionId}/questions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...classroomCommandHeaders(expectedVersion) },
       body: JSON.stringify({ question }),
     });
   },

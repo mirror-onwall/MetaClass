@@ -14,24 +14,19 @@ import {
   type NarrationCue,
   useTTSNarration,
 } from "./features/video/useTTSNarration";
-import atmosphereAvatar from "./assets/agents/atmosphere-regulator.png";
-import conceptConfusedAvatar from "./assets/agents/concept-confused.png";
-import deepThinkerAvatar from "./assets/agents/deep-thinker.png";
-import foundationWeakAvatar from "./assets/agents/foundation-weak.png";
-import noteTakerAvatar from "./assets/agents/note-taker.png";
-import practicalApplierAvatar from "./assets/agents/practical-applier.png";
-import researcherAvatar from "./assets/agents/researcher.png";
-import silentObserverAvatar from "./assets/agents/silent-observer.png";
 import teacherQianqianAvatar from "./assets/agents/teacher-qianqian.png";
 import { api } from "./shared/api";
 import { formatBytes } from "./shared/format";
+import { defaultStudentAgentTypes, studentAgentChoices } from "./shared/studentAgents";
 import type {
   ClassroomSession,
   ClassroomPlanJob,
   ContentGenerationJob,
   CourseKnowledgeTreeNode,
+  KnowledgeUnit,
   DirectedAgentTurn,
   LearningContent,
+  LearningSection,
   LearningMode,
   Material,
   MaterialCollection,
@@ -41,6 +36,8 @@ import type {
   PPTGenerationJob,
   PPTThemeOption,
   PresentationPlan,
+  PresentationResource,
+  PresentationSlideDisplay,
   PresentationPlanJob,
   StudentAgentType,
   TeachingAction,
@@ -185,106 +182,78 @@ function classroomPlanProgressLabel(job: ClassroomPlanJob): string {
   return classroomPlanStepLabels[job.step] ?? "正在生成课堂计划";
 }
 
-const studentAgentChoices: Array<{
-  type: StudentAgentType;
-  name: string;
-  description: string;
-  studentName: string;
-  gender: string;
-  profile: string;
-  avatar: string;
-}> = [
-  {
-    type: "classroom_atmosphere_regulator",
-    name: "课堂气氛调节者",
-    description: "活跃氛围，用类比打开话题",
-    studentName: "凡凡",
-    gender: "男",
-    profile: "善于把抽象概念换成生活里的小例子，也会鼓励不敢发言的同学加入讨论。",
-    avatar: atmosphereAvatar,
-  },
-  {
-    type: "deep_thinker",
-    name: "深度思考者",
-    description: "追问原因、边界与反例",
-    studentName: "浩浩",
-    gender: "男",
-    profile: "习惯从前提、条件和反例出发追问，喜欢把一个结论推到更深的边界处。",
-    avatar: deepThinkerAvatar,
-  },
-  {
-    type: "note_taker",
-    name: "课堂笔记员",
-    description: "提炼重点，整理可复习笔记",
-    studentName: "婧婧",
-    gender: "女",
-    profile: "会把讲解整理为定义、例子和易错点三类笔记，擅长在阶段结束时复述重点。",
-    avatar: noteTakerAvatar,
-  },
-  {
-    type: "researcher",
-    name: "研究型同学",
-    description: "连接应用场景与研究方法",
-    studentName: "涵涵",
-    gender: "女",
-    profile: "对研究问题和方法格外敏感，常会把当前知识点连接到实验设计和真实研究场景。",
-    avatar: researcherAvatar,
-  },
-  {
-    type: "foundation_weak",
-    name: "基础薄弱型同学",
-    description: "提出基础问题，帮助发现学习门槛",
-    studentName: "琪琪",
-    gender: "男",
-    profile: "愿意直接说出没听懂的地方，容易卡在前置概念，需要清晰的分步解释和小例子。",
-    avatar: foundationWeakAvatar,
-  },
-  {
-    type: "silent_observer",
-    name: "沉默观察型同学",
-    description: "低频发言，在关键处表达困惑",
-    studentName: "跳跳",
-    gender: "女",
-    profile: "平时安静地观察课堂节奏，通常在被邀请或出现关键困惑时，给出简短但真实的反馈。",
-    avatar: silentObserverAvatar,
-  },
-  {
-    type: "concept_confused",
-    name: "概念混淆型同学",
-    description: "暴露典型误解，触发辨析讲解",
-    studentName: "昊昊",
-    gender: "男",
-    profile: "容易把相近概念放在一起理解，但正好能暴露典型误解，推动老师进行对比辨析。",
-    avatar: conceptConfusedAvatar,
-  },
-  {
-    type: "practical_applier",
-    name: "实践应用型同学",
-    description: "关注怎么用、在哪里用",
-    studentName: "包包",
-    gender: "女",
-    profile: "最关心知识怎样落到真实任务里，会追问具体做法、使用条件和可操作的步骤。",
-    avatar: practicalApplierAvatar,
-  },
-];
-
-const defaultStudentAgentTypes: StudentAgentType[] = studentAgentChoices.map(
-  (student) => student.type,
-);
-
 const knowledgeTreeRoleLabels: Record<string, string> = {
   foundation: "基础概念",
   concept: "核心概念",
   method: "方法步骤",
   process: "过程机制",
+  mechanism: "作用机制",
+  derivation: "推导过程",
+  comparison: "对比辨析",
+  motivation: "学习动机",
+  orientation: "章节导入",
   application: "应用场景",
   example: "案例说明",
+  formula: "公式原理",
+  case: "综合案例",
+  practice: "练习实践",
+  summary: "总结回顾",
+  reference: "参考资料",
   assessment: "检测评价",
   extension: "拓展关联",
+  "导入与概览": "导入与概览",
+  "概念讲解": "概念讲解",
+  "方法基础": "方法基础",
+  "分类框架": "分类框架",
+  "核心方法": "核心方法",
+  "总结与拓展": "总结与拓展",
 };
 
 function formatKnowledgeTreeRole(role: string) {
   return knowledgeTreeRoleLabels[role] ?? role;
+}
+
+function formatPageRange(refs: Array<{ page_no: number }> | undefined) {
+  const pages = [...new Set((refs ?? []).map((ref) => ref.page_no))].sort((a, b) => a - b);
+  if (!pages.length) return "未绑定页面";
+  return pages.length === 1 ? `第 ${pages[0]} 页` : `第 ${pages[0]}–${pages.at(-1)} 页`;
+}
+
+function sectionPageRefs(section: LearningSection) {
+  return section.page_refs?.length ? section.page_refs : section.source_refs;
+}
+
+function OutlineSection({ section, index, full = false }: {
+  section: LearningSection;
+  index: number;
+  full?: boolean;
+}) {
+  const segments = section.segments ?? [];
+  return (
+    <article className={full ? "outline-section-card" : "outline-section-compact"}>
+      <span>{full ? String(index + 1).padStart(2, "0") : index + 1}</span>
+      <div>
+        <small>{formatPageRange(sectionPageRefs(section))} · {formatKnowledgeTreeRole(section.role ?? "concept")}</small>
+        <h3>{section.title}</h3>
+        {section.content_goal && <p><strong>学习目标</strong>{section.content_goal}</p>}
+        {section.summary && <p>{section.summary}</p>}
+        {segments.length > 0 && (
+          <ol className="teaching-segment-list">
+            {segments.map((segment, segmentIndex) => (
+              <li key={segment.id}>
+                <span>{index + 1}.{segmentIndex + 1}</span>
+                <div>
+                  <b>{segment.title}</b>
+                  <small>{formatPageRange(segment.page_refs)} · {segment.knowledge_unit_ids.length} 个核心知识单元</small>
+                  {segment.teaching_goal && <p>{segment.teaching_goal}</p>}
+                </div>
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+    </article>
+  );
 }
 
 type KnowledgeTreeBranchProps = {
@@ -293,6 +262,7 @@ type KnowledgeTreeBranchProps = {
   depth: number;
   childrenByParent: Map<string, CourseKnowledgeTreeNode[]>;
   nodeById: Map<string, CourseKnowledgeTreeNode>;
+  knowledgeUnitsById: Map<string, KnowledgeUnit>;
 };
 
 function KnowledgeTreeBranch({
@@ -301,10 +271,17 @@ function KnowledgeTreeBranch({
   depth,
   childrenByParent,
   nodeById,
+  knowledgeUnitsById,
 }: KnowledgeTreeBranchProps) {
   const childNodes = childrenByParent.get(node.id) ?? [];
   const prerequisites = node.prerequisite_node_ids
     .map((nodeId) => nodeById.get(nodeId)?.title)
+    .filter((title): title is string => Boolean(title));
+  const knowledgeUnit = node.node_type === "knowledge_unit" && node.ref_id
+    ? knowledgeUnitsById.get(node.ref_id)
+    : undefined;
+  const relatedUnits = (knowledgeUnit?.relations ?? [])
+    .map((relation) => knowledgeUnitsById.get(relation.target_unit_id)?.title)
     .filter((title): title is string => Boolean(title));
 
   return (
@@ -318,8 +295,17 @@ function KnowledgeTreeBranch({
           </div>
           {node.summary && <p>{node.summary}</p>}
           <div className="knowledge-tree-meta">
-            <span>{node.knowledge_unit_ids.length} 个知识单元</span>
+            {node.node_type === "section" && <span>{childNodes.length} 个教学段</span>}
+            {node.node_type === "segment" && <span>{childNodes.length} 个知识单元</span>}
+            {!node.node_type && <span>{node.knowledge_unit_ids.length} 个知识单元</span>}
+            {!!node.page_refs?.length && <span>来源：{formatPageRange(node.page_refs)}</span>}
             {prerequisites.length > 0 && <span>前置：{prerequisites.join(" / ")}</span>}
+            {relatedUnits.length > 0 && <span>关联：{relatedUnits.join(" / ")}</span>}
+            {knowledgeUnit && (
+              <span>
+                公式 {knowledgeUnit.formulas?.length ?? 0} · 案例 {knowledgeUnit.examples?.length ?? 0} · 误区 {knowledgeUnit.misconceptions?.length ?? 0}
+              </span>
+            )}
           </div>
         </div>
       </div>
@@ -333,6 +319,7 @@ function KnowledgeTreeBranch({
               depth={depth + 1}
               childrenByParent={childrenByParent}
               nodeById={nodeById}
+              knowledgeUnitsById={knowledgeUnitsById}
             />
           ))}
         </ol>
@@ -348,12 +335,17 @@ type RuntimeWorkspace = {
   material: Material | null;
   materials: Material[];
   materialCollection: MaterialCollection | null;
+  materialProcessingJob: MaterialProcessingJob | null;
   pages: PageMetadata[];
   content: LearningContent | null;
+  contentJob: ContentGenerationJob | null;
   presentationPlan: PresentationPlan | null;
+  presentationPlanJob: PresentationPlanJob | null;
+  pptJob: PPTGenerationJob | null;
   presentationArtifact: PPTArtifact | null;
-  presentationSlideImages: Record<number, string>;
+  presentationSlideImages: Record<number, PresentationSlideDisplay>;
   session: ClassroomSession | null;
+  classroomPlanJob: ClassroomPlanJob | null;
   classroomPlanIds: Partial<Record<LearningMode, string>>;
   action: TeachingAction | null;
   currentSlide: { src: string; pageNo: number; generated: boolean } | null;
@@ -401,6 +393,7 @@ function actionNarrationCue(
   };
   if (
     action.type === "SHOW_PAGE"
+    || action.type === "SHOW_SLIDE"
     || action.type === "END"
     || action.type === "GIVE_FEEDBACK"
     || action.type === "STUDENT_QUESTION"
@@ -462,11 +455,57 @@ function sourceSlideImages(
     const section = learningContent.sections.find((item) =>
       slide.source_section_ids.includes(item.id)
     );
-    const pageNo = section?.source_refs[0]?.page_no
+    const pageNo = slide.source_page_no
+      ?? section?.source_refs[0]?.page_no
       ?? sourcePages[Math.min(index, Math.max(0, sourcePages.length - 1))]?.page_no
       ?? 1;
-    return [slide.order, api.pageImage(sourceMaterial.id, pageNo)];
+    return [slide.order, {
+      src: api.pageImage(sourceMaterial.id, pageNo),
+      kind: "source" as const,
+    }];
   }));
+}
+
+function presentationResourceSlideImages(resource: PresentationResource) {
+  return Object.fromEntries(
+    resource.slides
+      .filter((slide) => slide.image_url)
+      .map((slide) => [
+        slide.order,
+        {
+          src: api.presentationResourceImage(slide.image_url!),
+          kind: slide.kind,
+        },
+      ]),
+  );
+}
+
+function normalizePresentationSlideImages(
+  images: unknown,
+  mode?: PresentationPlan["mode"],
+): Record<number, PresentationSlideDisplay> {
+  if (!images || typeof images !== "object") return {};
+  return Object.fromEntries(
+    Object.entries(images).flatMap(([pageNo, image]) => {
+      if (typeof image === "string") {
+        return [[pageNo, {
+          src: image,
+          kind: mode === "source_deck" ? "source" as const : "generated" as const,
+        }]];
+      }
+      if (
+        image
+        && typeof image === "object"
+        && "src" in image
+        && typeof image.src === "string"
+        && "kind" in image
+        && (image.kind === "source" || image.kind === "generated")
+      ) {
+        return [[pageNo, image as PresentationSlideDisplay]];
+      }
+      return [];
+    }),
+  );
 }
 
 function App() {
@@ -481,23 +520,41 @@ function App() {
   const [material, setMaterial] = useState<Material | null>(runtimeWorkspace.material ?? null);
   const [materials, setMaterials] = useState<Material[]>(runtimeWorkspace.materials ?? []);
   const [materialCollection, setMaterialCollection] = useState<MaterialCollection | null>(runtimeWorkspace.materialCollection ?? null);
-  const [materialProcessingJob, setMaterialProcessingJob] = useState<MaterialProcessingJob | null>(null);
+  const [materialProcessingJob, setMaterialProcessingJob] = useState<MaterialProcessingJob | null>(runtimeWorkspace.materialProcessingJob ?? null);
   const [pages, setPages] = useState<PageMetadata[]>(runtimeWorkspace.pages ?? []);
   const [content, setContent] = useState<LearningContent | null>(runtimeWorkspace.content ?? null);
-  const [contentJob, setContentJob] = useState<ContentGenerationJob | null>(null);
+  const [contentJob, setContentJob] = useState<ContentGenerationJob | null>(runtimeWorkspace.contentJob ?? null);
   const [contentView, setContentView] = useState<"outline" | "tree" | "quality">("outline");
+  const [fullPageView, setFullPageView] = useState<"outline" | "tree" | "scripts" | null>(null);
   const [selectedKnowledgeTreeNodeId, setSelectedKnowledgeTreeNodeId] = useState<string | null>(null);
   const [presentationPlan, setPresentationPlan] = useState<PresentationPlan | null>(runtimeWorkspace.presentationPlan ?? null);
-  const [presentationPlanJob, setPresentationPlanJob] = useState<PresentationPlanJob | null>(null);
-  const [pptJob, setPptJob] = useState<PPTGenerationJob | null>(null);
+  const [presentationMode, setPresentationMode] = useState<"generated" | "source_deck">(
+    runtimeWorkspace.presentationPlan?.mode
+      ?? (runtimeWorkspace.content ? "source_deck" : "generated"),
+  );
+  const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
+  const [editingScript, setEditingScript] = useState("");
+  const [presentationPlanJob, setPresentationPlanJob] = useState<PresentationPlanJob | null>(runtimeWorkspace.presentationPlanJob ?? null);
+  const [pptJob, setPptJob] = useState<PPTGenerationJob | null>(runtimeWorkspace.pptJob ?? null);
   const [pptThemes, setPptThemes] = useState<PPTThemeOption[]>(fallbackPptThemes);
   const [pptThemeId, setPptThemeId] = useState(() =>
     window.localStorage.getItem("metaclass-ppt-theme") || defaultPptThemeId,
   );
-  const [classroomPlanJob, setClassroomPlanJob] = useState<ClassroomPlanJob | null>(null);
+  const [classroomPlanJob, setClassroomPlanJob] = useState<ClassroomPlanJob | null>(
+    runtimeWorkspace.classroomPlanJob ?? null,
+  );
   const [presentationArtifact, setPresentationArtifact] = useState<PPTArtifact | null>(runtimeWorkspace.presentationArtifact ?? null);
-  const [presentationSlideImages, setPresentationSlideImages] = useState<Record<number, string>>(runtimeWorkspace.presentationSlideImages ?? {});
-  const [session, setSession] = useState<ClassroomSession | null>(runtimeWorkspace.session ?? null);
+  const [presentationSlideImages, setPresentationSlideImages] = useState<Record<number, PresentationSlideDisplay>>(
+    normalizePresentationSlideImages(
+      runtimeWorkspace.presentationSlideImages,
+      runtimeWorkspace.presentationPlan?.mode,
+    ),
+  );
+  const [session, setSession] = useState<ClassroomSession | null>(
+    runtimeWorkspace.session
+      ? { ...runtimeWorkspace.session, version: runtimeWorkspace.session.version ?? 0 }
+      : null,
+  );
   const [classroomPlanIds, setClassroomPlanIds] = useState<Partial<Record<LearningMode, string>>>(
     runtimeWorkspace.classroomPlanIds ?? (
       runtimeWorkspace.session
@@ -569,16 +626,145 @@ function App() {
   }, [pptThemeId]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    async function restoreBackendState() {
+      if (runtimeWorkspace.session?.id) {
+        api.getClassroomSession(runtimeWorkspace.session.id)
+          .then((latest) => { if (!cancelled) setSession(latest); })
+          .catch(() => undefined);
+      }
+
+      const savedMaterialJob = runtimeWorkspace.materialProcessingJob;
+      if (savedMaterialJob?.id) {
+        try {
+          const latest = await api.getMaterialProcessingJob(savedMaterialJob.id);
+          if (cancelled) return;
+          setMaterialProcessingJob(latest);
+          if (["queued", "running"].includes(latest.status)) {
+            const result = await api.waitForMaterialProcessingJob(latest.id, (job) => {
+              if (!cancelled) setMaterialProcessingJob(job);
+            });
+            if (!cancelled) {
+              setMaterials(result.items.map((item) => item.material));
+              setMaterialCollection(result.collection ?? null);
+              setMaterial(result.items[0]?.material ?? null);
+              setPages(result.items[0]?.pages ?? []);
+            }
+          } else if (latest.status === "succeeded") {
+            const result = await api.getMaterialProcessingJobResult(latest.id);
+            if (!cancelled) {
+              setMaterials(result.items.map((item) => item.material));
+              setMaterialCollection(result.collection ?? null);
+              setMaterial(result.items[0]?.material ?? null);
+              setPages(result.items[0]?.pages ?? []);
+            }
+          }
+        } catch {
+          // The latest job state remains visible for explicit retry or discard.
+        }
+      }
+
+      const savedContentJob = runtimeWorkspace.contentJob;
+      if (savedContentJob?.id) {
+        try {
+          const latest = await api.getContentGenerationJob(savedContentJob.id);
+          if (cancelled) return;
+          setContentJob(latest);
+          if (["queued", "running"].includes(latest.status)) {
+            const result = await api.waitForContentGenerationJob(latest.id, (job) => {
+              if (!cancelled) setContentJob(job);
+            });
+            if (!cancelled) setContent(result);
+          } else if (latest.status === "succeeded") {
+            const result = await api.getContentGenerationJobResult(latest.id);
+            if (!cancelled) setContent(result);
+          }
+        } catch {
+          // A paused/failed task is kept in the workspace for the user's decision.
+        }
+      }
+
+      const savedPlanJob = runtimeWorkspace.presentationPlanJob;
+      if (savedPlanJob?.id) {
+        try {
+          let latest = await api.getPresentationPlanJob(savedPlanJob.id);
+          if (cancelled) return;
+          setPresentationPlanJob(latest);
+          if (["queued", "running"].includes(latest.status)) {
+            latest = await api.waitForPresentationPlanJob(latest.id, (job) => {
+              if (!cancelled) setPresentationPlanJob(job);
+            });
+          }
+          if (latest.status === "succeeded") {
+            const plan = await api.getPresentationPlanJobResult(latest.id);
+            if (!cancelled) {
+              setPresentationPlan(plan);
+              const resource = await api.getPresentationResource(plan.id);
+              if (!cancelled) setPresentationSlideImages(presentationResourceSlideImages(resource));
+            }
+          }
+        } catch {
+          // A paused/failed task is kept in the workspace for the user's decision.
+        }
+      }
+
+      const savedPptJob = runtimeWorkspace.pptJob;
+      if (savedPptJob?.id) {
+        try {
+          let latest = await api.getPptJob(savedPptJob.id);
+          if (cancelled) return;
+          setPptJob(latest);
+          if (["queued", "running", "waiting_for_skill"].includes(latest.status)) {
+            latest = await api.waitForPptJob(latest.id, (job) => {
+              if (!cancelled) setPptJob(job);
+            });
+          }
+          if (latest.status === "finished" && latest.artifact_id) {
+            const artifact = await api.getPptArtifact(latest.artifact_id);
+            if (!cancelled) setPresentationArtifact(artifact);
+          }
+        } catch {
+          // A paused/failed task is kept in the workspace for the user's decision.
+        }
+      }
+    }
+
+    void restoreBackendState();
+    return () => { cancelled = true; };
+  }, [runtimeWorkspace]);
+
+  useEffect(() => {
+    if (!content || !presentationPlan || session || classroomPlanJob) return;
+    let cancelled = false;
+    api.getLatestClassroomPlanJob(content.id, presentationPlan.id)
+      .then((job) => {
+        if (!cancelled && job.status !== "failed") setClassroomPlanJob(job);
+      })
+      .catch(() => {
+        // No prior classroom task exists for this content and presentation plan.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [classroomPlanJob, content, presentationPlan, session]);
+
+  useEffect(() => {
     const snapshot: RuntimeWorkspace = {
       material,
       materials,
       materialCollection,
+      materialProcessingJob,
       pages,
       content,
+      contentJob,
       presentationPlan,
+      presentationPlanJob,
+      pptJob,
       presentationArtifact,
       presentationSlideImages,
       session,
+      classroomPlanJob,
       classroomPlanIds,
       action,
       currentSlide,
@@ -598,18 +784,23 @@ function App() {
     action,
     agentTurn,
     content,
+    contentJob,
     currentSlide,
     feedback,
     learningMode,
     material,
     materialCollection,
+    materialProcessingJob,
     materials,
     pages,
     presentationArtifact,
     presentationPlan,
+    presentationPlanJob,
+    pptJob,
     presentationSlideImages,
     session,
     classroomPlanIds,
+    classroomPlanJob,
     studentAgentTypes,
     video,
   ]);
@@ -642,7 +833,12 @@ function App() {
   const knowledgeTreeModel = useMemo(() => {
     const nodeById = new Map<string, CourseKnowledgeTreeNode>();
     const childrenByParent = new Map<string, CourseKnowledgeTreeNode[]>();
-    if (!content?.knowledge_tree) return { rootNodes: [], nodeById, childrenByParent };
+    const knowledgeUnitsById = new Map(
+      (content?.knowledge_units ?? []).map((unit) => [unit.id, unit]),
+    );
+    if (!content?.knowledge_tree) {
+      return { rootNodes: [], nodeById, childrenByParent, knowledgeUnitsById };
+    }
 
     content.knowledge_tree.nodes.forEach((node) => {
       nodeById.set(node.id, node);
@@ -658,7 +854,7 @@ function App() {
       .map((nodeId) => nodeById.get(nodeId))
       .filter((node): node is CourseKnowledgeTreeNode => Boolean(node))
       .sort((left, right) => left.order - right.order);
-    return { rootNodes, nodeById, childrenByParent };
+    return { rootNodes, nodeById, childrenByParent, knowledgeUnitsById };
   }, [content]);
   const selectedKnowledgeTreeNode = selectedKnowledgeTreeNodeId
     ? knowledgeTreeModel.nodeById.get(selectedKnowledgeTreeNodeId) ?? null
@@ -840,8 +1036,8 @@ function App() {
     return () => {
       cancelled = true;
     };
-  // currentSlide is updated as a consequence of SHOW_PAGE. Depending on it here
-  // cancels the short SHOW_PAGE beat before autoStep can advance, while the same
+  // currentSlide is updated as a consequence of SHOW_SLIDE/SHOW_PAGE. Depending on it here
+  // cancels the short slide beat before autoStep can advance, while the same
   // action has already been marked narrated. Keep slide rendering independent
   // from the classroom playback state machine.
   }, [action, agentTurn, playbackTrigger, presentationPlan, session]);
@@ -853,27 +1049,36 @@ function App() {
   }, [feedback]);
 
   useEffect(() => {
-    if (!action || action.type !== "SHOW_PAGE") return;
+    if (!action || (action.type !== "SHOW_PAGE" && action.type !== "SHOW_SLIDE")) return;
     displayPage(action);
   }, [action, material, presentationSlideImages]);
 
-  function displayPage(pageAction: Extract<TeachingAction, { type: "SHOW_PAGE" }>) {
-    const pageNo = pageAction.payload.slide_no ?? pageAction.payload.source_ref.page_no;
-    const generatedImage = presentationSlideImages[pageNo];
-    const generatedPages = Object.keys(presentationSlideImages)
+  function displayPage(
+    pageAction: Extract<TeachingAction, { type: "SHOW_PAGE" | "SHOW_SLIDE" }>,
+  ) {
+    const pageNo = pageAction.type === "SHOW_SLIDE"
+      ? pageAction.payload.slide_no
+      : pageAction.payload.slide_no ?? pageAction.payload.source_ref.page_no;
+    const slideImage = presentationSlideImages[pageNo];
+    const availablePages = Object.keys(presentationSlideImages)
       .map(Number)
       .sort((left, right) => left - right);
-    if (generatedPages.length) {
-      if (generatedImage) {
-        setCurrentSlide({ src: generatedImage, pageNo, generated: true });
+    if (availablePages.length) {
+      if (slideImage) {
+        setCurrentSlide({
+          src: slideImage.src,
+          pageNo,
+          generated: slideImage.kind === "generated",
+        });
       } else {
         setCurrentSlide((previous) => {
-          if (previous?.generated) return previous;
-          const fallbackPage = generatedPages.at(-1)!;
+          if (previous) return previous;
+          const fallbackPage = availablePages.at(-1)!;
+          const fallbackImage = presentationSlideImages[fallbackPage];
           return {
-            src: presentationSlideImages[fallbackPage],
+            src: fallbackImage.src,
             pageNo: fallbackPage,
-            generated: true,
+            generated: fallbackImage.kind === "generated",
           };
         });
       }
@@ -881,9 +1086,9 @@ function App() {
     }
     const fallbackImage = material ? api.pageImage(material.id, pageNo) : "";
     setCurrentSlide({
-      src: generatedImage ?? fallbackImage,
+      src: fallbackImage,
       pageNo,
-      generated: Boolean(generatedImage),
+      generated: false,
     });
   }
 
@@ -894,7 +1099,7 @@ function App() {
       return await task();
     } catch (caught) {
       const message = caught instanceof Error ? caught.message : "发生未知错误";
-      if (message !== "材料处理已取消") setError(message);
+      if (message !== "材料处理已取消" && message !== "任务已暂停，进度已经保存") setError(message);
       return undefined;
     } finally {
       setBusy(null);
@@ -927,13 +1132,18 @@ function App() {
     setContent(null);
     setContentJob(null);
     setContentView("outline");
+    setFullPageView(null);
     setPresentationPlan(null);
+    setPresentationMode("generated");
+    setEditingSlideId(null);
+    setEditingScript("");
     setPresentationPlanJob(null);
     setPptJob(null);
     setClassroomPlanJob(null);
     setPresentationArtifact(null);
     setPresentationSlideImages({});
     setSession(null);
+    setStudentAgentTypes(defaultStudentAgentTypes);
     setClassroomPlanIds({});
     setAction(null);
     setCurrentSlide(null);
@@ -955,7 +1165,7 @@ function App() {
     setActivePage("classroom");
   }
 
-  function openLibraryAsset(asset: {
+  async function openLibraryAsset(asset: {
     material: Material;
     pages: PageMetadata[];
     content: LearningContent;
@@ -969,18 +1179,27 @@ function App() {
     setPages(asset.pages);
     setContent(asset.content);
     setPresentationPlan(asset.presentationPlan ?? null);
+    setPresentationMode(asset.presentationPlan?.mode ?? "generated");
     setPresentationArtifact(asset.presentationArtifact ?? null);
     if (asset.presentationPlan) {
-      const images = asset.presentationArtifact
-        ? Object.fromEntries(asset.presentationArtifact.slide_images.map((slide) => [
-            slide.slide_no,
-            api.pptSlideImage(asset.presentationArtifact!.id, slide.slide_no),
-          ]))
-        : sourceSlideImages(asset.presentationPlan, asset.content, asset.material, asset.pages);
+      const resource = await api.getPresentationResource(asset.presentationPlan.id);
+      const resourceImages = presentationResourceSlideImages(resource);
+      const images = Object.keys(resourceImages).length
+        ? resourceImages
+        : asset.presentationArtifact
+          ? Object.fromEntries(asset.presentationArtifact.slide_images.map((slide) => [
+              slide.slide_no,
+              {
+                src: api.pptSlideImage(asset.presentationArtifact!.id, slide.slide_no),
+                kind: "generated" as const,
+              },
+            ]))
+          : sourceSlideImages(asset.presentationPlan, asset.content, asset.material, asset.pages);
       setPresentationSlideImages(images);
     }
     setSession(asset.session ?? null);
     if (asset.session) {
+      setStudentAgentTypes(asset.session.student_states.map((student) => student.agent_type));
       setLearningMode(asset.session.mode);
       setClassroomPlanIds({ [asset.session.mode]: asset.session.plan_id });
       setAutoPlaying(true);
@@ -1007,18 +1226,18 @@ function App() {
     }
   }
 
-  async function cancelMaterialProcessing() {
+  async function pauseMaterialProcessing() {
     const job = materialProcessingJob;
-    if (!job || job.status === "succeeded" || job.status === "failed" || job.status === "canceled") return;
+    if (!job || job.status === "succeeded" || job.status === "failed" || job.status === "paused" || job.status === "canceled") return;
     try {
-      await api.cancelMaterialProcessingJob(job.id);
+      const paused = await api.pauseMaterialProcessingJob(job.id);
+      setMaterialProcessingJob(paused);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "取消材料处理失败");
+      setError(caught instanceof Error ? caught.message : "暂停材料处理失败");
       return;
     }
-    reset();
     setBusy(null);
-    setFeedback("已停止并取消本次材料处理，可以重新选择资料。");
+    setFeedback("已停止等待；后端将在当前解析操作结束后保存并暂停。之后可以从中断处继续。");
   }
 
   function terminateCurrentMaterial() {
@@ -1043,27 +1262,135 @@ function App() {
     if (!material) return;
     setContentJob(null);
     const result = await run("正在组织学习内容", () =>
-      materialCollection
+      presentationMode === "source_deck"
+        ? api.buildSourceDeckContent(material.id, setContentJob)
+        : materialCollection
         ? api.buildCollectionContent(materialCollection.id, setContentJob)
         : api.buildContent(material.id, setContentJob),
     );
-    if (result) setContent(result);
+    if (result) {
+      setContent(result);
+      setFeedback(
+        presentationMode === "source_deck"
+          ? "原稿讲解路线的 LearningContent 已完成，下一步生成逐页讲稿。"
+          : "重新生成 PPT 路线的 LearningContent 已完成，下一步生成 PresentationPlan。",
+      );
+    }
+  }
+
+  async function pauseCurrentContentWork() {
+    try {
+      if (contentJob && ["queued", "running"].includes(contentJob.status)) {
+        setContentJob(await api.pauseContentGenerationJob(contentJob.id));
+      } else if (presentationPlanJob && ["queued", "running"].includes(presentationPlanJob.status)) {
+        setPresentationPlanJob(await api.pausePresentationPlanJob(presentationPlanJob.id));
+      } else if (pptJob && ["queued", "running", "waiting_for_skill"].includes(pptJob.status)) {
+        setPptJob(await api.pausePptJob(pptJob.id));
+      } else return;
+      setBusy(null);
+      setFeedback("已停止等待；当前模型请求返回并保存 checkpoint 后，任务会停在这里。");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "暂停任务失败");
+    }
+  }
+
+  async function resumePausedContentWork() {
+    if (materialProcessingJob?.status === "paused") {
+      const result = await run("正在从已保存进度继续解析材料", async () => {
+        await api.resumeMaterialProcessingJob(materialProcessingJob.id);
+        return api.waitForMaterialProcessingJob(materialProcessingJob.id, setMaterialProcessingJob);
+      });
+      if (result) {
+        setMaterials(result.items.map((item) => item.material));
+        setMaterialCollection(result.collection ?? null);
+        setMaterial(result.items[0]?.material ?? null);
+        setPages(result.items[0]?.pages ?? []);
+      }
+      return;
+    }
+    if (contentJob?.status === "paused") {
+      const result = await run("正在从已保存进度继续组织学习内容", async () => {
+        await api.resumeContentGenerationJob(contentJob.id);
+        return api.waitForContentGenerationJob(contentJob.id, setContentJob);
+      });
+      if (result) setContent(result);
+      return;
+    }
+    if (presentationPlanJob?.status === "paused") {
+      const plan = await run("正在从已保存 Segment 继续生成讲稿", async () => {
+        await api.resumePresentationPlanJob(presentationPlanJob.id);
+        const finished = await api.waitForPresentationPlanJob(presentationPlanJob.id, setPresentationPlanJob);
+        return api.getPresentationPlanJobResult(finished.id);
+      });
+      if (!plan) return;
+      setPresentationPlan(plan);
+      const resource = await api.getPresentationResource(plan.id);
+      setPresentationSlideImages(presentationResourceSlideImages(resource));
+      return;
+    }
+    if (pptJob?.status === "paused") {
+      const artifact = await run("正在恢复 PPT 生成", async () => {
+        await api.resumePptJob(pptJob.id);
+        const finished = await api.waitForPptJob(pptJob.id, setPptJob);
+        return api.getPptArtifact(finished.artifact_id!);
+      });
+      if (artifact) setPresentationArtifact(artifact);
+    }
+  }
+
+  async function discardPausedContentWork() {
+    if (!window.confirm("确定放弃并删除这次未完成的临时进度吗？已经正式完成的资料不会删除。")) return;
+    if (materialProcessingJob?.status === "paused") {
+      await api.discardMaterialProcessingJob(materialProcessingJob.id);
+      setMaterialProcessingJob(null);
+      setFiles([]);
+    } else if (contentJob?.status === "paused") {
+      await api.discardContentGenerationJob(contentJob.id);
+      setContentJob(null);
+    } else if (presentationPlanJob?.status === "paused") {
+      await api.discardPresentationPlanJob(presentationPlanJob.id);
+      setPresentationPlanJob(null);
+    } else if (pptJob?.status === "paused") {
+      await api.discardPptJob(pptJob.id);
+      setPptJob(null);
+    }
+    setFeedback("未完成的临时进度已删除。");
   }
 
   async function preparePresentationPlan() {
     if (!content || !material) return;
     setPresentationPlanJob(null);
-    const plan = await run("正在生成 PresentationPlan", () =>
-      api.createPresentationPlan(
-        content.id,
-        learningMode === "interactive",
-        setPresentationPlanJob,
-      ),
+    const useSourceDeck = presentationMode === "source_deck";
+    const plan = await run(
+      useSourceDeck ? "正在分析原 PPT 并生成逐页讲稿" : "正在生成 PresentationPlan",
+      () => useSourceDeck
+        ? api.createSourceDeckPresentationPlan(
+            content.id,
+            material.id,
+            true,
+            setPresentationPlanJob,
+          )
+        : api.createPresentationPlan(
+            content.id,
+            true,
+            setPresentationPlanJob,
+          ),
     );
     if (!plan) return;
     setPresentationPlan(plan);
-    setPresentationSlideImages(sourceSlideImages(plan, content, material, pages));
-    setFeedback("PresentationPlan 已保存。现在可以单独生成 PPT，或直接创建课堂剧本。");
+    setPresentationArtifact(null);
+    const resource = await api.getPresentationResource(plan.id);
+    const resourceImages = presentationResourceSlideImages(resource);
+    setPresentationSlideImages(
+      Object.keys(resourceImages).length
+        ? resourceImages
+        : sourceSlideImages(plan, content, material, pages),
+    );
+    setFeedback(
+      plan.mode === "source_deck"
+        ? "原 PPT 逐页讲稿已保存，可以直接创建课堂。"
+        : "PresentationPlan 已保存。现在可以单独生成 PPT，或直接创建课堂剧本。",
+    );
   }
 
   async function generatePresentationArtifact() {
@@ -1074,34 +1401,89 @@ function App() {
     );
     if (!artifact) return;
     setPresentationArtifact(artifact);
-    setPresentationSlideImages(Object.fromEntries(
-      artifact.slide_images.map((slide) => [
-        slide.slide_no,
-        api.pptSlideImage(artifact.id, slide.slide_no),
-      ]),
-    ));
+    const resource = await api.getPresentationResource(presentationPlan.id);
+    setPresentationSlideImages(presentationResourceSlideImages(resource));
     setFeedback("PPT 已生成并保存，可以继续创建课堂。");
+  }
+
+  function chooseAnotherPresentationRoute() {
+    if (session) return;
+    setContent(null);
+    setContentJob(null);
+    setPresentationPlan(null);
+    setPresentationPlanJob(null);
+    setPresentationArtifact(null);
+    setPresentationSlideImages({});
+    setPptJob(null);
+    setEditingSlideId(null);
+    setEditingScript("");
+    setFeedback("请从 LearningContent 构建前重新选择路线；原来保存的内容和计划不会被删除。");
+  }
+
+  async function saveSpeakerScript() {
+    if (!presentationPlan || !editingSlideId || !editingScript.trim()) return;
+    const updated = await run("正在保存逐页讲稿", () =>
+      api.updateSlideSpeakerScript(
+        presentationPlan.id,
+        editingSlideId,
+        editingScript.trim(),
+      ),
+    );
+    if (!updated) return;
+    setPresentationPlan(updated);
+    setFeedback("逐页讲稿已保存；之后创建的课堂会使用新讲稿。");
   }
 
   async function startClassroom() {
     if (!content || !presentationPlan) return;
+    if (presentationPlan.mode === "generated" && !presentationArtifact) {
+      setError("重新生成 PPT 模式需要先完成 PPT 生成，才能创建课堂。");
+      return;
+    }
+    const resource = await run("正在校验演示资源", () =>
+      api.getPresentationResource(presentationPlan.id),
+    );
+    if (!resource) return;
+    if (resource.is_stale) {
+      setError(`原 PPT 已发生变化，请重新生成演示计划（${resource.stale_reason ?? "资源失效"}）`);
+      return;
+    }
     narration.unlock();
-    setClassroomPlanJob(null);
     const result = await run(
-      learningMode === "interactive" ? "正在创建互动课堂剧本" : "正在创建连续讲解剧本",
+      classroomPlanJob && classroomPlanJob.status !== "failed"
+        ? "正在接回课堂创建任务"
+        : learningMode === "interactive"
+          ? "正在创建互动课堂剧本"
+          : "正在创建连续讲解剧本",
       async () => {
-      let classroomSession = await api.createSession(
-        content.id,
-        presentationPlan.id,
-        learningMode,
-        learningMode === "interactive" ? studentAgentTypes : [],
+      let reusableJob = classroomPlanJob;
+      if (
+        !reusableJob
+        || reusableJob.status === "failed"
+        || reusableJob.content_id !== content.id
+        || reusableJob.presentation_plan_id !== presentationPlan.id
+      ) {
+        reusableJob = await api.getLatestClassroomPlanJob(
+          content.id,
+          presentationPlan.id,
+        ).catch(() => null);
+      }
+      if (!reusableJob || reusableJob.status === "failed") {
+        reusableJob = await api.createClassroomPlanJob(
+          content.id,
+          presentationPlan.id,
+          setClassroomPlanJob,
+        );
+      }
+      const finishedJob = await api.waitForClassroomPlanJob(
+        reusableJob.id,
         setClassroomPlanJob,
       );
-      if (learningMode === "lecture") {
-        const lecturePlan = await api.createLectureVariant(classroomSession.plan_id);
-        classroomSession = await api.createSessionForPlan(lecturePlan.id, "lecture", []);
-      }
-      return classroomSession;
+      return api.createSessionForPlan(
+        finishedJob.plan_id,
+        learningMode,
+        studentAgentTypes,
+      );
     });
     if (result) {
       playbackVersionRef.current += 1;
@@ -1128,28 +1510,14 @@ function App() {
     if (!content || !presentationPlan) return;
     narration.stop();
     const nextSession = await run(
-      nextMode === "interactive" ? "正在增加互动课堂规划" : "正在提取连续讲解课堂",
+      nextMode === "interactive" ? "正在切换到互动课堂" : "正在切换到连续课堂",
       async () => {
-        const savedPlanId = classroomPlanIds[nextMode];
-        if (savedPlanId) {
-          return api.createSessionForPlan(
-            savedPlanId,
-            nextMode,
-            nextMode === "interactive" ? studentAgentTypes : [],
-          );
-        }
-        if (nextMode === "interactive") {
-          await api.generateQuestionBank(presentationPlan.id);
-          return api.createSession(
-            content.id,
-            presentationPlan.id,
-            "interactive",
-            studentAgentTypes,
-            setClassroomPlanJob,
-          );
-        }
-        const lecturePlan = await api.createLectureVariant(session.plan_id);
-        return api.createSessionForPlan(lecturePlan.id, "lecture", []);
+        return api.switchClassroomMode(
+          session.id,
+          nextMode,
+          session.version,
+          studentAgentTypes,
+        );
       },
     );
     if (!nextSession) return;
@@ -1158,11 +1526,9 @@ function App() {
     setLearningMode(nextMode);
     setSession(nextSession);
     setClassroomPlanIds((current) => ({ ...current, [nextMode]: nextSession.plan_id }));
-    setAction(null);
     setAgentTurn(null);
-    setCurrentSlide(null);
     setAutoPlaying(false);
-    setFeedback(nextMode === "interactive" ? "互动规划已增加，可以开始互动课堂。" : "已提取展示与讲解动作，可以开始连续课堂。");
+    setFeedback(nextMode === "interactive" ? "已启用题库和课堂互动。" : "已切换为连续讲解，题库和互动动作不会执行。");
     narratedStepRef.current = null;
   }
 
@@ -1184,11 +1550,6 @@ function App() {
 
   async function completeWorkspace() {
     if (!content || !presentationPlan) return;
-    const prepared = await run("正在完成并保存课堂", async () => {
-      const existing = await api.getQuestionBank(presentationPlan.id);
-      return existing.items.length ? existing : api.generateQuestionBank(presentationPlan.id);
-    });
-    if (!prepared) return;
     const completed: CompletedWorkspace = {
       id: `${content.id}:${Date.now()}`,
       title: content.title,
@@ -1196,12 +1557,17 @@ function App() {
       material,
       materials,
       materialCollection,
+      materialProcessingJob,
       pages,
       content,
+      contentJob,
       presentationPlan,
+      presentationPlanJob,
+      pptJob,
       presentationArtifact,
       presentationSlideImages,
       session,
+      classroomPlanJob,
       classroomPlanIds,
       action,
       currentSlide,
@@ -1213,7 +1579,7 @@ function App() {
     };
     setCompletedWorkspaces((current) => [completed, ...current.filter((item) => item.content?.id !== content.id)]);
     reset();
-    setFeedback("当前课堂项目已完成保存，可以上传下一组材料。");
+    setFeedback("当前课堂项目已归档；已有内容、题库、讲稿、课件和课堂进度均已保留，可以上传下一组材料。");
   }
 
   function restoreWorkspace(saved: CompletedWorkspace) {
@@ -1221,12 +1587,20 @@ function App() {
     setMaterial(saved.material);
     setMaterials(saved.materials);
     setMaterialCollection(saved.materialCollection);
+    setMaterialProcessingJob(saved.materialProcessingJob ?? null);
     setPages(saved.pages);
     setContent(saved.content);
+    setContentJob(saved.contentJob ?? null);
     setPresentationPlan(saved.presentationPlan);
+    setPresentationPlanJob(saved.presentationPlanJob ?? null);
+    setPptJob(saved.pptJob ?? null);
     setPresentationArtifact(saved.presentationArtifact);
-    setPresentationSlideImages(saved.presentationSlideImages);
-    setSession(saved.session);
+    setPresentationSlideImages(normalizePresentationSlideImages(
+      saved.presentationSlideImages,
+      saved.presentationPlan?.mode,
+    ));
+    setSession(saved.session ? { ...saved.session, version: saved.session.version ?? 0 } : null);
+    setClassroomPlanJob(saved.classroomPlanJob ?? null);
     setClassroomPlanIds(
       saved.classroomPlanIds ?? (
         saved.session ? { [saved.session.mode]: saved.session.plan_id } : {}
@@ -1318,7 +1692,7 @@ function App() {
     autoStepInFlight.current = true;
     setError(null);
     try {
-      const result = await api.autoStep(session.id);
+      const result = await api.autoStep(session.id, session.version);
       setSession(result.session);
       setAction((currentAction) => {
         if (result.action) return result.action;
@@ -1393,7 +1767,9 @@ function App() {
     autoPlayingRef.current = false;
     narration.stop();
     setAutoPlaying(false);
-    const result = await run("Evaluator 正在评估", () => api.answer(session.id, selectedIndex));
+    const result = await run("Evaluator 正在评估", () =>
+      api.answer(session.id, selectedIndex, session.version)
+    );
     if (!result) return;
     setSession(result.session);
     // Keep the quiz card projected while the teacher reads the evaluation.
@@ -1457,14 +1833,15 @@ function App() {
     narration.unlock();
     setAutoPlaying(false);
     setQuestion("");
+    setFeedback(`你：${submittedQuestion}`);
 
     // Start generating the teacher's answer immediately, then use that same wait
     // to read the learner's question aloud. This keeps the exchange conversational
     // without adding the question narration to the response latency.
     const answerRequest = run(answeringUserQuestionLabel, () =>
-      api.ask(session.id, submittedQuestion),
+      api.ask(session.id, submittedQuestion, session.version),
     );
-    const questionNarrationResult = await narration.play({
+    const questionNarration = narration.play({
       id: `user-question:${session.id}:${Date.now()}`,
       text: submittedQuestion,
       scope: "user_question",
@@ -1474,12 +1851,15 @@ function App() {
       agentId: "user",
       role: "student",
     });
-    if (questionNarrationResult === "failed") {
-      setError("问题已发送，但问题语音暂时无法播放");
-    }
+    void questionNarration.then((questionNarrationResult) => {
+      if (questionNarrationResult === "failed") {
+        setError("问题已发送；语音不可用，已使用文字继续");
+      }
+    });
 
     const result = await answerRequest;
     if (!result) return;
+    narration.stop();
     setSession(result.session);
     setAgentTurn(null);
     const answerText = result.feedback ?? "";
@@ -1496,8 +1876,17 @@ function App() {
         role: "teacher",
       });
       if (narrationResult === "failed") {
-        setError("老师的文字回答已显示，但语音播放暂时不可用");
+        setError("老师的文字回答已显示；语音不可用，课堂将继续推进");
       }
+    }
+    interruptedTeacherCueRef.current = null;
+    if (result.session.status !== "completed") {
+      playbackVersionRef.current += 1;
+      const playbackVersion = playbackVersionRef.current;
+      autoPlayingRef.current = true;
+      setAutoPlaying(true);
+      await autoStep(playbackVersion);
+      setAutoPlaying(autoPlayingRef.current);
     }
   }
 
@@ -1654,7 +2043,7 @@ function App() {
             <div className="mode-switch" aria-label="选择学习方式">
               <button
                 className={learningMode === "lecture" ? "selected" : ""}
-                disabled={!!busy}
+                disabled={!!busy || userQuestionBlockedByAgentExchange}
                 onClick={() => switchClassroomMode("lecture")}
               >
                 <span>A</span>
@@ -1663,7 +2052,7 @@ function App() {
               </button>
               <button
                 className={learningMode === "interactive" ? "selected" : ""}
-                disabled={!!busy}
+                disabled={!!busy || userQuestionBlockedByAgentExchange}
                 onClick={() => switchClassroomMode("interactive")}
               >
                 <span>B</span>
@@ -1671,7 +2060,47 @@ function App() {
                 <small>允许 agent 同学提问、总结和插话</small>
               </button>
             </div>
-            <div className="ppt-theme-selector">
+            {pages.length > 0 && !content && !presentationPlan && (
+              <div className="presentation-route-picker">
+                <div className="presentation-route-heading">
+                  <span>01 · 先选择课件制作路线</span>
+                  <small>这个选择会贯穿 LearningContent、课件计划和课堂创建</small>
+                </div>
+                <div className="mode-switch" aria-label="选择 PPT 使用方式">
+                  <button
+                    className={presentationMode === "source_deck" ? "selected" : ""}
+                    disabled={!!busy}
+                    onClick={() => setPresentationMode("source_deck")}
+                  >
+                    <span>A</span>
+                    <b>使用原稿讲解</b>
+                    <small>保留原 PPT / PDF 的每一页，进入原稿讲解链路</small>
+                  </button>
+                  <button
+                    className={presentationMode === "generated" ? "selected" : ""}
+                    disabled={!!busy}
+                    onClick={() => setPresentationMode("generated")}
+                  >
+                    <span>B</span>
+                    <b>重新生成一套 PPT</b>
+                    <small>沿用原链路，根据 LearningContent 重新规划并生成课件</small>
+                  </button>
+                </div>
+              </div>
+            )}
+            <button disabled={!pages.length || !!content || !!busy} onClick={buildContent}><span>02</span><b>{content ? "内容已构建" : presentationMode === "source_deck" ? "构建原稿讲解内容" : "构建重新生成 PPT 的内容"}</b><i>↗</i></button>
+            {content && !presentationPlan && (
+              <div className="presentation-route-picker presentation-route-confirmed">
+                <div className="presentation-route-heading">
+                  <span>当前路线</span>
+                  <small>{presentationMode === "source_deck" ? "使用原稿讲解" : "重新生成一套 PPT"}</small>
+                </div>
+                <button className="route-reselect-button" type="button" disabled={!!busy} onClick={chooseAnotherPresentationRoute}>
+                  返回上一步重新选择路线
+                </button>
+              </div>
+            )}
+            {content && !presentationPlan && presentationMode !== "source_deck" && <div className="ppt-theme-selector">
               <div className="ppt-theme-heading">
                 <span>PPT 主题</span>
                 <small>只改变视觉，不改页面内容</small>
@@ -1699,13 +2128,63 @@ function App() {
                   </button>
                 ))}
               </div>
-            </div>
-            <button disabled={!pages.length || !!content || !!busy} onClick={buildContent}><span>01</span><b>{content ? "内容已构建" : "构建学习内容"}</b><i>↗</i></button>
-            <button disabled={!content || !!presentationPlan || !!busy} onClick={preparePresentationPlan}><span>02</span><b>{presentationPlan ? "PresentationPlan 已生成" : "生成 PresentationPlan"}</b><i>↗</i></button>
-            <button disabled={!presentationPlan || !!presentationArtifact || !!busy} onClick={generatePresentationArtifact}><span>03</span><b>{presentationArtifact ? "PPT 已生成" : "生成 PPT（可选）"}</b><i>↗</i></button>
-            <button disabled={!content || !presentationPlan || !!session || !!busy} onClick={startClassroom}><span>04</span><b>{session ? "课堂已创建" : learningMode === "interactive" ? "创建互动课堂" : "创建连续课堂"}</b><i>↗</i></button>
+            </div>}
+            <button disabled={!content || !!presentationPlan || !!busy} onClick={preparePresentationPlan}><span>03</span><b>{presentationPlan ? "课件讲解计划已准备" : presentationMode === "source_deck" ? "直接使用原稿并生成逐页讲稿" : "重新设计并生成 PPT 计划"}</b><i>↗</i></button>
+            {presentationPlan && !session && (
+              <button disabled={!!busy} onClick={chooseAnotherPresentationRoute}><span>↺</span><b>重新选择课件使用方式</b><i>→</i></button>
+            )}
+            <button disabled={!presentationPlan || presentationPlan.mode === "source_deck" || !!presentationArtifact || !!busy} onClick={generatePresentationArtifact}><span>03</span><b>{presentationPlan?.mode === "source_deck" ? "使用原 PPT" : presentationArtifact ? "PPT 已生成" : "生成 PPT（创建课堂前必需）"}</b><i>↗</i></button>
+            <button disabled={!content || !presentationPlan || (presentationPlan.mode === "generated" && !presentationArtifact) || !!session || !!busy} onClick={startClassroom}><span>04</span><b>{session ? "课堂已创建" : classroomPlanJob && classroomPlanJob.status !== "failed" ? "继续进入已生成课堂" : learningMode === "interactive" ? "创建互动课堂" : "创建连续课堂"}</b><i>↗</i></button>
             <button disabled={!content || !presentationArtifact || !!video || !!busy} onClick={createVideo}><span>05</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
             <button disabled={!content || !presentationPlan || !!busy} onClick={completeWorkspace}><span>✓</span><b>完成当前材料</b><i>→</i></button>
+            {presentationPlan && (
+              <details className="speaker-script-editor">
+                <summary>编辑逐页讲稿</summary>
+                <button
+                  className="open-full-page-button"
+                  type="button"
+                  onClick={() => {
+                    const firstSlide = presentationPlan.slides[0];
+                    if (!editingSlideId && firstSlide) {
+                      setEditingSlideId(firstSlide.id);
+                      setEditingScript(firstSlide.speaker_script);
+                    }
+                    setFullPageView("scripts");
+                  }}
+                >
+                  全屏编辑讲稿 ↗
+                </button>
+                <select
+                  value={editingSlideId ?? ""}
+                  onChange={(event) => {
+                    const slide = presentationPlan.slides.find(
+                      (item) => item.id === event.target.value,
+                    );
+                    setEditingSlideId(slide?.id ?? null);
+                    setEditingScript(slide?.speaker_script ?? "");
+                  }}
+                >
+                  <option value="">选择页面</option>
+                  {presentationPlan.slides.map((slide) => (
+                    <option value={slide.id} key={slide.id}>
+                      {slide.order}. {slide.title}
+                    </option>
+                  ))}
+                </select>
+                <textarea
+                  value={editingScript}
+                  disabled={!editingSlideId}
+                  onChange={(event) => setEditingScript(event.target.value)}
+                  rows={8}
+                />
+                <button
+                  disabled={!editingSlideId || !editingScript.trim() || !!busy}
+                  onClick={saveSpeakerScript}
+                >
+                  保存本页讲稿
+                </button>
+              </details>
+            )}
           </section>
         </aside>
 
@@ -1877,26 +2356,32 @@ function App() {
                 <button className={contentView === "tree" ? "active" : ""} onClick={() => setContentView("tree")}>知识树</button>
                 <button className={contentView === "quality" ? "active" : ""} onClick={() => setContentView("quality")}>质量</button>
               </div>
+              <button
+                className="outline-full-page-button"
+                type="button"
+                onClick={() => setFullPageView(contentView === "tree" ? "tree" : "outline")}
+              >
+                {contentView === "tree" ? "展开完整知识树" : "全屏查看课程大纲"} ↗
+              </button>
               {contentView === "outline" && (
-                <ol>{content.sections.map((section, index) => <li key={section.id}><span>{String(index + 1).padStart(2, "0")}</span><div><b>{section.title}</b><small>来源 · 第 {section.source_refs[0]?.page_no ?? "?"} 页</small></div></li>)}</ol>
+                <div className="outline-section-list">
+                  {content.sections.map((section, index) => (
+                    <OutlineSection key={section.id} section={section} index={index} />
+                  ))}
+                </div>
               )}
               {contentView === "tree" && (
                 <ol className="knowledge-tree-list">
                   {knowledgeTreeModel.rootNodes.length ? knowledgeTreeModel.rootNodes.map((node, index) => (
-                    <li className="knowledge-root-item" key={node.id}>
-                      <button type="button" onClick={() => setSelectedKnowledgeTreeNodeId(node.id)}>
-                        <span>{String(index + 1).padStart(2, "0")}</span>
-                        <div>
-                          <b>{node.title}</b>
-                          <small>
-                            {formatKnowledgeTreeRole(node.role)}
-                            {" · "}
-                            {(knowledgeTreeModel.childrenByParent.get(node.id) ?? []).length} 个子主题
-                          </small>
-                        </div>
-                        <i>查看</i>
-                      </button>
-                    </li>
+                    <KnowledgeTreeBranch
+                      key={node.id}
+                      node={node}
+                      indexPath={String(index + 1)}
+                      depth={0}
+                      childrenByParent={knowledgeTreeModel.childrenByParent}
+                      nodeById={knowledgeTreeModel.nodeById}
+                      knowledgeUnitsById={knowledgeTreeModel.knowledgeUnitsById}
+                    />
                   )) : <li className="knowledge-tree-empty">暂未生成知识树结构</li>}
                 </ol>
               )}
@@ -1973,12 +2458,110 @@ function App() {
                 depth={0}
                 childrenByParent={knowledgeTreeModel.childrenByParent}
                 nodeById={knowledgeTreeModel.nodeById}
+                knowledgeUnitsById={knowledgeTreeModel.knowledgeUnitsById}
               />
             </ol>
           </section>
         </div>
       )}
 
+      {fullPageView && (
+        <div
+          className="curriculum-workspace-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="curriculum-workspace-title"
+          onClick={() => setFullPageView(null)}
+        >
+          <section className={`curriculum-workspace curriculum-workspace-${fullPageView}`} onClick={(event) => event.stopPropagation()}>
+            <header>
+              <div>
+                <small>METACLASS · FULL PAGE VIEW</small>
+                <h2 id="curriculum-workspace-title">
+                  {fullPageView === "tree" ? "课程知识树" : fullPageView === "outline" ? "课程教学大纲" : "逐页讲稿工作台"}
+                </h2>
+                <p>{content?.title ?? presentationPlan?.title}</p>
+              </div>
+              <button type="button" aria-label="关闭全屏视图" onClick={() => setFullPageView(null)}>×</button>
+            </header>
+
+            {fullPageView === "outline" && content && (
+              <div className="full-outline-grid">
+                {content.sections.map((section, index) => (
+                  <OutlineSection key={section.id} section={section} index={index} full />
+                ))}
+              </div>
+            )}
+
+            {fullPageView === "tree" && content && (
+              <div className="full-tree-canvas">
+                <div className="tree-course-root"><small>COURSE ROOT</small><b>{content.title}</b><span>{content.knowledge_units?.length ?? 0} 个知识单元</span></div>
+                <div className="tree-forest">
+                  {knowledgeTreeModel.rootNodes.length ? knowledgeTreeModel.rootNodes.map((node, index) => (
+                    <ol className="knowledge-tree-list knowledge-tree-full" key={node.id}>
+                      <KnowledgeTreeBranch
+                        node={node}
+                        indexPath={String(index + 1).padStart(2, "0")}
+                        depth={0}
+                        childrenByParent={knowledgeTreeModel.childrenByParent}
+                        nodeById={knowledgeTreeModel.nodeById}
+                        knowledgeUnitsById={knowledgeTreeModel.knowledgeUnitsById}
+                      />
+                    </ol>
+                  )) : <div className="knowledge-tree-empty">暂未生成知识树结构</div>}
+                </div>
+              </div>
+            )}
+
+            {fullPageView === "scripts" && presentationPlan && (
+              <div className="script-workbench">
+                <nav aria-label="讲稿页面">
+                  {presentationPlan.slides.map((slide) => (
+                    <button
+                      type="button"
+                      className={editingSlideId === slide.id ? "active" : ""}
+                      key={slide.id}
+                      onClick={() => {
+                        setEditingSlideId(slide.id);
+                        setEditingScript(slide.speaker_script);
+                      }}
+                    >
+                      <span>{String(slide.order).padStart(2, "0")}</span>
+                      <div><b>{slide.title}</b><small>{slide.source_page_no ? `原稿第 ${slide.source_page_no} 页` : "生成页面"}</small></div>
+                    </button>
+                  ))}
+                </nav>
+                <main>
+                  {presentationPlan.slides.find((slide) => slide.id === editingSlideId) ? <>
+                    <div className="script-editor-heading">
+                      <div><small>SPEAKER SCRIPT</small><h3>{presentationPlan.slides.find((slide) => slide.id === editingSlideId)?.title}</h3></div>
+                      <span>{editingScript.length} 字</span>
+                    </div>
+                    <textarea
+                      value={editingScript}
+                      onChange={(event) => setEditingScript(event.target.value)}
+                      aria-label="逐页讲稿编辑区"
+                    />
+                    <footer>
+                      <small>保存后，新创建的课堂会使用这版讲稿。</small>
+                      <button disabled={!editingScript.trim() || !!busy} onClick={saveSpeakerScript}>保存本页讲稿</button>
+                    </footer>
+                  </> : <div className="script-empty">请选择一页开始编辑</div>}
+                </main>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
+      {(materialProcessingJob?.status === "paused" || contentJob?.status === "paused" || presentationPlanJob?.status === "paused" || pptJob?.status === "paused") && !busy && (
+        <div className="paused-job-toast" role="status">
+          <span>Ⅱ</span>
+          <div><b>进度已保存</b><p>{materialProcessingJob?.status === "paused" ? `${materialProcessingJob.message} · ${materialProcessingJob.progress}%` : contentJob?.status === "paused" ? contentProgressLabel(contentJob) : presentationPlanJob?.status === "paused" ? presentationProgressLabel(presentationPlanJob) : "PPT 生成已暂停"}</p></div>
+          <button className="resume" type="button" onClick={resumePausedContentWork}>从中断处继续</button>
+          <button className="discard" type="button" onClick={discardPausedContentWork}>放弃并删除临时进度</button>
+        </div>
+      )}
       {error && <div className="error-toast" role="alert"><span>!</span><div><b>流程暂停</b><p>{error}</p></div><button onClick={() => setError(null)}>×</button></div>}
       {busy && busy !== answeringUserQuestionLabel && (
         <div className="busy-overlay" aria-live="polite">
@@ -1993,9 +2576,9 @@ function App() {
               ))}
             </ol>
             <div className="loading-current"><span className="writing-mark" /> <b>{loadingLabel}</b></div>
-            {materialProcessingJob && busy === "正在上传并解析材料" && (
-              <button className="cancel-processing-button" type="button" onClick={cancelMaterialProcessing}>
-                <span>停止当前进程</span><b>×</b>
+            {((materialProcessingJob && busy === "正在上传并解析材料") || ["queued", "running"].includes(contentJob?.status ?? "") || ["queued", "running"].includes(presentationPlanJob?.status ?? "") || ["queued", "running", "waiting_for_skill"].includes(pptJob?.status ?? "")) && (
+              <button className="cancel-processing-button" type="button" onClick={materialProcessingJob && busy === "正在上传并解析材料" ? pauseMaterialProcessing : pauseCurrentContentWork}>
+                <span>停止并保存进度</span><b>Ⅱ</b>
               </button>
             )}
             <footer>

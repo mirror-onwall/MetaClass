@@ -24,13 +24,27 @@ MetaClass 是一个面向教学材料的 AI 课堂生成平台。它可以导入
 
 ### 1. 安装后端
 
+macOS / Linux：
+
 ```bash
 python3 -m venv metaclass_env
 source metaclass_env/bin/activate
 python -m pip install -e 'apps/api[dev]'
 ```
 
+Windows PowerShell：
+
+```powershell
+py -3.11 -m venv metaclass_env
+.\metaclass_env\Scripts\Activate.ps1
+python -m pip install -e "apps/api[dev]"
+```
+
+如果 PowerShell 阻止运行激活脚本，可先在当前窗口执行 `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`，然后重新激活环境。若系统未安装 `py` 启动器，可将 `py -3.11` 替换为 `python`。
+
 ### 2. 安装前端
+
+以下命令适用于 macOS、Linux 和 Windows PowerShell：
 
 ```bash
 cd apps/web
@@ -40,16 +54,32 @@ cd ../..
 
 ### 3. 配置环境变量
 
+macOS / Linux：
+
 ```bash
 cp .env.example .env
+```
+
+Windows PowerShell：
+
+```powershell
+Copy-Item .env.example .env
 ```
 
 默认配置无需密钥。接入真实 LLM、TTS、视觉模型或 PPT 服务时，按 `.env.example` 中的说明填写对应配置；不要提交 `.env`。
 
 ### 4. 启动项目
 
+macOS / Linux：
+
 ```bash
 ./scripts/dev.sh
+```
+
+Windows PowerShell：
+
+```powershell
+.\scripts\dev.bat
 ```
 
 脚本会先构建前端，再由 FastAPI 在同一端口托管 Web 和 API：
@@ -58,22 +88,52 @@ cp .env.example .env
 - API 文档：<http://127.0.0.1:8000/docs>
 - 健康检查：<http://127.0.0.1:8000/health>
 
-前端单独开发时：
+### 5. 前后端分别启动（开发模式）
+
+后端（macOS / Linux）：
+
+```bash
+source metaclass_env/bin/activate
+cd apps/api
+python -m uvicorn metaclass.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+后端（Windows PowerShell）：
+
+```powershell
+.\metaclass_env\Scripts\Activate.ps1
+Set-Location apps\api
+python -m uvicorn metaclass.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+前端（另开一个终端，所有平台相同）：
 
 ```bash
 cd apps/web
 npm run dev
 ```
 
-访问 <http://127.0.0.1:5173>。前后端分开部署时，可在 `apps/web/.env.local` 设置 `VITE_API_BASE`。
+前端访问 <http://127.0.0.1:5173>，开发服务器会将 `/api` 和 `/health` 请求代理到 <http://127.0.0.1:8000>。前后端分开部署时，可在 `apps/web/.env.local` 设置 `VITE_API_BASE`。
 
 ## 运行检查
+
+macOS / Linux：
 
 ```bash
 source metaclass_env/bin/activate
 pytest -q apps/api/tests
 ruff check apps/api/src apps/api/tests
 cd apps/web && npm run build
+```
+
+Windows PowerShell：
+
+```powershell
+.\metaclass_env\Scripts\Activate.ps1
+pytest -q apps/api/tests
+ruff check apps/api/src apps/api/tests
+Set-Location apps\web
+npm run build
 ```
 
 ## 仓库结构

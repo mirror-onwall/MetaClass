@@ -23,6 +23,7 @@ class MaterialProcessingJobStatus(StrEnum):
     RUNNING = "running"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
+    PAUSED = "paused"
     CANCELED = "canceled"
 
 
@@ -87,6 +88,11 @@ class MaterialCollectionCreate(SchemaModel):
     title: str = Field(default="未命名课程资料集", min_length=1, max_length=200)
     material_ids: list[str] = Field(min_length=1)
     primary_material_id: str | None = None
+
+
+class MaterialDeletionResult(SchemaModel):
+    material_id: str = Field(min_length=1)
+    deleted: bool = True
 
 
 class MaterialProcessingJob(SchemaModel):

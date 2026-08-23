@@ -28,20 +28,32 @@ from metaclass.modules.classroom.schemas import (
     AskQuizAction,
     ClassroomEvent,
     ClassroomPlan,
+    ClassroomScene,
     ClassroomSession,
     ClassroomState,
     CreateClassroomSessionRequest,
     GiveFeedbackAction,
-    ShowPageAction,
+    ExplainAction,
+    ExplainPayload,
+    ShowSlideAction,
+    ShowSlidePayload,
+    StudentQuestionAction,
+    StudentQuestionPayload,
     TeachingAction,
 )
 from metaclass.modules.classroom.service import ClassroomService
 from metaclass.modules.content.schemas import (
+    CourseKnowledgeTreeNode,
     FormulaNote,
+    KnowledgeUnit,
     LearningContent,
     LearningSection,
+    PageRef,
     PageUnderstanding,
+    PageUnderstandingDraft,
     QuizItem,
+    SourceDeckTeachingStructureDraft,
+    TeachingSegment,
     VisualOpportunity,
 )
 from metaclass.modules.materials.schemas import PageMetadata, SourceRef
@@ -71,6 +83,103 @@ from metaclass.modules.presentation.schemas import (
 from metaclass.modules.question_bank.generator import QuestionBankGenerator
 from metaclass.modules.question_bank.schemas import QuestionCandidate
 from metaclass.modules.video.schemas import VideoJob
+
+
+def test_learning_section_segments_are_backward_compatible() -> None:
+    legacy = LearningSection(
+        id="section_legacy",
+        title="旧章节",
+        summary="历史数据不包含教学段。",
+        source_refs=[source_ref()],
+    )
+    assert legacy.segments == []
+
+    segment = TeachingSegment(
+        id="segment_001_01",
+        title="移动平均与预测误差",
+        role="method",
+        teaching_goal="能够计算移动平均并用 MSE 评价预测。",
+        page_refs=[PageRef(material_id="mat_001", page_no=3)],
+        knowledge_unit_ids=["unit_moving_average", "unit_mse"],
+        order=1,
+    )
+    enriched = legacy.model_copy(update={"segments": [segment]})
+
+    assert enriched.segments[0].title == "移动平均与预测误差"
+    assert enriched.segments[0].page_refs[0].page_no == 3
+
+
+def test_knowledge_tree_node_accepts_optional_structure_reference_fields() -> None:
+    legacy = CourseKnowledgeTreeNode(id="node_legacy", title="旧节点")
+    assert legacy.node_type is None
+    assert legacy.ref_id is None
+    assert legacy.page_refs == []
+
+    segment_node = CourseKnowledgeTreeNode(
+        id="node_segment_001",
+        title="移动平均与预测误差",
+        node_type="segment",
+        ref_id="segment_001_01",
+        page_refs=[PageRef(material_id="mat_001", page_no=3)],
+    )
+    assert segment_node.node_type == "segment"
+    assert segment_node.ref_id == "segment_001_01"
+
+
+def test_source_deck_teaching_structure_draft_validates_segment_contract() -> None:
+    draft = SourceDeckTeachingStructureDraft.model_validate(
+        {
+            "section_title": "时间序列分析的主要方法",
+            "segments": [
+                {
+                    "title": "移动平均与预测误差",
+                    "role": "method",
+                    "teaching_goal": "能够计算移动平均并用 MSE 比较预测结果。",
+                    "start_page": 31,
+                    "end_page": 36,
+                    "knowledge_unit_ids": ["unit_moving_average", "unit_mse"],
+                    "prerequisite_segment_titles": [],
+                }
+            ],
+        }
+    )
+
+    assert draft.segments[0].start_page == 31
+    assert draft.segments[0].end_page == 36
+    assert draft.segments[0].role == "method"
+
+
+def test_page_understanding_draft_discards_empty_teachable_points() -> None:
+    draft = PageUnderstandingDraft.model_validate(
+        {
+            "summary": "趋势体现序列的长期变化。",
+            "teachable_points": [
+                {"point": ""},
+                {"point": "   "},
+                {"point": "  趋势与短期波动的区别  ", "importance": "core"},
+                "  时间顺序不可交换  ",
+            ],
+        }
+    )
+
+    assert [item.point for item in draft.teachable_points] == [
+        "趋势与短期波动的区别",
+        "时间顺序不可交换",
+    ]
+
+
+def test_source_deck_teaching_structure_prompt_defines_non_mechanical_segments() -> None:
+    prompt_path = (
+        PresentationPlanGenerator().source_narration_prompt_path.parent.parent
+        / "content"
+        / "source_deck_teaching_structure_prompt.md"
+    )
+    prompt = prompt_path.read_text(encoding="utf-8")
+
+    assert "不能跨 section" in prompt
+    assert "每几个分为一组" in prompt
+    assert "knowledge_unit_ids" in prompt
+    assert '"segments"' in prompt
 
 
 def test_formula_note_normalizes_llm_variable_shapes() -> None:
@@ -220,7 +329,7 @@ def test_default_student_agent_profiles_include_required_classroom_roles() -> No
     assert all(profile.behaviors for profile in profiles)
 
 
-def test_default_student_agent_states_start_with_four_classroom_roles() -> None:
+def test_default_student_agent_states_include_all_classroom_roles() -> None:
     states = get_default_student_agent_states()
 
     assert [state.agent_type for state in states] == [
@@ -228,8 +337,12 @@ def test_default_student_agent_states_start_with_four_classroom_roles() -> None:
         StudentAgentType.DEEP_THINKER,
         StudentAgentType.NOTE_TAKER,
         StudentAgentType.RESEARCHER,
+        StudentAgentType.FOUNDATION_WEAK,
+        StudentAgentType.SILENT_OBSERVER,
+        StudentAgentType.CONCEPT_CONFUSED,
+        StudentAgentType.PRACTICAL_APPLIER,
     ]
-    assert len({state.id for state in states}) == 4
+    assert len({state.id for state in states}) == 8
 
 
 def test_selected_student_agent_states_keep_the_requested_roles() -> None:
@@ -242,7 +355,7 @@ def test_selected_student_agent_states_keep_the_requested_roles() -> None:
     assert [state.id for state in states] == ["student_agent_001", "student_agent_002"]
 
 
-def test_missing_student_selection_uses_the_default_four_roles() -> None:
+def test_missing_student_selection_uses_all_default_roles() -> None:
     states = get_student_agent_states(None)
 
     assert [state.agent_type for state in states] == [
@@ -250,6 +363,10 @@ def test_missing_student_selection_uses_the_default_four_roles() -> None:
         StudentAgentType.DEEP_THINKER,
         StudentAgentType.NOTE_TAKER,
         StudentAgentType.RESEARCHER,
+        StudentAgentType.FOUNDATION_WEAK,
+        StudentAgentType.SILENT_OBSERVER,
+        StudentAgentType.CONCEPT_CONFUSED,
+        StudentAgentType.PRACTICAL_APPLIER,
     ]
 
 
@@ -330,6 +447,237 @@ def test_presentation_plan_generator_uses_learning_content_sections() -> None:
     assert plan.slides[0].layout == "freeform"
     assert plan.slides[0].visual_payload
     assert plan.slides[0].elements
+
+
+def test_source_deck_narration_prompt_preserves_every_page() -> None:
+    class SourceNarrationLLM:
+        name = "source-narration-test"
+        model = "test-model"
+
+        def complete_json(self, messages, temperature=0.2):
+            payload = json.loads(messages[-1].content)
+            return json.dumps(
+                {
+                    "slides": [
+                        {
+                            "page_no": page["page_no"],
+                            "title": page["page_title"] or f"第 {page['page_no']} 页",
+                            "key_points": [f"要点 {page['page_no']}"],
+                            "speaker_script": f"逐页讲稿 {page['page_no']}",
+                        }
+                        for page in payload["pages"]
+                    ]
+                },
+                ensure_ascii=False,
+            )
+
+    content = LearningContent(
+        id="content_source_narration",
+        material_id="mat_source",
+        title="原稿课程",
+        sections=[
+            LearningSection(
+                id="section_source",
+                title="原稿章节",
+                summary="章节说明",
+                source_refs=[
+                    SourceRef(
+                        material_id="mat_source",
+                        page_id="page_001",
+                        page_no=1,
+                    )
+                ],
+            )
+        ],
+    )
+    pages = [
+        PageMetadata(
+            id=f"page_{page_no:03d}",
+            material_id="mat_source",
+            page_no=page_no,
+            title=f"页面 {page_no}",
+            raw_text=f"页面内容 {page_no}",
+            image_path=f"/tmp/page_{page_no:03d}.png",
+            source_refs=[
+                SourceRef(
+                    material_id="mat_source",
+                    page_id=f"page_{page_no:03d}",
+                    page_no=page_no,
+                )
+            ],
+        )
+        for page_no in (1, 2)
+    ]
+
+    plan = PresentationPlanGenerator(SourceNarrationLLM()).generate_from_source_deck(
+        content, pages, "mat_source"
+    )
+
+    assert plan.mode == "source_deck"
+    assert [slide.source_page_no for slide in plan.slides] == [1, 2]
+    assert [slide.speaker_script for slide in plan.slides] == [
+        "逐页讲稿 1",
+        "逐页讲稿 2",
+    ]
+    assert plan.generation_source == "llm"
+
+
+def test_source_deck_narration_uses_natural_style_prompt_file() -> None:
+    generator = PresentationPlanGenerator()
+    prompt = generator.source_narration_prompt_path.read_text(encoding="utf-8")
+
+    assert generator.source_narration_prompt_path.name == "source_deck_narration_prompt.md"
+    assert "不要机械逐条复述页面文字" in prompt
+    assert "`page_text`" in prompt
+    assert "像老师面对学生讲课" in prompt
+    assert '"slides"' in prompt
+
+
+def test_source_deck_narration_batches_by_teaching_segment_with_context() -> None:
+    captured = []
+
+    class SegmentNarrationLLM:
+        name = "segment-narration-test"
+        model = "test-model"
+
+        def complete_json(self, messages, temperature=0.2):
+            payload = json.loads(messages[-1].content)
+            captured.append(payload)
+            return json.dumps(
+                {
+                    "slides": [
+                        {
+                            "page_no": page["page_no"],
+                            "title": page["page_title"],
+                            "key_points": [payload["current_segment"]["title"]],
+                            "speaker_script": (
+                                f"{payload['current_segment']['title']}连续讲授第"
+                                f"{page['page_no']}页"
+                            ),
+                        }
+                        for page in payload["pages"]
+                    ]
+                },
+                ensure_ascii=False,
+            )
+
+    refs = [PageRef(material_id="mat_source", page_no=page_no) for page_no in range(1, 5)]
+    content = LearningContent(
+        id="content_segment_narration",
+        material_id="mat_source",
+        title="时间序列",
+        material_overview={
+            "page_flow": [
+                {
+                    "page_no": page_no,
+                    "page_role": "concept",
+                    "content_summary": f"页面 {page_no} 的作用",
+                }
+                for page_no in range(1, 5)
+            ]
+        },
+        knowledge_units=[
+            KnowledgeUnit(
+                id="ku_trend",
+                title="趋势定义",
+                page_refs=refs[:2],
+            ),
+            KnowledgeUnit(
+                id="ku_estimation",
+                title="趋势估计",
+                page_refs=refs[2:],
+            ),
+        ],
+        sections=[
+            LearningSection(
+                id="section_001",
+                title="趋势分析",
+                summary="从定义进入估计。",
+                page_refs=refs,
+                source_refs=[source_ref()],
+                segments=[
+                    TeachingSegment(
+                        id="segment_001_01",
+                        title="趋势的直观含义",
+                        teaching_goal="能够解释趋势成分。",
+                        page_refs=refs[:2],
+                        knowledge_unit_ids=["ku_trend"],
+                        order=1,
+                    ),
+                    TeachingSegment(
+                        id="segment_001_02",
+                        title="趋势的估计方法",
+                        teaching_goal="能够估计长期趋势。",
+                        page_refs=refs[2:],
+                        knowledge_unit_ids=["ku_estimation"],
+                        order=2,
+                    ),
+                ],
+            )
+        ],
+    )
+    pages = [
+        PageMetadata(
+            id=f"page_{page_no:03d}",
+            material_id="mat_source",
+            page_no=page_no,
+            title=f"页面 {page_no}",
+            raw_text=f"页面内容 {page_no}",
+            image_path=f"/tmp/page_{page_no:03d}.png",
+            source_refs=[
+                SourceRef(
+                    material_id="mat_source",
+                    page_id=f"page_{page_no:03d}",
+                    page_no=page_no,
+                )
+            ],
+        )
+        for page_no in range(1, 5)
+    ]
+
+    saved_segments = {}
+    plan = PresentationPlanGenerator(SegmentNarrationLLM()).generate_from_source_deck(
+        content,
+        pages,
+        "mat_source",
+        narration_checkpoint_callback=lambda key, value: saved_segments.__setitem__(key, value),
+    )
+
+    assert [[page["page_no"] for page in payload["pages"]] for payload in captured] == [
+        [1, 2],
+        [3, 4],
+    ]
+    assert captured[0]["current_section"]["title"] == "趋势分析"
+    assert captured[0]["segment_knowledge_units"][0]["id"] == "ku_trend"
+    assert captured[0]["pages"][0]["page_flow"]["page_role"] == "concept"
+    assert captured[0]["previous_segment_tail_scripts"] == []
+    assert captured[0]["next_segment"] == {
+        "title": "趋势的估计方法",
+        "teaching_goal": "能够估计长期趋势。",
+    }
+    assert [item["page_no"] for item in captured[1]["previous_segment_tail_scripts"]] == [
+        1,
+        2,
+    ]
+    assert [slide.source_page_no for slide in plan.slides] == [1, 2, 3, 4]
+    assert set(saved_segments) == {"segment_001_01", "segment_001_02"}
+
+    class MustNotRunLLM:
+        name = "segment-narration-test"
+        model = "test-model"
+
+        def complete_json(self, messages, temperature=0.2):
+            raise AssertionError("completed segments must be restored from checkpoint")
+
+    resumed = PresentationPlanGenerator(MustNotRunLLM()).generate_from_source_deck(
+        content,
+        pages,
+        "mat_source",
+        completed_narration=saved_segments,
+    )
+    assert [slide.speaker_script for slide in resumed.slides] == [
+        slide.speaker_script for slide in plan.slides
+    ]
 
 
 def test_presentation_content_generation_uses_balanced_section_batches() -> None:
@@ -1277,7 +1625,7 @@ def test_classroom_plan_covers_every_presentation_slide() -> None:
         action
         for scene in plan.scenes
         for action in scene.actions
-        if isinstance(action, ShowPageAction)
+        if isinstance(action, ShowSlideAction)
     ]
     assert len(plan.scenes) == 10
     assert [action.payload.slide_no for action in show_actions] == list(range(1, 11))
@@ -1439,6 +1787,54 @@ def test_auto_step_executes_show_page_without_llm_controller() -> None:
     assert result.action is not None
     assert result.action.type == "SHOW_PAGE"
     controller.decide.assert_not_called()
+
+
+def test_navigate_previous_uses_nearest_preceding_slide_in_same_scene() -> None:
+    actions = []
+    for page_no in range(1, 4):
+        actions.extend([
+            ShowSlideAction(
+                id=f"show_{page_no}",
+                type="SHOW_SLIDE",
+                actor="system",
+                payload=ShowSlidePayload(
+                    presentation_resource_id="resource_001",
+                    slide_id=f"slide_{page_no}",
+                    slide_no=page_no,
+                ),
+            ),
+            ExplainAction(
+                id=f"explain_{page_no}",
+                type="EXPLAIN",
+                actor="teacher",
+                payload=ExplainPayload(
+                    text=f"讲解第 {page_no} 页。",
+                    source_refs=[source_ref()],
+                ),
+            ),
+        ])
+    plan = ClassroomPlan(
+        id="plan_multi_slide_scene",
+        content_id="content_001",
+        scenes=[ClassroomScene(id="scene_001", title="多页场景", actions=actions)],
+    )
+    session = ClassroomSession(
+        id="session_001",
+        plan_id=plan.id,
+        mode="lecture",
+        scene_index=0,
+        action_index=len(actions),
+    )
+    repository = Mock()
+    repository.get_session.return_value = session
+    repository.get_plan.return_value = plan
+
+    result = ClassroomService(repository, Mock()).navigate(session.id, "previous")
+
+    assert result.action is not None
+    assert result.action.id == "explain_2"
+    assert result.page_action is not None
+    assert result.page_action.payload.slide_no == 2
 
 
 def test_auto_step_starts_student_dialog_after_planned_probe_in_interactive_mode() -> None:
@@ -1638,6 +2034,49 @@ def test_planned_probe_dialog_skips_recent_student_speaker() -> None:
     assert result.directed_turn is not None
     assert result.directed_turn.decision.next_agent_id == students[1].id
     assert result.directed_turn.turns[0].agent_id == students[1].id
+
+
+def test_scripted_qa_rotates_away_from_recent_preferred_student() -> None:
+    students = get_student_agent_states(
+        [StudentAgentType.DEEP_THINKER, StudentAgentType.RESEARCHER]
+    )
+    students[0].last_intent = "scripted_qa_question"
+    session = ClassroomSession(
+        id="session_scripted_rotation",
+        plan_id="plan_scripted_rotation",
+        mode="interactive",
+        student_states=students,
+        events=[
+            AgentTurnEvent(
+                id="event_recent_scripted",
+                session_id="session_scripted_rotation",
+                type="AGENT_TURN",
+                payload=AgentTurnPayload(
+                    turn=AgentTurn(
+                        agent_id=students[0].id,
+                        role="student",
+                        speech="我刚刚提出过一个问题。",
+                        intent="scripted_qa_question",
+                    )
+                ),
+            )
+        ],
+    )
+    action = StudentQuestionAction(
+        id="student_question_rotation",
+        type="STUDENT_QUESTION",
+        actor="student",
+        payload=StudentQuestionPayload(
+            qa_id="qa_rotation",
+            preferred_agent_type=StudentAgentType.DEEP_THINKER,
+            fallback_agent_types=[StudentAgentType.RESEARCHER],
+        ),
+    )
+
+    selected = ClassroomService._select_scripted_qa_student(session, action)
+
+    assert selected is not None
+    assert selected.id == students[1].id
 
 
 @pytest.mark.parametrize(

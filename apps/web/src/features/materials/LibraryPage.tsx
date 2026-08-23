@@ -1,16 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../shared/api";
+import { defaultStudentAgentTypes, studentAgentChoices } from "../../shared/studentAgents";
 import type {
   Material,
   MaterialCollection,
   MaterialLearningContentSummary,
   ClassroomPlanLibrarySummary,
   ClassroomSession,
+  ContentGenerationJob,
   LearningContent,
   PageMetadata,
   PPTArtifact,
   PresentationPlan,
   PresentationPlanLibrarySummary,
+  PresentationPlanJob,
+  PPTGenerationJob,
+  MaterialProcessingJob,
+  StudentAgentType,
 } from "../../shared/types";
 
 type LibraryPageProps = {
@@ -60,6 +66,10 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
   const [contentSummaries, setContentSummaries] = useState<MaterialLearningContentSummary[]>([]);
   const [presentationPlans, setPresentationPlans] = useState<PresentationPlanLibrarySummary[]>([]);
   const [classroomPlans, setClassroomPlans] = useState<ClassroomPlanLibrarySummary[]>([]);
+  const [materialJobs, setMaterialJobs] = useState<MaterialProcessingJob[]>([]);
+  const [contentJobs, setContentJobs] = useState<ContentGenerationJob[]>([]);
+  const [planJobs, setPlanJobs] = useState<PresentationPlanJob[]>([]);
+  const [pptJobs, setPptJobs] = useState<PPTGenerationJob[]>([]);
   const [selected, setSelected] = useState<Material | null>(null);
   const [pages, setPages] = useState<PageMetadata[]>([]);
   const [query, setQuery] = useState("");
@@ -69,6 +79,14 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
   const [detailLoading, setDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [assetBusy, setAssetBusy] = useState<string | null>(null);
+  const [viewerPage, setViewerPage] = useState<number | null>(null);
+  const [viewerZoom, setViewerZoom] = useState(1);
+  const [classroomDraft, setClassroomDraft] = useState<{
+    material: Material;
+    contentId: string;
+    plan: PresentationPlanLibrarySummary;
+  } | null>(null);
+  const [draftStudentTypes, setDraftStudentTypes] = useState<StudentAgentType[]>(defaultStudentAgentTypes);
 
   useEffect(() => {
     let active = true;
@@ -78,19 +96,50 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
       api.listMaterialLearningContentSummaries(),
       api.listPresentationPlanLibrary(),
       api.listClassroomPlanLibrary(),
+      api.listMaterialProcessingJobs(),
+      api.listContentGenerationJobs(),
+      api.listPresentationPlanJobs(),
+      api.listPptJobs(),
     ])
-      .then(([materialItems, collectionItems, summaryItems, planItems, classroomItems]) => {
+      .then(([materialItems, collectionItems, summaryItems, planItems, classroomItems, materialJobItems, contentJobItems, planJobItems, pptJobItems]) => {
         if (!active) return;
         setMaterials(materialItems);
         setCollections(collectionItems);
         setContentSummaries(summaryItems);
         setPresentationPlans(planItems);
         setClassroomPlans(classroomItems);
+        setMaterialJobs(materialJobItems);
+        setContentJobs(contentJobItems);
+        setPlanJobs(planJobItems);
+        setPptJobs(pptJobItems);
       })
       .catch((reason: Error) => active && setError(reason.message))
       .finally(() => active && setLoading(false));
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    if (viewerPage === null) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setViewerPage(null);
+      if (event.key === "ArrowLeft") {
+        setViewerPage((current) => current === null ? null : Math.max(0, current - 1));
+        setViewerZoom(1);
+      }
+      if (event.key === "ArrowRight") {
+        setViewerPage((current) => current === null ? null : Math.min(pages.length - 1, current + 1));
+        setViewerZoom(1);
+      }
+      if (event.key === "+" || event.key === "=") setViewerZoom((current) => Math.min(3, current + .25));
+      if (event.key === "-") setViewerZoom((current) => Math.max(.5, current - .25));
+    };
+    document.body.classList.add("material-viewer-open");
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.classList.remove("material-viewer-open");
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [pages.length, viewerPage]);
 
   const contentSummaryByMaterialId = useMemo(() => {
     const result = new Map<string, MaterialLearningContentSummary>();
@@ -140,6 +189,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
   async function inspect(material: Material) {
     setSelected(material);
     setPages([]);
+    setViewerPage(null);
     setDetailLoading(true);
     setError(null);
     try {
@@ -148,6 +198,41 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
       setError(reason instanceof Error ? reason.message : "无法读取材料详情");
     } finally {
       setDetailLoading(false);
+    }
+  }
+
+  async function deleteProject(material: Material) {
+    const confirmed = window.confirm(
+      `确定删除“${contentSummaryByMaterialId.get(material.id)?.title ?? material.filename}”吗？\n\n原文件、解析页面、LearningContent、演示稿和课堂记录都会一并删除，此操作无法撤销。`,
+    );
+    if (!confirmed) return;
+    setAssetBusy("正在删除资料项目");
+    setError(null);
+    try {
+      const contentId = contentSummaryByMaterialId.get(material.id)?.content_id;
+      await api.deleteMaterial(material.id);
+      setMaterials((current) => current.filter((item) => item.id !== material.id));
+      setCollections((current) => current
+        .map((collection) => ({
+          ...collection,
+          material_ids: collection.material_ids.filter((id) => id !== material.id),
+          primary_material_id: collection.primary_material_id === material.id
+            ? collection.material_ids.find((id) => id !== material.id)
+            : collection.primary_material_id,
+        }))
+        .filter((collection) => collection.material_ids.length > 0));
+      if (contentId) {
+        setContentSummaries((current) => current.filter((item) => item.content_id !== contentId));
+        setPresentationPlans((current) => current.filter((item) => item.content_id !== contentId));
+        setClassroomPlans((current) => current.filter((item) => item.content_id !== contentId));
+      }
+      setSelected(null);
+      setPages([]);
+      setViewerPage(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "资料项目删除失败");
+    } finally {
+      setAssetBusy(null);
     }
   }
 
@@ -205,11 +290,61 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
     }
   }
 
+  async function resumeLibraryJob(kind: "material" | "content" | "plan" | "ppt", id: string) {
+    setError(null);
+    setAssetBusy("正在从已保存进度继续");
+    try {
+      if (kind === "material") {
+        await api.resumeMaterialProcessingJob(id);
+        const result = await api.waitForMaterialProcessingJob(id, (job) => setMaterialJobs((items) => items.map((item) => item.id === id ? job : item)));
+        const item = result.items.find((entry) => entry.material.id === selected?.id) ?? result.items[0];
+        if (item) onUseMaterial(item.material, item.pages);
+      } else if (kind === "content" && selected) {
+        await api.resumeContentGenerationJob(id);
+        const content = await api.waitForContentGenerationJob(id, (job) => setContentJobs((items) => items.map((item) => item.id === id ? job : item)));
+        onOpenAsset({ material: selected, pages, content });
+      } else if (kind === "plan" && selected) {
+        await api.resumePresentationPlanJob(id);
+        const finished = await api.waitForPresentationPlanJob(id, (job) => setPlanJobs((items) => items.map((item) => item.id === id ? job : item)));
+        const plan = await api.getPresentationPlanJobResult(finished.id);
+        const content = await api.getLearningContent(plan.content_id);
+        onOpenAsset({ material: selected, pages, content, presentationPlan: plan });
+      } else if (kind === "ppt" && selected) {
+        await api.resumePptJob(id);
+        const finished = await api.waitForPptJob(id, (job) => setPptJobs((items) => items.map((item) => item.id === id ? job : item)));
+        const artifact = await api.getPptArtifact(finished.artifact_id!);
+        const plan = await api.getPresentationPlan(artifact.presentation_plan_id);
+        const content = await api.getLearningContent(plan.content_id);
+        onOpenAsset({ material: selected, pages, content, presentationPlan: plan, presentationArtifact: artifact });
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "恢复任务失败");
+    } finally {
+      setAssetBusy(null);
+    }
+  }
+
+  async function discardLibraryJob(kind: "material" | "content" | "plan" | "ppt", id: string) {
+    if (!window.confirm("确定放弃并删除这项临时进度吗？")) return;
+    if (kind === "material") { await api.discardMaterialProcessingJob(id); setMaterialJobs((items) => items.filter((item) => item.id !== id)); }
+    if (kind === "content") { await api.discardContentGenerationJob(id); setContentJobs((items) => items.filter((item) => item.id !== id)); }
+    if (kind === "plan") { await api.discardPresentationPlanJob(id); setPlanJobs((items) => items.filter((item) => item.id !== id)); }
+    if (kind === "ppt") { await api.discardPptJob(id); setPptJobs((items) => items.filter((item) => item.id !== id)); }
+  }
+
+  async function pauseLibraryJob(kind: "material" | "content" | "plan" | "ppt", id: string) {
+    if (kind === "material") { const job = await api.pauseMaterialProcessingJob(id); setMaterialJobs((items) => items.map((item) => item.id === id ? job : item)); }
+    if (kind === "content") { const job = await api.pauseContentGenerationJob(id); setContentJobs((items) => items.map((item) => item.id === id ? job : item)); }
+    if (kind === "plan") { const job = await api.pausePresentationPlanJob(id); setPlanJobs((items) => items.map((item) => item.id === id ? job : item)); }
+    if (kind === "ppt") { const job = await api.pausePptJob(id); setPptJobs((items) => items.map((item) => item.id === id ? job : item)); }
+  }
+
   async function openClassroomAsset(
     material: Material,
     contentId: string,
     planSummary: PresentationPlanLibrarySummary,
     savedClassroomPlanId?: string,
+    selectedStudentTypes?: StudentAgentType[],
   ) {
     setAssetBusy(savedClassroomPlanId ? "正在载入并播放课堂剧本" : "正在创建互动课堂剧本");
     setError(null);
@@ -223,7 +358,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
       ]);
       const session = savedClassroomPlanId
         ? await api.createSessionForPlan(savedClassroomPlanId, "interactive")
-        : await api.createSession(contentId, plan.id, "interactive");
+        : await api.createSession(contentId, plan.id, "interactive", selectedStudentTypes ?? defaultStudentAgentTypes);
       onOpenAsset({
         material,
         pages,
@@ -237,6 +372,30 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
     } finally {
       setAssetBusy(null);
     }
+  }
+
+  function prepareNewClassroom(
+    material: Material,
+    contentId: string,
+    plan: PresentationPlanLibrarySummary,
+  ) {
+    setDraftStudentTypes(defaultStudentAgentTypes);
+    setClassroomDraft({ material, contentId, plan });
+  }
+
+  function toggleDraftStudent(type: StudentAgentType) {
+    setDraftStudentTypes((current) =>
+      current.includes(type)
+        ? current.filter((item) => item !== type)
+        : [...current, type],
+    );
+  }
+
+  async function confirmNewClassroom() {
+    if (!classroomDraft || !draftStudentTypes.length) return;
+    const draft = classroomDraft;
+    setClassroomDraft(null);
+    await openClassroomAsset(draft.material, draft.contentId, draft.plan, undefined, draftStudentTypes);
   }
 
   return (
@@ -359,8 +518,35 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
             <button className="use-library-material" disabled={detailLoading || selected.status !== "parsed"} onClick={() => onUseMaterial(selected, pages)}>
               <span>载入当前备课</span><b>→</b>
             </button>
+            <button
+              className="delete-library-project"
+              disabled={!!assetBusy}
+              onClick={() => deleteProject(selected)}
+              type="button"
+            >
+              删除整个资料项目
+            </button>
             <div className="library-asset-pipeline">
               <div className="library-section-title"><span>可复用备课资产</span><small>ASSET PIPELINE</small></div>
+              {(() => {
+                const summary = contentSummaryByMaterialId.get(selected.id);
+                const relatedPlanIds = new Set(presentationPlans.filter((plan) => plan.content_id === summary?.content_id).map((plan) => plan.id));
+                const active = [
+                  ...materialJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.material_ids.includes(selected.id)).map((job) => ({ kind: "material" as const, id: job.id, status: job.status, title: "材料解析", detail: `${job.message} · ${job.progress}%` })),
+                  ...contentJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.material_id === selected.id).map((job) => ({ kind: "content" as const, id: job.id, status: job.status, title: job.organization_mode === "source_deck" ? "原稿 LearningContent" : "LearningContent", detail: `${job.message} · ${job.progress}%` })),
+                  ...planJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.content_id === summary?.content_id).map((job) => ({ kind: "plan" as const, id: job.id, status: job.status, title: job.mode === "source_deck" ? "原稿讲稿 / PresentationPlan" : "PresentationPlan / 题库", detail: `${job.message} · ${job.progress}%` })),
+                  ...pptJobs.filter((job) => ["queued", "running", "waiting_for_skill", "paused"].includes(job.status) && relatedPlanIds.has(job.presentation_plan_id)).map((job) => ({ kind: "ppt" as const, id: job.id, status: job.status, title: "PPT 生成", detail: `PPT 产物进度 ${Math.round(job.progress * 100)}%` })),
+                ];
+                if (!active.length) return null;
+                return <div className="library-in-progress-assets">
+                  <div className="in-progress-heading"><span>Ⅱ</span><div><b>进行中的备课</b><small>{active.length} 项进度已安全保存</small></div></div>
+                  {active.map((job) => <article key={`${job.kind}:${job.id}`}>
+                    <div><b>{job.title}</b><p>{job.detail}</p></div>
+                    <button disabled={!!assetBusy} onClick={() => job.status === "paused" ? resumeLibraryJob(job.kind, job.id) : pauseLibraryJob(job.kind, job.id)}>{job.status === "paused" ? "从中断处继续" : "停止并保存"}</button>
+                    <button className="discard" disabled={!!assetBusy || job.status !== "paused"} onClick={() => discardLibraryJob(job.kind, job.id)}>放弃</button>
+                  </article>)}
+                </div>;
+              })()}
               {(() => {
                 const contentSummary = contentSummaryByMaterialId.get(selected.id);
                 if (!contentSummary) return (
@@ -386,7 +572,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                     );
                     return <div className="asset-plan-group" key={plan.id}>
                       <div className="asset-plan-heading"><span>PLAN</span><b>{plan.title}</b><small>{plan.slide_count} 页{plan.artifact_id ? " · PPT 已就绪" : ""}</small></div>
-                      <button className="asset-primary-action" disabled={!!assetBusy} onClick={() => openClassroomAsset(selected, contentSummary.content_id, plan)}>创建互动课堂</button>
+                      <button className="asset-primary-action" disabled={!!assetBusy} onClick={() => prepareNewClassroom(selected, contentSummary.content_id, plan)}>创建互动课堂</button>
                       {scripts.map((script) => <button className="asset-script-action" disabled={!!assetBusy} key={script.id} onClick={() => openClassroomAsset(selected, contentSummary.content_id, plan, script.id)}>
                         <span>▶ 播放已保存剧本</span><small>{script.scene_count} 场景 · {script.action_count} 动作</small>
                       </button>)}
@@ -397,10 +583,21 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
               {assetBusy && <div className="asset-busy"><i />{assetBusy}</div>}
             </div>
             <div className="inspector-pages">
-              <div className="library-section-title"><span>页面预览</span><small>{detailLoading ? "LOADING" : `${pages.length} PAGES`}</small></div>
+              <div className="library-section-title"><span>原材料逐页查看</span><small>{detailLoading ? "LOADING" : `${pages.length} PAGES · 点击放大`}</small></div>
               {detailLoading ? <div className="inspector-loading">正在调取解析档案…</div> : pages.map((page) => (
                 <article key={page.id}>
-                  <img src={api.pageImage(selected.id, page.page_no)} alt={`第 ${page.page_no} 页`} loading="lazy" />
+                  <button
+                    className="inspector-page-preview"
+                    type="button"
+                    onClick={() => {
+                      setViewerPage(pages.indexOf(page));
+                      setViewerZoom(1);
+                    }}
+                    aria-label={`放大查看第 ${page.page_no} 页`}
+                  >
+                    <img src={api.pageImage(selected.id, page.page_no)} alt={`第 ${page.page_no} 页`} loading="lazy" />
+                    <span>放大查看</span>
+                  </button>
                   <div><span>PAGE {String(page.page_no).padStart(2, "0")}</span><b>{page.title || `第 ${page.page_no} 页`}</b><p>{page.raw_text || "该页面没有提取到可显示的文本。"}</p></div>
                 </article>
               ))}
@@ -408,6 +605,82 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
           </> : <div className="inspector-placeholder"><span>⌁</span><b>选择一份历史材料</b><p>这里会展示文件状态、解析页面与继续备课入口。</p></div>}
         </aside>
       </section>
+      {classroomDraft && (
+        <div className="library-roster-modal" role="dialog" aria-modal="true" aria-labelledby="library-roster-title">
+          <div className="library-roster-dialog">
+            <header>
+              <div>
+                <small>CLASSROOM ROSTER</small>
+                <h2 id="library-roster-title">选择本堂课的学生</h2>
+                <p>默认已选择全部 8 位。学生类型会影响课堂中的提问、回应和互动侧重点。</p>
+              </div>
+              <button type="button" aria-label="关闭学生选择" onClick={() => setClassroomDraft(null)}>×</button>
+            </header>
+            <div className="library-roster-toolbar">
+              <span>已选择 <b>{draftStudentTypes.length}</b> / {studentAgentChoices.length}</span>
+              <button type="button" onClick={() => setDraftStudentTypes(defaultStudentAgentTypes)}>全选</button>
+              <button type="button" onClick={() => setDraftStudentTypes([])}>清空</button>
+            </div>
+            <div className="library-roster-grid">
+              {studentAgentChoices.map((agent) => {
+                const selectedAgent = draftStudentTypes.includes(agent.type);
+                return (
+                  <button
+                    type="button"
+                    className={selectedAgent ? "selected" : ""}
+                    aria-pressed={selectedAgent}
+                    key={agent.type}
+                    onClick={() => toggleDraftStudent(agent.type)}
+                  >
+                    <img src={agent.avatar} alt="" />
+                    <span><b>{agent.studentName} · {agent.name}</b><small>{agent.description}</small></span>
+                    <i>{selectedAgent ? "✓" : "+"}</i>
+                  </button>
+                );
+              })}
+            </div>
+            <footer>
+              <button type="button" onClick={() => setClassroomDraft(null)}>取消</button>
+              <button type="button" className="confirm" disabled={!draftStudentTypes.length} onClick={confirmNewClassroom}>
+                用 {draftStudentTypes.length} 位学生创建课堂
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+      {selected && viewerPage !== null && pages[viewerPage] && (
+        <div className="material-page-viewer" role="dialog" aria-modal="true" aria-label={`${selected.filename} 原材料查看器`}>
+          <header>
+            <div>
+              <small>ORIGINAL MATERIAL</small>
+              <b>{selected.filename}</b>
+            </div>
+            <div className="material-viewer-pagination">
+              <button type="button" disabled={viewerPage === 0} onClick={() => { setViewerPage(viewerPage - 1); setViewerZoom(1); }}>← 上一页</button>
+              <span><b>{viewerPage + 1}</b> / {pages.length}</span>
+              <button type="button" disabled={viewerPage === pages.length - 1} onClick={() => { setViewerPage(viewerPage + 1); setViewerZoom(1); }}>下一页 →</button>
+            </div>
+            <div className="material-viewer-tools">
+              <button type="button" aria-label="缩小" disabled={viewerZoom <= .5} onClick={() => setViewerZoom((current) => Math.max(.5, current - .25))}>−</button>
+              <button type="button" className="zoom-value" onClick={() => setViewerZoom(1)}>{Math.round(viewerZoom * 100)}%</button>
+              <button type="button" aria-label="放大" disabled={viewerZoom >= 3} onClick={() => setViewerZoom((current) => Math.min(3, current + .25))}>＋</button>
+              <button type="button" className="material-viewer-close" aria-label="关闭原材料查看器" onClick={() => setViewerPage(null)}>×</button>
+            </div>
+          </header>
+          <div className="material-viewer-canvas">
+            <img
+              src={api.pageImage(selected.id, pages[viewerPage].page_no)}
+              alt={`${selected.filename} 第 ${pages[viewerPage].page_no} 页`}
+              style={{ width: `${viewerZoom * 100}%` }}
+            />
+          </div>
+          <footer>
+            <span>PAGE {String(pages[viewerPage].page_no).padStart(2, "0")}</span>
+            <b>{pages[viewerPage].title || `第 ${pages[viewerPage].page_no} 页`}</b>
+            <small>方向键翻页 · ＋/－ 缩放 · Esc 关闭</small>
+          </footer>
+        </div>
+      )}
     </main>
   );
 }

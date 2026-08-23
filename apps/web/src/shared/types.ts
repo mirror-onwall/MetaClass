@@ -44,7 +44,7 @@ export type MaterialCollection = {
 
 export type MaterialProcessingJob = {
   id: string;
-  status: "queued" | "running" | "succeeded" | "failed" | "canceled";
+  status: "queued" | "running" | "succeeded" | "failed" | "paused" | "canceled";
   progress: number;
   step: string;
   message: string;
@@ -99,6 +99,9 @@ export type KnowledgeUnit = {
   aliases: string[];
   keywords: string[];
   source_excerpts: SourceExcerpt[];
+  formulas?: Array<Record<string, unknown>>;
+  examples?: Array<Record<string, unknown>>;
+  misconceptions?: Array<Record<string, unknown>>;
   source_refs: SourceRef[];
   page_refs: PageRef[];
   source_unit_ids: string[];
@@ -116,6 +119,9 @@ export type CourseKnowledgeTreeNode = {
   knowledge_unit_ids: string[];
   order: number;
   prerequisite_node_ids: string[];
+  node_type?: "section" | "segment" | "knowledge_unit";
+  ref_id?: string;
+  page_refs?: PageRef[];
 };
 
 export type CourseKnowledgeTree = {
@@ -126,6 +132,21 @@ export type CourseKnowledgeTree = {
   teaching_sequence: string[];
   orphan_unit_ids: string[];
   warnings: string[];
+};
+
+export type TeachingSegment = {
+  id: string;
+  title: string;
+  role: string;
+  teaching_goal?: string;
+  summary?: string;
+  page_refs: PageRef[];
+  knowledge_unit_ids: string[];
+  prerequisite_segment_ids: string[];
+  transition_to_next?: string;
+  suggested_delivery?: string;
+  interaction_opportunities?: Array<Record<string, unknown>>;
+  order: number;
 };
 
 export type LearningSection = {
@@ -142,6 +163,7 @@ export type LearningSection = {
   page_refs?: PageRef[];
   tree_node_ids?: string[];
   quiz_items: QuizItem[];
+  segments?: TeachingSegment[];
 };
 
 export type LearningContent = {
@@ -149,6 +171,7 @@ export type LearningContent = {
   material_id?: string;
   material_ids?: string[];
   collection_id?: string;
+  organization_mode?: "knowledge" | "source_deck";
   title: string;
   subtitle?: string;
   audience?: Record<string, unknown>;
@@ -181,7 +204,8 @@ export type ContentGenerationJob = {
   id: string;
   material_id?: string;
   collection_id?: string;
-  status: "queued" | "running" | "succeeded" | "failed";
+  organization_mode?: "knowledge" | "source_deck";
+  status: "queued" | "running" | "paused" | "succeeded" | "failed";
   progress: number;
   step: string;
   message: string;
@@ -218,6 +242,14 @@ export type TeachingAction =
   | (ActionBase & {
       type: "SHOW_PAGE";
       payload: { source_ref: SourceRef; slide_no?: number };
+    })
+  | (ActionBase & {
+      type: "SHOW_SLIDE";
+      payload: {
+        presentation_resource_id: string;
+        slide_id: string;
+        slide_no: number;
+      };
     })
   | (ActionBase & {
       type: "EXPLAIN";
@@ -266,6 +298,7 @@ export type ClassroomSession = {
   plan_id: string;
   mode: LearningMode;
   status: "running" | "completed";
+  version: number;
   waiting_for: "quiz_answer" | "free_answer" | null;
   student_states: StudentAgentState[];
   mastery: Mastery[];
@@ -275,7 +308,7 @@ export type ClassroomPlanJob = {
   id: string;
   content_id: string;
   presentation_plan_id?: string;
-  status: "queued" | "running" | "succeeded" | "failed";
+  status: "queued" | "running" | "paused" | "succeeded" | "failed";
   step: "queued" | "planning" | "persisting" | "completed" | "failed";
   progress: number;
   message: string;
@@ -313,7 +346,7 @@ export type ControllerResult = {
 };
 
 export type ClassroomNavigationResult = ControllerResult & {
-  page_action: Extract<TeachingAction, { type: "SHOW_PAGE" }> | null;
+  page_action: Extract<TeachingAction, { type: "SHOW_PAGE" | "SHOW_SLIDE" }> | null;
 };
 
 export type AutoClassroomStep = {
@@ -367,10 +400,15 @@ export type PresentationPlan = {
   id: string;
   content_id: string;
   title: string;
+  mode?: "generated" | "source_deck";
+  source_material_id?: string;
+  presentation_resource_id?: string;
   slides: Array<{
     id: string;
     order: number;
     source_section_ids: string[];
+    source_page_no?: number;
+    source_kind?: "source" | "generated";
     title: string;
     key_points: string[];
     speaker_script: string;
@@ -442,12 +480,39 @@ export type PresentationPlanJob = {
   id: string;
   content_id: string;
   prepare_question_bank: boolean;
-  status: "queued" | "running" | "succeeded" | "failed";
+  mode?: "generated" | "source_deck";
+  source_material_id?: string;
+  status: "queued" | "running" | "paused" | "succeeded" | "failed";
   progress: number;
   step: string;
   message: string;
   plan_id?: string;
   error?: string;
+};
+
+export type PresentationResource = {
+  id: string;
+  presentation_plan_id: string;
+  kind: "source_deck" | "generated_artifact";
+  source_material_id?: string;
+  artifact_id?: string;
+  source_file_hash?: string;
+  source_page_count?: number;
+  is_stale: boolean;
+  stale_reason?: string;
+  slides: Array<{
+    slide_id: string;
+    order: number;
+    kind: "source" | "generated";
+    source_page_no?: number;
+    artifact_slide_no?: number;
+    image_url?: string;
+  }>;
+};
+
+export type PresentationSlideDisplay = {
+  src: string;
+  kind: "source" | "generated";
 };
 
 export type PPTThemeOption = {
@@ -469,7 +534,7 @@ export type PPTGenerationJob = {
   id: string;
   presentation_plan_id: string;
   theme_id: string;
-  status: "queued" | "running" | "waiting_for_skill" | "finished" | "failed";
+  status: "queued" | "running" | "waiting_for_skill" | "paused" | "finished" | "failed";
   progress: number;
   artifact_id?: string;
   error?: string;

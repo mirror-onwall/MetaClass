@@ -279,7 +279,7 @@ def test_complete_mvp_flow(client: TestClient) -> None:
     )
     session_id = session.json()["id"]
     assert session.json()["mode"] == "interactive"
-    assert len(session.json()["student_states"]) == 4
+    assert len(session.json()["student_states"]) == 8
     state = client.get(f"/api/v1/classroom-sessions/{session_id}/state")
     assert state.status_code == 200
     assert state.json()["current_action_type"] == "SHOW_PAGE"
@@ -288,6 +288,10 @@ def test_complete_mvp_flow(client: TestClient) -> None:
         "深度思考者",
         "课堂笔记员",
         "研究型同学",
+        "基础薄弱型同学",
+        "沉默观察型同学",
+        "概念混淆型同学",
+        "实践应用型同学",
     ]
     assert (
         client.post(f"/api/v1/classroom-sessions/{session_id}/next").json()["action"]["type"]
@@ -372,7 +376,7 @@ def test_complete_mvp_flow(client: TestClient) -> None:
         json={"prompt": "老师刚刚讲完，请同学们反馈"},
     )
     assert student_turns.status_code == 200
-    assert len(student_turns.json()) == 4
+    assert len(student_turns.json()) == 8
     assert {turn["role"] for turn in student_turns.json()} == {"student"}
 
     presentation_plan = client.post(
@@ -610,6 +614,16 @@ def test_prepared_question_bank_runs_as_classroom_script(client: TestClient) -> 
     ).json()
     prepared = question_bank["items"][0]
 
+    missing_artifact = client.post(
+        f"/api/v1/learning-contents/{content['id']}/classroom-plans",
+        params={"presentation_plan_id": presentation["id"]},
+    )
+    assert missing_artifact.status_code == 409
+    ppt_job = client.post(f"/api/v1/presentation-plans/{presentation['id']}/ppt-jobs")
+    assert ppt_job.status_code == 202
+    finished_ppt_job = client.get(f"/api/v1/ppt-jobs/{ppt_job.json()['id']}")
+    assert finished_ppt_job.json()["status"] == "finished"
+
     classroom_plan_response = client.post(
         f"/api/v1/learning-contents/{content['id']}/classroom-plans",
         params={"presentation_plan_id": presentation["id"]},
@@ -655,7 +669,7 @@ def test_prepared_question_bank_runs_as_classroom_script(client: TestClient) -> 
     assert blocked_question.status_code == 409
     teacher_step = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
 
-    assert first.json()["action"]["type"] == "SHOW_PAGE"
+    assert first.json()["action"]["type"] == "SHOW_SLIDE"
     assert second.json()["action"]["type"] == "EXPLAIN"
     assert student_step.json()["status"] == "agent_turn"
     assert student_step.json()["directed_turn"]["turns"][0]["role"] == "student"
@@ -759,7 +773,7 @@ def test_repeated_parse_replaces_pages(client: TestClient) -> None:
     assert first.json()[0]["id"] == second.json()[0]["id"]
 
 
-def create_classroom_session(client: TestClient) -> str:
+def create_classroom_session(client: TestClient, mode: str = "lecture") -> str:
     processed = client.post(
         "/api/v1/materials/process",
         files={"file": ("lesson.pdf", make_pdf(), "application/pdf")},
@@ -767,8 +781,46 @@ def create_classroom_session(client: TestClient) -> str:
     material_id = processed.json()["material"]["id"]
     content = client.post(f"/api/v1/materials/{material_id}/learning-content")
     plan = client.post(f"/api/v1/learning-contents/{content.json()['id']}/classroom-plans")
-    session = client.post(f"/api/v1/classroom-plans/{plan.json()['id']}/sessions")
+    session = client.post(
+        f"/api/v1/classroom-plans/{plan.json()['id']}/sessions",
+        json={"mode": mode},
+    )
     return session.json()["id"]
+
+
+def test_classroom_command_is_idempotent_and_rejects_stale_version(
+    client: TestClient,
+) -> None:
+    session_id = create_classroom_session(client)
+    initial = client.get(f"/api/v1/classroom-sessions/{session_id}").json()
+    headers = {
+        "X-Request-ID": "request-idempotency-001",
+        "X-Expected-Session-Version": str(initial["version"]),
+    }
+
+    first = client.post(
+        f"/api/v1/classroom-sessions/{session_id}/next", headers=headers
+    )
+    repeated = client.post(
+        f"/api/v1/classroom-sessions/{session_id}/next", headers=headers
+    )
+
+    assert first.status_code == 200, first.text
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json() == first.json()
+    persisted = client.get(f"/api/v1/classroom-sessions/{session_id}").json()
+    assert persisted["version"] == first.json()["session"]["version"]
+    assert len(persisted["events"]) == len(first.json()["session"]["events"])
+
+    stale = client.post(
+        f"/api/v1/classroom-sessions/{session_id}/next",
+        headers={
+            "X-Request-ID": "request-idempotency-002",
+            "X-Expected-Session-Version": str(initial["version"]),
+        },
+    )
+    assert stale.status_code == 409
+    assert stale.json()["detail"]["current_version"] == persisted["version"]
 
 
 def test_lecture_mode_agent_turn_keeps_teacher_in_control(client: TestClient) -> None:
@@ -781,6 +833,114 @@ def test_lecture_mode_agent_turn_keeps_teacher_in_control(client: TestClient) ->
     assert directed.status_code == 200
     assert directed.json()["decision"]["next_role"] == "teacher"
     assert directed.json()["turns"][0]["role"] == "teacher"
+
+
+def test_lecture_and_interactive_sessions_share_plan_but_lecture_skips_interactions(
+    client: TestClient,
+) -> None:
+    lecture_session_id = create_classroom_session(client, "lecture")
+    lecture_session = client.get(
+        f"/api/v1/classroom-sessions/{lecture_session_id}"
+    ).json()
+    interactive_session = client.post(
+        f"/api/v1/classroom-plans/{lecture_session['plan_id']}/sessions",
+        json={"mode": "interactive"},
+    ).json()
+
+    assert interactive_session["plan_id"] == lecture_session["plan_id"]
+
+    action_types = []
+    for _ in range(20):
+        step = client.post(
+            f"/api/v1/classroom-sessions/{lecture_session_id}/auto-step"
+        ).json()
+        if step.get("action"):
+            action_types.append(step["action"]["type"])
+        if step["status"] == "completed":
+            break
+
+    assert action_types
+    assert not set(action_types).intersection(
+        {
+            "ASK_QUIZ",
+            "PROBE",
+            "STUDENT_QUESTION",
+            "TEACHER_QA_RESPONSE",
+            "WAIT_STUDENT",
+            "GIVE_FEEDBACK",
+            "REMEDIATE",
+            "REVIEW",
+        }
+    )
+
+
+def test_switch_mode_keeps_same_session_and_cursor_and_is_idempotent(
+    client: TestClient,
+) -> None:
+    session_id = create_classroom_session(client, "lecture")
+    client.post(f"/api/v1/classroom-sessions/{session_id}/next")
+    client.post(f"/api/v1/classroom-sessions/{session_id}/next")
+    before = client.get(f"/api/v1/classroom-sessions/{session_id}").json()
+    headers = {
+        "X-Request-ID": "mode-switch-001",
+        "X-Expected-Session-Version": str(before["version"]),
+    }
+    payload = {
+        "mode": "interactive",
+        "student_agent_types": ["deep_thinker", "note_taker"],
+    }
+
+    switched = client.post(
+        f"/api/v1/classroom-sessions/{session_id}/mode",
+        json=payload,
+        headers=headers,
+    )
+    repeated = client.post(
+        f"/api/v1/classroom-sessions/{session_id}/mode",
+        json=payload,
+        headers=headers,
+    )
+
+    assert switched.status_code == 200, switched.text
+    assert repeated.json() == switched.json()
+    result = switched.json()
+    assert result["id"] == before["id"]
+    assert result["plan_id"] == before["plan_id"]
+    assert result["scene_index"] == before["scene_index"]
+    assert result["action_index"] == before["action_index"]
+    assert result["mode"] == "interactive"
+    assert len(result["student_states"]) == len(before["student_states"])
+    assert result["events"][-1]["type"] == "MODE_SWITCHED"
+
+
+def test_switch_to_lecture_cancels_quiz_wait_without_restarting(
+    client: TestClient,
+) -> None:
+    session_id = create_classroom_session(client, "interactive")
+    for _ in range(12):
+        state = client.get(f"/api/v1/classroom-sessions/{session_id}").json()
+        if state["waiting_for"] == "quiz_answer":
+            break
+        client.post(f"/api/v1/classroom-sessions/{session_id}/next")
+    before = client.get(f"/api/v1/classroom-sessions/{session_id}").json()
+    assert before["waiting_for"] == "quiz_answer"
+
+    switched = client.post(
+        f"/api/v1/classroom-sessions/{session_id}/mode",
+        json={"mode": "lecture"},
+        headers={
+            "X-Request-ID": "mode-switch-quiz-001",
+            "X-Expected-Session-Version": str(before["version"]),
+        },
+    )
+
+    assert switched.status_code == 200, switched.text
+    result = switched.json()
+    assert result["id"] == session_id
+    assert result["mode"] == "lecture"
+    assert result["waiting_for"] is None
+    assert result["scene_index"] >= before["scene_index"]
+    assert result["events"][-1]["type"] == "MODE_SWITCHED"
 
 
 def test_auto_classroom_waits_for_user_quiz_after_agent_turn(client: TestClient) -> None:
@@ -836,7 +996,7 @@ def test_cannot_answer_before_quiz(client: TestClient) -> None:
 
 
 def test_rejects_answer_index_outside_quiz_options(client: TestClient) -> None:
-    session_id = create_classroom_session(client)
+    session_id = create_classroom_session(client, "interactive")
     for _ in range(4):
         client.post(f"/api/v1/classroom-sessions/{session_id}/next")
 

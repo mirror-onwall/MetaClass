@@ -1,4 +1,5 @@
 import random
+from threading import Lock
 from uuid import uuid4
 
 from fastapi import HTTPException
@@ -32,6 +33,8 @@ from metaclass.modules.classroom.schemas import (
     ControllerResult,
     GiveFeedbackAction,
     LearningMode,
+    ModeSwitchedEvent,
+    ModeSwitchedPayload,
     ProbeAction,
     QAInteractionExecutedEvent,
     QAInteractionExecutedPayload,
@@ -43,7 +46,10 @@ from metaclass.modules.classroom.schemas import (
     UserQuestionEvent,
     UserQuestionPayload,
 )
-from metaclass.modules.classroom.repository import ClassroomRepository
+from metaclass.modules.classroom.repository import (
+    ClassroomRepository,
+    ClassroomSessionConflict,
+)
 from metaclass.modules.content.service import ContentService
 from metaclass.modules.presentation.service import PresentationService
 from metaclass.modules.question_bank.service import QuestionBankService
@@ -71,6 +77,8 @@ class ClassroomService:
         self.planner = planner or ClassroomPlanGenerator(fallback_teacher=self.teacher)
         self.presentations = presentations
         self.question_banks = question_banks
+        self._session_command_locks: dict[str, Lock] = {}
+        self._session_command_locks_guard = Lock()
 
     def create_plan(
         self, content_id: str, presentation_plan_id: str | None = None
@@ -84,8 +92,19 @@ class ClassroomService:
             presentation_plan = self.presentations.get_plan(presentation_plan_id)
             if presentation_plan.content_id != content_id:
                 raise HTTPException(409, "PresentationPlan does not belong to LearningContent")
+            resource = self.presentations.get_resource(presentation_plan_id)
+            if resource.is_stale:
+                raise HTTPException(
+                    409,
+                    f"Presentation source is stale: {resource.stale_reason}",
+                )
+            if presentation_plan.mode == "generated" and not resource.artifact_id:
+                raise HTTPException(
+                    409,
+                    "Generate the PPT artifact before creating a classroom from a generated plan",
+                )
             if self.question_banks:
-                qa_items = self.question_banks.get_for_plan(presentation_plan.id).items
+                qa_items = self.question_banks.generate_for_plan(presentation_plan.id).items
         plan, meta = self.planner.generate_with_meta(content, presentation_plan, qa_items)
         self.repository.save_plan(plan)
         self.repository.save_plan_generation_meta(meta)
@@ -98,7 +117,13 @@ class ClassroomService:
         if presentation_plan_id:
             if not self.presentations:
                 raise HTTPException(409, "Presentation service is unavailable")
-            self.presentations.get_plan(presentation_plan_id)
+            presentation_plan = self.presentations.get_plan(presentation_plan_id)
+            resource = self.presentations.get_resource(presentation_plan_id)
+            if presentation_plan.mode == "generated" and not resource.artifact_id:
+                raise HTTPException(
+                    409,
+                    "Generate the PPT artifact before creating a classroom from a generated plan",
+                )
         job = ClassroomPlanJob(
             id=f"plan_job_{uuid4().hex[:12]}",
             content_id=content_id,
@@ -113,6 +138,15 @@ class ClassroomService:
 
     def get_plan_job(self, job_id: str) -> ClassroomPlanJob:
         job = self.repository.get_plan_job(job_id)
+        if not job:
+            raise HTTPException(404, "Classroom plan job not found")
+        return job
+
+    def get_latest_plan_job(
+        self, content_id: str, presentation_plan_id: str | None = None
+    ) -> ClassroomPlanJob:
+        self.contents.get(content_id)
+        job = self.repository.get_latest_plan_job(content_id, presentation_plan_id)
         if not job:
             raise HTTPException(404, "Classroom plan job not found")
         return job
@@ -213,7 +247,13 @@ class ClassroomService:
             actions = [
                 action
                 for action in scene.actions
-                if action.type in {ActionType.SHOW_PAGE, ActionType.EXPLAIN, ActionType.END}
+                if action.type
+                in {
+                    ActionType.SHOW_PAGE,
+                    ActionType.SHOW_SLIDE,
+                    ActionType.EXPLAIN,
+                    ActionType.END,
+                }
             ]
             if actions:
                 scenes.append(scene.model_copy(update={"actions": actions}, deep=True))
@@ -243,6 +283,94 @@ class ClassroomService:
         session = self.get_session(session_id)
         return self._build_state(session)
 
+    def execute_next(
+        self, session_id: str, request_id: str, expected_version: int
+    ) -> ControllerResult:
+        return self._execute_session_command(
+            session_id, "next", request_id, expected_version, ControllerResult,
+            lambda: self.next(session_id),
+        )
+
+    def execute_auto_step(
+        self, session_id: str, request_id: str, expected_version: int
+    ) -> AutoClassroomStep:
+        return self._execute_session_command(
+            session_id, "auto_step", request_id, expected_version, AutoClassroomStep,
+            lambda: self.auto_step(session_id),
+        )
+
+    def execute_answer(
+        self, session_id: str, selected_index: int, request_id: str, expected_version: int
+    ) -> ControllerResult:
+        return self._execute_session_command(
+            session_id, "answer", request_id, expected_version, ControllerResult,
+            lambda: self.answer(session_id, selected_index),
+        )
+
+    def execute_question(
+        self, session_id: str, question: str, request_id: str, expected_version: int
+    ) -> ControllerResult:
+        return self._execute_session_command(
+            session_id, "question", request_id, expected_version, ControllerResult,
+            lambda: self.answer_question(session_id, question),
+        )
+
+    def execute_mode_switch(
+        self,
+        session_id: str,
+        mode: LearningMode,
+        student_agent_types: list[StudentAgentType] | None,
+        request_id: str,
+        expected_version: int,
+    ) -> ClassroomSession:
+        return self._execute_session_command(
+            session_id, "mode_switch", request_id, expected_version, ClassroomSession,
+            lambda: self.switch_mode(session_id, mode, student_agent_types),
+        )
+
+    def _execute_session_command(
+        self,
+        session_id: str,
+        operation: str,
+        request_id: str,
+        expected_version: int,
+        result_type,
+        command,
+    ):
+        if not request_id.strip():
+            raise HTTPException(422, "Request id must not be empty")
+        with self._session_command_locks_guard:
+            command_lock = self._session_command_locks.setdefault(session_id, Lock())
+        with command_lock:
+            get_receipt = getattr(self.repository, "get_request_result", None)
+            receipt = get_receipt(request_id) if get_receipt else None
+            if receipt:
+                receipt_session_id, receipt_operation, response = receipt
+                if receipt_session_id != session_id or receipt_operation != operation:
+                    raise HTTPException(409, "Request id was already used for another operation")
+                return result_type.model_validate(response)
+            current = self.get_session(session_id)
+            if current.version != expected_version:
+                raise HTTPException(
+                    409,
+                    {
+                        "message": "Classroom session version conflict",
+                        "expected_version": expected_version,
+                        "current_version": current.version,
+                    },
+                )
+            result = command()
+            save_receipt = getattr(self.repository, "save_request_result", None)
+            if save_receipt:
+                save_receipt(
+                    request_id,
+                    session_id,
+                    operation,
+                    expected_version,
+                    result.model_dump(mode="json"),
+                )
+            return result
+
     def next(self, session_id: str) -> ControllerResult:
         session = self.get_session(session_id)
         if session.status == "completed":
@@ -251,6 +379,7 @@ class ClassroomService:
             return ControllerResult(status="waiting", session=session)
         plan = self.get_plan(session.plan_id)
         self._normalize_cursor(session, plan)
+        self._skip_actions_disabled_for_mode(session, plan)
         if session.status == "completed":
             self._save_session(session)
             return ControllerResult(status="completed", session=session)
@@ -270,9 +399,7 @@ class ClassroomService:
                 action = action.model_copy(
                     update={
                         "payload": action.payload.model_copy(
-                            update={
-                                "question": f"{student_name}同学，{action.payload.question}"
-                            }
+                            update={"question": f"{student_name}同学，{action.payload.question}"}
                         )
                     }
                 )
@@ -293,6 +420,54 @@ class ClassroomService:
             session.waiting_for = "quiz_answer"
         self._save_session(session)
         return ControllerResult(status="action", action=action, session=session)
+
+    def switch_mode(
+        self,
+        session_id: str,
+        mode: LearningMode,
+        student_agent_types: list[StudentAgentType] | None = None,
+    ) -> ClassroomSession:
+        session = self.get_session(session_id)
+        if session.status == "completed":
+            raise HTTPException(409, "Completed classrooms cannot switch mode")
+        if session.mode == mode:
+            return session
+        plan = self.get_plan(session.plan_id)
+        self._normalize_cursor(session, plan)
+        if session.status == "completed":
+            raise HTTPException(409, "Completed classrooms cannot switch mode")
+        current_action = plan.scenes[session.scene_index].actions[session.action_index]
+        last_turn = self._last_agent_turn(session)
+        if isinstance(current_action, TeacherQAResponseAction) or (
+            last_turn and last_turn.role == "student"
+        ):
+            raise HTTPException(
+                409,
+                "Finish the current student-teacher exchange before switching mode",
+            )
+
+        previous_mode = session.mode
+        session.mode = mode
+        if mode == LearningMode.INTERACTIVE and not session.student_states:
+            session.student_states = self.student_roster.create_states(student_agent_types)
+        if mode == LearningMode.LECTURE:
+            session.waiting_for = None
+        session.events.append(
+            ModeSwitchedEvent(
+                id=f"event_{uuid4().hex[:12]}",
+                session_id=session.id,
+                type="MODE_SWITCHED",
+                payload=ModeSwitchedPayload(
+                    from_mode=previous_mode,
+                    to_mode=mode,
+                    scene_index=session.scene_index,
+                    action_index=session.action_index,
+                ),
+            )
+        )
+        self._skip_actions_disabled_for_mode(session, plan, persist=False)
+        self._save_session(session)
+        return session
 
     def navigate(self, session_id: str, direction: str) -> ClassroomNavigationResult:
         """Move between learner-facing narration beats.
@@ -330,7 +505,8 @@ class ClassroomService:
         target = None
         if direction == "previous":
             explains_before_cursor = [
-                item for index, item in enumerate(positions[:cursor_order])
+                item
+                for index, item in enumerate(positions[:cursor_order])
                 if item[2].type == "EXPLAIN"
             ]
             # The last explanation is the currently displayed segment.
@@ -361,7 +537,11 @@ class ClassroomService:
         scene_index, action_index, action = target
         scene = plan.scenes[scene_index]
         page_action = next(
-            (item for item in scene.actions[: action_index + 1] if item.type == "SHOW_PAGE"),
+            (
+                item
+                for item in reversed(scene.actions[: action_index + 1])
+                if item.type in {"SHOW_PAGE", "SHOW_SLIDE"}
+            ),
             None,
         )
         session.scene_index = scene_index
@@ -386,6 +566,11 @@ class ClassroomService:
         SSE/WebSocket stream later.
         """
         session = self.get_session(session_id)
+        if session.status == "completed":
+            return AutoClassroomStep(status="completed", session=session)
+
+        plan = self.get_plan(session.plan_id)
+        self._skip_actions_disabled_for_mode(session, plan)
         if session.status == "completed":
             return AutoClassroomStep(status="completed", session=session)
 
@@ -415,9 +600,7 @@ class ClassroomService:
             session=result.session,
         )
 
-    def _execute_scripted_qa_step(
-        self, session: ClassroomSession
-    ) -> AutoClassroomStep | None:
+    def _execute_scripted_qa_step(self, session: ClassroomSession) -> AutoClassroomStep | None:
         plan = self.get_plan(session.plan_id)
         self._normalize_cursor(session, plan)
         if session.status == "completed":
@@ -535,25 +718,40 @@ class ClassroomService:
         self._save_session(session)
 
     @staticmethod
-    def _select_scripted_qa_student(
-        session: ClassroomSession, action: StudentQuestionAction
-    ):
+    def _select_scripted_qa_student(session: ClassroomSession, action: StudentQuestionAction):
         preferred_types = [
             action.payload.preferred_agent_type,
             *action.payload.fallback_agent_types,
         ]
-        for agent_type in preferred_types:
-            selected = next(
-                (
-                    student
-                    for student in session.student_states
-                    if student.agent_type == agent_type
-                ),
-                None,
+        preference_rank = {agent_type: index for index, agent_type in enumerate(preferred_types)}
+        recent_ids: list[str] = []
+        for event in reversed(session.events):
+            if event.type != "AGENT_TURN" or event.payload.turn.role != "student":
+                continue
+            recent_ids.append(event.payload.turn.agent_id)
+            if len(recent_ids) >= 3:
+                break
+
+        candidates = [
+            student for student in session.student_states if student.agent_type in preference_rank
+        ] or list(session.student_states)
+        if not candidates:
+            return None
+
+        # Avoid repeatedly assigning prepared questions to the same persona.
+        # Recency is stronger than profile preference; among equally fresh
+        # students, favor someone who has not spoken and then the best fit.
+        def rank(student):
+            recent_rank = (
+                len(recent_ids) - recent_ids.index(student.id) if student.id in recent_ids else 0
             )
-            if selected:
-                return selected
-        return session.student_states[0] if session.student_states else None
+            return (
+                recent_rank,
+                bool(student.last_intent),
+                preference_rank.get(student.agent_type, len(preferred_types)),
+            )
+
+        return min(candidates, key=rank)
 
     @staticmethod
     def _last_student_turn_for_scripted_qa(
@@ -674,9 +872,7 @@ class ClassroomService:
             session=session,
         )
 
-    def _ensure_user_question_allowed(
-        self, session: ClassroomSession, plan: ClassroomPlan
-    ) -> None:
+    def _ensure_user_question_allowed(self, session: ClassroomSession, plan: ClassroomPlan) -> None:
         """Reject user interruptions while a student/teacher QA exchange is in flight."""
         if session.status == "completed":
             return
@@ -770,6 +966,7 @@ class ClassroomService:
         state = self._build_state(session)
         if state.current_action_type in {
             ActionType.SHOW_PAGE,
+            ActionType.SHOW_SLIDE,
             ActionType.EXPLAIN,
             ActionType.PROBE,
             ActionType.REVIEW,
@@ -838,9 +1035,7 @@ class ClassroomService:
                 None,
             )
             student_name = (
-                student_name_for_type(student_state.agent_type)
-                if student_state
-                else "这位"
+                student_name_for_type(student_state.agent_type) if student_state else "这位"
             )
             teacher_turn = self.teacher.generate_turn(
                 state,
@@ -852,9 +1047,7 @@ class ClassroomService:
                     "这是反馈收束回合，不得再提出新问题，不得邀请其他同学继续回答。"
                 ),
             )
-            teacher_turn.speech = self._remove_unplanned_follow_up_question(
-                teacher_turn.speech
-            )
+            teacher_turn.speech = self._remove_unplanned_follow_up_question(teacher_turn.speech)
             teacher_turn.actions = []
             teacher_turn.intent = "teacher_reply_to_student"
             directed = DirectedAgentTurn(
@@ -996,25 +1189,70 @@ class ClassroomService:
     def _question_match_score(agent_type: StudentAgentType, context: str) -> float:
         keywords = {
             StudentAgentType.DEEP_THINKER: (
-                "为什么", "原因", "条件", "前提", "推理", "成立", "机制", "因果", "关系",
+                "为什么",
+                "原因",
+                "条件",
+                "前提",
+                "推理",
+                "成立",
+                "机制",
+                "因果",
+                "关系",
             ),
             StudentAgentType.CONCEPT_CONFUSED: (
-                "区别", "区分", "辨析", "混淆", "相似", "比较", "异同", "概念",
+                "区别",
+                "区分",
+                "辨析",
+                "混淆",
+                "相似",
+                "比较",
+                "异同",
+                "概念",
             ),
             StudentAgentType.FOUNDATION_WEAK: (
-                "定义", "基础", "基本", "是什么", "第一步", "步骤", "前置",
+                "定义",
+                "基础",
+                "基本",
+                "是什么",
+                "第一步",
+                "步骤",
+                "前置",
             ),
             StudentAgentType.NOTE_TAKER: (
-                "总结", "概括", "复述", "要点", "重点", "核心", "梳理",
+                "总结",
+                "概括",
+                "复述",
+                "要点",
+                "重点",
+                "核心",
+                "梳理",
             ),
             StudentAgentType.RESEARCHER: (
-                "研究", "拓展", "延伸", "局限", "进一步", "开放", "假设",
+                "研究",
+                "拓展",
+                "延伸",
+                "局限",
+                "进一步",
+                "开放",
+                "假设",
             ),
             StudentAgentType.PRACTICAL_APPLIER: (
-                "应用", "实际", "案例", "怎么做", "操作", "场景", "解决", "任务",
+                "应用",
+                "实际",
+                "案例",
+                "怎么做",
+                "操作",
+                "场景",
+                "解决",
+                "任务",
             ),
             StudentAgentType.ATMOSPHERE_REGULATOR: (
-                "类比", "生活", "直观", "简单", "日常", "轻松",
+                "类比",
+                "生活",
+                "直观",
+                "简单",
+                "日常",
+                "轻松",
             ),
             StudentAgentType.SILENT_OBSERVER: (),
         }
@@ -1026,9 +1264,7 @@ class ClassroomService:
         return set(ClassroomService._recent_student_speaker_id_list(state, limit))
 
     @staticmethod
-    def _recent_student_speaker_id_list(
-        state: ClassroomState, limit: int = 1
-    ) -> list[str]:
+    def _recent_student_speaker_id_list(state: ClassroomState, limit: int = 1) -> list[str]:
         recent_ids: list[str] = []
         for event in reversed(state.recent_events):
             if event.type != "AGENT_TURN":
@@ -1050,9 +1286,46 @@ class ClassroomService:
             session.action_index = 0
         session.status = "completed"
 
+    def _skip_actions_disabled_for_mode(
+        self, session: ClassroomSession, plan: ClassroomPlan, *, persist: bool = True
+    ) -> bool:
+        if session.mode != LearningMode.LECTURE or session.status == "completed":
+            return False
+        allowed = {
+            ActionType.SHOW_PAGE,
+            ActionType.SHOW_SLIDE,
+            ActionType.EXPLAIN,
+            ActionType.SUMMARIZE,
+            ActionType.END,
+        }
+        changed = False
+        while session.status != "completed":
+            self._normalize_cursor(session, plan)
+            if session.status == "completed":
+                break
+            action = plan.scenes[session.scene_index].actions[session.action_index]
+            if ActionType(action.type) in allowed:
+                break
+            session.action_index += 1
+            session.waiting_for = None
+            changed = True
+        if changed and persist:
+            self._save_session(session)
+        return changed
+
     def _save_session(self, session: ClassroomSession) -> None:
         session.updated_at = utc_now()
-        self.repository.save_session(session)
+        try:
+            self.repository.save_session(session)
+        except ClassroomSessionConflict as exc:
+            current = self.repository.get_session(session.id)
+            raise HTTPException(
+                409,
+                {
+                    "message": "Classroom session was updated elsewhere",
+                    "current_version": current.version if current else None,
+                },
+            ) from exc
 
     def _save_plan_job(self, job: ClassroomPlanJob) -> None:
         job.updated_at = utc_now()

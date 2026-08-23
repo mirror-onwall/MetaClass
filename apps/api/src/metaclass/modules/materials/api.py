@@ -5,6 +5,7 @@ from metaclass.modules.materials.schemas import (
     Material,
     MaterialCollection,
     MaterialCollectionCreate,
+    MaterialDeletionResult,
     MaterialProcessingJob,
     PageMetadata,
     ProcessedMaterial,
@@ -58,12 +59,26 @@ def create_router(materials: MaterialService) -> APIRouter:
     async def get_processing_job(job_id: str) -> MaterialProcessingJob:
         return materials.get_processing_job(job_id)
 
+    @router.get("/processing-jobs", response_model=list[MaterialProcessingJob])
+    async def list_processing_jobs() -> list[MaterialProcessingJob]:
+        return materials.list_processing_jobs()
+
     @router.post(
-        "/processing-jobs/{job_id}/cancel",
+        "/processing-jobs/{job_id}/pause",
         response_model=MaterialProcessingJob,
     )
-    async def cancel_processing_job(job_id: str) -> MaterialProcessingJob:
-        return materials.cancel_processing_job(job_id, discard=True)
+    async def pause_processing_job(job_id: str) -> MaterialProcessingJob:
+        return materials.pause_processing_job(job_id)
+
+    @router.post("/processing-jobs/{job_id}/resume", response_model=MaterialProcessingJob)
+    async def resume_processing_job(job_id: str, background_tasks: BackgroundTasks) -> MaterialProcessingJob:
+        job = materials.resume_processing_job(job_id)
+        background_tasks.add_task(materials.run_processing_job, job.id)
+        return job
+
+    @router.delete("/processing-jobs/{job_id}", status_code=204)
+    async def discard_processing_job(job_id: str) -> None:
+        materials.discard_processing_job(job_id)
 
     @router.get("/processing-jobs/{job_id}/result", response_model=ProcessedMaterials)
     async def get_processing_job_result(job_id: str) -> ProcessedMaterials:
@@ -88,6 +103,11 @@ def create_router(materials: MaterialService) -> APIRouter:
     @router.get("/{material_id}", response_model=Material)
     async def get_material(material_id: str) -> Material:
         return materials.get(material_id)
+
+    @router.delete("/{material_id}", response_model=MaterialDeletionResult)
+    async def delete_material_project(material_id: str) -> MaterialDeletionResult:
+        materials.delete_project(material_id)
+        return MaterialDeletionResult(material_id=material_id)
 
     @router.post("/{material_id}/parse", response_model=list[PageMetadata])
     async def parse_material(material_id: str) -> list[PageMetadata]:
