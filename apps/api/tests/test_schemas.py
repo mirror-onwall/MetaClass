@@ -556,9 +556,7 @@ def test_presentation_fallback_prefers_substantive_section_content() -> None:
         "分配样本到最近的中心",
         "重新计算每个簇的中心",
     ]
-    assert plan.slides[1].speaker_script == (
-        "先初始化中心，再重复分配与更新，直到结果稳定。"
-    )
+    assert plan.slides[1].speaker_script == ("先初始化中心，再重复分配与更新，直到结果稳定。")
 
 
 def test_presentation_diagnosis_identifies_direct_fallback_scripts() -> None:
@@ -616,9 +614,7 @@ def test_presentation_removes_internal_prompt_terms_from_scripts() -> None:
     generator = PresentationPlanGenerator()
 
     fallback_script = generator._fallback_plan(content).slides[1].speaker_script
-    assert fallback_script == (
-        "接下来介绍劳动价值论。 商品是使用价值和价值的统一体。课程内容"
-    )
+    assert fallback_script == ("接下来介绍劳动价值论。 商品是使用价值和价值的统一体。课程内容")
     assert "Use selected evidence" not in fallback_script
     assert "LearningContent" not in fallback_script
     assert "本单元" not in fallback_script
@@ -654,9 +650,7 @@ def test_question_bank_student_receives_course_history_and_teacher_receives_cour
             suggested_visual="前后关系",
         ),
     ]
-    student_messages = QuestionBankGenerator._student_messages(
-        slides[1], profile, slides
-    )
+    student_messages = QuestionBankGenerator._student_messages(slides[1], profile, slides)
     assert "课程开始到当前页的全部 PPT" in student_messages[0].content
     assert "这是第一页讲稿" in student_messages[1].content
     assert "这是第二页讲稿" in student_messages[1].content
@@ -706,9 +700,7 @@ def test_question_bank_student_receives_course_history_and_teacher_receives_cour
 
     batch_messages = QuestionBankGenerator._student_batch_messages(plan, profile)
     checkpoints = json.loads(batch_messages[1].content)["checkpoints"]
-    assert [item["slide_id"] for item in checkpoints[0]["course_so_far"]] == [
-        "slide_001"
-    ]
+    assert [item["slide_id"] for item in checkpoints[0]["course_so_far"]] == ["slide_001"]
     assert [item["slide_id"] for item in checkpoints[1]["course_so_far"]] == [
         "slide_001",
         "slide_002",
@@ -841,9 +833,7 @@ def test_teacher_check_receives_only_current_and_previous_slides() -> None:
         '"target_knowledge_point":"知识点1与知识点2的关系"}]}'
     )
 
-    checks = ClassroomPlanGenerator(llm)._generate_teacher_checks(
-        [slides[1]], slides
-    )
+    checks = ClassroomPlanGenerator(llm)._generate_teacher_checks([slides[1]], slides)
 
     assert checks[0].question == "前两页如何衔接？"
     messages = llm.complete_json.call_args.args[0]
@@ -1015,9 +1005,7 @@ def test_layout_skeleton_keeps_full_text_and_expands_secondary_cards() -> None:
     )
     spec = next(item for item in LAYOUT_REGISTRY if item.id == "split_left")
 
-    elements = build_fallback_elements(
-        slide, spec, ("FFFFFF", "17324D", "4F8FCB", "DCEBFA")
-    )
+    elements = build_fallback_elements(slide, spec, ("FFFFFF", "17324D", "4F8FCB", "DCEBFA"))
     body = [item for item in elements if item.type == "text" and item.text == long_point]
 
     assert len(body) == 3
@@ -1042,7 +1030,10 @@ def test_layout_selection_avoids_narrow_flow_for_long_points() -> None:
         order=2,
         source_section_ids=["section_001"],
         title="流程需要解释每一步的条件与结果",
-        key_points=["这一阶段包含较长的条件说明、执行动作、边界情况以及执行完成后的结果解释" for _ in range(4)],
+        key_points=[
+            "这一阶段包含较长的条件说明、执行动作、边界情况以及执行完成后的结果解释"
+            for _ in range(4)
+        ],
         speaker_script="解释流程。",
         suggested_visual="步骤流程",
     )
@@ -1070,7 +1061,12 @@ def test_fallback_layout_selection_uses_current_slide_semantics() -> None:
     assert first.layout_id
     assert second.layout_id
     assert first.layout_id == second.layout_id
-    assert first.layout_id in {"sequence_horizontal", "sequence_vertical", "timeline_alternating", "ladder"}
+    assert first.layout_id in {
+        "sequence_horizontal",
+        "sequence_vertical",
+        "timeline_alternating",
+        "ladder",
+    }
     assert first.elements and second.elements
 
 
@@ -1112,6 +1108,39 @@ def test_scene_safe_zone_rejects_content_too_close_to_edge() -> None:
                     y=0.25,
                     w=0.4,
                     h=0.2,
+                    text="正文",
+                )
+            ],
+            "页面标题",
+        )
+
+
+def test_scene_safe_zone_accepts_exact_decimal_boundaries() -> None:
+    generator = PresentationPlanGenerator()
+
+    generator._validate_scene_safe_zones(
+        [
+            SlideElement(
+                type="text",
+                x=0.055,
+                y=0.22,
+                w=0.89,
+                h=0.72,
+                text="正文",
+            )
+        ],
+        "页面标题",
+    )
+
+    with pytest.raises(ValueError, match="horizontal canvas margin"):
+        generator._validate_scene_safe_zones(
+            [
+                SlideElement(
+                    type="text",
+                    x=0.055,
+                    y=0.22,
+                    w=0.890002,
+                    h=0.72,
                     text="正文",
                 )
             ],
@@ -1681,9 +1710,7 @@ def test_probe_student_selection_rewards_unspoken_and_penalizes_recent(monkeypat
         "metaclass.modules.classroom.service.random.uniform", lambda _low, _high: 0.0
     )
 
-    selected = ClassroomService._select_dialog_student(
-        state, question="为什么这个结论成立？"
-    )
+    selected = ClassroomService._select_dialog_student(state, question="为什么这个结论成立？")
 
     assert selected is not None
     assert selected.id == students[1].id

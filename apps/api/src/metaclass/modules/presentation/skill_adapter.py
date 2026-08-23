@@ -1,6 +1,7 @@
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import tempfile
@@ -510,8 +511,92 @@ class PPTSkillAdapter:
         return slide_images
 
     @staticmethod
-    def _load_preview_font(size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    def _load_preview_font(
+        size: int,
+        font_role: str = "sans",
+        *,
+        bold: bool = False,
+    ) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+        role_paths = {
+            "sans": {
+                False: [
+                    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+                    "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf",
+                    "C:/Windows/Fonts/msyh.ttc",
+                    "/System/Library/Fonts/PingFang.ttc",
+                ],
+                True: [
+                    "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+                    "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Bold.otf",
+                    "C:/Windows/Fonts/msyhbd.ttc",
+                    "/System/Library/Fonts/PingFang.ttc",
+                ],
+            },
+            "display": {
+                False: [
+                    "/usr/share/fonts/opentype/noto/NotoSansCJK-Black.ttc",
+                    "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Black.otf",
+                    "C:/Windows/Fonts/simhei.ttf",
+                    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+                    "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf",
+                    "C:/Windows/Fonts/msyh.ttc",
+                    "/System/Library/Fonts/PingFang.ttc",
+                ],
+                True: [
+                    "/usr/share/fonts/opentype/noto/NotoSansCJK-Black.ttc",
+                    "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Black.otf",
+                    "C:/Windows/Fonts/simhei.ttf",
+                    "C:/Windows/Fonts/msyhbd.ttc",
+                    "/System/Library/Fonts/PingFang.ttc",
+                ],
+            },
+            "serif": {
+                False: [
+                    "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
+                    "/usr/share/fonts/opentype/noto/NotoSerifCJKsc-Regular.otf",
+                    "C:/Windows/Fonts/simsun.ttc",
+                    "/System/Library/Fonts/Supplemental/Songti.ttc",
+                ],
+                True: [
+                    "/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc",
+                    "/usr/share/fonts/opentype/noto/NotoSerifCJKsc-Bold.otf",
+                    "C:/Windows/Fonts/simsun.ttc",
+                    "/System/Library/Fonts/Supplemental/Songti.ttc",
+                ],
+            },
+            "handwritten": {
+                False: [
+                    "C:/Windows/Fonts/simkai.ttf",
+                    "/System/Library/Fonts/Kaiti.ttc",
+                    "/System/Library/Fonts/Supplemental/Kaiti.ttc",
+                    "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
+                ],
+                True: [
+                    "C:/Windows/Fonts/simkai.ttf",
+                    "/System/Library/Fonts/Kaiti.ttc",
+                    "/System/Library/Fonts/Supplemental/Kaiti.ttc",
+                    "/usr/share/fonts/opentype/noto/NotoSerifCJK-Bold.ttc",
+                ],
+            },
+            # A CJK-capable sans face is preferred to a latin-only monospace
+            # face because a single PIL font cannot perform glyph fallback.
+            "mono": {
+                False: [
+                    "/usr/share/fonts/opentype/noto/NotoSansMonoCJK-Regular.ttc",
+                    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+                    "C:/Windows/Fonts/msyh.ttc",
+                    "/System/Library/Fonts/PingFang.ttc",
+                ],
+                True: [
+                    "/usr/share/fonts/opentype/noto/NotoSansMonoCJK-Bold.ttc",
+                    "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
+                    "C:/Windows/Fonts/msyhbd.ttc",
+                    "/System/Library/Fonts/PingFang.ttc",
+                ],
+            },
+        }
         for path in [
+            *role_paths.get(font_role, role_paths["sans"])[bold],
             "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
             "/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf",
             "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
@@ -534,16 +619,115 @@ class PPTSkillAdapter:
         return ImageFont.load_default()
 
     @staticmethod
-    def _font_faces() -> tuple[str, str]:
+    def _preview_text_width(
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        *,
+        font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+        stroke_width: int,
+    ) -> float:
+        if not text:
+            return 0
+        left, _, right, _ = draw.textbbox(
+            (0, 0),
+            text,
+            font=font,
+            stroke_width=stroke_width,
+        )
+        return right - left
+
+    @staticmethod
+    def _wrap_preview_text(
+        draw: ImageDraw.ImageDraw,
+        text: str,
+        *,
+        font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+        max_width: int,
+        stroke_width: int,
+    ) -> str:
+        """Wrap exact copy by measured glyph width without shrinking or truncating it."""
+
+        def fits(value: str) -> bool:
+            return (
+                PPTSkillAdapter._preview_text_width(
+                    draw,
+                    value,
+                    font=font,
+                    stroke_width=stroke_width,
+                )
+                <= max_width
+            )
+
+        def split_oversized(value: str) -> list[str]:
+            pieces: list[str] = []
+            current = ""
+            for character in value:
+                candidate = f"{current}{character}"
+                if current and not fits(candidate):
+                    pieces.append(current)
+                    current = character
+                else:
+                    current = candidate
+            if current or not pieces:
+                pieces.append(current)
+            return pieces
+
+        wrapped: list[str] = []
+        # Preserve author-provided line breaks. Within each paragraph, keep
+        # western words together when possible and allow CJK text to break at
+        # character boundaries only when its measured width requires it.
+        for paragraph in text.split("\n"):
+            if not paragraph:
+                wrapped.append("")
+                continue
+            tokens = re.findall(r"\s+|[^\s]+", paragraph)
+            current = ""
+            for token in tokens:
+                candidate = f"{current}{token}"
+                if fits(candidate):
+                    current = candidate
+                    continue
+                if current.strip():
+                    wrapped.append(current.rstrip())
+                    current = ""
+                token = token.lstrip()
+                if not token:
+                    continue
+                if fits(token):
+                    current = token
+                    continue
+                pieces = split_oversized(token)
+                wrapped.extend(pieces[:-1])
+                current = pieces[-1]
+            wrapped.append(current.rstrip())
+        return "\n".join(wrapped)
+
+    @staticmethod
+    def _font_faces(font_role: str = "sans") -> tuple[str, str]:
         system = platform.system().lower()
         if system == "darwin":
             # LibreOffice on macOS may classify Chinese glyphs as latin text
             # when importing python-pptx output. Using the CJK-capable face for
             # both font slots prevents it from substituting empty Arial glyphs.
-            return "PingFang SC", "PingFang SC"
+            return {
+                "display": ("Avenir Next", "Heiti SC"),
+                "serif": ("Songti SC", "Songti SC"),
+                "handwritten": ("Kaiti SC", "Kaiti SC"),
+                "mono": ("Menlo", "PingFang SC"),
+            }.get(font_role, ("PingFang SC", "PingFang SC"))
         if system == "windows":
-            return "Microsoft YaHei", "Microsoft YaHei"
-        return "Noto Sans CJK SC", "Noto Sans CJK SC"
+            return {
+                "display": ("Arial Black", "SimHei"),
+                "serif": ("SimSun", "SimSun"),
+                "handwritten": ("KaiTi", "KaiTi"),
+                "mono": ("Consolas", "Microsoft YaHei"),
+            }.get(font_role, ("Microsoft YaHei", "Microsoft YaHei"))
+        return {
+            "display": ("Noto Sans CJK SC", "Noto Sans CJK SC"),
+            "serif": ("Noto Serif CJK SC", "Noto Serif CJK SC"),
+            "handwritten": ("Noto Serif CJK SC", "Noto Serif CJK SC"),
+            "mono": ("Noto Sans Mono CJK SC", "Noto Sans CJK SC"),
+        }.get(font_role, ("Noto Sans CJK SC", "Noto Sans CJK SC"))
 
     @staticmethod
     def _apply_font(
@@ -553,8 +737,9 @@ class PPTSkillAdapter:
         color: RGBColor,
         bold: bool = False,
         opacity: int = 100,
+        font_role: str = "sans",
     ) -> None:
-        latin_font, cjk_font = PPTSkillAdapter._font_faces()
+        latin_font, cjk_font = PPTSkillAdapter._font_faces(font_role)
         paragraph.font.size = size
         paragraph.font.bold = bold
         paragraph.font.name = latin_font
@@ -736,6 +921,26 @@ class PPTSkillAdapter:
                         outline=outline,
                         width=max(1, round(style.line_width)),
                     )
+                elif element.shape == "chevron":
+                    middle_y = (y0 + y1) // 2
+                    shoulder_x = x0 + round((x1 - x0) * 0.72)
+                    notch_x = x0 + round((x1 - x0) * 0.28)
+                    points = [
+                        (x0, y0),
+                        (shoulder_x, y0),
+                        (x1, middle_y),
+                        (shoulder_x, y1),
+                        (x0, y1),
+                        (notch_x, middle_y),
+                    ]
+                    draw.polygon(points, fill=fill)
+                    if outline:
+                        draw.line(
+                            [*points, points[0]],
+                            fill=outline,
+                            width=max(1, round(style.line_width)),
+                            joint="curve",
+                        )
                 else:
                     radius = 16 if element.shape == "rounded_rectangle" else 0
                     draw.rounded_rectangle(
@@ -755,9 +960,17 @@ class PPTSkillAdapter:
                 continue
             if element.type == "image" and element.image_path:
                 try:
-                    source = Image.open(element.image_path).convert("RGB")
-                    rendered = ImageOps.fit(source, (max(1, x1 - x0), max(1, y1 - y0)))
-                    image.paste(rendered, (x0, y0))
+                    with Image.open(element.image_path) as opened:
+                        source = ImageOps.exif_transpose(opened).convert("RGBA")
+                    target_size = (max(1, x1 - x0), max(1, y1 - y0))
+                    if element.image_fit == "contain":
+                        rendered = ImageOps.contain(source, target_size)
+                        paste_x = x0 + (target_size[0] - rendered.width) // 2
+                        paste_y = y0 + (target_size[1] - rendered.height) // 2
+                    else:
+                        rendered = ImageOps.fit(source, target_size)
+                        paste_x, paste_y = x0, y0
+                    image.paste(rendered, (paste_x, paste_y), rendered)
                 except (FileNotFoundError, OSError):
                     draw.rectangle((x0, y0, x1, y1), fill="#E5E7EB", outline="#94A3B8", width=2)
                 continue
@@ -771,29 +984,64 @@ class PPTSkillAdapter:
                         width=max(1, round(style.line_width)),
                     )
                 text = element.text or "\n".join(element.items)
-                font_size = max(11, round(style.font_size * 1.32))
-                clean = " ".join(text.split())
-                while True:
-                    chars = max(4, round((x1 - x0 - 10) / max(font_size * 0.95, 1)))
-                    lines = textwrap.wrap(
-                        clean,
-                        width=chars,
-                        break_long_words=True,
-                        break_on_hyphens=False,
-                    ) or [""]
-                    max_lines = max(1, round((y1 - y0 - 6) / max(font_size * 1.35, 1)))
-                    if len(lines) <= max_lines or font_size <= 18:
-                        break
-                    font_size -= 1
-                font = PPTSkillAdapter._load_preview_font(font_size)
-                fitted = "\n".join(lines)
+                # The preview canvas is 96 px/in while PowerPoint font sizes
+                # are points (72/in). Preserve the Skill-selected size instead
+                # of running a second auto-fit pass that changes its design.
+                font_size = max(1, round(style.font_size * 96 / 72))
+                font = PPTSkillAdapter._load_preview_font(
+                    font_size,
+                    style.font_role,
+                    bold=style.bold,
+                )
+                font_path = str(getattr(font, "path", "")).lower()
+                has_bold_face = any(
+                    marker in Path(font_path).stem
+                    for marker in ("bold", "black", "heavy", "bd")
+                )
+                stroke_width = 1 if style.bold and not has_bold_face else 0
+                margin_x = round(style.text_margin_x * 96)
+                margin_y = round(style.text_margin_y * 96)
+                inner_x0, inner_y0 = x0 + margin_x, y0 + margin_y
+                inner_x1, inner_y1 = x1 - margin_x, y1 - margin_y
+                fitted = PPTSkillAdapter._wrap_preview_text(
+                    draw,
+                    text,
+                    font=font,
+                    max_width=max(1, inner_x1 - inner_x0),
+                    stroke_width=stroke_width,
+                )
+                spacing = max(1, round(font_size * 0.18))
+                bbox = draw.multiline_textbbox(
+                    (0, 0),
+                    fitted,
+                    font=font,
+                    spacing=spacing,
+                    align=style.align,
+                    stroke_width=stroke_width,
+                )
+                text_width = bbox[2] - bbox[0]
+                text_height = bbox[3] - bbox[1]
+                if style.align == "center":
+                    target_x = inner_x0 + (inner_x1 - inner_x0 - text_width) / 2
+                elif style.align == "right":
+                    target_x = inner_x1 - text_width
+                else:
+                    target_x = inner_x0
+                if style.valign == "middle":
+                    target_y = inner_y0 + (inner_y1 - inner_y0 - text_height) / 2
+                elif style.valign == "bottom":
+                    target_y = inner_y1 - text_height
+                else:
+                    target_y = inner_y0
                 draw.multiline_text(
-                    (x0 + 5, y0 + 3),
+                    (target_x - bbox[0], target_y - bbox[1]),
                     fitted,
                     fill=f"#{style.color}",
                     font=font,
-                    spacing=max(3, round(font_size * 0.18)),
+                    spacing=spacing,
                     align=style.align,
+                    stroke_width=stroke_width,
+                    stroke_fill=f"#{style.color}",
                 )
                 continue
             if element.type in {"table", "chart"}:
@@ -885,6 +1133,10 @@ class PPTSkillAdapter:
 
         if element.type == "text":
             box = slide.shapes.add_textbox(x, y, w, h)
+            if element.object_id:
+                box.name = f"MetaClass {element.contract_role} {element.object_id}"
+            elif element.contract_role == "visual_placeholder":
+                box.name = "MetaClass Visual Placeholder"
             if style.fill:
                 box.fill.solid()
                 box.fill.fore_color.rgb = RGBColor.from_string(style.fill)
@@ -910,23 +1162,29 @@ class PPTSkillAdapter:
             # PowerPoint auto-fit here introduces a second, platform-dependent
             # layout engine and makes previews differ from the exported deck.
             frame.auto_size = None
-            frame.margin_left = Inches(0.05)
-            frame.margin_right = Inches(0.05)
-            frame.margin_top = Inches(0.03)
-            frame.margin_bottom = Inches(0.03)
+            frame.margin_left = Inches(style.text_margin_x)
+            frame.margin_right = Inches(style.text_margin_x)
+            frame.margin_top = Inches(style.text_margin_y)
+            frame.margin_bottom = Inches(style.text_margin_y)
             frame.vertical_anchor = anchors[style.valign]
             text = element.text or "\n".join(element.items)
-            for index, value in enumerate(text.splitlines() or [""]):
-                paragraph = frame.paragraphs[0] if index == 0 else frame.add_paragraph()
-                paragraph.text = value
-                paragraph.alignment = alignments[style.align]
-                PPTSkillAdapter._apply_font(
-                    paragraph,
-                    size=Pt(style.font_size),
-                    bold=style.bold,
-                    color=color,
-                    opacity=style.opacity,
-                )
+            # Keep one immutable Plan string in one paragraph. python-pptx serializes
+            # embedded newlines as soft line breaks, which preserves the text object
+            # while allowing the contract validator to reconstruct the original copy.
+            paragraph = frame.paragraphs[0]
+            paragraph.text = text
+            paragraph.alignment = alignments[style.align]
+            paragraph.line_spacing = Pt(style.font_size * 1.18)
+            paragraph.space_before = Pt(0)
+            paragraph.space_after = Pt(0)
+            PPTSkillAdapter._apply_font(
+                paragraph,
+                size=Pt(style.font_size),
+                bold=style.bold,
+                color=color,
+                opacity=style.opacity,
+                font_role=style.font_role,
+            )
             return
 
         if element.type == "shape":
@@ -937,6 +1195,8 @@ class PPTSkillAdapter:
                 "chevron": MSO_SHAPE.CHEVRON,
             }
             shape = slide.shapes.add_shape(shape_types[element.shape], x, y, w, h)
+            if element.object_id:
+                shape.name = f"MetaClass {element.contract_role} {element.object_id}"
             if style.fill:
                 shape.fill.solid()
                 shape.fill.fore_color.rgb = RGBColor.from_string(style.fill)
@@ -959,6 +1219,8 @@ class PPTSkillAdapter:
 
         if element.type == "line":
             connector = slide.shapes.add_connector(MSO_CONNECTOR.STRAIGHT, x, y, x + w, y + h)
+            if element.object_id:
+                connector.name = f"MetaClass {element.contract_role} {element.object_id}"
             connector.line.color.rgb = RGBColor.from_string(style.line_color or style.color)
             connector.line.width = Pt(max(style.line_width, 1))
             PPTSkillAdapter._apply_color_opacity(
@@ -970,7 +1232,49 @@ class PPTSkillAdapter:
         if element.type == "image" and element.image_path:
             image_path = Path(element.image_path)
             if image_path.is_file():
-                slide.shapes.add_picture(str(image_path), x, y, w, h)
+                try:
+                    with Image.open(image_path) as source:
+                        source_width, source_height = source.size
+                    source_ratio = source_width / source_height
+                    frame_ratio = int(w) / int(h)
+                    if element.image_fit == "contain":
+                        if source_ratio > frame_ratio:
+                            picture_width = int(w)
+                            picture_height = round(int(w) / source_ratio)
+                            picture_x = int(x)
+                            picture_y = int(y) + (int(h) - picture_height) // 2
+                        else:
+                            picture_height = int(h)
+                            picture_width = round(int(h) * source_ratio)
+                            picture_x = int(x) + (int(w) - picture_width) // 2
+                            picture_y = int(y)
+                        picture = slide.shapes.add_picture(
+                            str(image_path),
+                            picture_x,
+                            picture_y,
+                            picture_width,
+                            picture_height,
+                        )
+                    else:
+                        picture = slide.shapes.add_picture(str(image_path), x, y, w, h)
+                        if source_ratio > frame_ratio:
+                            crop = (1 - frame_ratio / source_ratio) / 2
+                            picture.crop_left = crop
+                            picture.crop_right = crop
+                        elif source_ratio < frame_ratio:
+                            crop = (1 - source_ratio / frame_ratio) / 2
+                            picture.crop_top = crop
+                            picture.crop_bottom = crop
+                    if element.object_id:
+                        picture.name = (
+                            f"MetaClass {element.contract_role} {element.object_id}"
+                        )
+                except (OSError, ZeroDivisionError):
+                    picture = slide.shapes.add_picture(str(image_path), x, y, w, h)
+                    if element.object_id:
+                        picture.name = (
+                            f"MetaClass {element.contract_role} {element.object_id}"
+                        )
             return
 
         if element.type == "table" and element.table_rows:

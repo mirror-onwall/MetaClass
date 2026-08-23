@@ -360,9 +360,7 @@ class PresentationPlanGenerator:
         candidates.extend(point.strip() for point in section.key_points if point.strip())
         candidates.extend(point.strip() for point in section.knowledge_points if point.strip())
         candidates.extend(
-            excerpt.text.strip()
-            for excerpt in section.source_excerpts
-            if excerpt.text.strip()
+            excerpt.text.strip() for excerpt in section.source_excerpts if excerpt.text.strip()
         )
         if not candidates and section.summary.strip():
             candidates.append(section.summary.strip())
@@ -410,15 +408,10 @@ class PresentationPlanGenerator:
                     source_section_ids=source_section_ids,
                     title=self._clean_internal_meta_text(slide.title),
                     key_points=[
-                        self._clean_internal_meta_text(point)
-                        for point in slide.key_points[:6]
+                        self._clean_internal_meta_text(point) for point in slide.key_points[:6]
                     ],
-                    speaker_script=self._clean_internal_meta_text(
-                        slide.speaker_script
-                    ),
-                    suggested_visual=self._clean_internal_meta_text(
-                        slide.suggested_visual
-                    ),
+                    speaker_script=self._clean_internal_meta_text(slide.speaker_script),
+                    suggested_visual=self._clean_internal_meta_text(slide.suggested_visual),
                     layout=(
                         slide.layout
                         if slide.elements
@@ -533,16 +526,13 @@ PPT_CONTENT_BATCH
                 "content_goal": section.content_goal,
                 "summary": self._clean_internal_meta_text(section.summary)[:900],
                 "key_points": [
-                    self._clean_internal_meta_text(point)
-                    for point in section.key_points[:8]
+                    self._clean_internal_meta_text(point) for point in section.key_points[:8]
                 ],
                 "knowledge_points": section.knowledge_points[:10],
-                "teaching_narrative": self._clean_internal_meta_text(
-                    section.teaching_narrative
-                )[:1200],
-                "teaching_script": self._clean_internal_meta_text(
-                    section.teaching_script
-                )[:1500],
+                "teaching_narrative": self._clean_internal_meta_text(section.teaching_narrative)[
+                    :1200
+                ],
+                "teaching_script": self._clean_internal_meta_text(section.teaching_script)[:1500],
                 "source_excerpts": [
                     {
                         "id": item.id,
@@ -771,9 +761,9 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                         "teaching_narrative": self._clean_internal_meta_text(
                             section.teaching_narrative
                         )[:1200],
-                        "teaching_script": self._clean_internal_meta_text(
-                            section.teaching_script
-                        )[:1500],
+                        "teaching_script": self._clean_internal_meta_text(section.teaching_script)[
+                            :1500
+                        ],
                         "source_excerpts": [
                             excerpt.model_dump(mode="json")
                             for excerpt in section.source_excerpts[:12]
@@ -874,9 +864,7 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
                     is_title=is_title,
                 )
                 if fitted_size is None:
-                    raise ValueError(
-                        f"text does not fit its box at minimum font size: {text[:60]}"
-                    )
+                    raise ValueError(f"text does not fit its box at minimum font size: {text[:60]}")
                 updates.update(
                     {
                         "text": text,
@@ -897,9 +885,7 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
 
         if not has_visual:
             raise ValueError("scene contains no non-text visual element")
-        self._validate_scene_safe_zones(
-            elements, slide.title, allow_centered_title=index == 0
-        )
+        self._validate_scene_safe_zones(elements, slide.title, allow_centered_title=index == 0)
         if self._has_unsafe_scene_collisions(elements, slide.title):
             raise ValueError("scene contains overlapping content objects after text fitting")
         background = BRAND_PALETTE.board if index == 0 else BRAND_PALETTE.paper
@@ -913,9 +899,7 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
     ) -> bool:
         """Reject collisions between content objects while allowing text on card shapes."""
         content = [
-            element
-            for element in elements
-            if element.type in {"text", "image", "table", "chart"}
+            element for element in elements if element.type in {"text", "image", "table", "chart"}
         ]
         for index, left in enumerate(content):
             for right in content[index + 1 :]:
@@ -938,18 +922,28 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
         allow_centered_title: bool = False,
     ) -> None:
         rules = DEFAULT_LAYOUT_CONSTRAINTS
+        geometry_tolerance = 1e-9
         for element in elements:
             if element.type not in {"text", "image", "table", "chart"}:
                 continue
             text = element.text or "\n".join(element.items)
             is_title = element.type == "text" and cls._looks_like_title(text, slide_title)
-            if element.x < rules.canvas_margin_x or element.x + element.w > 1 - rules.canvas_margin_x:
+            if (
+                element.x < rules.canvas_margin_x - geometry_tolerance
+                or element.x + element.w > 1 - rules.canvas_margin_x + geometry_tolerance
+            ):
                 raise ValueError("content element violates horizontal canvas margin")
             if is_title:
                 title_bottom = 0.65 if allow_centered_title else rules.title_bottom
-                if element.y < rules.title_top or element.y + element.h > title_bottom:
+                if (
+                    element.y < rules.title_top - geometry_tolerance
+                    or element.y + element.h > title_bottom + geometry_tolerance
+                ):
                     raise ValueError("title element violates title safe zone")
-            elif element.y < rules.content_top or element.y + element.h > rules.content_bottom:
+            elif (
+                element.y < rules.content_top - geometry_tolerance
+                or element.y + element.h > rules.content_bottom + geometry_tolerance
+            ):
                 raise ValueError("content element violates body safe zone")
 
     @staticmethod

@@ -27,6 +27,9 @@ class PresentationPlanJobStatus(StrEnum):
 
 class SlideElementStyle(SchemaModel):
     font_size: float = Field(default=18, ge=8, le=72)
+    font_role: Literal["sans", "serif", "handwritten", "display", "mono"] = "sans"
+    text_margin_x: float = Field(default=0.05, ge=0, le=0.3)
+    text_margin_y: float = Field(default=0.03, ge=0, le=0.3)
     bold: bool = False
     color: str = Field(default="1F2937", pattern=r"^[0-9A-Fa-f]{6}$")
     fill: str | None = Field(default=None, pattern=r"^[0-9A-Fa-f]{6}$")
@@ -41,6 +44,25 @@ class SlideElement(SchemaModel):
     """Safe, declarative element on a normalized 16:9 slide canvas."""
 
     type: Literal["text", "shape", "line", "image", "table", "chart"]
+    contract_role: Literal[
+        "content",
+        "plan_copy",
+        "visual_module",
+        "visual_asset",
+        "visual_placeholder",
+    ] = "content"
+    object_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=64,
+        pattern=r"^[A-Za-z][A-Za-z0-9_.-]*$",
+    )
+    semantic_ref: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=96,
+        pattern=r"^[A-Za-z][A-Za-z0-9_.-]*$",
+    )
     x: float = Field(ge=0, le=1)
     y: float = Field(ge=0, le=1)
     w: float = Field(ge=0, le=1)
@@ -50,6 +72,7 @@ class SlideElement(SchemaModel):
     items: list[str] = Field(default_factory=list, max_length=12)
     shape: Literal["rectangle", "rounded_rectangle", "oval", "chevron"] = "rectangle"
     image_path: str | None = None
+    image_fit: Literal["cover", "contain"] = "cover"
     table_rows: list[list[str]] = Field(default_factory=list, max_length=12)
     chart_type: Literal["bar", "line", "pie", "doughnut"] = "bar"
     chart_categories: list[str] = Field(default_factory=list, max_length=12)
