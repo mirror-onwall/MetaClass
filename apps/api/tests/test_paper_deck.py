@@ -9,6 +9,7 @@ from metaclass.modules.paper_workflow.paper_deck import (
     PaperDeckContractError,
 )
 from metaclass.modules.paper_workflow.schemas import (
+    PaperAnalysis,
     PaperArtifactBundle,
     PresentationOutline,
     SlideEvidence,
@@ -96,6 +97,52 @@ def _evidence() -> SlideEvidence:
     )
 
 
+def _analysis() -> PaperAnalysis:
+    return PaperAnalysis.model_validate(
+        {
+            "paper_type": "methods",
+            "central_question": "Can the method solve the target task?",
+            "knowledge_gap": "Existing methods lack grounded evidence.",
+            "main_claim": "The method improves the target task.",
+            "method_summary": {"approach": "An evidence-aware pipeline."},
+            "claims": [
+                {
+                    "id": "claim_01",
+                    "statement": "The method addresses the target problem.",
+                    "importance": "core",
+                    "confidence": 0.9,
+                    "source_refs": [{"page_no": 1, "block_id": "block_001", "quote": "Core claim"}],
+                },
+                {
+                    "id": "claim_02",
+                    "statement": "The evaluation supports the method.",
+                    "importance": "supporting",
+                    "confidence": 0.8,
+                    "source_refs": [
+                        {"page_no": 2, "asset_id": "asset_figure_01", "quote": "Result"}
+                    ],
+                },
+            ],
+            "quantitative_results": [
+                {
+                    "id": "result_01",
+                    "statement": "Accuracy improves by 5 points.",
+                    "metric": "accuracy",
+                    "value": 5,
+                    "source_refs": [{"page_no": 2, "asset_id": "asset_figure_01"}],
+                }
+            ],
+            "limitations": [
+                {
+                    "id": "limitation_01",
+                    "statement": "The evaluation covers one benchmark.",
+                    "source_refs": [{"page_no": 2, "block_id": "block_002"}],
+                }
+            ],
+        }
+    )
+
+
 def _bundle() -> PaperArtifactBundle:
     return PaperArtifactBundle.model_construct(
         id="paper_bundle_test",
@@ -129,6 +176,7 @@ def test_paper_deck_builder_preserves_final_pages_authoring_notes_and_evidence(
         deck_material_id="mat_deck",
         source_paper_material_id="mat_paper",
         pages=[_page(1), _page(2)],
+        analysis=_analysis(),
         outline=_outline(),
         evidence=_evidence(),
         speaker_notes_path=notes,
@@ -138,6 +186,15 @@ def test_paper_deck_builder_preserves_final_pages_authoring_notes_and_evidence(
     assert content.organization_mode == "paper_deck"
     assert content.material_ids == ["mat_deck", "mat_paper"]
     assert content.sections[0].page_nos == [1, 2]
+    assert content.knowledge_units
+    assert content.knowledge_tree is not None
+    assert content.sections[0].tree_node_ids
+    assert content.knowledge_units[0].source_refs[0].material_id == "mat_paper"
+    assert content.knowledge_units[0].page_refs[0].material_id == "mat_deck"
+    assigned = {
+        unit_id for node in content.knowledge_tree.nodes for unit_id in node.knowledge_unit_ids
+    }
+    assert assigned == {unit.id for unit in content.knowledge_units}
     assert plan.mode == "paper_deck"
     assert plan.source_material_id == "mat_deck"
     assert plan.source_paper_material_id == "mat_paper"
@@ -159,6 +216,7 @@ def test_paper_deck_builder_rejects_final_page_drift(tmp_path: Path) -> None:
             deck_material_id="mat_deck",
             source_paper_material_id="mat_paper",
             pages=[_page(1)],
+            analysis=_analysis(),
             outline=_outline(),
             evidence=_evidence(),
             speaker_notes_path=notes,

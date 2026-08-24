@@ -44,7 +44,6 @@ from metaclass.modules.materials.service import MaterialService
 logger = logging.getLogger(__name__)
 ProgressCallback = Callable[[int, str, str], None]
 PageProgressCallback = Callable[[int, int], None]
-MAX_UNITS_PER_TOPIC_NODE = 3
 MAX_TREE_NODES_PER_SECTION = 2
 
 
@@ -155,7 +154,10 @@ class ContentService:
 
     def pause_generation_job(self, job_id: str) -> ContentGenerationJob:
         job = self.get_generation_job(job_id)
-        if job.status not in {ContentGenerationJobStatus.QUEUED, ContentGenerationJobStatus.RUNNING}:
+        if job.status not in {
+            ContentGenerationJobStatus.QUEUED,
+            ContentGenerationJobStatus.RUNNING,
+        }:
             raise HTTPException(409, "Only queued or running jobs can be paused")
         with self._job_lock:
             self._pause_events.setdefault(job_id, Event()).set()
@@ -601,6 +603,9 @@ class ContentService:
             raise ValueError(
                 f"Paper-deck content page mapping mismatch: expected {expected}, got {actual}"
             )
+        if not content.knowledge_units or not content.knowledge_tree:
+            raise ValueError("Paper-deck content requires a paper knowledge tree")
+        self._validate_course_knowledge_tree(content.knowledge_tree, content.knowledge_units)
         return self.repository.save(content)
 
     @staticmethod
@@ -1483,18 +1488,20 @@ class ContentService:
                 )
             )
             existing_node_ids.add(root_id)
-            for chunk_index in range(0, len(missing_units), MAX_UNITS_PER_TOPIC_NODE):
-                chunk = missing_units[chunk_index : chunk_index + MAX_UNITS_PER_TOPIC_NODE]
-                child_id = f"{root_id}_topic_{chunk_index // MAX_UNITS_PER_TOPIC_NODE + 1:02d}"
+            units_by_type: dict[str, list[KnowledgeUnit]] = {}
+            for unit in missing_units:
+                units_by_type.setdefault(unit.unit_type, []).append(unit)
+            for group_index, (unit_type, group) in enumerate(units_by_type.items(), start=1):
+                child_id = f"{root_id}_{self._normalize_topic(unit_type) or 'topic'}"
                 nodes.append(
                     CourseKnowledgeTreeNode(
                         id=child_id,
-                        title=chunk[0].title if len(chunk) == 1 else "Supplementary Topic",
-                        role=chunk[0].unit_type,
-                        summary=" ".join(unit.summary for unit in chunk)[:1200],
+                        title=group[0].title if len(group) == 1 else "Supplementary Topic",
+                        role=unit_type,
+                        summary=" ".join(unit.summary for unit in group)[:1200],
                         parent_id=root_id,
-                        knowledge_unit_ids=[unit.id for unit in chunk],
-                        order=chunk_index // MAX_UNITS_PER_TOPIC_NODE + 1,
+                        knowledge_unit_ids=[unit.id for unit in group],
+                        order=group_index,
                     )
                 )
             warnings.append(
@@ -1546,24 +1553,23 @@ class ContentService:
                 )
             )
             previous_root_id = root_id
-            for chunk_index in range(0, len(category_units), MAX_UNITS_PER_TOPIC_NODE):
-                chunk = category_units[chunk_index : chunk_index + MAX_UNITS_PER_TOPIC_NODE]
-                child_index = chunk_index // MAX_UNITS_PER_TOPIC_NODE + 1
-                child_id = f"{root_id}_topic_{child_index:02d}"
+            units_by_type: dict[str, list[KnowledgeUnit]] = {}
+            for unit in category_units:
+                units_by_type.setdefault(unit.unit_type, []).append(unit)
+            for child_index, (unit_type, group) in enumerate(units_by_type.items(), start=1):
+                child_id = f"{root_id}_{self._normalize_topic(unit_type) or 'topic'}"
                 nodes.append(
                     CourseKnowledgeTreeNode(
                         id=child_id,
-                        title=(
-                            chunk[0].title if len(chunk) == 1 else f"{category_title} {child_index}"
-                        ),
-                        role=chunk[0].unit_type,
-                        summary=" ".join(unit.summary for unit in chunk)[:1200],
+                        title=group[0].title if len(group) == 1 else category_title,
+                        role=unit_type,
+                        summary=" ".join(unit.summary for unit in group)[:1200],
                         parent_id=root_id,
-                        knowledge_unit_ids=[unit.id for unit in chunk],
+                        knowledge_unit_ids=[unit.id for unit in group],
                         order=child_index,
                     )
                 )
-                assigned_ids.update(unit.id for unit in chunk)
+                assigned_ids.update(unit.id for unit in group)
 
         unassigned = [unit for unit in units if unit.id not in assigned_ids]
         if unassigned:
@@ -1605,10 +1611,6 @@ class ContentService:
                 raise ValueError(f"Tree node {node.id} references an unknown parent")
             if any(item not in node_id_set for item in node.prerequisite_node_ids):
                 raise ValueError(f"Tree node {node.id} references an unknown prerequisite")
-            if len(node.knowledge_unit_ids) > MAX_UNITS_PER_TOPIC_NODE:
-                raise ValueError(
-                    f"Tree node {node.id} contains too many knowledge units for one topic"
-                )
 
         expected_unit_ids = {unit.id for unit in units}
         assigned_unit_ids = [unit_id for node in tree.nodes for unit_id in node.knowledge_unit_ids]
@@ -1624,7 +1626,6 @@ class ContentService:
         draft: LearningContentDraft,
         tree: CourseKnowledgeTree,
     ) -> None:
-        node_by_id = {node.id: node for node in tree.nodes}
         required_node_ids = {node.id for node in tree.nodes if node.knowledge_unit_ids}
         section_node_ids = [
             node_id for section in draft.sections for node_id in section.tree_node_ids
@@ -1642,11 +1643,6 @@ class ContentService:
         for section in draft.sections:
             if len(section.tree_node_ids) > MAX_TREE_NODES_PER_SECTION:
                 raise ValueError("LearningContent section merges too many teaching topics")
-            unit_count = sum(
-                len(node_by_id[node_id].knowledge_unit_ids) for node_id in section.tree_node_ids
-            )
-            if unit_count > MAX_UNITS_PER_TOPIC_NODE:
-                raise ValueError("LearningContent section contains too many knowledge units")
 
     def _sections_from_knowledge_tree(
         self,
@@ -1845,20 +1841,8 @@ class ContentService:
             )
             for section in content.sections
         }
-        overloaded_section_ids = sorted(
-            section_id
-            for section_id, unit_count in section_unit_counts.items()
-            if unit_count > MAX_UNITS_PER_TOPIC_NODE
-        )
-        recommended_min_section_count = (
-            (len(expected_unit_ids) + MAX_UNITS_PER_TOPIC_NODE - 1) // MAX_UNITS_PER_TOPIC_NODE
-            if expected_unit_ids
-            else 0
-        )
-        if overloaded_section_ids:
-            warnings.append("Some LearningContent sections contain too many knowledge units.")
-        if len(content.sections) < recommended_min_section_count:
-            warnings.append("LearningContent may be over-compressed for the available knowledge.")
+        overloaded_section_ids: list[str] = []
+        recommended_min_section_count = 1 if expected_unit_ids else 0
 
         low_confidence_unit_ids = sorted(
             unit.id for unit in content.knowledge_units if unit.confidence < 0.7

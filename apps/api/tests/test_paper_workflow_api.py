@@ -368,6 +368,34 @@ def test_succeeded_workflow_creates_reconciled_paper_deck_course(
         (final / "presentation_outline.json").write_text(
             json.dumps(outline), encoding="utf-8"
         )
+        (final / "paper_analysis.json").write_text(
+            json.dumps(
+                {
+                    "paper_type": "methods",
+                    "central_question": "What problem does the method solve?",
+                    "knowledge_gap": "Prior work lacks grounded evidence.",
+                    "main_claim": "The method solves the target problem.",
+                    "method_summary": {"approach": "Evidence-aware processing."},
+                    "claims": [
+                        {
+                            "id": "claim_01",
+                            "statement": "The method addresses the research question.",
+                            "importance": "core",
+                            "confidence": 0.9,
+                            "source_refs": [{"page_no": 1}],
+                        },
+                        {
+                            "id": "claim_02",
+                            "statement": "The evidence supports the method.",
+                            "importance": "supporting",
+                            "confidence": 0.8,
+                            "source_refs": [{"page_no": 1}],
+                        },
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
         (final / "slide_evidence.json").write_text(
             json.dumps(evidence), encoding="utf-8"
         )

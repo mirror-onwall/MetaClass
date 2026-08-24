@@ -9,11 +9,14 @@ from metaclass.modules.content.schemas import (
 )
 from metaclass.modules.materials.schemas import PageMetadata
 from metaclass.modules.paper_workflow.schemas import (
+    PaperAnalysis,
     PaperArtifactBundle,
     PresentationOutline,
     SlideEvidence,
 )
 from metaclass.modules.presentation.schemas import PresentationPlan, SlidePlan
+
+from .paper_knowledge import PaperKnowledgeTreeBuilder
 
 
 class PaperDeckContractError(ValueError):
@@ -36,6 +39,7 @@ class PaperDeckBuilder:
         deck_material_id: str,
         source_paper_material_id: str,
         pages: list[PageMetadata],
+        analysis: PaperAnalysis,
         outline: PresentationOutline,
         evidence: SlideEvidence,
         speaker_notes_path: Path,
@@ -60,16 +64,21 @@ class PaperDeckBuilder:
                 f"speaker notes reference unknown slides: {sorted(unknown_notes)}"
             )
 
+        knowledge = PaperKnowledgeTreeBuilder().build(
+            job_id=job_id,
+            source_paper_material_id=source_paper_material_id,
+            deck_material_id=deck_material_id,
+            analysis=analysis,
+            outline=outline,
+            evidence=evidence,
+        )
+
         section_by_slide = {
-            slide_id: section
-            for section in outline.sections
-            for slide_id in section.slide_ids
+            slide_id: section for section in outline.sections for slide_id in section.slide_ids
         }
         learning_sections: list[LearningSection] = []
         for section_index, section in enumerate(outline.sections, start=1):
-            section_slides = [
-                item for item in outline.slides if item.id in set(section.slide_ids)
-            ]
+            section_slides = [item for item in outline.slides if item.id in set(section.slide_ids)]
             page_nos = [item.order for item in section_slides]
             page_items = [ordered_pages[number - 1] for number in page_nos]
             learning_sections.append(
@@ -79,9 +88,7 @@ class PaperDeckBuilder:
                     role=section.role,
                     content_goal=section.content_goal,
                     summary=" ".join(item.purpose for item in section_slides),
-                    key_points=[
-                        point for item in section_slides for point in item.key_points
-                    ],
+                    key_points=[point for item in section_slides for point in item.key_points],
                     knowledge_points=[
                         point for item in section_slides for point in item.key_points
                     ],
@@ -103,6 +110,7 @@ class PaperDeckBuilder:
                         for number in page_nos
                     ],
                     page_nos=page_nos,
+                    tree_node_ids=knowledge.section_node_ids.get(section.id, []),
                     outline_level=1,
                     transition_to_next=(
                         f"接下来进入 {outline.sections[section_index].title}。"
@@ -134,6 +142,8 @@ class PaperDeckBuilder:
                 "derived_deck_material_id": deck_material_id,
                 "outline_status": "authoring_hint_reconciled",
             },
+            knowledge_units=knowledge.knowledge_units,
+            knowledge_tree=knowledge.knowledge_tree,
             objectives=outline.objectives,
             sections=learning_sections,
             generation_guidance={
@@ -214,10 +224,7 @@ class PaperDeckBuilder:
                 continue
             slide_id = str(item.get("slide_id") or item.get("id") or "").strip()
             note = str(
-                item.get("note")
-                or item.get("speaker_note")
-                or item.get("speaker_script")
-                or ""
+                item.get("note") or item.get("speaker_note") or item.get("speaker_script") or ""
             ).strip()
             if slide_id and note:
                 notes[slide_id] = note

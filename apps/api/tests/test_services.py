@@ -341,7 +341,7 @@ def test_content_service_canonicalizes_units_without_losing_sources() -> None:
     assert worked_example.relations[0].relation_type == "example_of"
 
 
-def test_knowledge_tree_fallback_keeps_teaching_topics_at_usable_granularity() -> None:
+def test_knowledge_tree_fallback_groups_units_semantically_without_a_fixed_limit() -> None:
     service = ContentService(Mock(), Mock(), Mock())
     units = []
     for index in range(1, 8):
@@ -365,14 +365,14 @@ def test_knowledge_tree_fallback_keeps_teaching_topics_at_usable_granularity() -
     sections = service._sections_from_knowledge_tree(tree, units)
 
     assert len(tree.root_node_ids) == 1
-    assert len(sections) == 3
+    assert len(sections) == 1
     assert [
         sum(
             len(next(node for node in tree.nodes if node.id == node_id).knowledge_unit_ids)
             for node_id in section.tree_node_ids
         )
         for section in sections
-    ] == [3, 3, 1]
+    ] == [7]
 
     content = LearningContent(
         id="content_001",
@@ -385,7 +385,7 @@ def test_knowledge_tree_fallback_keeps_teaching_topics_at_usable_granularity() -
     )
     quality = service._assess_content_quality(content, expected_material_ids=["mat_001"])
 
-    assert quality["recommended_min_section_count"] == 3
+    assert quality["recommended_min_section_count"] == 1
     assert quality["overloaded_section_ids"] == []
     assert "LearningContent may be over-compressed" not in " ".join(quality["warnings"])
 

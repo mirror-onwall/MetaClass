@@ -301,6 +301,9 @@ class PaperWorkflowService:
         outline = PresentationOutline.model_validate_json(
             (root / "presentation_outline.json").read_text(encoding="utf-8")
         )
+        analysis = PaperAnalysis.model_validate_json(
+            (root / "paper_analysis.json").read_text(encoding="utf-8")
+        )
         evidence = SlideEvidence.model_validate_json(
             (root / "slide_evidence.json").read_text(encoding="utf-8")
         )
@@ -311,6 +314,7 @@ class PaperWorkflowService:
             deck_material_id=deck_material.id,
             source_paper_material_id=job.source_material_id,
             pages=pages,
+            analysis=analysis,
             outline=outline,
             evidence=evidence,
             speaker_notes_path=root / "speaker_notes.json",
