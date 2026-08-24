@@ -8,9 +8,11 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 
 from metaclass.core.schemas import utc_now
+from metaclass.modules.content.service import ContentService
 from metaclass.modules.materials.schemas import MaterialType
 from metaclass.modules.materials.service import MaterialService
 from metaclass.modules.paper_workflow.orchestrator import PaperWorkflowOrchestrator
+from metaclass.modules.paper_workflow.paper_deck import PaperDeckBuilder
 from metaclass.modules.paper_workflow.providers.base import PaperWorkflowPaused
 from metaclass.modules.paper_workflow.repository import PaperWorkflowRepository
 from metaclass.modules.paper_workflow.schemas import (
@@ -18,6 +20,7 @@ from metaclass.modules.paper_workflow.schemas import (
     FigureCatalog,
     PaperAnalysis,
     PaperArtifactBundle,
+    PaperDeckCourseResult,
     PaperWorkflowCheckpoint,
     PaperWorkflowJob,
     PaperWorkflowRequest,
@@ -31,6 +34,7 @@ from metaclass.modules.paper_workflow.schemas import (
 )
 from metaclass.modules.paper_workflow.source_bundle import PaperSourceBundleBuilder
 from metaclass.modules.paper_workflow.stage_cache import PaperWorkflowCheckpointStore
+from metaclass.modules.presentation.service import PresentationService
 
 ArtifactModel = TypeVar("ArtifactModel", bound=BaseModel)
 
@@ -44,11 +48,15 @@ class PaperWorkflowService:
         repository: PaperWorkflowRepository,
         materials: MaterialService,
         orchestrator: PaperWorkflowOrchestrator,
+        contents: ContentService | None = None,
+        presentations: PresentationService | None = None,
     ) -> None:
         self.data_dir = data_dir
         self.repository = repository
         self.materials = materials
         self.orchestrator = orchestrator
+        self.contents = contents
+        self.presentations = presentations
         self.source_bundles = PaperSourceBundleBuilder(materials)
         self._lock = RLock()
         self._pause_events: dict[str, Event] = {}
@@ -272,6 +280,54 @@ class PaperWorkflowService:
         if not bundle:
             raise HTTPException(500, "Paper workflow result metadata is missing")
         return bundle
+
+    def create_paper_deck_course(self, job_id: str) -> PaperDeckCourseResult:
+        """Parse the final deck and create its evidence-aware classroom plan."""
+        if self.contents is None or self.presentations is None:
+            raise HTTPException(503, "Paper deck classroom services are unavailable")
+        job = self.get(job_id)
+        if job.status != PaperWorkflowStatus.SUCCEEDED:
+            raise HTTPException(409, "Paper workflow must succeed before creating a paper deck")
+        bundle = self.result(job_id)
+        if not bundle.derived_material_id:
+            raise HTTPException(500, "Paper artifact bundle has no derived material")
+        deck_material = self.materials.get(bundle.derived_material_id)
+        pages = self.materials.pages(deck_material.id)
+        if not pages:
+            pages = self.materials.parse(deck_material.id)
+
+        root = (self.data_dir / bundle.root_path).resolve()
+        root.relative_to(self.data_dir.resolve())
+        outline = PresentationOutline.model_validate_json(
+            (root / "presentation_outline.json").read_text(encoding="utf-8")
+        )
+        evidence = SlideEvidence.model_validate_json(
+            (root / "slide_evidence.json").read_text(encoding="utf-8")
+        )
+        request = self._require_request(job.id)
+        content, plan = PaperDeckBuilder().build(
+            job_id=job.id,
+            bundle=bundle,
+            deck_material_id=deck_material.id,
+            source_paper_material_id=job.source_material_id,
+            pages=pages,
+            outline=outline,
+            evidence=evidence,
+            speaker_notes_path=root / "speaker_notes.json",
+            audience=request.audience or "具备基础专业背景的高校学生和研究生",
+        )
+        persisted_content = self.contents.save_paper_deck_content(content)
+        if persisted_content.id != plan.content_id:
+            plan = plan.model_copy(update={"content_id": persisted_content.id})
+        persisted_plan = self.presentations.save_paper_deck_plan(plan)
+        return PaperDeckCourseResult(
+            paper_job_id=job.id,
+            derived_material_id=deck_material.id,
+            source_paper_material_id=job.source_material_id,
+            artifact_bundle_id=bundle.id,
+            content_id=persisted_content.id,
+            presentation_plan_id=persisted_plan.id,
+        )
 
     def analysis(self, job_id: str) -> PaperAnalysis:
         job = self.get(job_id)

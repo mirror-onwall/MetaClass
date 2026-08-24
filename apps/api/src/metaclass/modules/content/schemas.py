@@ -1,8 +1,8 @@
-from pydantic import Field, field_validator, model_validator
-
 from datetime import datetime
 from enum import StrEnum
 from typing import Literal
+
+from pydantic import Field, field_validator, model_validator
 
 from metaclass.core.schemas import SchemaModel, utc_now
 from metaclass.modules.materials.schemas import SourceRef
@@ -639,7 +639,7 @@ class LearningContent(SchemaModel):
     material_id: str = Field(min_length=1)
     material_ids: list[str] = Field(default_factory=list)
     collection_id: str | None = None
-    organization_mode: Literal["knowledge", "source_deck"] = "knowledge"
+    organization_mode: Literal["knowledge", "source_deck", "paper_deck"] = "knowledge"
     title: str = Field(min_length=1)
     subtitle: str = ""
     audience: dict = Field(default_factory=dict)
@@ -668,7 +668,7 @@ class ContentGenerationJob(SchemaModel):
     id: str = Field(min_length=1)
     material_id: str | None = None
     collection_id: str | None = None
-    organization_mode: Literal["knowledge", "source_deck"] = "knowledge"
+    organization_mode: Literal["knowledge", "source_deck", "paper_deck"] = "knowledge"
     status: ContentGenerationJobStatus = ContentGenerationJobStatus.QUEUED
     progress: int = Field(default=0, ge=0, le=100)
     step: str = "queued"

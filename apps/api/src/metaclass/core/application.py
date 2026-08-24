@@ -232,6 +232,8 @@ def build_services(
                 )
             ],
         ),
+        contents=contents,
+        presentations=presentations,
     )
     return ApplicationServices(
         database,

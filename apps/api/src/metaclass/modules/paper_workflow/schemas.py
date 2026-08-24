@@ -92,6 +92,15 @@ class PaperWorkflowSettings(SchemaModel):
     audience: str = Field(min_length=1)
 
 
+class PaperDeckCourseResult(SchemaModel):
+    paper_job_id: str = Field(min_length=1)
+    derived_material_id: str = Field(min_length=1)
+    source_paper_material_id: str = Field(min_length=1)
+    artifact_bundle_id: str = Field(min_length=1)
+    content_id: str = Field(min_length=1)
+    presentation_plan_id: str = Field(min_length=1)
+
+
 class RequiredWorkflowInput(SchemaModel):
     reason: str = Field(min_length=1)
     fields: list[Literal["duration_minutes", "audience"]] = Field(min_length=1)

@@ -2,7 +2,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from sqlalchemy import Engine, event, inspect, text, create_engine
+from sqlalchemy import Engine, create_engine, event, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 
@@ -113,6 +113,8 @@ class Database:
             "presentation_plans": {
                 "mode": "VARCHAR(20)",
                 "source_material_id": "VARCHAR(64)",
+                "source_paper_material_id": "VARCHAR(64)",
+                "paper_artifact_bundle_id": "VARCHAR(64)",
                 "presentation_resource_id": "VARCHAR(64)",
                 "generation_source": "VARCHAR(20)",
                 "generation_provider": "VARCHAR(100)",

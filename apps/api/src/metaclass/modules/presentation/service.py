@@ -1,5 +1,5 @@
-import json
 import hashlib
+import json
 from pathlib import Path
 from threading import Event, Lock
 from uuid import uuid4
@@ -10,11 +10,11 @@ from metaclass.core.schemas import utc_now
 from metaclass.modules.content.service import ContentService
 from metaclass.modules.materials.schemas import MaterialType
 from metaclass.modules.materials.service import MaterialService
+from metaclass.modules.presentation.diagnostics import diagnose_presentation_plan
 from metaclass.modules.presentation.planner import (
     PresentationPlanGenerator,
     SourceSlideNarrationBatch,
 )
-from metaclass.modules.presentation.diagnostics import diagnose_presentation_plan
 from metaclass.modules.presentation.providers import PPTProvider
 from metaclass.modules.presentation.repository import PresentationRepository
 from metaclass.modules.presentation.schemas import (
@@ -22,20 +22,18 @@ from metaclass.modules.presentation.schemas import (
     PPTGenerationJob,
     PPTGenerationStatus,
     PPTSlideImage,
-    PresentationPlanJob,
-    PresentationPlanJobStatus,
     PresentationPlan,
     PresentationPlanDiagnosis,
+    PresentationPlanJob,
+    PresentationPlanJobStatus,
     PresentationResource,
     PresentationSlideResource,
 )
+from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
 from metaclass.modules.presentation.themes import (
     get_presentation_theme,
     list_presentation_themes,
 )
-
-
-from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
 from metaclass.modules.question_bank.generator import QuestionBankGenerator
 from metaclass.modules.question_bank.repository import QuestionBankRepository
 
@@ -180,6 +178,36 @@ class PresentationService:
         )
         self._save_plan_job(job)
         return job
+
+    def save_paper_deck_plan(self, plan: PresentationPlan) -> PresentationPlan:
+        """Persist a reconciled plan that teaches from an already generated deck."""
+        if plan.mode != "paper_deck":
+            raise ValueError("Paper deck plan must use paper_deck mode")
+        if not (
+            plan.source_material_id
+            and plan.source_paper_material_id
+            and plan.paper_artifact_bundle_id
+        ):
+            raise ValueError("Paper deck plan requires deck, paper, and artifact identities")
+        pages = self.materials.pages(plan.source_material_id)
+        expected = [page.page_no for page in sorted(pages, key=lambda item: item.page_no)]
+        actual = [slide.source_page_no for slide in plan.slides]
+        if actual != expected or any(slide.source_kind != "source" for slide in plan.slides):
+            raise ValueError(
+                f"Paper deck page mapping mismatch: expected {expected}, got {actual}"
+            )
+        existing = self.repository.get_plan(plan.id)
+        if existing:
+            plan = plan.model_copy(
+                update={
+                    "presentation_resource_id": existing.presentation_resource_id,
+                    "created_at": existing.created_at,
+                }
+            )
+        plan = self._attach_resource(plan)
+        self.repository.save_plan(plan)
+        self._save_resource(plan)
+        return plan
 
     def get_plan_job(self, job_id: str) -> PresentationPlanJob:
         with self._plan_job_lock:
@@ -507,7 +535,11 @@ class PresentationService:
 
     def _save_resource(self, plan: PresentationPlan, artifact: PPTArtifact | None = None) -> None:
         material = self.materials.get(plan.source_material_id) if plan.source_material_id else None
-        kind = "source_deck" if plan.mode == "source_deck" else "generated_artifact"
+        kind = (
+            plan.mode
+            if plan.mode in {"source_deck", "paper_deck"}
+            else "generated_artifact"
+        )
         existing = self.repository.get_resource_for_plan(plan.id)
         resource = PresentationResource(
             id=plan.presentation_resource_id

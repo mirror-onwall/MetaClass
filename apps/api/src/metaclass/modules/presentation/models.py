@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from metaclass.infrastructure.database import Base
@@ -17,6 +17,10 @@ class PresentationPlanRecord(Base):
     source_material_id: Mapped[str | None] = mapped_column(
         ForeignKey("materials.id"), nullable=True
     )
+    source_paper_material_id: Mapped[str | None] = mapped_column(
+        ForeignKey("materials.id"), nullable=True
+    )
+    paper_artifact_bundle_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     presentation_resource_id: Mapped[str | None] = mapped_column(
         String(64), nullable=True
     )

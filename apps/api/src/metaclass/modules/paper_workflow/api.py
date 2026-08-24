@@ -4,6 +4,7 @@ from metaclass.modules.paper_workflow.schemas import (
     FigureCatalog,
     PaperAnalysis,
     PaperArtifactBundle,
+    PaperDeckCourseResult,
     PaperWorkflowJob,
     PaperWorkflowRequest,
     PaperWorkflowSettings,
@@ -46,6 +47,14 @@ def create_router(workflows: PaperWorkflowService) -> APIRouter:
     @router.get("/{job_id}/result", response_model=PaperArtifactBundle)
     def get_paper_workflow_result(job_id: str) -> PaperArtifactBundle:
         return workflows.result(job_id)
+
+    @router.post(
+        "/{job_id}/create-paper-deck-course",
+        response_model=PaperDeckCourseResult,
+        status_code=201,
+    )
+    def create_paper_deck_course(job_id: str) -> PaperDeckCourseResult:
+        return workflows.create_paper_deck_course(job_id)
 
     @router.get("/{job_id}/analysis", response_model=PaperAnalysis)
     def get_paper_workflow_analysis(job_id: str) -> PaperAnalysis:

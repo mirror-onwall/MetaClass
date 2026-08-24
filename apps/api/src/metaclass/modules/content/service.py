@@ -12,6 +12,7 @@ from metaclass.core.schemas import utc_now
 from metaclass.infrastructure.providers.base import LearningProvider
 from metaclass.modules.content.repository import ContentRepository
 from metaclass.modules.content.schemas import (
+    ConceptNote,
     ContentGenerationJob,
     ContentGenerationJobStatus,
     CourseKnowledgeTree,
@@ -20,27 +21,25 @@ from metaclass.modules.content.schemas import (
     KnowledgeRelation,
     KnowledgeUnit,
     LearningContent,
-    LearningContentDraft,
     LearningContentDiagnostics,
-    MaterialLearningContentSummary,
+    LearningContentDraft,
     LearningSection,
     LearningSectionDraft,
-    ConceptNote,
+    MaterialLearningContentSummary,
     PageRef,
     PageUnderstanding,
     PageUnderstandingDraft,
     QuizItem,
-    SourceExcerpt,
     SourceDeckLearningContentDraft,
     SourceDeckSectionDraft,
     SourceDeckTeachingStructureDraft,
-    TeachingSegment,
+    SourceExcerpt,
     TeachingPoint,
+    TeachingSegment,
     VisualOpportunity,
 )
 from metaclass.modules.materials.schemas import PageMetadata
 from metaclass.modules.materials.service import MaterialService
-
 
 logger = logging.getLogger(__name__)
 ProgressCallback = Callable[[int, str, str], None]
@@ -590,6 +589,19 @@ class ContentService:
         self._report_progress(progress_callback, 96, "saving", "Source-deck content saved")
         self._clear_source_checkpoint(material_id)
         return content
+
+    def save_paper_deck_content(self, content: LearningContent) -> LearningContent:
+        """Persist deterministic content produced from validated paper artifacts."""
+        if content.organization_mode != "paper_deck":
+            raise ValueError("Paper-deck content must use paper_deck organization mode")
+        pages = self.materials.pages(content.material_id)
+        expected = [page.page_no for page in sorted(pages, key=lambda item: item.page_no)]
+        actual = [page_no for section in content.sections for page_no in section.page_nos]
+        if not expected or actual != expected:
+            raise ValueError(
+                f"Paper-deck content page mapping mismatch: expected {expected}, got {actual}"
+            )
+        return self.repository.save(content)
 
     @staticmethod
     def _validate_source_deck_draft(

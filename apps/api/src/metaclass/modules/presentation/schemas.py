@@ -6,7 +6,6 @@ from pydantic import Field, model_validator
 
 from metaclass.core.schemas import SchemaModel, utc_now
 
-
 DEFAULT_PPT_THEME_ID = "academic_blue"
 
 
@@ -88,14 +87,20 @@ class SlidePlan(SchemaModel):
     visual_payload: list[str] = Field(default_factory=list)
     background: str = Field(default="F7F9F7", pattern=r"^[0-9A-Fa-f]{6}$")
     elements: list[SlideElement] = Field(default_factory=list, max_length=40)
+    paper_claim_ids: list[str] = Field(default_factory=list)
+    paper_asset_ids: list[str] = Field(default_factory=list)
+    paper_source_refs: list[dict[str, object]] = Field(default_factory=list)
+    evidence_strength: Literal["direct", "derived", "contextual"] | None = None
 
 
 class PresentationPlan(SchemaModel):
     id: str = Field(min_length=1)
     content_id: str = Field(min_length=1)
     title: str = Field(min_length=1)
-    mode: Literal["generated", "source_deck"] = "generated"
+    mode: Literal["generated", "source_deck", "paper_deck"] = "generated"
     source_material_id: str | None = None
+    source_paper_material_id: str | None = None
+    paper_artifact_bundle_id: str | None = None
     presentation_resource_id: str | None = None
     slides: list[SlidePlan] = Field(min_length=1)
     generation_source: Literal["llm", "fallback", "unknown"] = "unknown"
@@ -145,8 +150,10 @@ class PresentationPlanJob(SchemaModel):
     id: str = Field(min_length=1)
     content_id: str = Field(min_length=1)
     prepare_question_bank: bool = True
-    mode: Literal["generated", "source_deck"] = "generated"
+    mode: Literal["generated", "source_deck", "paper_deck"] = "generated"
     source_material_id: str | None = None
+    source_paper_material_id: str | None = None
+    paper_artifact_bundle_id: str | None = None
     status: PresentationPlanJobStatus = PresentationPlanJobStatus.QUEUED
     progress: int = Field(default=0, ge=0, le=100)
     step: str = "queued"
@@ -225,7 +232,7 @@ class PresentationSlideResource(SchemaModel):
 class PresentationResource(SchemaModel):
     id: str = Field(min_length=1)
     presentation_plan_id: str = Field(min_length=1)
-    kind: Literal["source_deck", "generated_artifact"]
+    kind: Literal["source_deck", "paper_deck", "generated_artifact"]
     source_material_id: str | None = None
     artifact_id: str | None = None
     source_file_hash: str | None = None
