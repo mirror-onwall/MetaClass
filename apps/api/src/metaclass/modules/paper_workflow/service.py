@@ -21,6 +21,7 @@ from metaclass.modules.paper_workflow.schemas import (
     PaperAnalysis,
     PaperArtifactBundle,
     PaperDeckCourseResult,
+    PaperSourceBundle,
     PaperWorkflowCheckpoint,
     PaperWorkflowJob,
     PaperWorkflowRequest,
@@ -298,6 +299,10 @@ class PaperWorkflowService:
 
         root = (self.data_dir / bundle.root_path).resolve()
         root.relative_to(self.data_dir.resolve())
+        workspace = root.parent
+        source_bundle = PaperSourceBundle.model_validate_json(
+            (workspace / "source" / "paper_source.json").read_text(encoding="utf-8")
+        )
         outline = PresentationOutline.model_validate_json(
             (root / "presentation_outline.json").read_text(encoding="utf-8")
         )
@@ -319,6 +324,7 @@ class PaperWorkflowService:
             pages=pages,
             analysis=analysis,
             figures=figures,
+            source_bundle=source_bundle,
             outline=outline,
             evidence=evidence,
             speaker_notes_path=root / "speaker_notes.json",

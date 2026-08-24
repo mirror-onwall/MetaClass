@@ -12,6 +12,7 @@ from metaclass.modules.paper_workflow.schemas import (
     FigureCatalog,
     PaperAnalysis,
     PaperArtifactBundle,
+    PaperSourceBundle,
     PresentationOutline,
     SlideEvidence,
 )
@@ -47,6 +48,7 @@ class PaperDeckBuilder:
         pages: list[PageMetadata],
         analysis: PaperAnalysis,
         figures: FigureCatalog,
+        source_bundle: PaperSourceBundle,
         outline: PresentationOutline,
         evidence: SlideEvidence,
         speaker_notes_path: Path,
@@ -87,6 +89,7 @@ class PaperDeckBuilder:
             outline=outline,
             evidence=evidence,
             figures=figures,
+            source_bundle=source_bundle,
             knowledge_units=knowledge.knowledge_units,
             authoring_notes=notes,
             duration_minutes=duration_minutes,

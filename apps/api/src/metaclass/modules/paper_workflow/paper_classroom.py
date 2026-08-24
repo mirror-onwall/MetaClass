@@ -13,11 +13,14 @@ from metaclass.modules.paper_workflow.schemas import (
     OutlineSlide,
     PaperAnalysis,
     PaperClaim,
+    PaperSourceBundle,
     PresentationOutline,
     QuantitativeResult,
     SlideEvidence,
     SourceReference,
 )
+
+from .paper_evidence import PaperEvidenceContext, PaperEvidenceRetriever
 
 
 class PaperSlideEvidencePacket(SchemaModel):
@@ -34,6 +37,7 @@ class PaperSlideEvidencePacket(SchemaModel):
     quantitative_results: list[QuantitativeResult] = Field(default_factory=list)
     figures: list[FigureAsset] = Field(default_factory=list)
     source_refs: list[SourceReference] = Field(default_factory=list)
+    evidence_contexts: list[PaperEvidenceContext] = Field(default_factory=list)
     knowledge_unit_ids: list[str] = Field(default_factory=list)
     knowledge_unit_titles: list[str] = Field(default_factory=list)
     evidence_strength: str = "direct"
@@ -68,6 +72,7 @@ class SlideEvidencePacketBuilder:
         outline: PresentationOutline,
         evidence: SlideEvidence,
         figures: FigureCatalog,
+        source_bundle: PaperSourceBundle,
         knowledge_units: list[KnowledgeUnit],
         authoring_notes: dict[str, str],
         duration_minutes: int | None,
@@ -76,6 +81,7 @@ class SlideEvidencePacketBuilder:
         claims_by_id = {claim.id: claim for claim in analysis.claims}
         figures_by_id = {figure.id: figure for figure in figures.figures}
         evidence_by_slide = {entry.slide_id: entry for entry in evidence.slides}
+        retriever = PaperEvidenceRetriever(source_bundle)
         unit_by_source_id: dict[str, list[KnowledgeUnit]] = {}
         for unit in knowledge_units:
             for source_id in unit.source_unit_ids:
@@ -116,6 +122,7 @@ class SlideEvidencePacketBuilder:
                     quantitative_results=results,
                     figures=slide_figures,
                     source_refs=entry.source_refs,
+                    evidence_contexts=retriever.retrieve(entry.source_refs),
                     knowledge_unit_ids=[unit.id for unit in units],
                     knowledge_unit_titles=[unit.title for unit in units],
                     evidence_strength=entry.evidence_strength,
@@ -211,6 +218,21 @@ class PaperClassroomComposer:
                 + "；".join(figure.caption for figure in packet.figures)
                 + "。讲解时要同时说明比较对象、指标和变化方向，不能只复述图题。"
             )
+        if packet.evidence_contexts:
+            selected_contexts = packet.evidence_contexts[:2]
+            selected_texts = {context.exact_text for context in selected_contexts}
+            evidence_parts.append(
+                "原文中与这一页直接相关的表述是：“"
+                + "”“".join(context.exact_text for context in selected_contexts)
+                + "”。这里的解释应保留作者原有的条件和限定，不能把局部结果扩大为普遍结论。"
+            )
+            primary = selected_contexts[0]
+            if primary.before_text and primary.before_text not in selected_texts:
+                evidence_parts.append(
+                    f"为了理解这句话的条件，前文还交代了：“{primary.before_text}”。"
+                )
+            if primary.after_text and primary.after_text not in selected_texts:
+                evidence_parts.append(f"紧接着作者进一步说明：“{primary.after_text}”。")
         source_pages = sorted({ref.page_no for ref in packet.source_refs})
         if source_pages:
             evidence_parts.append(
@@ -278,6 +300,10 @@ class PaperClassroomComposer:
                         f"The relevant figure is captioned: {figure.caption}"
                         for figure in packet.figures
                     ),
+                    *(
+                        f'The source text states: "{context.exact_text}"'
+                        for context in packet.evidence_contexts[:2]
+                    ),
                 ]
             )
             or "This slide provides context and should not be presented as a new empirical claim."
@@ -298,9 +324,7 @@ class PaperClassroomComposer:
             evidence_interpretation=evidence,
             teaching_emphasis=emphasis,
             transition=transition,
-            speaker_script=(
-                f"{opening}\n\n{main}\n\n{evidence}\n\n{emphasis}\n\n{transition}"
-            ),
+            speaker_script=(f"{opening}\n\n{main}\n\n{evidence}\n\n{emphasis}\n\n{transition}"),
         )
 
     @staticmethod
@@ -372,6 +396,24 @@ class PaperNarrationValidator:
                             packet.slide_id, "missing_result", f"Missing result {result.id}"
                         )
                     )
+            if packet.source_refs and not packet.evidence_contexts:
+                issues.append(
+                    NarrationValidationIssue(
+                        packet.slide_id,
+                        "missing_original_context",
+                        "Source references did not resolve to original paper context",
+                    )
+                )
+            if packet.evidence_contexts and not any(
+                context.exact_text in script for context in packet.evidence_contexts[:2]
+            ):
+                issues.append(
+                    NarrationValidationIssue(
+                        packet.slide_id,
+                        "original_context_unused",
+                        "Narration does not use retrieved original paper context",
+                    )
+                )
             if packet.next_slide_title and packet.next_slide_title not in narration.transition:
                 issues.append(
                     NarrationValidationIssue(

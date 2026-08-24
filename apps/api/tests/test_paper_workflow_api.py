@@ -300,6 +300,10 @@ def test_succeeded_workflow_creates_reconciled_paper_deck_course(
         ).json()
         job_id = created["id"]
         workspace = tmp_path / "runtime" / "paper_workflows" / job_id
+        service.source_bundles.build(
+            material_id=source_material_id,
+            workspace=workspace,
+        )
         final = workspace / "final"
         final.mkdir(parents=True)
 

@@ -12,6 +12,7 @@ from metaclass.modules.paper_workflow.schemas import (
     FigureCatalog,
     PaperAnalysis,
     PaperArtifactBundle,
+    PaperSourceBundle,
     PresentationOutline,
     SlideEvidence,
 )
@@ -162,6 +163,45 @@ def _figures() -> FigureCatalog:
     )
 
 
+def _source_bundle() -> PaperSourceBundle:
+    return PaperSourceBundle.model_validate(
+        {
+            "material_id": "mat_paper",
+            "file_hash": "sha256:" + "a" * 64,
+            "page_count": 2,
+            "pdf_path": "paper.pdf",
+            "paper_source_path": "paper_source.json",
+            "paper_content_path": "paper_content.md",
+            "asset_directory": "existing_assets",
+            "blocks": [
+                {
+                    "id": "block_001",
+                    "type": "paragraph",
+                    "page_no": 1,
+                    "section_path": ["Introduction"],
+                    "text": "The method addresses the target problem under the stated assumptions.",
+                },
+                {
+                    "id": "block_002",
+                    "type": "paragraph",
+                    "page_no": 2,
+                    "section_path": ["Discussion"],
+                    "text": "The evaluation is limited to one benchmark.",
+                },
+            ],
+            "assets": [
+                {
+                    "id": "asset_figure_01",
+                    "type": "figure",
+                    "page_no": 2,
+                    "path": "existing_assets/figure.png",
+                    "caption": "Accuracy comparison across methods",
+                }
+            ],
+        }
+    )
+
+
 def _bundle() -> PaperArtifactBundle:
     return PaperArtifactBundle.model_construct(
         id="paper_bundle_test",
@@ -197,6 +237,7 @@ def test_paper_deck_builder_preserves_final_pages_authoring_notes_and_evidence(
         pages=[_page(1), _page(2)],
         analysis=_analysis(),
         figures=_figures(),
+        source_bundle=_source_bundle(),
         outline=_outline(),
         evidence=_evidence(),
         speaker_notes_path=notes,
@@ -224,6 +265,8 @@ def test_paper_deck_builder_preserves_final_pages_authoring_notes_and_evidence(
     assert plan.slides[0].authoring_note == "Final authoring note one."
     assert plan.slides[0].speaker_script_source == "paper_classroom_composer"
     assert plan.slides[0].paper_evidence_packet is not None
+    assert plan.slides[0].paper_evidence_packet["evidence_contexts"][0]["block_id"] == ("block_001")
+    assert "under the stated assumptions" in plan.slides[0].speaker_script
     assert "claim_01" in plan.slides[0].paper_claim_ids
     assert "The method addresses the target problem." in plan.slides[0].speaker_script
     assert plan.slides[1].paper_claim_ids == ["claim_02"]
@@ -244,6 +287,7 @@ def test_paper_deck_builder_rejects_final_page_drift(tmp_path: Path) -> None:
             pages=[_page(1)],
             analysis=_analysis(),
             figures=_figures(),
+            source_bundle=_source_bundle(),
             outline=_outline(),
             evidence=_evidence(),
             speaker_notes_path=notes,
