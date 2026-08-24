@@ -365,9 +365,7 @@ def test_succeeded_workflow_creates_reconciled_paper_deck_course(
                 },
             ]
         }
-        (final / "presentation_outline.json").write_text(
-            json.dumps(outline), encoding="utf-8"
-        )
+        (final / "presentation_outline.json").write_text(json.dumps(outline), encoding="utf-8")
         (final / "paper_analysis.json").write_text(
             json.dumps(
                 {
@@ -396,9 +394,8 @@ def test_succeeded_workflow_creates_reconciled_paper_deck_course(
             ),
             encoding="utf-8",
         )
-        (final / "slide_evidence.json").write_text(
-            json.dumps(evidence), encoding="utf-8"
-        )
+        (final / "asset_manifest.json").write_text(json.dumps({"figures": []}), encoding="utf-8")
+        (final / "slide_evidence.json").write_text(json.dumps(evidence), encoding="utf-8")
         (final / "speaker_notes.json").write_text(
             json.dumps(
                 [
@@ -459,18 +456,14 @@ def test_succeeded_workflow_creates_reconciled_paper_deck_course(
             return paths
 
         monkeypatch.setattr(service.materials, "_render_pptx", render)
-        result = client.post(
-            f"/api/v1/paper-workflows/{job_id}/create-paper-deck-course"
-        )
+        result = client.post(f"/api/v1/paper-workflows/{job_id}/create-paper-deck-course")
 
         assert result.status_code == 201
         payload = result.json()
         assert payload["derived_material_id"] == deck.id
         content = client.get(f"/api/v1/learning-contents/{payload['content_id']}").json()
         assert content["organization_mode"] == "paper_deck"
-        plan = client.get(
-            f"/api/v1/presentation-plans/{payload['presentation_plan_id']}"
-        ).json()
+        plan = client.get(f"/api/v1/presentation-plans/{payload['presentation_plan_id']}").json()
         assert plan["mode"] == "paper_deck"
         assert plan["source_paper_material_id"] == source_material_id
         assert [slide["source_page_no"] for slide in plan["slides"]] == [1, 2]
@@ -487,12 +480,22 @@ def test_succeeded_workflow_creates_reconciled_paper_deck_course(
         assert classroom.status_code == 201
         session = client.post(f"/api/v1/classroom-plans/{classroom.json()['id']}/sessions")
         assert session.status_code == 201
-        repeated = client.post(
-            f"/api/v1/paper-workflows/{job_id}/create-paper-deck-course"
+        updated = client.patch(
+            f"/api/v1/presentation-plans/{payload['presentation_plan_id']}"
+            "/slides/slide_01/speaker-script",
+            json={"speaker_script": "教师人工修订后的第一页讲稿。"},
         )
+        assert updated.status_code == 200
+        assert updated.json()["slides"][0]["speaker_script_source"] == "teacher_override"
+        repeated = client.post(f"/api/v1/paper-workflows/{job_id}/create-paper-deck-course")
         assert repeated.status_code == 201
         assert repeated.json()["content_id"] == payload["content_id"]
         assert repeated.json()["presentation_plan_id"] == payload["presentation_plan_id"]
+        preserved = client.get(
+            f"/api/v1/presentation-plans/{payload['presentation_plan_id']}"
+        ).json()
+        assert preserved["slides"][0]["speaker_script"] == "教师人工修订后的第一页讲稿。"
+        assert preserved["slides"][0]["speaker_script_source"] == "teacher_override"
 
 
 def test_default_provider_reports_real_runtime_failure(tmp_path: Path) -> None:

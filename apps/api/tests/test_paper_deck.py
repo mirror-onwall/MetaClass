@@ -9,6 +9,7 @@ from metaclass.modules.paper_workflow.paper_deck import (
     PaperDeckContractError,
 )
 from metaclass.modules.paper_workflow.schemas import (
+    FigureCatalog,
     PaperAnalysis,
     PaperArtifactBundle,
     PresentationOutline,
@@ -143,6 +144,24 @@ def _analysis() -> PaperAnalysis:
     )
 
 
+def _figures() -> FigureCatalog:
+    return FigureCatalog.model_validate(
+        {
+            "figures": [
+                {
+                    "id": "fig_01",
+                    "path": "assets/fig_01.png",
+                    "page_no": 2,
+                    "caption": "Accuracy comparison across methods",
+                    "source_method": "mineru",
+                    "supports_claim_ids": ["claim_02"],
+                    "quality": {"width": 1200, "height": 800, "readable": True},
+                }
+            ]
+        }
+    )
+
+
 def _bundle() -> PaperArtifactBundle:
     return PaperArtifactBundle.model_construct(
         id="paper_bundle_test",
@@ -177,6 +196,7 @@ def test_paper_deck_builder_preserves_final_pages_authoring_notes_and_evidence(
         source_paper_material_id="mat_paper",
         pages=[_page(1), _page(2)],
         analysis=_analysis(),
+        figures=_figures(),
         outline=_outline(),
         evidence=_evidence(),
         speaker_notes_path=notes,
@@ -199,7 +219,13 @@ def test_paper_deck_builder_preserves_final_pages_authoring_notes_and_evidence(
     assert plan.source_material_id == "mat_deck"
     assert plan.source_paper_material_id == "mat_paper"
     assert [slide.source_page_no for slide in plan.slides] == [1, 2]
-    assert plan.slides[0].speaker_script == "Final authoring note one."
+    assert len(plan.slides[0].speaker_script) >= 120
+    assert plan.slides[0].speaker_script != "Final authoring note one."
+    assert plan.slides[0].authoring_note == "Final authoring note one."
+    assert plan.slides[0].speaker_script_source == "paper_classroom_composer"
+    assert plan.slides[0].paper_evidence_packet is not None
+    assert "claim_01" in plan.slides[0].paper_claim_ids
+    assert "The method addresses the target problem." in plan.slides[0].speaker_script
     assert plan.slides[1].paper_claim_ids == ["claim_02"]
     assert plan.slides[1].paper_asset_ids == ["fig_01"]
     assert plan.slides[1].paper_source_refs[0]["page_no"] == 2
@@ -217,6 +243,7 @@ def test_paper_deck_builder_rejects_final_page_drift(tmp_path: Path) -> None:
             source_paper_material_id="mat_paper",
             pages=[_page(1)],
             analysis=_analysis(),
+            figures=_figures(),
             outline=_outline(),
             evidence=_evidence(),
             speaker_notes_path=notes,

@@ -91,6 +91,11 @@ class SlidePlan(SchemaModel):
     paper_asset_ids: list[str] = Field(default_factory=list)
     paper_source_refs: list[dict[str, object]] = Field(default_factory=list)
     evidence_strength: Literal["direct", "derived", "contextual"] | None = None
+    authoring_note: str = ""
+    speaker_script_source: (
+        Literal["authoring", "paper_classroom_composer", "teacher_override"] | None
+    ) = None
+    paper_evidence_packet: dict[str, object] | None = None
 
 
 class PresentationPlan(SchemaModel):

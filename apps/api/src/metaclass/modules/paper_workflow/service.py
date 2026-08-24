@@ -304,6 +304,9 @@ class PaperWorkflowService:
         analysis = PaperAnalysis.model_validate_json(
             (root / "paper_analysis.json").read_text(encoding="utf-8")
         )
+        figures = FigureCatalog.model_validate_json(
+            (root / "asset_manifest.json").read_text(encoding="utf-8")
+        )
         evidence = SlideEvidence.model_validate_json(
             (root / "slide_evidence.json").read_text(encoding="utf-8")
         )
@@ -315,10 +318,13 @@ class PaperWorkflowService:
             source_paper_material_id=job.source_material_id,
             pages=pages,
             analysis=analysis,
+            figures=figures,
             outline=outline,
             evidence=evidence,
             speaker_notes_path=root / "speaker_notes.json",
             audience=request.audience or "具备基础专业背景的高校学生和研究生",
+            duration_minutes=request.duration_minutes,
+            language=request.language,
         )
         persisted_content = self.contents.save_paper_deck_content(content)
         if persisted_content.id != plan.content_id:

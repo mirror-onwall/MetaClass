@@ -121,7 +121,9 @@ class PresentationService:
             self._plan_pause_events.pop(job_id, None)
         (self._plan_jobs_dir / f"{job_id}.json").unlink(missing_ok=True)
         if job.mode == "source_deck" and job.source_material_id:
-            self._narration_checkpoint_path(job.content_id, job.source_material_id).unlink(missing_ok=True)
+            self._narration_checkpoint_path(job.content_id, job.source_material_id).unlink(
+                missing_ok=True
+            )
 
     def create_plan(self, content_id: str) -> PresentationPlan:
         content = self.contents.get(content_id)
@@ -193,15 +195,27 @@ class PresentationService:
         expected = [page.page_no for page in sorted(pages, key=lambda item: item.page_no)]
         actual = [slide.source_page_no for slide in plan.slides]
         if actual != expected or any(slide.source_kind != "source" for slide in plan.slides):
-            raise ValueError(
-                f"Paper deck page mapping mismatch: expected {expected}, got {actual}"
-            )
+            raise ValueError(f"Paper deck page mapping mismatch: expected {expected}, got {actual}")
         existing = self.repository.get_plan(plan.id)
         if existing:
+            existing_slides = {slide.id: slide for slide in existing.slides}
+            slides = [
+                slide.model_copy(
+                    update={
+                        "speaker_script": existing_slides[slide.id].speaker_script,
+                        "speaker_script_source": "teacher_override",
+                    }
+                )
+                if slide.id in existing_slides
+                and existing_slides[slide.id].speaker_script_source == "teacher_override"
+                else slide
+                for slide in plan.slides
+            ]
             plan = plan.model_copy(
                 update={
                     "presentation_resource_id": existing.presentation_resource_id,
                     "created_at": existing.created_at,
+                    "slides": slides,
                 }
             )
         plan = self._attach_resource(plan)
@@ -462,7 +476,12 @@ class PresentationService:
         if not any(slide.id == slide_id for slide in plan.slides):
             raise HTTPException(404, "Presentation slide not found")
         slides = [
-            slide.model_copy(update={"speaker_script": speaker_script})
+            slide.model_copy(
+                update={
+                    "speaker_script": speaker_script,
+                    "speaker_script_source": "teacher_override",
+                }
+            )
             if slide.id == slide_id
             else slide
             for slide in plan.slides
@@ -535,11 +554,7 @@ class PresentationService:
 
     def _save_resource(self, plan: PresentationPlan, artifact: PPTArtifact | None = None) -> None:
         material = self.materials.get(plan.source_material_id) if plan.source_material_id else None
-        kind = (
-            plan.mode
-            if plan.mode in {"source_deck", "paper_deck"}
-            else "generated_artifact"
-        )
+        kind = plan.mode if plan.mode in {"source_deck", "paper_deck"} else "generated_artifact"
         existing = self.repository.get_resource_for_plan(plan.id)
         resource = PresentationResource(
             id=plan.presentation_resource_id
@@ -627,7 +642,11 @@ class PresentationService:
 
     def pause_ppt_job(self, job_id: str) -> PPTGenerationJob:
         job = self.get_ppt_job(job_id)
-        if job.status not in {PPTGenerationStatus.QUEUED, PPTGenerationStatus.RUNNING, PPTGenerationStatus.WAITING_FOR_SKILL}:
+        if job.status not in {
+            PPTGenerationStatus.QUEUED,
+            PPTGenerationStatus.RUNNING,
+            PPTGenerationStatus.WAITING_FOR_SKILL,
+        }:
             raise HTTPException(409, "Only active PPT jobs can be paused")
         self._ppt_pause_events.setdefault(job_id, Event()).set()
         job.status = PPTGenerationStatus.PAUSED
@@ -652,6 +671,7 @@ class PresentationService:
             raise HTTPException(409, "Pause the job before discarding it")
         output_dir = self.data_dir / "generated" / "presentations" / job.id
         import shutil
+
         shutil.rmtree(output_dir, ignore_errors=True)
         self.repository.delete_job(job.id)
         self._ppt_pause_events.pop(job.id, None)

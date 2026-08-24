@@ -9,6 +9,7 @@ from metaclass.modules.content.schemas import (
 )
 from metaclass.modules.materials.schemas import PageMetadata
 from metaclass.modules.paper_workflow.schemas import (
+    FigureCatalog,
     PaperAnalysis,
     PaperArtifactBundle,
     PresentationOutline,
@@ -16,6 +17,11 @@ from metaclass.modules.paper_workflow.schemas import (
 )
 from metaclass.modules.presentation.schemas import PresentationPlan, SlidePlan
 
+from .paper_classroom import (
+    PaperClassroomComposer,
+    PaperNarrationValidator,
+    SlideEvidencePacketBuilder,
+)
 from .paper_knowledge import PaperKnowledgeTreeBuilder
 
 
@@ -40,10 +46,13 @@ class PaperDeckBuilder:
         source_paper_material_id: str,
         pages: list[PageMetadata],
         analysis: PaperAnalysis,
+        figures: FigureCatalog,
         outline: PresentationOutline,
         evidence: SlideEvidence,
         speaker_notes_path: Path,
         audience: str,
+        duration_minutes: int | None = None,
+        language: str = "zh-CN",
     ) -> tuple[LearningContent, PresentationPlan]:
         ordered_pages = sorted(pages, key=lambda item: item.page_no)
         expected_pages = list(range(1, len(outline.slides) + 1))
@@ -72,6 +81,29 @@ class PaperDeckBuilder:
             outline=outline,
             evidence=evidence,
         )
+        packets = SlideEvidencePacketBuilder().build(
+            pages=ordered_pages,
+            analysis=analysis,
+            outline=outline,
+            evidence=evidence,
+            figures=figures,
+            knowledge_units=knowledge.knowledge_units,
+            authoring_notes=notes,
+            duration_minutes=duration_minutes,
+        )
+        composer = PaperClassroomComposer()
+        narrations = [
+            composer.compose(packet, audience=audience, language=language) for packet in packets
+        ]
+        narration_issues = PaperNarrationValidator().validate(
+            packets=packets,
+            narrations=narrations,
+        )
+        if narration_issues:
+            summary = "; ".join(f"{issue.slide_id}:{issue.code}" for issue in narration_issues)
+            raise PaperDeckContractError(f"paper classroom narration is invalid: {summary}")
+        packet_by_slide = {packet.slide_id: packet for packet in packets}
+        narration_by_slide = {item.slide_id: item for item in narrations}
 
         section_by_slide = {
             slide_id: section for section in outline.sections for slide_id in section.slide_ids
@@ -93,12 +125,10 @@ class PaperDeckBuilder:
                         point for item in section_slides for point in item.key_points
                     ],
                     teaching_narrative="\n\n".join(
-                        notes.get(item.id) or item.speaker_note or item.purpose
-                        for item in section_slides
+                        narration_by_slide[item.id].speaker_script for item in section_slides
                     ),
                     teaching_script="\n\n".join(
-                        notes.get(item.id) or item.speaker_note or item.purpose
-                        for item in section_slides
+                        narration_by_slide[item.id].speaker_script for item in section_slides
                     ),
                     source_refs=[ref for page in page_items for ref in page.source_refs],
                     page_refs=[
@@ -160,7 +190,8 @@ class PaperDeckBuilder:
         slides = []
         for page, authoring in zip(ordered_pages, outline.slides, strict=True):
             slide_evidence = evidence_by_slide[authoring.id]
-            script = notes.get(authoring.id) or authoring.speaker_note or authoring.purpose
+            packet = packet_by_slide[authoring.id]
+            narration = narration_by_slide[authoring.id]
             slides.append(
                 SlidePlan(
                     id=authoring.id,
@@ -170,7 +201,7 @@ class PaperDeckBuilder:
                     source_kind="source",
                     title=authoring.title,
                     key_points=authoring.key_points,
-                    speaker_script=script,
+                    speaker_script=narration.speaker_script,
                     suggested_visual=authoring.layout_intent,
                     layout="source",
                     layout_id=authoring.layout_intent,
@@ -181,6 +212,9 @@ class PaperDeckBuilder:
                         item.model_dump(mode="json") for item in slide_evidence.source_refs
                     ],
                     evidence_strength=slide_evidence.evidence_strength,
+                    authoring_note=packet.authoring_note,
+                    speaker_script_source="paper_classroom_composer",
+                    paper_evidence_packet=packet.model_dump(mode="json"),
                 )
             )
         plan = PresentationPlan(
