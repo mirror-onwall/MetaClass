@@ -93,7 +93,14 @@ class SlidePlan(SchemaModel):
     evidence_strength: Literal["direct", "derived", "contextual"] | None = None
     authoring_note: str = ""
     speaker_script_source: (
-        Literal["authoring", "paper_classroom_composer", "teacher_override"] | None
+        Literal[
+            "authoring",
+            "paper_classroom_composer",
+            "paper_classroom_llm",
+            "paper_classroom_fallback",
+            "teacher_override",
+        ]
+        | None
     ) = None
     paper_evidence_packet: dict[str, object] | None = None
 

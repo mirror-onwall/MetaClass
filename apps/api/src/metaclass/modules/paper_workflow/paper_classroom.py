@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import json
+import re
 from dataclasses import dataclass
+from pathlib import Path
 
 from pydantic import Field
 
 from metaclass.core.schemas import SchemaModel
+from metaclass.infrastructure.providers.llm import LLMMessage, LLMProvider
 from metaclass.modules.content.schemas import KnowledgeUnit
 from metaclass.modules.materials.schemas import PageMetadata
 from metaclass.modules.paper_workflow.schemas import (
@@ -54,6 +58,13 @@ class PaperSlideNarration(SchemaModel):
     teaching_emphasis: str = Field(min_length=1)
     transition: str = ""
     speaker_script: str = Field(min_length=1)
+    used_claim_ids: list[str] = Field(default_factory=list)
+    used_result_ids: list[str] = Field(default_factory=list)
+    used_source_refs: list[SourceReference] = Field(default_factory=list)
+
+
+class PaperNarrationBatch(SchemaModel):
+    slides: list[PaperSlideNarration] = Field(min_length=1)
 
 
 @dataclass(frozen=True)
@@ -273,6 +284,9 @@ class PaperClassroomComposer:
             teaching_emphasis=teaching_emphasis,
             transition=transition,
             speaker_script=script,
+            used_claim_ids=[claim.id for claim in packet.claims],
+            used_result_ids=[result.id for result in packet.quantitative_results],
+            used_source_refs=packet.source_refs,
         )
 
     def _compose_english(
@@ -325,6 +339,9 @@ class PaperClassroomComposer:
             teaching_emphasis=emphasis,
             transition=transition,
             speaker_script=(f"{opening}\n\n{main}\n\n{evidence}\n\n{emphasis}\n\n{transition}"),
+            used_claim_ids=[claim.id for claim in packet.claims],
+            used_result_ids=[result.id for result in packet.quantitative_results],
+            used_source_refs=packet.source_refs,
         )
 
     @staticmethod
@@ -335,6 +352,42 @@ class PaperClassroomComposer:
         if not compact:
             return ""
         return compact[:320].rstrip() + ("。" if not compact[:320].endswith(("。", ".")) else "")
+
+
+class LLMPaperClassroomComposer:
+    prompt_version = "paper-classroom-narration-v1"
+
+    def __init__(self, provider: LLMProvider) -> None:
+        self.provider = provider
+        self.prompt_path = Path(__file__).with_name("paper_narration_prompt.md")
+
+    def compose(
+        self,
+        packets: list[PaperSlideEvidencePacket],
+        *,
+        audience: str,
+        language: str,
+    ) -> list[PaperSlideNarration]:
+        payload = {
+            "audience": audience,
+            "language": language,
+            "slides": [packet.model_dump(mode="json") for packet in packets],
+            "output_schema": PaperNarrationBatch.model_json_schema(),
+        }
+        raw = self.provider.complete_json(
+            [
+                LLMMessage(
+                    role="system",
+                    content=self.prompt_path.read_text(encoding="utf-8"),
+                ),
+                LLMMessage(
+                    role="user",
+                    content=json.dumps(payload, ensure_ascii=False),
+                ),
+            ],
+            temperature=0.3,
+        )
+        return PaperNarrationBatch.model_validate_json(raw).slides
 
 
 class PaperNarrationValidator:
@@ -382,20 +435,36 @@ class PaperNarrationValidator:
                         packet.slide_id, "placeholder", "Narration has placeholder text"
                     )
                 )
-            for claim in packet.claims:
-                if claim.statement not in script:
-                    issues.append(
-                        NarrationValidationIssue(
-                            packet.slide_id, "missing_claim", f"Missing claim {claim.id}"
-                        )
+            expected_claims = {claim.id for claim in packet.claims}
+            expected_results = {result.id for result in packet.quantitative_results}
+            if set(narration.used_claim_ids) != expected_claims:
+                issues.append(
+                    NarrationValidationIssue(
+                        packet.slide_id,
+                        "claim_coverage",
+                        "Narration claim usage does not match the evidence packet",
                     )
-            for result in packet.quantitative_results:
-                if result.statement not in script:
-                    issues.append(
-                        NarrationValidationIssue(
-                            packet.slide_id, "missing_result", f"Missing result {result.id}"
-                        )
+                )
+            if set(narration.used_result_ids) != expected_results:
+                issues.append(
+                    NarrationValidationIssue(
+                        packet.slide_id,
+                        "result_coverage",
+                        "Narration result usage does not match the evidence packet",
                     )
+                )
+            allowed_refs = {(ref.page_no, ref.block_id, ref.asset_id) for ref in packet.source_refs}
+            used_refs = {
+                (ref.page_no, ref.block_id, ref.asset_id) for ref in narration.used_source_refs
+            }
+            if not used_refs.issubset(allowed_refs) or (allowed_refs and not used_refs):
+                issues.append(
+                    NarrationValidationIssue(
+                        packet.slide_id,
+                        "source_ref_coverage",
+                        "Narration source refs are missing or outside the evidence packet",
+                    )
+                )
             if packet.source_refs and not packet.evidence_contexts:
                 issues.append(
                     NarrationValidationIssue(
@@ -404,14 +473,13 @@ class PaperNarrationValidator:
                         "Source references did not resolve to original paper context",
                     )
                 )
-            if packet.evidence_contexts and not any(
-                context.exact_text in script for context in packet.evidence_contexts[:2]
-            ):
+            unsupported_numbers = self._numbers(script) - self._authorized_numbers(packet)
+            if unsupported_numbers:
                 issues.append(
                     NarrationValidationIssue(
                         packet.slide_id,
-                        "original_context_unused",
-                        "Narration does not use retrieved original paper context",
+                        "unsupported_number",
+                        f"Narration contains unsupported numbers: {sorted(unsupported_numbers)}",
                     )
                 )
             if packet.next_slide_title and packet.next_slide_title not in narration.transition:
@@ -427,3 +495,29 @@ class PaperNarrationValidator:
     @staticmethod
     def _compact(value: str) -> str:
         return "".join(value.split()).lower()
+
+    @staticmethod
+    def _numbers(value: str) -> set[str]:
+        return set(re.findall(r"\d+(?:\.\d+)?%?", value))
+
+    @classmethod
+    def _authorized_numbers(cls, packet: PaperSlideEvidencePacket) -> set[str]:
+        texts = [
+            packet.title,
+            packet.purpose,
+            packet.visible_text,
+            *packet.key_points,
+            *(claim.statement for claim in packet.claims),
+            *(result.statement for result in packet.quantitative_results),
+            *(
+                str(result.value)
+                for result in packet.quantitative_results
+                if result.value is not None
+            ),
+            *(figure.caption for figure in packet.figures),
+            *(context.exact_text for context in packet.evidence_contexts),
+            *(context.before_text for context in packet.evidence_contexts),
+            *(context.after_text for context in packet.evidence_contexts),
+            *(str(ref.page_no) for ref in packet.source_refs),
+        ]
+        return cls._numbers(" ".join(texts))

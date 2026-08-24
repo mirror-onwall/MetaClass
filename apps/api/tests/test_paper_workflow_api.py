@@ -472,6 +472,9 @@ def test_succeeded_workflow_creates_reconciled_paper_deck_course(
         assert plan["source_paper_material_id"] == source_material_id
         assert [slide["source_page_no"] for slide in plan["slides"]] == [1, 2]
         assert plan["slides"][1]["paper_claim_ids"] == ["claim_02"]
+        assert all(
+            slide["speaker_script_source"] == "paper_classroom_llm" for slide in plan["slides"]
+        )
         resource = client.get(
             f"/api/v1/presentation-plans/{payload['presentation_plan_id']}/resource"
         ).json()

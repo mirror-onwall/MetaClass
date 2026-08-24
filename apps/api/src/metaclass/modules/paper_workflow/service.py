@@ -7,6 +7,7 @@ from uuid import uuid4
 from fastapi import HTTPException
 from pydantic import BaseModel
 
+from metaclass.infrastructure.providers.llm import LLMProvider
 from metaclass.core.schemas import utc_now
 from metaclass.modules.content.service import ContentService
 from metaclass.modules.materials.schemas import MaterialType
@@ -51,6 +52,7 @@ class PaperWorkflowService:
         orchestrator: PaperWorkflowOrchestrator,
         contents: ContentService | None = None,
         presentations: PresentationService | None = None,
+        narration_provider: LLMProvider | None = None,
     ) -> None:
         self.data_dir = data_dir
         self.repository = repository
@@ -58,6 +60,7 @@ class PaperWorkflowService:
         self.orchestrator = orchestrator
         self.contents = contents
         self.presentations = presentations
+        self.narration_provider = narration_provider
         self.source_bundles = PaperSourceBundleBuilder(materials)
         self._lock = RLock()
         self._pause_events: dict[str, Event] = {}
@@ -316,7 +319,7 @@ class PaperWorkflowService:
             (root / "slide_evidence.json").read_text(encoding="utf-8")
         )
         request = self._require_request(job.id)
-        content, plan = PaperDeckBuilder().build(
+        content, plan = PaperDeckBuilder(self.narration_provider).build(
             job_id=job.id,
             bundle=bundle,
             deck_material_id=deck_material.id,

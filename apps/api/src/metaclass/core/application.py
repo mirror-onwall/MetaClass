@@ -234,6 +234,7 @@ def build_services(
         ),
         contents=contents,
         presentations=presentations,
+        narration_provider=llm,
     )
     return ApplicationServices(
         database,

@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from metaclass.core.schemas import utc_now
+from metaclass.infrastructure.providers.llm import LLMProvider
 from metaclass.modules.content.schemas import (
     LearningContent,
     LearningSection,
@@ -19,8 +20,11 @@ from metaclass.modules.paper_workflow.schemas import (
 from metaclass.modules.presentation.schemas import PresentationPlan, SlidePlan
 
 from .paper_classroom import (
+    LLMPaperClassroomComposer,
     PaperClassroomComposer,
     PaperNarrationValidator,
+    PaperSlideEvidencePacket,
+    PaperSlideNarration,
     SlideEvidencePacketBuilder,
 )
 from .paper_knowledge import PaperKnowledgeTreeBuilder
@@ -37,6 +41,9 @@ class PaperDeckBuilder:
     authoritative for page existence/order, while the authoring outline, notes,
     and evidence retain the paper-specific teaching intent.
     """
+
+    def __init__(self, narration_provider: LLMProvider | None = None) -> None:
+        self.narration_provider = narration_provider
 
     def build(
         self,
@@ -94,17 +101,11 @@ class PaperDeckBuilder:
             authoring_notes=notes,
             duration_minutes=duration_minutes,
         )
-        composer = PaperClassroomComposer()
-        narrations = [
-            composer.compose(packet, audience=audience, language=language) for packet in packets
-        ]
-        narration_issues = PaperNarrationValidator().validate(
+        narrations, narration_source, narration_warnings = self._compose_narrations(
             packets=packets,
-            narrations=narrations,
+            audience=audience,
+            language=language,
         )
-        if narration_issues:
-            summary = "; ".join(f"{issue.slide_id}:{issue.code}" for issue in narration_issues)
-            raise PaperDeckContractError(f"paper classroom narration is invalid: {summary}")
         packet_by_slide = {packet.slide_id: packet for packet in packets}
         narration_by_slide = {item.slide_id: item for item in narrations}
 
@@ -184,7 +185,7 @@ class PaperDeckBuilder:
                 "use_authoring_notes": True,
                 "use_paper_evidence": True,
             },
-            quality={"validation_status": "passed", "warnings": []},
+            quality={"validation_status": "passed", "warnings": narration_warnings},
             version=3,
             created_at=now,
             updated_at=now,
@@ -216,7 +217,7 @@ class PaperDeckBuilder:
                     ],
                     evidence_strength=slide_evidence.evidence_strength,
                     authoring_note=packet.authoring_note,
-                    speaker_script_source="paper_classroom_composer",
+                    speaker_script_source=narration_source,
                     paper_evidence_packet=packet.model_dump(mode="json"),
                 )
             )
@@ -235,6 +236,42 @@ class PaperDeckBuilder:
             updated_at=now,
         )
         return content, plan
+
+    def _compose_narrations(
+        self,
+        *,
+        packets: list[PaperSlideEvidencePacket],
+        audience: str,
+        language: str,
+    ) -> tuple[list[PaperSlideNarration], str, list[str]]:
+        validator = PaperNarrationValidator()
+        if self.narration_provider is not None:
+            try:
+                narrations = LLMPaperClassroomComposer(self.narration_provider).compose(
+                    packets,
+                    audience=audience,
+                    language=language,
+                )
+                issues = validator.validate(packets=packets, narrations=narrations)
+                if not issues:
+                    return narrations, "paper_classroom_llm", []
+                warning = "llm_narration_validation_failed:" + ",".join(
+                    f"{issue.slide_id}:{issue.code}" for issue in issues
+                )
+            except (OSError, RuntimeError, ValueError) as exc:
+                warning = f"llm_narration_failed:{type(exc).__name__}"
+        else:
+            warning = "llm_narration_provider_unavailable"
+
+        fallback = PaperClassroomComposer()
+        narrations = [
+            fallback.compose(packet, audience=audience, language=language) for packet in packets
+        ]
+        issues = validator.validate(packets=packets, narrations=narrations)
+        if issues:
+            summary = "; ".join(f"{issue.slide_id}:{issue.code}" for issue in issues)
+            raise PaperDeckContractError(f"paper classroom narration is invalid: {summary}")
+        return narrations, "paper_classroom_fallback", [warning]
 
     @staticmethod
     def _speaker_notes(path: Path) -> dict[str, str]:

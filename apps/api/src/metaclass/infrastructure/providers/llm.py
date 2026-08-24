@@ -37,6 +37,63 @@ class FakeLLMProvider:
     def complete_json(self, messages: list[LLMMessage], *, temperature: float = 0.2) -> str:
         system_text = messages[0].content if messages else ""
         user_text = messages[-1].content if messages else ""
+        if "PAPER_CLASSROOM_NARRATION_V1" in system_text:
+            request_payload = json.loads(user_text)
+            slides = []
+            input_slides = request_payload["slides"]
+            for index, slide in enumerate(input_slides):
+                previous_title = slide.get("previous_slide_title")
+                next_title = slide.get("next_slide_title")
+                opening = (
+                    f"承接前面对“{previous_title}”的讨论，现在来看“{slide['title']}”。"
+                    if previous_title
+                    else f"我们先从“{slide['title']}”进入论文真正要回答的问题。"
+                )
+                claims = [item["statement"] for item in slide.get("claims", [])]
+                results = [item["statement"] for item in slide.get("quantitative_results", [])]
+                contexts = [item["exact_text"] for item in slide.get("evidence_contexts", [])]
+                main = (
+                    f"这部分的讲解目标是{slide['purpose']}。"
+                    f"页面上的信息需要结合论文论证来理解，而不是只记住结论标签。"
+                )
+                evidence = (
+                    "论文的相关主张可以概括为："
+                    + ("；".join(claims) if claims else "这一页主要承担背景和衔接作用")
+                    + "。"
+                    + ("相应结果是：" + "；".join(results) + "。" if results else "")
+                    + (
+                        "结合原文上下文，作者是在明确条件下讨论这一点，因此讲解时需要保留结论边界。"
+                        if contexts
+                        else ""
+                    )
+                )
+                emphasis = (
+                    "这里最重要的是区分作者直接报告的事实与我们对事实意义的解释，"
+                    "这样才能判断证据是否真正支持研究问题。"
+                )
+                transition = (
+                    f"理解这一层关系之后，下一步转向“{next_title}”。"
+                    if next_title
+                    else "最后把这些证据重新放回研究问题，评估论文贡献及其适用边界。"
+                )
+                script = f"{opening}\n\n{main}\n\n{evidence}\n\n{emphasis}\n\n{transition}"
+                slides.append(
+                    {
+                        "slide_id": slide["slide_id"],
+                        "opening": opening,
+                        "main_explanation": main,
+                        "evidence_interpretation": evidence,
+                        "teaching_emphasis": emphasis,
+                        "transition": transition,
+                        "speaker_script": script,
+                        "used_claim_ids": [item["id"] for item in slide.get("claims", [])],
+                        "used_result_ids": [
+                            item["id"] for item in slide.get("quantitative_results", [])
+                        ],
+                        "used_source_refs": slide.get("source_refs", []),
+                    }
+                )
+            return json.dumps({"slides": slides}, ensure_ascii=False)
         if "MetaClass 的 ClassroomPlan planner" in system_text:
             request_payload = json.loads(user_text)
             section_count = len(request_payload["sections"])
@@ -386,13 +443,9 @@ class OpenAICompatibleLLMProvider:
         upstream validation error and cached on this provider instance instead.
         """
         model_name = model.strip().lower().rsplit("/", 1)[-1]
-        return model_name.startswith(
-            ("gpt-5", "o1", "o3", "o4", "kimi-k2", "kimi-k3")
-        )
+        return model_name.startswith(("gpt-5", "o1", "o3", "o4", "kimi-k2", "kimi-k3"))
 
-    def _read_chat_json_with_temperature_fallback(
-        self, payload: dict, label: str
-    ) -> dict:
+    def _read_chat_json_with_temperature_fallback(self, payload: dict, label: str) -> dict:
         try:
             return self._read_json_with_retry(self._chat_request(payload), label)
         except RuntimeError as exc:

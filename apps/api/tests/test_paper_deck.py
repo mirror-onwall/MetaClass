@@ -3,7 +3,13 @@ from pathlib import Path
 
 import pytest
 
+from metaclass.infrastructure.providers.llm import FakeLLMProvider
 from metaclass.modules.materials.schemas import PageMetadata, SourceRef
+from metaclass.modules.paper_workflow.paper_classroom import (
+    PaperNarrationValidator,
+    PaperSlideEvidencePacket,
+    PaperSlideNarration,
+)
 from metaclass.modules.paper_workflow.paper_deck import (
     PaperDeckBuilder,
     PaperDeckContractError,
@@ -263,7 +269,7 @@ def test_paper_deck_builder_preserves_final_pages_authoring_notes_and_evidence(
     assert len(plan.slides[0].speaker_script) >= 120
     assert plan.slides[0].speaker_script != "Final authoring note one."
     assert plan.slides[0].authoring_note == "Final authoring note one."
-    assert plan.slides[0].speaker_script_source == "paper_classroom_composer"
+    assert plan.slides[0].speaker_script_source == "paper_classroom_fallback"
     assert plan.slides[0].paper_evidence_packet is not None
     assert plan.slides[0].paper_evidence_packet["evidence_contexts"][0]["block_id"] == ("block_001")
     assert "under the stated assumptions" in plan.slides[0].speaker_script
@@ -293,3 +299,87 @@ def test_paper_deck_builder_rejects_final_page_drift(tmp_path: Path) -> None:
             speaker_notes_path=notes,
             audience="研究生",
         )
+
+
+def test_narration_validator_allows_grounded_paraphrase_but_rejects_new_number() -> None:
+    packet = PaperSlideEvidencePacket.model_validate(
+        {
+            "slide_id": "slide_01",
+            "order": 1,
+            "title": "研究问题",
+            "purpose": "解释研究问题",
+            "claims": [_analysis().claims[0].model_dump(mode="json")],
+            "source_refs": [{"page_no": 1, "block_id": "block_001"}],
+            "evidence_contexts": [
+                {
+                    "page_no": 1,
+                    "block_id": "block_001",
+                    "source_type": "paragraph",
+                    "exact_text": "The method addresses the target problem.",
+                }
+            ],
+            "next_slide_title": "方法",
+        }
+    )
+    base = {
+        "slide_id": "slide_01",
+        "opening": "先从研究问题开始。",
+        "main_explanation": "作者关注的是现有方法能否真正处理目标任务，并据此组织后续方法与实验。",
+        "evidence_interpretation": "结合原文，这项主张可以自然转述为：论文方法针对目标问题给出了明确回答，但仍需实验支持。",
+        "teaching_emphasis": "这里要区分研究动机、作者主张和最终得到验证的结论，避免提前把主张说成事实。",
+        "transition": "明确问题以后，下一步进入“方法”。",
+        "used_claim_ids": ["claim_01"],
+        "used_source_refs": [{"page_no": 1, "block_id": "block_001"}],
+    }
+    grounded = PaperSlideNarration.model_validate(
+        {
+            **base,
+            "speaker_script": "\n\n".join(
+                [
+                    base["opening"],
+                    base["main_explanation"],
+                    base["evidence_interpretation"],
+                    base["teaching_emphasis"],
+                    base["transition"],
+                ]
+            ),
+        }
+    )
+    invented = grounded.model_copy(
+        update={"speaker_script": grounded.speaker_script + " 准确率达到 99%。"}
+    )
+
+    validator = PaperNarrationValidator()
+    assert validator.validate(packets=[packet], narrations=[grounded]) == []
+    issues = validator.validate(packets=[packet], narrations=[invented])
+    assert {issue.code for issue in issues} == {"unsupported_number"}
+
+
+def test_paper_deck_falls_back_when_llm_narration_invents_number(tmp_path: Path) -> None:
+    class InventingProvider(FakeLLMProvider):
+        def complete_json(self, messages, *, temperature=0.2):
+            payload = json.loads(super().complete_json(messages, temperature=temperature))
+            for slide in payload["slides"]:
+                slide["speaker_script"] += " 准确率达到 99%。"
+            return json.dumps(payload, ensure_ascii=False)
+
+    notes = tmp_path / "speaker_notes.json"
+    notes.write_text("[]", encoding="utf-8")
+    content, plan = PaperDeckBuilder(InventingProvider()).build(
+        job_id="paper_job_test",
+        bundle=_bundle(),
+        deck_material_id="mat_deck",
+        source_paper_material_id="mat_paper",
+        pages=[_page(1), _page(2)],
+        analysis=_analysis(),
+        figures=_figures(),
+        source_bundle=_source_bundle(),
+        outline=_outline(),
+        evidence=_evidence(),
+        speaker_notes_path=notes,
+        audience="研究生",
+    )
+
+    assert all(slide.speaker_script_source == "paper_classroom_fallback" for slide in plan.slides)
+    assert "llm_narration_validation_failed" in content.quality["warnings"][0]
+    assert "99%" not in " ".join(slide.speaker_script for slide in plan.slides)
