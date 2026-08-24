@@ -7,8 +7,8 @@ from metaclass.infrastructure.database import Database
 from metaclass.infrastructure.providers import (
     FakeLLMProvider,
     LLMLearningProvider,
-    build_llm_provider,
     build_embedding_provider,
+    build_llm_provider,
     build_tts_provider,
 )
 from metaclass.infrastructure.providers.fake import FakeLearningProvider
@@ -19,12 +19,16 @@ from metaclass.modules.classroom.repository import SqlAlchemyClassroomRepository
 from metaclass.modules.classroom.service import ClassroomService
 from metaclass.modules.content.repository import SqlAlchemyContentRepository
 from metaclass.modules.content.service import ContentService
+from metaclass.modules.materials.repository import SqlAlchemyMaterialRepository
+from metaclass.modules.materials.service import MaterialService
+from metaclass.modules.paper_workflow.orchestrator import PaperWorkflowOrchestrator
+from metaclass.modules.paper_workflow.providers.composed_skills import ComposedSkillsProvider
+from metaclass.modules.paper_workflow.repository import SqlAlchemyPaperWorkflowRepository
+from metaclass.modules.paper_workflow.service import PaperWorkflowService
 from metaclass.modules.presentation.codex_provider import (
     CodexGenerationError,
     CodexPPTProvider,
 )
-from metaclass.modules.materials.repository import SqlAlchemyMaterialRepository
-from metaclass.modules.materials.service import MaterialService
 from metaclass.modules.presentation.planner import PresentationPlanGenerator
 from metaclass.modules.presentation.providers import (
     FallbackPPTProvider,
@@ -50,6 +54,7 @@ class ApplicationServices:
     question_banks: QuestionBankService
     classrooms: ClassroomService
     videos: VideoService
+    paper_workflows: PaperWorkflowService
 
 
 def build_services(
@@ -75,6 +80,7 @@ def build_services(
     question_bank_repository = SqlAlchemyQuestionBankRepository(database)
     classroom_repository = SqlAlchemyClassroomRepository(database)
     video_repository = SqlAlchemyVideoRepository(database)
+    paper_workflow_repository = SqlAlchemyPaperWorkflowRepository(database)
     llm_config = get_llm_runtime_config()
     llm = build_llm_provider(
         provider="fake" if force_fake_llm else llm_config.provider,
@@ -208,6 +214,25 @@ def build_services(
         tts,
         presentations=presentations,
     )
+    paper_workflows = PaperWorkflowService(
+        data_dir,
+        paper_workflow_repository,
+        materials,
+        PaperWorkflowOrchestrator(
+            data_dir,
+            [
+                ComposedSkillsProvider(
+                    register_presentation=lambda path, filename, derivation_key: (
+                        materials.register_generated_pptx(
+                            path,
+                            filename=filename,
+                            derivation_key=derivation_key,
+                        ).id
+                    )
+                )
+            ],
+        ),
+    )
     return ApplicationServices(
         database,
         materials,
@@ -216,4 +241,5 @@ def build_services(
         question_banks,
         classrooms,
         videos,
+        paper_workflows,
     )

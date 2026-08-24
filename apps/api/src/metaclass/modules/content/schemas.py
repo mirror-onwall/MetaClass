@@ -501,6 +501,17 @@ class SourceDeckPageFlowDraft(SchemaModel):
     logic_from_previous: str = ""
     leads_to_next: str = ""
 
+    @field_validator(
+        "content_summary",
+        "teaching_purpose",
+        "logic_from_previous",
+        "leads_to_next",
+        mode="before",
+    )
+    @classmethod
+    def normalize_nullable_text(cls, value):
+        return "" if value is None else value
+
 
 class SourceDeckSectionDraft(SchemaModel):
     title: str = Field(min_length=1)
@@ -511,6 +522,18 @@ class SourceDeckSectionDraft(SchemaModel):
     key_points: list[str] = Field(default_factory=list)
     teaching_approach: str = ""
     transition_to_next: str = ""
+
+    @field_validator(
+        "role",
+        "content_goal",
+        "summary",
+        "teaching_approach",
+        "transition_to_next",
+        mode="before",
+    )
+    @classmethod
+    def normalize_nullable_text(cls, value):
+        return "" if value is None else value
 
 
 class SourceDeckTeachingSegmentDraft(SchemaModel):
@@ -539,6 +562,11 @@ class SourceDeckTeachingSegmentDraft(SchemaModel):
     suggested_delivery: str = ""
     transition_to_next: str = ""
 
+    @field_validator("summary", "suggested_delivery", "transition_to_next", mode="before")
+    @classmethod
+    def normalize_nullable_text(cls, value):
+        return "" if value is None else value
+
 
 class SourceDeckTeachingStructureDraft(SchemaModel):
     section_title: str = Field(min_length=1)
@@ -554,6 +582,11 @@ class SourceDeckLearningContentDraft(SchemaModel):
     page_flow: list[SourceDeckPageFlowDraft] = Field(min_length=1)
     sections: list[SourceDeckSectionDraft] = Field(min_length=1)
 
+    @field_validator("subtitle", "structure_summary", mode="before")
+    @classmethod
+    def normalize_nullable_text(cls, value):
+        return "" if value is None else value
+
 
 class SourceDeckOutlineDraft(SchemaModel):
     title: str = Field(min_length=1)
@@ -562,6 +595,11 @@ class SourceDeckOutlineDraft(SchemaModel):
     structure_summary: str = ""
     detected_agenda: list[str] = Field(default_factory=list)
     sections: list[SourceDeckSectionDraft] = Field(min_length=1)
+
+    @field_validator("subtitle", "structure_summary", mode="before")
+    @classmethod
+    def normalize_nullable_text(cls, value):
+        return "" if value is None else value
 
 
 class SourceDeckPageFlowBatch(SchemaModel):

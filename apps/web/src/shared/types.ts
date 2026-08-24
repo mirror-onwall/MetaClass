@@ -211,6 +211,8 @@ export type ContentGenerationJob = {
   message: string;
   content_id?: string;
   error?: string;
+  created_at?: string;
+  updated_at?: string;
 };
 
 export type LearningMode = "lecture" | "interactive";

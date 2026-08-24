@@ -435,11 +435,13 @@ class OpenAICompatibleLLMProvider:
             except error.HTTPError as exc:
                 detail = exc.read().decode("utf-8", errors="replace")
                 raise RuntimeError(f"{label} request failed: HTTP {exc.code} {detail}") from exc
-            except (TimeoutError, error.URLError) as exc:
+            except (TimeoutError, error.URLError, ConnectionError) as exc:
                 if attempt == 0:
                     continue
                 reason = exc.reason if isinstance(exc, error.URLError) else str(exc)
-                raise RuntimeError(f"{label} request timed out after 2 attempts: {reason}") from exc
+                raise RuntimeError(
+                    f"{label} transient request failed after 2 attempts: {reason}"
+                ) from exc
             except json.JSONDecodeError as exc:
                 raise RuntimeError(f"{label} returned invalid JSON") from exc
         raise RuntimeError(f"{label} request failed")

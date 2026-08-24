@@ -170,13 +170,17 @@ class ContentService:
 
     def resume_generation_job(self, job_id: str) -> ContentGenerationJob:
         job = self.get_generation_job(job_id)
-        if job.status != ContentGenerationJobStatus.PAUSED:
-            raise HTTPException(409, "Only paused jobs can be resumed")
+        if job.status not in {
+            ContentGenerationJobStatus.PAUSED,
+            ContentGenerationJobStatus.FAILED,
+        }:
+            raise HTTPException(409, "Only paused or failed jobs can be resumed")
         with self._job_lock:
             self._pause_events[job_id] = Event()
         job.status = ContentGenerationJobStatus.QUEUED
         job.step = "queued"
         job.message = "等待从 checkpoint 继续"
+        job.error = None
         job.updated_at = utc_now()
         self._save_job(job)
         return job

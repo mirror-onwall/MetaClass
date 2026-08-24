@@ -68,6 +68,17 @@ function displayDate(value?: string) {
   }).format(new Date(value));
 }
 
+function displayDateTime(value?: string) {
+  if (!value) return "时间未知";
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(value));
+}
+
 export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageProps) {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [collections, setCollections] = useState<MaterialCollection[]>([]);
@@ -314,7 +325,8 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
         const item = result.items.find((entry) => entry.material.id === selected?.id) ?? result.items[0];
         if (item) onUseMaterial(item.material, item.pages);
       } else if (kind === "content" && selected) {
-        await api.resumeContentGenerationJob(id);
+        const resumed = await api.resumeContentGenerationJob(id);
+        setContentJobs((items) => items.map((item) => item.id === id ? resumed : item));
         const content = await api.waitForContentGenerationJob(id, (job) => setContentJobs((items) => items.map((item) => item.id === id ? job : item)));
         onOpenAsset({ material: selected, pages, content });
       } else if (kind === "plan" && selected) {
@@ -563,19 +575,43 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
               {(() => {
                 const summary = contentSummaryByMaterialId.get(selected.id);
                 const relatedPlanIds = new Set(presentationPlans.filter((plan) => plan.content_id === summary?.content_id).map((plan) => plan.id));
+                const relevantContentJobs = contentJobs.filter((job) => job.material_id === selected.id);
+                const latestFailedByMode = new Map<string, string>();
+                relevantContentJobs
+                  .filter((job) => job.status === "failed")
+                  .sort((left, right) => Date.parse(right.updated_at ?? right.created_at ?? "") - Date.parse(left.updated_at ?? left.created_at ?? ""))
+                  .forEach((job) => {
+                    const mode = job.organization_mode ?? "knowledge";
+                    if (!latestFailedByMode.has(mode)) latestFailedByMode.set(mode, job.id);
+                  });
                 const active = [
-                  ...materialJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.material_ids.includes(selected.id)).map((job) => ({ kind: "material" as const, id: job.id, status: job.status, title: "材料解析", detail: `${job.message} · ${job.progress}%` })),
-                  ...contentJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.material_id === selected.id).map((job) => ({ kind: "content" as const, id: job.id, status: job.status, title: job.organization_mode === "source_deck" ? "原稿 LearningContent" : "LearningContent", detail: `${job.message} · ${job.progress}%` })),
-                  ...planJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.content_id === summary?.content_id).map((job) => ({ kind: "plan" as const, id: job.id, status: job.status, title: job.mode === "source_deck" ? "原稿讲稿 / PresentationPlan" : "PresentationPlan / 题库", detail: `${job.message} · ${job.progress}%` })),
-                  ...pptJobs.filter((job) => ["queued", "running", "waiting_for_skill", "paused"].includes(job.status) && relatedPlanIds.has(job.presentation_plan_id)).map((job) => ({ kind: "ppt" as const, id: job.id, status: job.status, title: "PPT 生成", detail: `PPT 产物进度 ${Math.round(job.progress * 100)}%` })),
-                ];
+                  ...materialJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.material_ids.includes(selected.id)).map((job) => ({ kind: "material" as const, id: job.id, status: job.status, title: "材料解析", detail: `${job.message} · ${job.progress}%`, historicalFailure: false })),
+                  ...relevantContentJobs.filter((job) => ["queued", "running", "paused", "failed"].includes(job.status)).map((job) => {
+                    const mode = job.organization_mode ?? "knowledge";
+                    const latestFailure = job.status === "failed" && latestFailedByMode.get(mode) === job.id;
+                    const historicalFailure = job.status === "failed" && !latestFailure;
+                    const baseTitle = mode === "source_deck" ? "原稿 LearningContent" : "LearningContent";
+                    return {
+                      kind: "content" as const,
+                      id: job.id,
+                      status: job.status,
+                      title: `${latestFailure ? "【最近失败】" : historicalFailure ? "【历史失败】" : ""}${baseTitle}`,
+                      detail: job.status === "failed"
+                        ? `${displayDateTime(job.updated_at)} · ${latestFailure ? "可从 checkpoint 重试" : "仅作历史记录"}`
+                        : `${job.message} · ${job.progress}%`,
+                      historicalFailure,
+                    };
+                  }),
+                  ...planJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.content_id === summary?.content_id).map((job) => ({ kind: "plan" as const, id: job.id, status: job.status, title: job.mode === "source_deck" ? "原稿讲稿 / PresentationPlan" : "PresentationPlan / 题库", detail: `${job.message} · ${job.progress}%`, historicalFailure: false })),
+                  ...pptJobs.filter((job) => ["queued", "running", "waiting_for_skill", "paused"].includes(job.status) && relatedPlanIds.has(job.presentation_plan_id)).map((job) => ({ kind: "ppt" as const, id: job.id, status: job.status, title: "PPT 生成", detail: `PPT 产物进度 ${Math.round(job.progress * 100)}%`, historicalFailure: false })),
+                ].sort((left, right) => Number(Boolean(left.historicalFailure)) - Number(Boolean(right.historicalFailure)));
                 if (!active.length) return null;
                 return <div className="library-in-progress-assets">
                   <div className="in-progress-heading"><span>Ⅱ</span><div><b>进行中的备课</b><small>{active.length} 项进度已安全保存</small></div></div>
                   {active.map((job) => <article key={`${job.kind}:${job.id}`}>
                     <div><b>{job.title}</b><p>{job.detail}</p></div>
-                    <button disabled={!!assetBusy} onClick={() => job.status === "paused" ? resumeLibraryJob(job.kind, job.id) : pauseLibraryJob(job.kind, job.id)}>{job.status === "paused" ? "从中断处继续" : "停止并保存"}</button>
-                    <button className="discard" disabled={!!assetBusy || job.status !== "paused"} onClick={() => discardLibraryJob(job.kind, job.id)}>放弃</button>
+                    <button disabled={!!assetBusy || Boolean(job.historicalFailure)} onClick={() => ["paused", "failed"].includes(job.status) ? resumeLibraryJob(job.kind, job.id) : pauseLibraryJob(job.kind, job.id)}>{job.historicalFailure ? "历史记录" : job.status === "failed" ? "从失败处重试" : job.status === "paused" ? "从中断处继续" : "停止并保存"}</button>
+                    <button className="discard" disabled={!!assetBusy || !["paused", "failed"].includes(job.status)} onClick={() => discardLibraryJob(job.kind, job.id)}>放弃</button>
                   </article>)}
                 </div>;
               })()}

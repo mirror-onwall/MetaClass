@@ -58,6 +58,8 @@ def test_sqlalchemy_creates_domain_tables(tmp_path) -> None:
         "video_jobs",
         "video_artifacts",
         "tts_artifacts",
+        "paper_workflow_jobs",
+        "paper_artifact_bundles",
     }
     assert "records" not in tables
     assert {
@@ -300,6 +302,40 @@ def test_material_repository_round_trip(tmp_path) -> None:
     repository.replace_pages(material.id, [replacement])
     assert repository.list_pages(material.id) == [replacement]
     database.dispose()
+
+
+def test_generated_pptx_registration_is_idempotent_per_derivation_and_content(
+    tmp_path: Path,
+) -> None:
+    from metaclass.core.application import build_services
+
+    services = build_services(tmp_path)
+    source = tmp_path / "generated.pptx"
+    source.write_bytes(b"first generated deck")
+
+    first = services.materials.register_generated_pptx(
+        source,
+        filename="paper-presentation.pptx",
+        derivation_key="paper_job_123",
+    )
+    repeated = services.materials.register_generated_pptx(
+        source,
+        filename="paper-presentation.pptx",
+        derivation_key="paper_job_123",
+    )
+
+    assert repeated.id == first.id
+    assert len([item for item in services.materials.list_materials() if item.id == first.id]) == 1
+    assert Path(first.storage_path).read_bytes() == source.read_bytes()
+
+    source.write_bytes(b"regenerated deck with changed content")
+    changed = services.materials.register_generated_pptx(
+        source,
+        filename="paper-presentation.pptx",
+        derivation_key="paper_job_123",
+    )
+    assert changed.id != first.id
+    services.database.dispose()
 
 
 def test_learning_content_repository_round_trips_segments_and_legacy_content(tmp_path) -> None:

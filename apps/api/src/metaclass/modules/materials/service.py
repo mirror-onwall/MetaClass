@@ -6,8 +6,10 @@ import shutil
 import subprocess
 import tempfile
 import time
-from threading import Event, Lock
+from dataclasses import dataclass
 from pathlib import Path
+from threading import Event, Lock
+from typing import Literal
 from uuid import uuid4
 
 import fitz
@@ -24,8 +26,9 @@ from metaclass.modules.materials.schemas import (
     MaterialProcessingJob,
     MaterialProcessingJobStatus,
     MaterialStatus,
-    PageMetadata,
+    MaterialType,
     PageImage,
+    PageMetadata,
     ProcessedMaterial,
     ProcessedMaterials,
     SourceRef,
@@ -34,6 +37,16 @@ from metaclass.modules.materials.schemas import (
 
 class MaterialProcessingCancelled(RuntimeError):
     pass
+
+
+@dataclass(frozen=True)
+class MaterialRichParseResult:
+    """A selected rich parser artifact; projection remains a caller concern."""
+
+    format: Literal["content_list_v2", "content_list", "middle"]
+    path: Path
+    root: Path
+    payload: list[object] | dict[str, object]
 
 
 class MaterialService:
@@ -94,6 +107,58 @@ class MaterialService:
 
     def list_materials(self) -> list[Material]:
         return self.repository.list_materials()
+
+    def register_generated_pptx(
+        self,
+        source: Path,
+        *,
+        filename: str,
+        derivation_key: str,
+    ) -> Material:
+        """Idempotently register a generated deck as a normal material.
+
+        The workflow identity and content hash deliberately determine the material
+        id. A retry after the deck was copied but before the workflow result was
+        persisted therefore converges on the same material instead of creating an
+        orphan duplicate.
+        """
+        if not source.is_file() or source.suffix.lower() != ".pptx":
+            raise ValueError("generated material must be an existing PPTX")
+        if not derivation_key.strip():
+            raise ValueError("generated material derivation_key must not be empty")
+        file_hash = self._sha256(source)
+        identity = hashlib.sha256(
+            f"generated-pptx\0{derivation_key}\0{file_hash}".encode("utf-8")
+        ).hexdigest()
+        material_id = f"mat_{identity[:24]}"
+        destination = self.data_dir / "raw" / material_id / "source.pptx"
+        with self._job_lock:
+            existing = self.repository.get_material(material_id)
+            if existing is not None:
+                if existing.file_type != MaterialType.PPTX or existing.file_hash != file_hash:
+                    raise ValueError("generated material identity collision")
+                if Path(existing.storage_path).is_file():
+                    return existing
+
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            temporary = destination.with_name(f".{destination.name}.{uuid4().hex}.tmp")
+            try:
+                shutil.copyfile(source, temporary)
+                if self._sha256(temporary) != file_hash:
+                    raise OSError("generated PPTX changed while it was being registered")
+                os.replace(temporary, destination)
+            finally:
+                temporary.unlink(missing_ok=True)
+
+            material = Material(
+                id=material_id,
+                filename=safe_filename(filename),
+                file_type=MaterialType.PPTX,
+                file_hash=file_hash,
+                storage_path=str(destination),
+            )
+            self.repository.save_material(material)
+            return material
 
     def get(self, material_id: str) -> Material:
         material = self.repository.get_material(material_id)
@@ -270,7 +335,7 @@ class MaterialService:
             job.error = None
             job.updated_at = utc_now()
             self._save_job(job)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 - processing failures become durable job state
             job.status = MaterialProcessingJobStatus.FAILED
             job.step = "failed"
             job.message = "Material processing failed"
@@ -282,6 +347,34 @@ class MaterialService:
     def pages(self, material_id: str) -> list[PageMetadata]:
         self.get(material_id)
         return self.repository.list_pages(material_id)
+
+    def rich_parse_result(self, material_id: str) -> MaterialRichParseResult | None:
+        """Read the best available MinerU JSON without exposing selection internals."""
+        self.get(material_id)
+        root = (self.data_dir / "processed" / material_id / "mineru").resolve()
+        if not root.is_dir():
+            return None
+        candidates = (
+            ("content_list_v2", "content_list_v2.json"),
+            ("content_list", "content_list.json"),
+            ("middle", "middle.json"),
+        )
+        for format_name, filename in candidates:
+            for path in sorted(root.rglob(filename)):
+                resolved = path.resolve()
+                resolved.relative_to(root)
+                try:
+                    payload = json.loads(resolved.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                if isinstance(payload, (list, dict)):
+                    return MaterialRichParseResult(
+                        format=format_name,
+                        path=resolved,
+                        root=resolved.parent,
+                        payload=payload,
+                    )
+        return None
 
     def delete_project(self, material_id: str) -> None:
         self.get(material_id)

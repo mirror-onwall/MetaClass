@@ -29,14 +29,12 @@ class QuestionBankService:
         plan = self.presentations.get_plan(plan_id)
         content = self.contents.get(plan.content_id)
         existing = self.repository.list_for_plan(plan.id)
-        if existing:
-            return QuestionBank(
-                presentation_plan_id=plan.id,
-                content_id=content.id,
-                items=existing,
-            )
-        items = self.generator.generate(content, plan)
-        self.repository.replace_for_plan(plan.id, items)
+        completed_slide_ids = {item.slide_id for item in existing}
+        for batch in self.generator.generate_batches(
+            content, plan, completed_slide_ids=completed_slide_ids
+        ):
+            self.repository.append_for_plan(batch)
+        items = self.repository.list_for_plan(plan.id)
         return QuestionBank(
             presentation_plan_id=plan.id,
             content_id=content.id,

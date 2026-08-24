@@ -334,10 +334,16 @@ class PresentationService:
     def _prepare_question_bank(self, content, plan: PresentationPlan) -> None:
         if not self.question_bank_generator or not self.question_bank_repository:
             return
-        if self.question_bank_repository.list_for_plan(plan.id):
+        existing = self.question_bank_repository.list_for_plan(plan.id)
+        completed_slide_ids = {item.slide_id for item in existing}
+        if len(completed_slide_ids) >= len(plan.slides):
             return
-        items = self.question_bank_generator.generate(content, plan)
-        self.question_bank_repository.replace_for_plan(plan.id, items)
+        for items in self.question_bank_generator.generate_batches(
+            content,
+            plan,
+            completed_slide_ids=completed_slide_ids,
+        ):
+            self.question_bank_repository.append_for_plan(items)
 
     def _save_plan_job(self, job: PresentationPlanJob) -> None:
         with self._plan_job_lock:

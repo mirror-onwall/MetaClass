@@ -1227,7 +1227,7 @@ function App() {
       }
       return;
     }
-    if (contentJob?.status === "paused") {
+    if (contentJob && ["paused", "failed"].includes(contentJob.status)) {
       const result = await run("正在从已保存进度继续组织学习内容", async () => {
         await api.resumeContentGenerationJob(contentJob.id);
         return api.waitForContentGenerationJob(contentJob.id, setContentJob);
@@ -1263,7 +1263,7 @@ function App() {
       await api.discardMaterialProcessingJob(materialProcessingJob.id);
       setMaterialProcessingJob(null);
       setFiles([]);
-    } else if (contentJob?.status === "paused") {
+    } else if (contentJob && ["paused", "failed"].includes(contentJob.status)) {
       await api.discardContentGenerationJob(contentJob.id);
       setContentJob(null);
     } else if (presentationPlanJob?.status === "paused") {
@@ -1281,7 +1281,7 @@ function App() {
     setPresentationPlanJob(null);
     const useSourceDeck = presentationMode === "source_deck";
     const plan = await run(
-      useSourceDeck ? "正在分析原 PPT 并生成逐页讲稿" : "正在生成 PresentationPlan",
+      useSourceDeck ? "正在分析原稿并生成逐页讲稿与题库" : "正在生成 PPT 计划、讲稿与题库",
       () => useSourceDeck
         ? api.createSourceDeckPresentationPlan(
             content.id,
@@ -1307,8 +1307,8 @@ function App() {
     );
     setFeedback(
       plan.mode === "source_deck"
-        ? "原 PPT 逐页讲稿已保存，可以直接创建课堂。"
-        : "PresentationPlan 已保存。现在可以单独生成 PPT，或直接创建课堂剧本。",
+        ? "原稿逐页讲稿与题库已保存，可以直接创建课堂。"
+        : "PPT 计划、讲稿与题库已保存。现在可以生成 PPT，或继续创建课堂。",
     );
   }
 
@@ -2055,7 +2055,7 @@ function App() {
                 ))}
               </div>
             </div>}
-            <button disabled={!content || !!presentationPlan || !!busy} onClick={preparePresentationPlan}><span>03</span><b>{presentationPlan ? "课件讲解计划已准备" : presentationMode === "source_deck" ? "直接使用原稿并生成逐页讲稿" : "重新设计并生成 PPT 计划"}</b><i>↗</i></button>
+            <button disabled={!content || !!presentationPlan || !!busy} onClick={preparePresentationPlan}><span>03</span><b>{presentationPlan ? "讲稿与题库已准备" : presentationMode === "source_deck" ? "使用原稿生成逐页讲稿与题库" : "生成 PPT 计划、讲稿与题库"}</b><i>↗</i></button>
             {presentationPlan && !session && (
               <button disabled={!!busy} onClick={chooseAnotherPresentationRoute}><span>↺</span><b>重新选择课件使用方式</b><i>→</i></button>
             )}
@@ -2480,11 +2480,11 @@ function App() {
         </div>
       )}
 
-      {(materialProcessingJob?.status === "paused" || contentJob?.status === "paused" || presentationPlanJob?.status === "paused" || pptJob?.status === "paused") && !busy && (
+      {(materialProcessingJob?.status === "paused" || ["paused", "failed"].includes(contentJob?.status ?? "") || presentationPlanJob?.status === "paused" || pptJob?.status === "paused") && !busy && (
         <div className="paused-job-toast" role="status">
           <span>Ⅱ</span>
-          <div><b>进度已保存</b><p>{materialProcessingJob?.status === "paused" ? `${materialProcessingJob.message} · ${materialProcessingJob.progress}%` : contentJob?.status === "paused" ? contentProgressLabel(contentJob) : presentationPlanJob?.status === "paused" ? presentationProgressLabel(presentationPlanJob) : "PPT 生成已暂停"}</p></div>
-          <button className="resume" type="button" onClick={resumePausedContentWork}>从中断处继续</button>
+          <div><b>{contentJob?.status === "failed" ? "任务失败，进度已保留" : "进度已保存"}</b><p>{materialProcessingJob?.status === "paused" ? `${materialProcessingJob.message} · ${materialProcessingJob.progress}%` : ["paused", "failed"].includes(contentJob?.status ?? "") ? contentProgressLabel(contentJob!) : presentationPlanJob?.status === "paused" ? presentationProgressLabel(presentationPlanJob) : "PPT 生成已暂停"}</p></div>
+          <button className="resume" type="button" onClick={resumePausedContentWork}>{contentJob?.status === "failed" ? "从失败处重试" : "从中断处继续"}</button>
           <button className="discard" type="button" onClick={discardPausedContentWork}>放弃并删除临时进度</button>
         </div>
       )}

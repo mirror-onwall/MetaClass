@@ -41,11 +41,40 @@ class QuestionBankGenerator:
         self.candidates_per_slide = max(1, candidates_per_slide)
 
     def generate(self, content: LearningContent, plan: PresentationPlan) -> list[ClassroomQA]:
+        return [item for batch in self.generate_batches(content, plan) for item in batch]
+
+    def generate_batches(
+        self,
+        content: LearningContent,
+        plan: PresentationPlan,
+        *,
+        completed_slide_ids: set[str] | None = None,
+    ):
+        """Yield complete QA records in durable slide batches.
+
+        Callers can commit every yielded batch and pass the already persisted
+        slide IDs when resuming, so a later provider failure does not discard
+        earlier questions and answers.
+        """
         profiles = get_default_student_agent_profiles()
-        candidates = self._student_candidates_in_parallel(plan, profiles)
+        completed = completed_slide_ids or set()
+        pending = [slide for slide in plan.slides if slide.id not in completed]
+        for start in range(0, len(pending), self.STUDENT_SLIDES_PER_BATCH):
+            slides = pending[start : start + self.STUDENT_SLIDES_PER_BATCH]
+            yield self._generate_slide_batch(content, plan, profiles, slides)
+
+    def _generate_slide_batch(
+        self,
+        content: LearningContent,
+        plan: PresentationPlan,
+        profiles: list[StudentAgentProfile],
+        slides: list[SlidePlan],
+    ) -> list[ClassroomQA]:
+        candidates = self._student_candidates_in_parallel(
+            plan, profiles, checkpoint_slides=slides
+        )
         candidates = self._deduplicate(candidates)
         candidates = self._limit_candidates_for_teacher(candidates, plan)
-        # The teacher receives and answers the complete candidate set in one call.
         answers = self._teacher_answers(content, plan, candidates)
         placements = self._controller_placements(plan, candidates, answers)
         answers_by_id = {item.candidate_id: item for item in answers}
@@ -88,12 +117,14 @@ class QuestionBankGenerator:
         self,
         plan: PresentationPlan,
         profiles: list[StudentAgentProfile],
+        checkpoint_slides: list[SlidePlan] | None = None,
     ) -> list[QuestionCandidate]:
+        slides = checkpoint_slides if checkpoint_slides is not None else plan.slides
         if not self.llm:
             return [
                 self._fallback_candidate(slide, profile)
                 for profile in profiles
-                for slide in plan.slides
+                for slide in slides
             ]
 
         # Profiles run concurrently. Each profile splits a long deck into small,
@@ -103,7 +134,9 @@ class QuestionBankGenerator:
             max_workers=min(self.student_concurrency, len(profiles))
         ) as executor:
             futures = {
-                executor.submit(self._student_batch_candidates, plan, profile): profile
+                executor.submit(
+                    self._student_batch_candidates, plan, profile, slides
+                ): profile
                 for profile in profiles
             }
             for future in as_completed(futures):
@@ -112,7 +145,7 @@ class QuestionBankGenerator:
                     results[profile.id] = future.result()
                 except Exception:
                     results[profile.id] = [
-                        self._fallback_candidate(slide, profile) for slide in plan.slides
+                        self._fallback_candidate(slide, profile) for slide in slides
                     ]
         # Preserve stable profile order despite concurrent completion order.
         return [item for profile in profiles for item in results.get(profile.id, [])]
@@ -121,12 +154,14 @@ class QuestionBankGenerator:
         self,
         plan: PresentationPlan,
         profile: StudentAgentProfile,
+        checkpoint_slides: list[SlidePlan] | None = None,
     ) -> list[QuestionCandidate]:
+        slides = checkpoint_slides if checkpoint_slides is not None else plan.slides
         if not self.llm:
-            return [self._fallback_candidate(slide, profile) for slide in plan.slides]
+            return [self._fallback_candidate(slide, profile) for slide in slides]
         items = []
-        for start in range(0, len(plan.slides), self.STUDENT_SLIDES_PER_BATCH):
-            batch = plan.slides[start : start + self.STUDENT_SLIDES_PER_BATCH]
+        for start in range(0, len(slides), self.STUDENT_SLIDES_PER_BATCH):
+            batch = slides[start : start + self.STUDENT_SLIDES_PER_BATCH]
             batch_slides = {slide.id: slide for slide in batch}
             try:
                 raw = self.llm.complete_json(

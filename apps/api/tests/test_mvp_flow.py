@@ -612,7 +612,7 @@ def test_prepared_question_bank_runs_as_classroom_script(client: TestClient) -> 
     question_bank = client.get(
         f"/api/v1/presentation-plans/{presentation['id']}/question-bank"
     ).json()
-    prepared = question_bank["items"][0]
+    prepared_by_id = {item["id"]: item for item in question_bank["items"]}
 
     missing_artifact = client.post(
         f"/api/v1/learning-contents/{content['id']}/classroom-plans",
@@ -641,10 +641,12 @@ def test_prepared_question_bank_runs_as_classroom_script(client: TestClient) -> 
     assert not end_action["payload"]["summary"].startswith("本页要点：")
     student_index = action_types.index("STUDENT_QUESTION")
     assert action_types[student_index + 1] == "TEACHER_QA_RESPONSE"
-    assert (
-        classroom_plan["scenes"][0]["actions"][student_index]["payload"]["qa_id"]
-        == prepared["id"]
-    )
+    student_action = classroom_plan["scenes"][0]["actions"][student_index]
+    teacher_action = classroom_plan["scenes"][0]["actions"][student_index + 1]
+    selected_qa_id = student_action["payload"]["qa_id"]
+    assert selected_qa_id in prepared_by_id
+    assert teacher_action["payload"]["qa_id"] == selected_qa_id
+    prepared = prepared_by_id[selected_qa_id]
 
     session = client.post(
         f"/api/v1/classroom-plans/{classroom_plan['id']}/sessions",

@@ -10,6 +10,7 @@ from metaclass.modules.question_bank.schemas import ClassroomQA
 
 class QuestionBankRepository(Protocol):
     def replace_for_plan(self, plan_id: str, items: list[ClassroomQA]) -> None: ...
+    def append_for_plan(self, items: list[ClassroomQA]) -> None: ...
     def list_for_plan(self, plan_id: str) -> list[ClassroomQA]: ...
     def get_item(self, qa_id: str) -> ClassroomQA | None: ...
     def save_embeddings(self, embeddings: dict[str, list[float]]) -> None: ...
@@ -26,39 +27,14 @@ class SqlAlchemyQuestionBankRepository:
                     ClassroomQARecord.presentation_plan_id == plan_id
                 )
             )
-            session.add_all(
-                [
-                    ClassroomQARecord(
-                        id=item.id,
-                        presentation_plan_id=item.presentation_plan_id,
-                        content_id=item.content_id,
-                        slide_id=item.slide_id,
-                        slide_order=item.slide_order,
-                        agent_type=item.agent_type.value,
-                        student_profile_id=item.student_profile_id,
-                        knowledge_point=item.knowledge_point,
-                        canonical_question=item.canonical_question,
-                        student_question=item.student_question,
-                        canonical_answer=item.canonical_answer,
-                        teacher_answer=item.teacher_answer,
-                        moment=item.moment,
-                        placement_reason=item.placement_reason,
-                        source_refs=[ref.model_dump(mode="json") for ref in item.source_refs],
-                        status=item.status,
-                        search_text=" ".join(
-                            [
-                                item.knowledge_point,
-                                item.canonical_question,
-                                item.student_question,
-                                item.canonical_answer,
-                            ]
-                        ).lower(),
-                        embedding=item.embedding,
-                        created_at=item.created_at,
-                    )
-                    for item in items
-                ]
-            )
+            session.add_all([self._record(item) for item in items])
+
+    def append_for_plan(self, items: list[ClassroomQA]) -> None:
+        if not items:
+            return
+        with self.database.session() as session:
+            for item in items:
+                session.merge(self._record(item))
 
     def list_for_plan(self, plan_id: str) -> list[ClassroomQA]:
         with self.database.session() as session:
@@ -83,6 +59,37 @@ class SqlAlchemyQuestionBankRepository:
             ).all()
             for record in records:
                 record.embedding = embeddings[record.id]
+
+    @staticmethod
+    def _record(item: ClassroomQA) -> ClassroomQARecord:
+        return ClassroomQARecord(
+            id=item.id,
+            presentation_plan_id=item.presentation_plan_id,
+            content_id=item.content_id,
+            slide_id=item.slide_id,
+            slide_order=item.slide_order,
+            agent_type=item.agent_type.value,
+            student_profile_id=item.student_profile_id,
+            knowledge_point=item.knowledge_point,
+            canonical_question=item.canonical_question,
+            student_question=item.student_question,
+            canonical_answer=item.canonical_answer,
+            teacher_answer=item.teacher_answer,
+            moment=item.moment,
+            placement_reason=item.placement_reason,
+            source_refs=[ref.model_dump(mode="json") for ref in item.source_refs],
+            status=item.status,
+            search_text=" ".join(
+                [
+                    item.knowledge_point,
+                    item.canonical_question,
+                    item.student_question,
+                    item.canonical_answer,
+                ]
+            ).lower(),
+            embedding=item.embedding,
+            created_at=item.created_at,
+        )
 
     @staticmethod
     def _item(record: ClassroomQARecord) -> ClassroomQA:

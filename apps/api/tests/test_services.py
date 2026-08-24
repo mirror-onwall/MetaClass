@@ -136,6 +136,32 @@ def test_content_job_state_survives_restart_and_pauses_running_job(
     assert restored.error is None
 
 
+def test_failed_content_job_can_resume_with_same_identity(tmp_path: Path) -> None:
+    material = Material(
+        id="mat_failed_job",
+        filename="failed.pdf",
+        file_type="pdf",
+        status="parsed",
+        storage_path=str(tmp_path / "failed.pdf"),
+    )
+    materials = SimpleNamespace(data_dir=tmp_path, get=lambda _: material)
+    service = ContentService(Mock(), materials, Mock())
+    failed = service.create_source_deck_generation_job(material.id)
+    failed.status = "failed"
+    failed.step = "failed"
+    failed.progress = 100
+    failed.error = "temporary validation failure"
+    service._save_job(failed)
+
+    resumed = service.resume_generation_job(failed.id)
+
+    assert resumed.id == failed.id
+    assert resumed.status == "queued"
+    assert resumed.step == "queued"
+    assert resumed.error is None
+    assert resumed.message == "等待从 checkpoint 继续"
+
+
 def test_video_generation_failure_is_persisted_as_failed_job(tmp_path: Path) -> None:
     source_ref = SourceRef(
         material_id="mat_001",
@@ -833,6 +859,33 @@ def test_source_deck_outline_repair_preserves_titles_and_fills_contiguous_ranges
         list(range(1, 5)),
         list(range(5, 9)),
     ]
+
+
+def test_source_deck_drafts_normalize_nullable_optional_text() -> None:
+    outline = SourceDeckOutlineDraft.model_validate(
+        {
+            "title": "时间序列",
+            "subtitle": None,
+            "structure_summary": None,
+            "sections": [
+                {
+                    "title": "预测方法",
+                    "content_goal": None,
+                    "summary": None,
+                    "teaching_approach": None,
+                    "transition_to_next": None,
+                    "page_refs": [{"material_id": "mat_001", "page_no": 1}],
+                }
+            ],
+        }
+    )
+
+    assert outline.subtitle == ""
+    assert outline.structure_summary == ""
+    assert outline.sections[0].content_goal == ""
+    assert outline.sections[0].summary == ""
+    assert outline.sections[0].teaching_approach == ""
+    assert outline.sections[0].transition_to_next == ""
 
 
 def test_source_deck_teaching_segments_retry_then_store_valid_result() -> None:
@@ -1660,6 +1713,39 @@ def test_openai_compatible_provider_retries_temperature_specific_400_once() -> N
     provider.complete_json([LLMMessage(role="user", content="again")], temperature=0.3)
 
     assert captured[-1]["temperature"] == 1.0
+
+
+def test_openai_compatible_provider_retries_remote_disconnect(monkeypatch) -> None:
+    provider = OpenAICompatibleLLMProvider(
+        base_url="https://example.test/v1",
+        api_key="test-key-12345",
+        model="custom-model",
+    )
+    calls = 0
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def read(self):
+            return b'{"choices":[{"message":{"content":"{\\"ok\\":true}"}}]}'
+
+    def open_request(*_, **__):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise ConnectionResetError("remote closed connection")
+        return Response()
+
+    monkeypatch.setattr("metaclass.infrastructure.providers.llm.request.urlopen", open_request)
+
+    result = provider.complete_json([LLMMessage(role="user", content="test")])
+
+    assert result == '{"ok":true}'
+    assert calls == 2
 
 
 def test_llm_learning_provider_describes_visual_and_organizes_content(tmp_path: Path) -> None:
