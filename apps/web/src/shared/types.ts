@@ -418,6 +418,14 @@ export type PresentationPlan = {
     background: string;
     elements: Array<{
       type: "text" | "shape" | "line" | "image" | "table" | "chart";
+      contract_role:
+        | "content"
+        | "plan_copy"
+        | "visual_module"
+        | "visual_asset"
+        | "visual_placeholder";
+      object_id?: string | null;
+      semantic_ref?: string | null;
       x: number;
       y: number;
       w: number;
@@ -427,6 +435,7 @@ export type PresentationPlan = {
       items: string[];
       shape: "rectangle" | "rounded_rectangle" | "oval" | "chevron";
       image_path?: string;
+      image_fit?: "cover" | "contain";
       table_rows: string[][];
       chart_type: "bar" | "line" | "pie" | "doughnut";
       chart_categories: string[];
@@ -434,6 +443,9 @@ export type PresentationPlan = {
       chart_series_names: string[];
       style: {
         font_size: number;
+        font_role: "sans" | "serif" | "handwritten" | "display" | "mono";
+        text_margin_x: number;
+        text_margin_y: number;
         bold: boolean;
         color: string;
         fill?: string;

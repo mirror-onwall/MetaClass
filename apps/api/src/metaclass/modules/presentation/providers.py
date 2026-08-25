@@ -733,12 +733,15 @@ def validate_deck_against_plan(
     pptx_path: Path,
     *,
     provider_name: str,
+    materialized_plan: PresentationPlan | None = None,
 ) -> dict:
-    """Enforce the immutable visible-text contract shared by every provider.
+    """Enforce immutable Plan copy plus explicitly materialized render annotations.
 
     Comparisons trim only the outer whitespace of a text object. Unicode code
     points, punctuation, case, internal whitespace, wording, page count, and
-    page assignment therefore cannot be changed.
+    page assignment therefore cannot be changed. Providers remain strict by
+    default; only a supplied, already validated materialized plan can authorize
+    deterministic auxiliary text such as a missing-visual placeholder.
     """
     if not pptx_path.exists() or pptx_path.stat().st_size == 0:
         raise RuntimeError(f"{provider_name} returned an empty PPTX file")
@@ -754,10 +757,28 @@ def validate_deck_against_plan(
             f"{provider_name} page-count mismatch: expected {expected_count}, got {actual_count}"
         )
 
+    if materialized_plan is not None:
+        if len(materialized_plan.slides) != expected_count:
+            raise RuntimeError(
+                f"{provider_name} render-contract page-count mismatch: "
+                f"expected {expected_count}, got {len(materialized_plan.slides)}"
+            )
+        for planned_slide, materialized_slide in zip(
+            plan.slides, materialized_plan.slides, strict=True
+        ):
+            if materialized_slide.id != planned_slide.id:
+                raise RuntimeError(
+                    f"{provider_name} render-contract slide-id mismatch: "
+                    f"expected {planned_slide.id}, got {materialized_slide.id}"
+                )
+
     checked_items = 0
-    for index, (planned_slide, generated_slide) in enumerate(
-        zip(plan.slides, deck.slides, strict=True), start=1
+    checked_auxiliary_items = 0
+    checked_layered_objects = 0
+    for slide_index, (planned_slide, generated_slide) in enumerate(
+        zip(plan.slides, deck.slides, strict=True)
     ):
+        index = slide_index + 1
         actual_items: list[str] = []
         for target in PresentonPPTProvider._collect_text_targets(generated_slide):
             if target.occluded:
@@ -773,10 +794,27 @@ def validate_deck_against_plan(
         required_items = [
             item for item in [planned_slide.title, *planned_slide.key_points] if item.strip()
         ]
+        auxiliary_items: list[str] = []
+        layered_elements = []
+        if materialized_plan is not None:
+            materialized_slide = materialized_plan.slides[slide_index]
+            auxiliary_items = [
+                element.text or ""
+                for element in materialized_slide.elements
+                if element.type == "text"
+                and element.contract_role == "visual_placeholder"
+                and (element.text or "").strip()
+            ]
+            layered_elements = [
+                element
+                for element in materialized_slide.elements
+                if element.contract_role in {"visual_module", "visual_asset"}
+            ]
         actual_counter = Counter(_contract_text(item) for item in actual_items)
-        required_counter = Counter(_contract_text(item) for item in required_items)
-        missing_counter = required_counter - actual_counter
-        extra_counter = actual_counter - required_counter
+        expected_items = [*required_items, *auxiliary_items]
+        expected_counter = Counter(_contract_text(item) for item in expected_items)
+        missing_counter = expected_counter - actual_counter
+        extra_counter = actual_counter - expected_counter
         if missing_counter or extra_counter:
             missing = list(missing_counter.elements())
             extra = list(extra_counter.elements())
@@ -789,17 +827,68 @@ def validate_deck_against_plan(
                 f"{provider_name} content mismatch on page {index}; " + "; ".join(details)
             )
         checked_items += len(required_items)
+        checked_auxiliary_items += len(auxiliary_items)
+        if layered_elements:
+            expected_names = Counter(
+                f"MetaClass {element.contract_role} {element.object_id}"
+                for element in layered_elements
+                if element.object_id
+            )
+            if sum(expected_names.values()) != len(layered_elements):
+                raise RuntimeError(
+                    f"{provider_name} layered render contract has a missing object id on "
+                    f"page {index}"
+                )
+            actual_names: Counter[str] = Counter()
+            for shape in generated_slide.shapes:
+                if shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                    raise RuntimeError(
+                        f"{provider_name} grouped editable visual objects on page {index}"
+                    )
+                if shape.name in expected_names:
+                    actual_names[shape.name] += 1
+                if (
+                    shape.shape_type == MSO_SHAPE_TYPE.PICTURE
+                    and shape.left <= int(deck.slide_width * 0.005)
+                    and shape.top <= int(deck.slide_height * 0.005)
+                    and shape.width >= int(deck.slide_width * 0.99)
+                    and shape.height >= int(deck.slide_height * 0.99)
+                ):
+                    raise RuntimeError(
+                        f"{provider_name} flattened layered visuals into a full-slide picture "
+                        f"on page {index}"
+                    )
+            if actual_names != expected_names:
+                missing = list((expected_names - actual_names).elements())
+                duplicates = list((actual_names - expected_names).elements())
+                details = []
+                if missing:
+                    details.append(f"missing layered objects: {missing!r}")
+                if duplicates:
+                    details.append(f"duplicated layered objects: {duplicates!r}")
+                raise RuntimeError(
+                    f"{provider_name} editable-object mismatch on page {index}; "
+                    + "; ".join(details)
+                )
+            checked_layered_objects += len(layered_elements)
 
-    return {
+    result = {
         "expected_slide_count": expected_count,
         "actual_slide_count": actual_count,
         "checked_text_items": checked_items,
         "status": "passed",
     }
+    if materialized_plan is not None:
+        result["checked_auxiliary_text_items"] = checked_auxiliary_items
+        result["checked_layered_objects"] = checked_layered_objects
+    return result
 
 
 def _contract_text(value: str) -> str:
-    return value.strip()
+    # PowerPoint stores an in-paragraph soft line break as vertical-tab even
+    # when the source string used a newline. Treat only that serialization
+    # detail as equivalent; all other internal whitespace remains immutable.
+    return value.replace("\v", "\n").strip()
 
 
 class UnavailablePPTProvider:
