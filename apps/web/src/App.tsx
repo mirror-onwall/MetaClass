@@ -32,6 +32,7 @@ import type {
   MaterialCollection,
   MaterialProcessingJob,
   PageMetadata,
+  PaperWorkflowJob,
   PPTArtifact,
   PPTGenerationJob,
   PPTThemeOption,
@@ -455,10 +456,13 @@ function App() {
   const [fullPageView, setFullPageView] = useState<"outline" | "tree" | "scripts" | null>(null);
   const [selectedKnowledgeTreeNodeId, setSelectedKnowledgeTreeNodeId] = useState<string | null>(null);
   const [presentationPlan, setPresentationPlan] = useState<PresentationPlan | null>(runtimeWorkspace.presentationPlan ?? null);
-  const [presentationMode, setPresentationMode] = useState<"generated" | "source_deck">(
+  const [presentationMode, setPresentationMode] = useState<"generated" | "source_deck" | "paper_deck">(
     runtimeWorkspace.presentationPlan?.mode
       ?? (runtimeWorkspace.content ? "source_deck" : "generated"),
   );
+  const [paperWorkflowJob, setPaperWorkflowJob] = useState<PaperWorkflowJob | null>(null);
+  const [paperAudience, setPaperAudience] = useState("具备基础专业背景的高校学生和研究生");
+  const [paperDuration, setPaperDuration] = useState(30);
   const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
   const [editingScript, setEditingScript] = useState("");
   const [presentationPlanJob, setPresentationPlanJob] = useState<PresentationPlanJob | null>(runtimeWorkspace.presentationPlanJob ?? null);
@@ -547,6 +551,16 @@ function App() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!paperWorkflowJob || !["queued", "running"].includes(paperWorkflowJob.status)) return;
+    const timer = window.setInterval(() => {
+      api.getPaperWorkflow(paperWorkflowJob.id)
+        .then(setPaperWorkflowJob)
+        .catch(() => undefined);
+    }, 1500);
+    return () => window.clearInterval(timer);
+  }, [paperWorkflowJob?.id, paperWorkflowJob?.status]);
 
   useEffect(() => {
     window.localStorage.setItem("metaclass-ppt-theme", pptThemeId);
@@ -1054,6 +1068,7 @@ function App() {
     setFullPageView(null);
     setPresentationPlan(null);
     setPresentationMode("generated");
+    setPaperWorkflowJob(null);
     setEditingSlideId(null);
     setEditingScript("");
     setPresentationPlanJob(null);
@@ -1194,6 +1209,57 @@ function App() {
           ? "原稿讲解路线的 LearningContent 已完成，下一步生成逐页讲稿。"
           : "重新生成 PPT 路线的 LearningContent 已完成，下一步生成 PresentationPlan。",
       );
+    }
+  }
+
+  async function buildPaperDeck() {
+    if (!material) return;
+    const result = await run("正在生成论文讲解课件", async () => {
+      let job = paperWorkflowJob;
+      if (!job) {
+        job = await api.createPaperWorkflow(material.id, {
+          audience: paperAudience,
+          duration_minutes: paperDuration,
+        });
+        setPaperWorkflowJob(job);
+      } else if (["paused", "failed"].includes(job.status)) {
+        job = await api.resumePaperWorkflow(job.id);
+        setPaperWorkflowJob(job);
+      }
+      const finished = await api.runPaperWorkflow(job.id);
+      setPaperWorkflowJob(finished);
+      if (finished.status !== "succeeded") throw new Error(finished.error ?? "论文讲解链路尚未完成");
+      const course = await api.createPaperDeckCourse(finished.id);
+      const [nextContent, nextPlan, nextPages, allMaterials, resource] = await Promise.all([
+        api.getLearningContent(course.content_id),
+        api.getPresentationPlan(course.presentation_plan_id),
+        api.getMaterialPages(course.derived_material_id),
+        api.listMaterials(),
+        api.getPresentationResource(course.presentation_plan_id),
+      ]);
+      const derivedMaterial = allMaterials.find((item) => item.id === course.derived_material_id);
+      if (!derivedMaterial) throw new Error("论文课件已生成，但派生 Material 无法载入");
+      return { nextContent, nextPlan, nextPages, derivedMaterial, resource };
+    });
+    if (!result) return;
+    setMaterial(result.derivedMaterial);
+    setMaterials([result.derivedMaterial]);
+    setPages(result.nextPages);
+    setContent(result.nextContent);
+    setPresentationPlan(result.nextPlan);
+    setPresentationMode("paper_deck");
+    setPresentationSlideImages(presentationResourceSlideImages(result.resource));
+    setFeedback("论文分析、知识树、逐页讲稿和课件已就绪；请在原课堂区域创建并播放课堂。");
+  }
+
+  async function pausePaperWorkflow() {
+    if (!paperWorkflowJob || paperWorkflowJob.status !== "running") return;
+    try {
+      setPaperWorkflowJob(await api.pausePaperWorkflow(paperWorkflowJob.id));
+      setBusy(null);
+      setFeedback("论文链路将在当前 Skill 返回后保存断点并暂停。");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "暂停论文链路失败");
     }
   }
 
@@ -2011,15 +2077,38 @@ function App() {
                     <b>重新生成一套 PPT</b>
                     <small>沿用原链路，根据 LearningContent 重新规划并生成课件</small>
                   </button>
+                  <button
+                    className={presentationMode === "paper_deck" ? "selected" : ""}
+                    disabled={!!busy || material?.file_type !== "pdf"}
+                    onClick={() => setPresentationMode("paper_deck")}
+                  >
+                    <span>C</span>
+                    <b>论文讲解</b>
+                    <small>四个 Skill 分析原文、图表和证据，再回到原课堂播放</small>
+                  </button>
                 </div>
+                {presentationMode === "paper_deck" && (
+                  <div className="paper-route-settings">
+                    <label><span>听众</span><input value={paperAudience} onChange={(event) => setPaperAudience(event.target.value)} /></label>
+                    <label><span>时长</span><input type="number" min="5" max="120" value={paperDuration} onChange={(event) => setPaperDuration(Number(event.target.value))} /><small>分钟</small></label>
+                  </div>
+                )}
               </div>
             )}
-            <button disabled={!pages.length || !!content || !!busy} onClick={buildContent}><span>02</span><b>{content ? "内容已构建" : presentationMode === "source_deck" ? "构建原稿讲解内容" : "构建重新生成 PPT 的内容"}</b><i>↗</i></button>
+            <button disabled={!pages.length || !!content || !!busy} onClick={presentationMode === "paper_deck" ? buildPaperDeck : buildContent}><span>02</span><b>{content ? "内容已构建" : presentationMode === "paper_deck" ? "生成论文讲解课件" : presentationMode === "source_deck" ? "构建原稿讲解内容" : "构建重新生成 PPT 的内容"}</b><i>↗</i></button>
+            {paperWorkflowJob && !content && (
+              <div className="paper-route-progress">
+                <div><span>{paperWorkflowJob.stage.replaceAll("_", " ")}</span><b>{Math.round(paperWorkflowJob.progress * 100)}%</b></div>
+                <i><em style={{ width: `${paperWorkflowJob.progress * 100}%` }} /></i>
+                <small>{paperWorkflowJob.status}{paperWorkflowJob.error ? ` · ${paperWorkflowJob.error}` : ""}</small>
+                {paperWorkflowJob.status === "running" && <button type="button" onClick={pausePaperWorkflow}>保存断点并暂停</button>}
+              </div>
+            )}
             {content && !presentationPlan && (
               <div className="presentation-route-picker presentation-route-confirmed">
                 <div className="presentation-route-heading">
                   <span>当前路线</span>
-                  <small>{presentationMode === "source_deck" ? "使用原稿讲解" : "重新生成一套 PPT"}</small>
+                  <small>{presentationMode === "paper_deck" ? "论文讲解课件" : presentationMode === "source_deck" ? "使用原稿讲解" : "重新生成一套 PPT"}</small>
                 </div>
                 <button className="route-reselect-button" type="button" disabled={!!busy} onClick={chooseAnotherPresentationRoute}>
                   返回上一步重新选择路线
@@ -2055,11 +2144,11 @@ function App() {
                 ))}
               </div>
             </div>}
-            <button disabled={!content || !!presentationPlan || !!busy} onClick={preparePresentationPlan}><span>03</span><b>{presentationPlan ? "讲稿与题库已准备" : presentationMode === "source_deck" ? "使用原稿生成逐页讲稿与题库" : "生成 PPT 计划、讲稿与题库"}</b><i>↗</i></button>
+            {presentationMode !== "paper_deck" && <button disabled={!content || !!presentationPlan || !!busy} onClick={preparePresentationPlan}><span>03</span><b>{presentationPlan ? "讲稿与题库已准备" : presentationMode === "source_deck" ? "使用原稿生成逐页讲稿与题库" : "生成 PPT 计划、讲稿与题库"}</b><i>↗</i></button>}
             {presentationPlan && !session && (
               <button disabled={!!busy} onClick={chooseAnotherPresentationRoute}><span>↺</span><b>重新选择课件使用方式</b><i>→</i></button>
             )}
-            <button disabled={!presentationPlan || presentationPlan.mode === "source_deck" || !!presentationArtifact || !!busy} onClick={generatePresentationArtifact}><span>03</span><b>{presentationPlan?.mode === "source_deck" ? "使用原 PPT" : presentationArtifact ? "PPT 已生成" : "生成 PPT（创建课堂前必需）"}</b><i>↗</i></button>
+            {presentationMode !== "paper_deck" && <button disabled={!presentationPlan || presentationPlan.mode === "source_deck" || !!presentationArtifact || !!busy} onClick={generatePresentationArtifact}><span>03</span><b>{presentationPlan?.mode === "source_deck" ? "使用原 PPT" : presentationArtifact ? "PPT 已生成" : "生成 PPT（创建课堂前必需）"}</b><i>↗</i></button>}
             <button disabled={!content || !presentationPlan || (presentationPlan.mode === "generated" && !presentationArtifact) || !!session || !!busy} onClick={startClassroom}><span>04</span><b>{session ? "课堂已创建" : classroomPlanJob && classroomPlanJob.status !== "failed" ? "继续进入已生成课堂" : learningMode === "interactive" ? "创建互动课堂" : "创建连续课堂"}</b><i>↗</i></button>
             <button disabled={!content || !presentationArtifact || !!video || !!busy} onClick={createVideo}><span>05</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
             <button disabled={!content || !presentationPlan || !!busy} onClick={completeWorkspace}><span>✓</span><b>完成当前材料</b><i>→</i></button>

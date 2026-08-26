@@ -27,6 +27,10 @@ import type {
   TTSArtifact,
   TTSArtifactRequest,
   QuestionBank,
+  PaperDeckCourseResult,
+  PaperOutline,
+  PaperSlideEvidence,
+  PaperWorkflowJob,
   VideoJob,
   VideoResult,
 } from "./types";
@@ -87,6 +91,46 @@ async function poll<T>(
 }
 
 export const api = {
+  createPaperWorkflow(materialId: string, settings: { duration_minutes: number; audience: string }) {
+    return request<PaperWorkflowJob>("/api/v1/paper-workflows", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        material_id: materialId,
+        strategy: "composed_skills",
+        language: "zh-CN",
+        depth: "standard",
+        ...settings,
+      }),
+    });
+  },
+  getPaperWorkflow(jobId: string) {
+    return request<PaperWorkflowJob>(`/api/v1/paper-workflows/${jobId}`);
+  },
+  runPaperWorkflow(jobId: string) {
+    return request<PaperWorkflowJob>(`/api/v1/paper-workflows/${jobId}/run`, {
+      method: "POST",
+      timeoutMs: 3_600_000,
+    });
+  },
+  pausePaperWorkflow(jobId: string) {
+    return request<PaperWorkflowJob>(`/api/v1/paper-workflows/${jobId}/pause`, { method: "POST" });
+  },
+  resumePaperWorkflow(jobId: string) {
+    return request<PaperWorkflowJob>(`/api/v1/paper-workflows/${jobId}/resume`, { method: "POST" });
+  },
+  getPaperOutline(jobId: string) {
+    return request<PaperOutline>(`/api/v1/paper-workflows/${jobId}/outline`);
+  },
+  getPaperSlideEvidence(jobId: string) {
+    return request<PaperSlideEvidence>(`/api/v1/paper-workflows/${jobId}/slide-evidence`);
+  },
+  createPaperDeckCourse(jobId: string) {
+    return request<PaperDeckCourseResult>(`/api/v1/paper-workflows/${jobId}/create-paper-deck-course`, {
+      method: "POST",
+      timeoutMs: 1_800_000,
+    });
+  },
   async upload(file: File) {
     const result = await api.uploadMany([file]);
     if (!result.items[0]) throw new Error("材料解析任务没有返回结果");

@@ -402,7 +402,7 @@ export type PresentationPlan = {
   id: string;
   content_id: string;
   title: string;
-  mode?: "generated" | "source_deck";
+  mode?: "generated" | "source_deck" | "paper_deck";
   source_material_id?: string;
   presentation_resource_id?: string;
   slides: Array<{
@@ -447,6 +447,67 @@ export type PresentationPlan = {
       };
     }>;
   }>;
+};
+
+export type PaperWorkflowStatus =
+  | "queued" | "running" | "paused" | "waiting_for_input"
+  | "waiting_for_review" | "succeeded" | "failed" | "canceled";
+
+export type PaperWorkflowJob = {
+  id: string;
+  source_material_id: string;
+  strategy_requested: "auto" | "composed_skills" | "nature_paper2ppt";
+  strategy_selected?: "auto" | "composed_skills" | "nature_paper2ppt";
+  status: PaperWorkflowStatus;
+  stage: string;
+  progress: number;
+  provider_attempts: string[];
+  checkpoint_version: number;
+  artifact_bundle_id?: string;
+  derived_material_id?: string;
+  fallback_reason?: string;
+  error?: string;
+};
+
+export type PaperSourceReference = {
+  page_no: number;
+  block_id?: string;
+  asset_id?: string;
+  quote?: string;
+};
+
+export type PaperOutline = {
+  title: string;
+  subtitle?: string;
+  paper_type: string;
+  narrative_arc: string;
+  objectives: string[];
+  structure_summary: string;
+  sections: Array<{ id: string; title: string; role: string; content_goal: string; slide_ids: string[] }>;
+  slides: Array<{
+    id: string; order: number; title: string; purpose: string; key_points: string[];
+    asset_ids: string[]; speaker_note: string; layout_intent: string;
+  }>;
+};
+
+export type PaperSlideEvidence = {
+  slides: Array<{
+    slide_id: string;
+    page_no?: number;
+    claim_ids: string[];
+    source_refs: PaperSourceReference[];
+    asset_ids: string[];
+    evidence_strength: "direct" | "derived" | "contextual";
+  }>;
+};
+
+export type PaperDeckCourseResult = {
+  paper_job_id: string;
+  derived_material_id: string;
+  source_paper_material_id: string;
+  artifact_bundle_id: string;
+  content_id: string;
+  presentation_plan_id: string;
 };
 
 export type PresentationPlanLibrarySummary = {
@@ -509,7 +570,7 @@ export type PresentationPlanJob = {
 export type PresentationResource = {
   id: string;
   presentation_plan_id: string;
-  kind: "source_deck" | "generated_artifact";
+  kind: "source_deck" | "paper_deck" | "generated_artifact";
   source_material_id?: string;
   artifact_id?: string;
   source_file_hash?: string;
