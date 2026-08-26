@@ -34,6 +34,7 @@ logs/
 outputs/
 work/
 data/test-tmp/
+data/acceptance/
 .codex-pytest-*/
 .tmp-edge-diagram/
 
