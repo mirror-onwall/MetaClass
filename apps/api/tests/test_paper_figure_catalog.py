@@ -129,6 +129,11 @@ def test_validator_rejects_unknown_claim_and_decorative_asset(tmp_path: Path) ->
     ("figure_id", "original_figure", "notes"),
     [
         ("fig_results", "Figure 1", "完整保留图例、模型标签及 Figure 1 caption。"),
+        (
+            "fig_bar_results",
+            "Figure 1",
+            "完整保留全部 benchmark 标签、数值、条形图及原始 Figure 1 caption。",
+        ),
         ("fig_plot", "Figure 7", "保留横轴、纵轴、图例和 caption。"),
         ("table_results", "Table 2", "完整保留 Table 2 caption、列标题及所有数值。"),
     ],

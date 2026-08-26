@@ -202,7 +202,11 @@ class PaperClassroomComposer:
             )
 
         points = "；".join(packet.key_points)
-        visible = self._trim_visible_text(packet.visible_text, packet.title)
+        visible = (
+            ""
+            if packet.evidence_contexts
+            else self._trim_visible_text(packet.visible_text, packet.title)
+        )
         main_parts = [packet.purpose]
         if points:
             main_parts.append(f"需要抓住的关键信息是：{points}。")
@@ -214,36 +218,38 @@ class PaperClassroomComposer:
         if packet.claims:
             evidence_parts.append(
                 "论文在这里提出的主张是："
-                + "；".join(claim.statement for claim in packet.claims)
+                + self._trim(packet.claims[0].statement, 180)
                 + "。"
             )
         if packet.quantitative_results:
             evidence_parts.append(
                 "对应的定量证据包括："
-                + "；".join(result.statement for result in packet.quantitative_results)
+                + self._trim(packet.quantitative_results[0].statement, 180)
                 + "。"
             )
         if packet.figures:
             evidence_parts.append(
                 "图表证据中需要重点观察的是："
-                + "；".join(figure.caption for figure in packet.figures)
+                + self._trim(packet.figures[0].caption, 160)
                 + "。讲解时要同时说明比较对象、指标和变化方向，不能只复述图题。"
             )
         if packet.evidence_contexts:
-            selected_contexts = packet.evidence_contexts[:2]
+            selected_contexts = packet.evidence_contexts[:1]
             selected_texts = {context.exact_text for context in selected_contexts}
             evidence_parts.append(
                 "原文中与这一页直接相关的表述是：“"
-                + "”“".join(context.exact_text for context in selected_contexts)
+                + "”“".join(self._trim(context.exact_text, 220) for context in selected_contexts)
                 + "”。这里的解释应保留作者原有的条件和限定，不能把局部结果扩大为普遍结论。"
             )
             primary = selected_contexts[0]
             if primary.before_text and primary.before_text not in selected_texts:
                 evidence_parts.append(
-                    f"为了理解这句话的条件，前文还交代了：“{primary.before_text}”。"
+                    f"为了理解这句话的条件，前文还交代了：“{self._trim(primary.before_text, 120)}”。"
                 )
             if primary.after_text and primary.after_text not in selected_texts:
-                evidence_parts.append(f"紧接着作者进一步说明：“{primary.after_text}”。")
+                evidence_parts.append(
+                    f"紧接着作者进一步说明：“{self._trim(primary.after_text, 120)}”。"
+                )
         source_pages = sorted({ref.page_no for ref in packet.source_refs})
         if source_pages:
             evidence_parts.append(
@@ -345,6 +351,17 @@ class PaperClassroomComposer:
         )
 
     @staticmethod
+    def _trim(text: str, limit: int) -> str:
+        compact = " ".join(text.split())
+        if len(compact) <= limit:
+            return compact
+        shortened = compact[:limit].rstrip()
+        # Never turn an authorized value such as 95.24% into a new value such
+        # as 9 merely because the evidence quotation hit its character limit.
+        shortened = re.sub(r"[A-Za-z0-9.%+\-]+$", "", shortened).rstrip()
+        return shortened + "…"
+
+    @staticmethod
     def _trim_visible_text(text: str, title: str) -> str:
         compact = " ".join(text.split())
         if compact.startswith(title):
@@ -357,8 +374,11 @@ class PaperClassroomComposer:
 class LLMPaperClassroomComposer:
     prompt_version = "paper-classroom-narration-v1"
 
-    def __init__(self, provider: LLMProvider) -> None:
+    def __init__(self, provider: LLMProvider, *, batch_size: int = 4) -> None:
+        if batch_size < 1:
+            raise ValueError("paper narration batch_size must be positive")
         self.provider = provider
+        self.batch_size = batch_size
         self.prompt_path = Path(__file__).with_name("paper_narration_prompt.md")
 
     def compose(
@@ -368,26 +388,32 @@ class LLMPaperClassroomComposer:
         audience: str,
         language: str,
     ) -> list[PaperSlideNarration]:
-        payload = {
-            "audience": audience,
-            "language": language,
-            "slides": [packet.model_dump(mode="json") for packet in packets],
-            "output_schema": PaperNarrationBatch.model_json_schema(),
-        }
-        raw = self.provider.complete_json(
-            [
-                LLMMessage(
-                    role="system",
-                    content=self.prompt_path.read_text(encoding="utf-8"),
-                ),
-                LLMMessage(
-                    role="user",
-                    content=json.dumps(payload, ensure_ascii=False),
-                ),
-            ],
-            temperature=0.3,
-        )
-        return PaperNarrationBatch.model_validate_json(raw).slides
+        prompt = self.prompt_path.read_text(encoding="utf-8")
+        narrations: list[PaperSlideNarration] = []
+        for start in range(0, len(packets), self.batch_size):
+            batch = packets[start : start + self.batch_size]
+            payload = {
+                "audience": audience,
+                "language": language,
+                "slides": [packet.model_dump(mode="json") for packet in batch],
+                "output_schema": PaperNarrationBatch.model_json_schema(),
+            }
+            raw = self.provider.complete_json(
+                [
+                    LLMMessage(role="system", content=prompt),
+                    LLMMessage(
+                        role="user",
+                        content=json.dumps(payload, ensure_ascii=False),
+                    ),
+                ],
+                temperature=0.3,
+            )
+            generated = PaperNarrationBatch.model_validate_json(raw).slides
+            expected_ids = [packet.slide_id for packet in batch]
+            if [item.slide_id for item in generated] != expected_ids:
+                raise ValueError("paper narration batch changed slide ids or order")
+            narrations.extend(generated)
+        return narrations
 
 
 class PaperNarrationValidator:
@@ -504,6 +530,8 @@ class PaperNarrationValidator:
     def _authorized_numbers(cls, packet: PaperSlideEvidencePacket) -> set[str]:
         texts = [
             packet.title,
+            packet.previous_slide_title or "",
+            packet.next_slide_title or "",
             packet.purpose,
             packet.visible_text,
             *packet.key_points,

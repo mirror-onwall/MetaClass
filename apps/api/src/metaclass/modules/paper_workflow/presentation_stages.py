@@ -328,12 +328,16 @@ def validate_and_render_pptx(
             if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
                 image_count += 1
             if shape.left < 0 or shape.top < 0:
-                raise FatalGenerationError(f"slide {index} has a shape outside the page")
+                raise RepairableGenerationError(
+                    f"slide {index} has a shape outside the page"
+                )
             if (
                 shape.left + shape.width > presentation.slide_width
                 or shape.top + shape.height > presentation.slide_height
             ):
-                raise FatalGenerationError(f"slide {index} has a shape outside the page")
+                raise RepairableGenerationError(
+                    f"slide {index} has a shape outside the page"
+                )
             if hasattr(shape, "text_frame") and shape.text.strip():
                 chars = len(shape.text.strip())
                 area = max((shape.width / 914400) * (shape.height / 914400), 0.1)

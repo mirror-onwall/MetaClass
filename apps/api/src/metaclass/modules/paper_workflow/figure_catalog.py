@@ -440,7 +440,24 @@ def validate_figure_catalog(
             re.search(r"\bax(?:is|es)\b", notes, re.IGNORECASE)
             or any(
                 token in normalized_notes
-                for token in ("legend", "坐标轴", "横轴", "纵轴", "图例", "panel", "比例尺")
+                for token in (
+                    "legend",
+                    "chart",
+                    "plot",
+                    "diagram",
+                    "坐标轴",
+                    "横轴",
+                    "纵轴",
+                    "图例",
+                    "panel",
+                    "比例尺",
+                    "条形图",
+                    "柱状图",
+                    "折线图",
+                    "曲线图",
+                    "流程图",
+                    "架构图",
+                )
             )
         )
         crop_notes_complete = mentions_caption and (is_table or mentions_visual_frame)

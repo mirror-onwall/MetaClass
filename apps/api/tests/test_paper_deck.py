@@ -6,6 +6,8 @@ import pytest
 from metaclass.infrastructure.providers.llm import FakeLLMProvider
 from metaclass.modules.materials.schemas import PageMetadata, SourceRef
 from metaclass.modules.paper_workflow.paper_classroom import (
+    LLMPaperClassroomComposer,
+    PaperClassroomComposer,
     PaperNarrationValidator,
     PaperSlideEvidencePacket,
     PaperSlideNarration,
@@ -353,6 +355,59 @@ def test_narration_validator_allows_grounded_paraphrase_but_rejects_new_number()
     assert validator.validate(packets=[packet], narrations=[grounded]) == []
     issues = validator.validate(packets=[packet], narrations=[invented])
     assert {issue.code for issue in issues} == {"unsupported_number"}
+
+
+def test_narration_validator_allows_numbers_from_neighbor_slide_titles() -> None:
+    packet = PaperSlideEvidencePacket.model_validate(
+        {
+            "slide_id": "slide_01",
+            "order": 1,
+            "title": "研究背景",
+            "purpose": "建立上下文",
+            "previous_slide_title": "Kimi K2",
+            "next_slide_title": "Kimi K3 架构",
+        }
+    )
+    narration = PaperClassroomComposer().compose(
+        packet,
+        audience="研究生",
+        language="zh-CN",
+    )
+
+    assert PaperNarrationValidator().validate(
+        packets=[packet], narrations=[narration]
+    ) == []
+
+
+def test_llm_paper_narration_is_batched_without_changing_slide_order() -> None:
+    class CountingProvider(FakeLLMProvider):
+        def __init__(self) -> None:
+            self.calls = 0
+
+        def complete_json(self, messages, *, temperature=0.2):
+            self.calls += 1
+            return super().complete_json(messages, temperature=temperature)
+
+    provider = CountingProvider()
+    packets = [
+        PaperSlideEvidencePacket(
+            slide_id=f"slide_{index:02d}",
+            order=index,
+            title=f"页面 {index}",
+            purpose="解释论文证据",
+            next_slide_title=(f"页面 {index + 1}" if index < 9 else None),
+        )
+        for index in range(1, 10)
+    ]
+
+    narrations = LLMPaperClassroomComposer(provider, batch_size=4).compose(
+        packets,
+        audience="研究生",
+        language="zh-CN",
+    )
+
+    assert provider.calls == 3
+    assert [item.slide_id for item in narrations] == [item.slide_id for item in packets]
 
 
 def test_paper_deck_falls_back_when_llm_narration_invents_number(tmp_path: Path) -> None:

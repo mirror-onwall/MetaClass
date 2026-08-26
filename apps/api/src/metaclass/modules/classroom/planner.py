@@ -390,7 +390,14 @@ class ClassroomPlanGenerator:
             if checks:
                 return checks
             return [fallback[len(fallback) // 2]]
-        except (TypeError, ValueError, json.JSONDecodeError, ValidationError):
+        except (
+            TypeError,
+            TimeoutError,
+            RuntimeError,
+            ValueError,
+            json.JSONDecodeError,
+            ValidationError,
+        ):
             return [fallback[len(fallback) // 2]]
 
     @staticmethod
