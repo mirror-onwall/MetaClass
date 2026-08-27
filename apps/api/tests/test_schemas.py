@@ -1519,6 +1519,39 @@ def test_scene_safe_zone_rejects_content_too_close_to_edge() -> None:
         )
 
 
+def test_scene_safe_zone_accepts_exact_decimal_boundaries() -> None:
+    generator = PresentationPlanGenerator()
+
+    generator._validate_scene_safe_zones(
+        [
+            SlideElement(
+                type="text",
+                x=0.055,
+                y=0.22,
+                w=0.89,
+                h=0.72,
+                text="正文",
+            )
+        ],
+        "页面标题",
+    )
+
+    with pytest.raises(ValueError, match="horizontal canvas margin"):
+        generator._validate_scene_safe_zones(
+            [
+                SlideElement(
+                    type="text",
+                    x=0.055,
+                    y=0.22,
+                    w=0.890002,
+                    h=0.72,
+                    text="正文",
+                )
+            ],
+            "页面标题",
+        )
+
+
 def test_scene_palette_maps_unrelated_colors_to_brand_tokens() -> None:
     element = SlideElement(
         type="shape",

@@ -165,6 +165,8 @@ npm run build
 - `METACLASS_PPT_PROVIDER`、`METACLASS_CODEX_*`、`PRESENTON_*`：PPT 生成
 - `METACLASS_MATERIAL_PARSER`、`METACLASS_MINERU_*`：材料解析
 
+当 `METACLASS_PPT_PROVIDER=codex` 时，默认启用仓库 `.agents/skills` 中固定版本的 paper-craft skills。后端为每一页启动独立的 Codex 会话，由 Paper Deck 输出可编辑分层清单：页面背景使用 PowerPoint 原生填充，每个卡片、图形框、节点、装饰线和局部插图分别编译成独立的顶层对象，不生成整页组合图；`PresentationPlan` 中的原始标题和要点仍作为独立可编辑文本精确注入，页数、顺序和讲稿也始终以 Plan 为准。每页最多调用一次 ImageGen 生成一张无文字的局部插图；需要真实照片、截图、地图、实验图表或论文原图但当前没有可靠素材时，非封面页可以保留一个独立插图区域，后端会加入可编辑的“此处建议插入”提示框，该提示不会写入或改动 Plan。内容页的局部插图或缺图占位区会保留为左右视觉列（归一化宽度 `0.32–0.40`、高度 `0.48–0.72`），并与标题、知识点框和其他模块保持至少 `0.03` 的净距；二者同页互斥，避免再次缩成角落小框。不同知识点的视觉对象必须保留明确间距，不能合并为一个拥挤的大卡片或全页分组。`METACLASS_CODEX_PAPER_CRAFT_MAX_IMAGES` 是整套课件的隔离页面/局部插图安全上限（默认 `24`），`METACLASS_CODEX_PAPER_CRAFT_CONCURRENCY` 控制并发页面数（默认 `2`）。经哈希校验的 skill 指令由后端直接嵌入提示词，因此不依赖 Windows 临时目录中的文件读取权限。任何一页无法生成或未通过校验时，不会静默退化为旧的整页位图版，而会进入现有 Presenton 备选链路。可通过 `METACLASS_CODEX_PAPER_CRAFT_ENABLED=false` 显式使用保留的结构化矢量链路；若需从其他位置加载 skills，请将 `METACLASS_CODEX_PAPER_CRAFT_SKILLS_DIR` 设置为绝对路径。
+
 完整字段和默认值见 [`.env.example`](.env.example)。
 
 ## 进一步阅读

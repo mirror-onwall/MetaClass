@@ -48,20 +48,93 @@ import type {
 const stages = ["导入材料", "页面解析", "组织内容", "互动课堂", "讲解视频"];
 const answeringUserQuestionLabel = "老师正在组织回答";
 
-const defaultPptTheme: PPTThemeOption = {
-  id: "academic_blue",
-  name: "学术蓝白",
-  description: "清晰、克制，适合课程讲解与研究汇报",
-  style_direction: "restrained academic editorial",
-  colors: {
-    cover: "12365A",
-    background: "FFFFFF",
-    text: "17324D",
-    accent: "2E75B6",
-    soft: "DCEBFA",
-    secondary: "4F8FCB",
+const defaultPptThemeId = "academic_blue";
+const fallbackPptThemes: PPTThemeOption[] = [
+  {
+    id: "academic_blue",
+    name: "学术蓝白",
+    description: "清晰、克制，适合课程讲解与研究汇报",
+    style_direction: "restrained academic editorial with crisp blue hierarchy",
+    colors: {
+      cover: "12365A",
+      background: "FFFFFF",
+      text: "17324D",
+      accent: "2E75B6",
+      soft: "DCEBFA",
+      secondary: "4F8FCB",
+    },
   },
-};
+  {
+    id: "scholar_green",
+    name: "书院青绿",
+    description: "沉静自然，适合人文、地理与通识课程",
+    style_direction: "quiet scholarly field notes with botanical green structure",
+    colors: {
+      cover: "244B3D",
+      background: "FFFDF8",
+      text: "21392F",
+      accent: "B5863B",
+      soft: "EAF1E7",
+      secondary: "5F8F79",
+    },
+  },
+  {
+    id: "warm_classroom",
+    name: "暖调课堂",
+    description: "亲切、有温度，适合教学活动与案例分享",
+    style_direction: "warm classroom editorial with terracotta and parchment cues",
+    colors: {
+      cover: "713C2D",
+      background: "FFFBF5",
+      text: "4A2D25",
+      accent: "D48743",
+      soft: "F6E5D2",
+      secondary: "C46C4A",
+    },
+  },
+  {
+    id: "editorial_ink",
+    name: "墨色编辑",
+    description: "理性、极简，适合论文答辩与正式陈述",
+    style_direction: "precise monochrome editorial with one cobalt signal color",
+    colors: {
+      cover: "23272D",
+      background: "FFFFFF",
+      text: "22262B",
+      accent: "315E9E",
+      soft: "E7EBF0",
+      secondary: "5F7896",
+    },
+  },
+  {
+    id: "deep_technology",
+    name: "深海科技",
+    description: "冷静、前沿，适合技术原理与工程方案",
+    style_direction: "deep technical atmosphere with cyan signal paths and precise geometry",
+    colors: {
+      cover: "0C2836",
+      background: "F7FBFD",
+      text: "12313F",
+      accent: "168FB5",
+      soft: "DDF2F7",
+      secondary: "48A8B7",
+    },
+  },
+  {
+    id: "creative_coral",
+    name: "珊瑚创意",
+    description: "鲜明、有活力，适合创意表达与成果展示",
+    style_direction: "confident creative editorial with coral gestures and deep plum anchors",
+    colors: {
+      cover: "563141",
+      background: "FFFAF8",
+      text: "452B35",
+      accent: "E36F5C",
+      soft: "FBE5DF",
+      secondary: "C98A76",
+    },
+  },
+];
 
 const contentStepLabels: Record<string, string> = {
   queued: "等待生成任务",
@@ -467,9 +540,9 @@ function App() {
   const [editingScript, setEditingScript] = useState("");
   const [presentationPlanJob, setPresentationPlanJob] = useState<PresentationPlanJob | null>(runtimeWorkspace.presentationPlanJob ?? null);
   const [pptJob, setPptJob] = useState<PPTGenerationJob | null>(runtimeWorkspace.pptJob ?? null);
-  const [pptThemes, setPptThemes] = useState<PPTThemeOption[]>([defaultPptTheme]);
+  const [pptThemes, setPptThemes] = useState<PPTThemeOption[]>(fallbackPptThemes);
   const [pptThemeId, setPptThemeId] = useState(() =>
-    window.localStorage.getItem("metaclass-ppt-theme") || defaultPptTheme.id,
+    window.localStorage.getItem("metaclass-ppt-theme") || defaultPptThemeId,
   );
   const [classroomPlanJob, setClassroomPlanJob] = useState<ClassroomPlanJob | null>(
     runtimeWorkspace.classroomPlanJob ?? null,

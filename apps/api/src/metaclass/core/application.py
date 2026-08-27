@@ -149,6 +149,10 @@ def build_services(
             model=settings.codex_model,
             timeout_seconds=settings.codex_timeout_seconds,
             repair_attempts=settings.codex_repair_attempts,
+            paper_craft_enabled=settings.codex_paper_craft_enabled,
+            paper_craft_max_images=settings.codex_paper_craft_max_images,
+            paper_craft_concurrency=settings.codex_paper_craft_concurrency,
+            paper_craft_skills_dir=settings.codex_paper_craft_skills_dir,
         )
         fallback_provider = presenton_provider or UnavailablePPTProvider(
             "Presenton fallback is unavailable because PRESENTON_API_KEY is not configured"
