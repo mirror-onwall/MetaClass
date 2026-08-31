@@ -16,18 +16,22 @@ from metaclass.modules.classroom.agent_schemas import (
 from metaclass.modules.classroom.agents import EvaluatorAgent, StudentRosterAgent, TeacherAgent
 from metaclass.modules.classroom.controller import ClassroomController
 from metaclass.modules.classroom.planner import ClassroomPlanGenerator
+from metaclass.modules.classroom.repository import (
+    ClassroomRepository,
+    ClassroomSessionConflict,
+)
 from metaclass.modules.classroom.schemas import (
-    AgentTurnEvent,
-    AgentTurnPayload,
     ActionExecutedEvent,
     ActionExecutedPayload,
     ActionType,
+    AgentTurnEvent,
+    AgentTurnPayload,
     AskQuizAction,
     AutoClassroomStep,
+    ClassroomNavigationResult,
     ClassroomPlan,
     ClassroomPlanGenerationMeta,
     ClassroomPlanJob,
-    ClassroomNavigationResult,
     ClassroomSession,
     ClassroomState,
     ControllerResult,
@@ -40,17 +44,16 @@ from metaclass.modules.classroom.schemas import (
     QAInteractionExecutedPayload,
     QuizEvaluatedEvent,
     QuizEvaluatedPayload,
-    TeacherAnswerEvent,
+    ShowSlideAction,
     StudentQuestionAction,
+    TeacherAnswerEvent,
+    TeacherAnswerPayload,
     TeacherQAResponseAction,
     UserQuestionEvent,
     UserQuestionPayload,
 )
-from metaclass.modules.classroom.repository import (
-    ClassroomRepository,
-    ClassroomSessionConflict,
-)
 from metaclass.modules.content.service import ContentService
+from metaclass.modules.live_questions.service import LiveQuestionService
 from metaclass.modules.presentation.service import PresentationService
 from metaclass.modules.question_bank.service import QuestionBankService
 
@@ -67,6 +70,7 @@ class ClassroomService:
         planner: ClassroomPlanGenerator | None = None,
         presentations: PresentationService | None = None,
         question_banks: QuestionBankService | None = None,
+        live_questions: LiveQuestionService | None = None,
     ) -> None:
         self.repository = repository
         self.contents = contents
@@ -77,6 +81,7 @@ class ClassroomService:
         self.planner = planner or ClassroomPlanGenerator(fallback_teacher=self.teacher)
         self.presentations = presentations
         self.question_banks = question_banks
+        self.live_questions = live_questions
         self._session_command_locks: dict[str, Lock] = {}
         self._session_command_locks_guard = Lock()
 
@@ -104,7 +109,14 @@ class ClassroomService:
                     "Generate the PPT artifact before creating a classroom from a generated plan",
                 )
             if self.question_banks:
-                qa_items = self.question_banks.generate_for_plan(presentation_plan.id).items
+                prepared = self.question_banks.get_for_plan(presentation_plan.id)
+                # Presentation completion now prepares only globally selected
+                # interaction nodes. Do not silently expand that planned bank
+                # back to every slide while creating the classroom plan.
+                # Interaction planning is an independent background job. Classroom
+                # creation consumes only its current persisted result and must never
+                # restart question generation synchronously.
+                qa_items = prepared.items
         plan, meta = self.planner.generate_with_meta(content, presentation_plan, qa_items)
         self.repository.save_plan(plan)
         self.repository.save_plan_generation_meta(meta)
@@ -719,48 +731,44 @@ class ClassroomService:
 
     @staticmethod
     def _select_scripted_qa_student(session: ClassroomSession, action: StudentQuestionAction):
-        preferred_types = [
-            action.payload.preferred_agent_type,
-            *action.payload.fallback_agent_types,
-        ]
-        preference_rank = {agent_type: index for index, agent_type in enumerate(preferred_types)}
-        recent_ids: list[str] = []
-        for event in reversed(session.events):
-            if event.type != "AGENT_TURN" or event.payload.turn.role != "student":
-                continue
-            recent_ids.append(event.payload.turn.agent_id)
-            if len(recent_ids) >= 3:
-                break
+        speaking_counts = {student.id: 0 for student in session.student_states}
+        for event in session.events:
+            if event.type == "AGENT_TURN" and event.payload.turn.role == "student":
+                agent_id = event.payload.turn.agent_id
+                if agent_id in speaking_counts:
+                    speaking_counts[agent_id] += 1
 
         candidates = [
-            student for student in session.student_states if student.agent_type in preference_rank
-        ] or list(session.student_states)
+            student
+            for student in session.student_states
+            if student.agent_type == action.payload.preferred_agent_type
+        ]
+        if not candidates:
+            compatible = set(action.payload.fallback_agent_types)
+            candidates = [
+                student
+                for student in session.student_states
+                if student.agent_type in compatible
+            ]
+        if not candidates:
+            candidates = list(session.student_states)
         if not candidates:
             return None
 
-        # Avoid repeatedly assigning prepared questions to the same persona.
-        # Recency is stronger than profile preference; among equally fresh
-        # students, favor someone who has not spoken and then the best fit.
-        def rank(student):
-            recent_rank = (
-                len(recent_ids) - recent_ids.index(student.id) if student.id in recent_ids else 0
-            )
-            return (
-                recent_rank,
-                bool(student.last_intent),
-                preference_rank.get(student.agent_type, len(preferred_types)),
-            )
-
-        return min(candidates, key=rank)
+        # Type fit is resolved above. Within that tier, distribute turns fairly.
+        return min(candidates, key=lambda student: (speaking_counts[student.id], student.id))
 
     @staticmethod
     def _last_student_turn_for_scripted_qa(
         session: ClassroomSession,
     ) -> AgentTurn | None:
         for event in reversed(session.events):
-            if event.type == "AGENT_TURN" and event.payload.turn.role == "student":
-                if event.payload.turn.intent == "scripted_qa_question":
-                    return event.payload.turn
+            if (
+                event.type == "AGENT_TURN"
+                and event.payload.turn.role == "student"
+                and event.payload.turn.intent == "scripted_qa_question"
+            ):
+                return event.payload.turn
         return None
 
     @staticmethod
@@ -830,23 +838,45 @@ class ClassroomService:
         self._ensure_user_question_allowed(session, plan)
         state = self._build_state(session)
         matched_qa = None
-        if self.question_banks and self.presentations:
+        presentation_plan_id = self.repository.get_presentation_plan_id_for_plan(plan.id)
+        live_answer = None
+        if (
+            presentation_plan_id
+            and self.live_questions
+            and self.live_questions.has_index(presentation_plan_id)
+        ):
+            current_slide_id, taught_slide_ids = self._live_question_progress(plan, session)
+            live_answer = self.live_questions.answer(
+                presentation_plan_id=presentation_plan_id,
+                question=question,
+                current_slide_id=current_slide_id,
+                taught_slide_ids=taught_slide_ids,
+            )
+        elif self.question_banks and self.presentations:
             try:
-                presentation = self.presentations.get_plan_for_content(plan.content_id)
+                presentation = (
+                    self.presentations.get_plan(presentation_plan_id)
+                    if presentation_plan_id
+                    else self.presentations.get_plan_for_content(plan.content_id)
+                )
                 matches = self.question_banks.search(presentation.id, question, limit=1)
                 if matches and matches[0].score >= 3.0:
                     matched_qa = matches[0].item
             except HTTPException as exc:
                 if exc.status_code != 404:
                     raise
-        teacher_answer = self.teacher.answer_question(
-            plan,
-            session,
-            question,
-            state,
-            retrieved_question=matched_qa.canonical_question if matched_qa else None,
-            retrieved_answer=matched_qa.canonical_answer if matched_qa else None,
-            retrieved_source_refs=matched_qa.source_refs if matched_qa else None,
+        teacher_answer = (
+            TeacherAnswerPayload(answer=live_answer.answer, source_refs=live_answer.source_refs)
+            if live_answer
+            else self.teacher.answer_question(
+                plan,
+                session,
+                question,
+                state,
+                retrieved_question=matched_qa.canonical_question if matched_qa else None,
+                retrieved_answer=matched_qa.canonical_answer if matched_qa else None,
+                retrieved_source_refs=matched_qa.source_refs if matched_qa else None,
+            )
         )
         session.events.extend(
             [
@@ -871,6 +901,27 @@ class ClassroomService:
             source_refs=teacher_answer.source_refs,
             session=session,
         )
+
+    @staticmethod
+    def _live_question_progress(
+        plan: ClassroomPlan,
+        session: ClassroomSession,
+    ) -> tuple[str | None, list[str]]:
+        current_slide_id = None
+        taught: list[str] = []
+        for scene_index, scene in enumerate(plan.scenes):
+            if scene_index > session.scene_index:
+                break
+            slide_ids = [
+                action.payload.slide_id
+                for action in scene.actions
+                if isinstance(action, ShowSlideAction)
+            ]
+            if scene_index < session.scene_index:
+                taught.extend(slide_ids)
+            elif slide_ids:
+                current_slide_id = slide_ids[-1]
+        return current_slide_id, list(dict.fromkeys(taught))
 
     def _ensure_user_question_allowed(self, session: ClassroomSession, plan: ClassroomPlan) -> None:
         """Reject user interruptions while a student/teacher QA exchange is in flight."""

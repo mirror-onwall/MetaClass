@@ -18,6 +18,12 @@ class MaterialStatus(StrEnum):
     FAILED = "failed"
 
 
+class MaterialSourceRole(StrEnum):
+    UPLOADED = "uploaded"
+    PAPER_SOURCE = "paper_source"
+    PRESENTATION_DECK = "presentation_deck"
+
+
 class MaterialProcessingJobStatus(StrEnum):
     QUEUED = "queued"
     RUNNING = "running"
@@ -53,6 +59,10 @@ class Material(SchemaModel):
     file_hash: str | None = None
     status: MaterialStatus = MaterialStatus.UPLOADED
     storage_path: str = Field(min_length=1)
+    source: str = Field(default="upload", min_length=1)
+    source_role: MaterialSourceRole = MaterialSourceRole.UPLOADED
+    parent_material_id: str | None = None
+    derivation_key: str | None = None
     page_count: int = Field(default=0, ge=0)
     error: str | None = None
     created_at: datetime = Field(default_factory=utc_now)

@@ -7,9 +7,12 @@ from fastapi.staticfiles import StaticFiles
 
 from metaclass.core.application import build_services
 from metaclass.core.config import settings
+from metaclass.deployment.skill_manager import SkillDeploymentManager
 from metaclass.modules.classroom.api import create_router as create_classroom_router
 from metaclass.modules.content.api import create_router as create_content_router
+from metaclass.modules.interaction_planning.api import create_router as create_interaction_router
 from metaclass.modules.materials.api import create_router as create_material_router
+from metaclass.modules.paper_workflow.api import create_router as create_paper_workflow_router
 from metaclass.modules.presentation.api import create_router as create_presentation_router
 from metaclass.modules.question_bank.api import create_router as create_question_bank_router
 from metaclass.modules.video.api import create_router as create_video_router
@@ -48,12 +51,23 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok"}
 
+    @app.get("/health/skills", tags=["system"])
+    async def skill_health() -> dict:
+        manager = SkillDeploymentManager(settings.skill_lock_path, settings.skill_root)
+        ok, statuses = manager.doctor(required_only=True)
+        return {
+            "status": "ok" if ok else "degraded",
+            "skills": [item.model_dump(mode="json") for item in statuses],
+        }
+
     app.include_router(create_material_router(services.materials))
     app.include_router(create_content_router(services.contents))
     app.include_router(create_presentation_router(services.presentations))
+    app.include_router(create_interaction_router(services.interaction_planning_jobs))
     app.include_router(create_question_bank_router(services.question_banks))
     app.include_router(create_classroom_router(services.classrooms))
     app.include_router(create_video_router(services.videos))
+    app.include_router(create_paper_workflow_router(services.paper_workflows))
 
     web_dist = Path(__file__).resolve().parents[3] / "web" / "dist"
     if web_dist.is_dir():

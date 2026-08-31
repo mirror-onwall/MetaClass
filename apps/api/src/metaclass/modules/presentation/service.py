@@ -1,5 +1,5 @@
-import json
 import hashlib
+import json
 from pathlib import Path
 from threading import Event, Lock
 from uuid import uuid4
@@ -8,13 +8,18 @@ from fastapi import HTTPException
 
 from metaclass.core.schemas import utc_now
 from metaclass.modules.content.service import ContentService
+from metaclass.modules.interaction_planning.service import (
+    InteractionIntensity,
+    InteractionPlanningResult,
+    InteractionPlanningService,
+)
 from metaclass.modules.materials.schemas import MaterialType
 from metaclass.modules.materials.service import MaterialService
+from metaclass.modules.presentation.diagnostics import diagnose_presentation_plan
 from metaclass.modules.presentation.planner import (
     PresentationPlanGenerator,
     SourceSlideNarrationBatch,
 )
-from metaclass.modules.presentation.diagnostics import diagnose_presentation_plan
 from metaclass.modules.presentation.providers import PPTProvider
 from metaclass.modules.presentation.repository import PresentationRepository
 from metaclass.modules.presentation.schemas import (
@@ -22,22 +27,18 @@ from metaclass.modules.presentation.schemas import (
     PPTGenerationJob,
     PPTGenerationStatus,
     PPTSlideImage,
-    PresentationPlanJob,
-    PresentationPlanJobStatus,
     PresentationPlan,
     PresentationPlanDiagnosis,
+    PresentationPlanJob,
+    PresentationPlanJobStatus,
     PresentationResource,
     PresentationSlideResource,
 )
+from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
 from metaclass.modules.presentation.themes import (
     get_presentation_theme,
     list_presentation_themes,
 )
-
-
-from metaclass.modules.presentation.skill_adapter import PPTSkillAdapter
-from metaclass.modules.question_bank.generator import QuestionBankGenerator
-from metaclass.modules.question_bank.repository import QuestionBankRepository
 
 
 class PresentationPlanPaused(RuntimeError):
@@ -53,8 +54,8 @@ class PresentationService:
         materials: MaterialService,
         planner: PresentationPlanGenerator | None = None,
         ppt_adapter: PPTProvider | None = None,
-        question_bank_generator: QuestionBankGenerator | None = None,
-        question_bank_repository: QuestionBankRepository | None = None,
+        interaction_planner: InteractionPlanningService | None = None,
+        interaction_planning_jobs=None,
     ) -> None:
         self.data_dir = data_dir
         self.repository = repository
@@ -62,8 +63,8 @@ class PresentationService:
         self.materials = materials
         self.planner = planner or PresentationPlanGenerator()
         self.ppt_adapter = ppt_adapter or PPTSkillAdapter()
-        self.question_bank_generator = question_bank_generator
-        self.question_bank_repository = question_bank_repository
+        self.interaction_planner = interaction_planner
+        self.interaction_planning_jobs = interaction_planning_jobs
         self._plan_jobs: dict[str, PresentationPlanJob] = {}
         self._plan_job_lock = Lock()
         self._plan_pause_events: dict[str, Event] = {}
@@ -123,7 +124,9 @@ class PresentationService:
             self._plan_pause_events.pop(job_id, None)
         (self._plan_jobs_dir / f"{job_id}.json").unlink(missing_ok=True)
         if job.mode == "source_deck" and job.source_material_id:
-            self._narration_checkpoint_path(job.content_id, job.source_material_id).unlink(missing_ok=True)
+            self._narration_checkpoint_path(job.content_id, job.source_material_id).unlink(
+                missing_ok=True
+            )
 
     def create_plan(self, content_id: str) -> PresentationPlan:
         content = self.contents.get(content_id)
@@ -131,17 +134,33 @@ class PresentationService:
         plan = self._attach_resource(plan)
         self.repository.save_plan(plan)
         self._save_resource(plan)
-        self._prepare_question_bank(content, plan)
+        self.enqueue_interactions(plan.id, "standard")
         return plan
 
+    def enqueue_interactions(
+        self, plan_id: str, intensity: InteractionIntensity
+    ):
+        if intensity == "none":
+            return None
+        if self.interaction_planning_jobs:
+            return self.interaction_planning_jobs.create_and_submit(plan_id, intensity)
+        plan = self.get_plan(plan_id)
+        content = self.contents.get(plan.content_id)
+        return self.plan_interactions(content, plan, intensity)
+
     def create_plan_job(
-        self, content_id: str, *, prepare_question_bank: bool = True
+        self,
+        content_id: str,
+        *,
+        prepare_question_bank: bool = True,
+        interaction_intensity: InteractionIntensity = "standard",
     ) -> PresentationPlanJob:
         self.contents.get(content_id)
         job = PresentationPlanJob(
             id=f"presentation_plan_job_{uuid4().hex[:12]}",
             content_id=content_id,
             prepare_question_bank=prepare_question_bank,
+            interaction_intensity=interaction_intensity,
             status=PresentationPlanJobStatus.QUEUED,
             progress=0,
             step="queued",
@@ -156,6 +175,7 @@ class PresentationService:
         source_material_id: str,
         *,
         prepare_question_bank: bool = True,
+        interaction_intensity: InteractionIntensity = "standard",
     ) -> PresentationPlanJob:
         content = self.contents.get(content_id)
         allowed_material_ids = set(content.material_ids or [content.material_id])
@@ -171,6 +191,7 @@ class PresentationService:
             id=f"presentation_plan_job_{uuid4().hex[:12]}",
             content_id=content_id,
             prepare_question_bank=prepare_question_bank,
+            interaction_intensity=interaction_intensity,
             mode="source_deck",
             source_material_id=source_material_id,
             status=PresentationPlanJobStatus.QUEUED,
@@ -180,6 +201,48 @@ class PresentationService:
         )
         self._save_plan_job(job)
         return job
+
+    def save_paper_deck_plan(self, plan: PresentationPlan) -> PresentationPlan:
+        """Persist a reconciled plan that teaches from an already generated deck."""
+        if plan.mode != "paper_deck":
+            raise ValueError("Paper deck plan must use paper_deck mode")
+        if not (
+            plan.source_material_id
+            and plan.source_paper_material_id
+            and plan.paper_artifact_bundle_id
+        ):
+            raise ValueError("Paper deck plan requires deck, paper, and artifact identities")
+        pages = self.materials.pages(plan.source_material_id)
+        expected = [page.page_no for page in sorted(pages, key=lambda item: item.page_no)]
+        actual = [slide.source_page_no for slide in plan.slides]
+        if actual != expected or any(slide.source_kind != "source" for slide in plan.slides):
+            raise ValueError(f"Paper deck page mapping mismatch: expected {expected}, got {actual}")
+        existing = self.repository.get_plan(plan.id)
+        if existing:
+            existing_slides = {slide.id: slide for slide in existing.slides}
+            slides = [
+                slide.model_copy(
+                    update={
+                        "speaker_script": existing_slides[slide.id].speaker_script,
+                        "speaker_script_source": "teacher_override",
+                    }
+                )
+                if slide.id in existing_slides
+                and existing_slides[slide.id].speaker_script_source == "teacher_override"
+                else slide
+                for slide in plan.slides
+            ]
+            plan = plan.model_copy(
+                update={
+                    "presentation_resource_id": existing.presentation_resource_id,
+                    "created_at": existing.created_at,
+                    "slides": slides,
+                }
+            )
+        plan = self._attach_resource(plan)
+        self.repository.save_plan(plan)
+        self._save_resource(plan)
+        return plan
 
     def get_plan_job(self, job_id: str) -> PresentationPlanJob:
         with self._plan_job_lock:
@@ -221,13 +284,10 @@ class PresentationService:
 
             if job.plan_id:
                 plan = self.get_plan(job.plan_id)
-                content = self.contents.get(job.content_id)
-                if (
-                    job.prepare_question_bank
-                    and self.question_bank_repository
-                    and not self.question_bank_repository.list_for_plan(plan.id)
-                ):
-                    self._prepare_question_bank(content, plan)
+                self.enqueue_interactions(
+                    plan.id,
+                    job.interaction_intensity if job.prepare_question_bank else "none",
+                )
                 if pause_event.is_set():
                     raise PresentationPlanPaused("Presentation planning paused")
                 job.status = PresentationPlanJobStatus.SUCCEEDED
@@ -294,18 +354,14 @@ class PresentationService:
                     missing_ok=True
                 )
 
-            if job.prepare_question_bank:
-                if pause_event.is_set():
-                    raise PresentationPlanPaused("Presentation planning paused")
-                self._update_plan_job_progress(
-                    job_id,
-                    80,
-                    "preparing_questions",
-                    "Preparing student questions and teacher answers",
-                )
-                self._prepare_question_bank(content, plan)
-                if pause_event.is_set():
-                    raise PresentationPlanPaused("Presentation planning paused")
+            if pause_event.is_set():
+                raise PresentationPlanPaused("Presentation planning paused")
+            self.enqueue_interactions(
+                plan.id,
+                job.interaction_intensity if job.prepare_question_bank else "none",
+            )
+            if pause_event.is_set():
+                raise PresentationPlanPaused("Presentation planning paused")
 
             job.status = PresentationPlanJobStatus.SUCCEEDED
             job.progress = 100
@@ -331,13 +387,15 @@ class PresentationService:
             job.updated_at = utc_now()
             self._save_plan_job(job)
 
-    def _prepare_question_bank(self, content, plan: PresentationPlan) -> None:
-        if not self.question_bank_generator or not self.question_bank_repository:
-            return
-        if self.question_bank_repository.list_for_plan(plan.id):
-            return
-        items = self.question_bank_generator.generate(content, plan)
-        self.question_bank_repository.replace_for_plan(plan.id, items)
+    def plan_interactions(
+        self,
+        content,
+        plan: PresentationPlan,
+        intensity: InteractionIntensity,
+    ) -> InteractionPlanningResult | None:
+        if self.interaction_planner:
+            return self.interaction_planner.plan(content, plan, intensity)
+        return None
 
     def _save_plan_job(self, job: PresentationPlanJob) -> None:
         with self._plan_job_lock:
@@ -428,7 +486,12 @@ class PresentationService:
         if not any(slide.id == slide_id for slide in plan.slides):
             raise HTTPException(404, "Presentation slide not found")
         slides = [
-            slide.model_copy(update={"speaker_script": speaker_script})
+            slide.model_copy(
+                update={
+                    "speaker_script": speaker_script,
+                    "speaker_script_source": "teacher_override",
+                }
+            )
             if slide.id == slide_id
             else slide
             for slide in plan.slides
@@ -501,7 +564,7 @@ class PresentationService:
 
     def _save_resource(self, plan: PresentationPlan, artifact: PPTArtifact | None = None) -> None:
         material = self.materials.get(plan.source_material_id) if plan.source_material_id else None
-        kind = "source_deck" if plan.mode == "source_deck" else "generated_artifact"
+        kind = plan.mode if plan.mode in {"source_deck", "paper_deck"} else "generated_artifact"
         existing = self.repository.get_resource_for_plan(plan.id)
         resource = PresentationResource(
             id=plan.presentation_resource_id
@@ -567,8 +630,8 @@ class PresentationService:
         theme_id: str | None = None,
     ) -> PPTGenerationJob:
         plan = self.get_plan(presentation_plan_id)
-        if plan.mode == "source_deck":
-            raise HTTPException(409, "Source deck plans use the uploaded PPT directly")
+        if plan.mode in {"source_deck", "paper_deck"}:
+            raise HTTPException(409, "Playback plans use their source presentation directly")
         resource = self.get_resource(plan.id)
         if resource.is_stale:
             raise HTTPException(
@@ -589,7 +652,11 @@ class PresentationService:
 
     def pause_ppt_job(self, job_id: str) -> PPTGenerationJob:
         job = self.get_ppt_job(job_id)
-        if job.status not in {PPTGenerationStatus.QUEUED, PPTGenerationStatus.RUNNING, PPTGenerationStatus.WAITING_FOR_SKILL}:
+        if job.status not in {
+            PPTGenerationStatus.QUEUED,
+            PPTGenerationStatus.RUNNING,
+            PPTGenerationStatus.WAITING_FOR_SKILL,
+        }:
             raise HTTPException(409, "Only active PPT jobs can be paused")
         self._ppt_pause_events.setdefault(job_id, Event()).set()
         job.status = PPTGenerationStatus.PAUSED
@@ -614,6 +681,7 @@ class PresentationService:
             raise HTTPException(409, "Pause the job before discarding it")
         output_dir = self.data_dir / "generated" / "presentations" / job.id
         import shutil
+
         shutil.rmtree(output_dir, ignore_errors=True)
         self.repository.delete_job(job.id)
         self._ppt_pause_events.pop(job.id, None)

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import JSON, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from metaclass.infrastructure.database import Base
@@ -17,6 +17,10 @@ class PresentationPlanRecord(Base):
     source_material_id: Mapped[str | None] = mapped_column(
         ForeignKey("materials.id"), nullable=True
     )
+    source_paper_material_id: Mapped[str | None] = mapped_column(
+        ForeignKey("materials.id"), nullable=True
+    )
+    paper_artifact_bundle_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     presentation_resource_id: Mapped[str | None] = mapped_column(
         String(64), nullable=True
     )
@@ -25,6 +29,11 @@ class PresentationPlanRecord(Base):
     generation_provider: Mapped[str | None] = mapped_column(String(100), nullable=True)
     generation_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
     fallback_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    interaction_intensity: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    interaction_node_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    interaction_planning_status: Mapped[str | None] = mapped_column(
+        String(30), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

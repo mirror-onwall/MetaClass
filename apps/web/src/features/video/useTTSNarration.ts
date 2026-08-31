@@ -21,6 +21,9 @@ type PreparedNarration = {
   audioBuffer: AudioBuffer;
 };
 
+const TTS_REQUEST_TIMEOUT_MS = 5_000;
+const TTS_AUDIO_TIMEOUT_MS = 5_000;
+
 function narrationCacheKey(cue: NarrationCue) {
   return [cue.scope, cue.refId, cue.voice, cue.text.trim()].join("::");
 }
@@ -32,7 +35,6 @@ export function useTTSNarration() {
   const artifactCacheRef = useRef(new Map<string, TTSArtifact>());
   const audioCacheRef = useRef(new Map<string, AudioBuffer>());
   const pendingRef = useRef(new Map<string, Promise<PreparedNarration>>());
-  const unavailableReasonRef = useRef<string | null>(null);
   const requestVersionRef = useRef(0);
   const settleRef = useRef<((result: NarrationResult) => void) | null>(null);
   const pauseRequestedRef = useRef(false);
@@ -91,7 +93,6 @@ export function useTTSNarration() {
   }, [stopProgressTimer]);
 
   const prepare = useCallback(async (nextCue: NarrationCue): Promise<PreparedNarration> => {
-    if (unavailableReasonRef.current) throw new Error(unavailableReasonRef.current);
     const text = nextCue.text.trim();
     if (!text) throw new Error("语音文本为空");
     const cacheKey = narrationCacheKey(nextCue);
@@ -111,12 +112,14 @@ export function useTTSNarration() {
         scope: nextCue.scope,
         ref_id: nextCue.refId,
         voice: nextCue.voice,
-      });
+      }, TTS_REQUEST_TIMEOUT_MS);
       artifactCacheRef.current.set(cacheKey, artifact);
 
       let audioBuffer = audioCacheRef.current.get(cacheKey);
       if (!audioBuffer) {
-        const response = await fetch(api.ttsAudio(artifact.audio_url));
+        const response = await fetch(api.ttsAudio(artifact.audio_url), {
+          signal: AbortSignal.timeout(TTS_AUDIO_TIMEOUT_MS),
+        });
         if (!response.ok) throw new Error(`音频请求失败（${response.status}）`);
         const encoded = await response.arrayBuffer();
         audioBuffer = await getContext().decodeAudioData(encoded.slice(0));
@@ -166,9 +169,6 @@ export function useTTSNarration() {
     } catch (caught) {
       if (requestVersion !== requestVersionRef.current) return "cancelled";
       const message = caught instanceof Error ? caught.message : "语音生成失败";
-      if (/余额不足|quota|insufficient|payment|402|405/i.test(message)) {
-        unavailableReasonRef.current = message;
-      }
       setStatus("error");
       setError(message);
       return "failed";
@@ -188,13 +188,21 @@ export function useTTSNarration() {
     if (context.state !== "running") {
       setStatus("blocked");
       setError("浏览器尚未启用声音，请点击开始自动课堂重试");
-      return "blocked";
+      return "failed";
     }
 
-    const source = context.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(context.destination);
-    sourceRef.current = source;
+    let source: AudioBufferSourceNode;
+    try {
+      source = context.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(context.destination);
+      sourceRef.current = source;
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "音频播放初始化失败";
+      setStatus("error");
+      setError(message);
+      return "failed";
+    }
 
     return new Promise<NarrationResult>((resolve) => {
       let settled = false;
@@ -217,7 +225,15 @@ export function useTTSNarration() {
         setProgress(Math.min((context.currentTime - startedAt) / audioBuffer.duration, 1));
       }, 100);
       source.onended = () => settle("ended");
-      source.start();
+      try {
+        source.start();
+      } catch (caught) {
+        const message = caught instanceof Error ? caught.message : "音频播放失败";
+        setStatus("error");
+        setError(message);
+        settle("failed");
+        return;
+      }
       if (pauseRequestedRef.current) {
         void context.suspend().then(() => setStatus("paused"));
       } else {

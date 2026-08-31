@@ -7,8 +7,8 @@ from metaclass.infrastructure.database import Database
 from metaclass.infrastructure.providers import (
     FakeLLMProvider,
     LLMLearningProvider,
-    build_llm_provider,
     build_embedding_provider,
+    build_llm_provider,
     build_tts_provider,
 )
 from metaclass.infrastructure.providers.fake import FakeLearningProvider
@@ -19,12 +19,20 @@ from metaclass.modules.classroom.repository import SqlAlchemyClassroomRepository
 from metaclass.modules.classroom.service import ClassroomService
 from metaclass.modules.content.repository import SqlAlchemyContentRepository
 from metaclass.modules.content.service import ContentService
+from metaclass.modules.interaction_planning.jobs import InteractionPlanningJobService
+from metaclass.modules.interaction_planning.service import InteractionPlanningService
+from metaclass.modules.live_questions.service import LiveQuestionService
+from metaclass.modules.materials.repository import SqlAlchemyMaterialRepository
+from metaclass.modules.materials.service import MaterialService
+from metaclass.modules.paper_workflow.native_runner import NativePaperDeckWorkflowRunner
+from metaclass.modules.paper_workflow.orchestrator import PaperWorkflowOrchestrator
+from metaclass.modules.paper_workflow.providers.composed_skills import ComposedSkillsProvider
+from metaclass.modules.paper_workflow.repository import SqlAlchemyPaperWorkflowRepository
+from metaclass.modules.paper_workflow.service import PaperWorkflowService
 from metaclass.modules.presentation.codex_provider import (
     CodexGenerationError,
     CodexPPTProvider,
 )
-from metaclass.modules.materials.repository import SqlAlchemyMaterialRepository
-from metaclass.modules.materials.service import MaterialService
 from metaclass.modules.presentation.planner import PresentationPlanGenerator
 from metaclass.modules.presentation.providers import (
     FallbackPPTProvider,
@@ -48,8 +56,26 @@ class ApplicationServices:
     contents: ContentService
     presentations: PresentationService
     question_banks: QuestionBankService
+    live_questions: LiveQuestionService
     classrooms: ClassroomService
     videos: VideoService
+    paper_workflows: PaperWorkflowService
+    interaction_planning_jobs: InteractionPlanningJobService
+
+
+def build_codex_ppt_provider(adapter: PPTSkillAdapter) -> CodexPPTProvider:
+    """Build the configured Codex provider shared by main and workflow smoke tools."""
+    return CodexPPTProvider(
+        adapter=adapter,
+        api_key=settings.codex_api_key,
+        model=settings.codex_model,
+        timeout_seconds=settings.codex_timeout_seconds,
+        repair_attempts=settings.codex_repair_attempts,
+        paper_craft_enabled=settings.codex_paper_craft_enabled,
+        paper_craft_max_images=settings.codex_paper_craft_max_images,
+        paper_craft_concurrency=settings.codex_paper_craft_concurrency,
+        paper_craft_skills_dir=settings.codex_paper_craft_skills_dir,
+    )
 
 
 def build_services(
@@ -75,6 +101,7 @@ def build_services(
     question_bank_repository = SqlAlchemyQuestionBankRepository(database)
     classroom_repository = SqlAlchemyClassroomRepository(database)
     video_repository = SqlAlchemyVideoRepository(database)
+    paper_workflow_repository = SqlAlchemyPaperWorkflowRepository(database)
     llm_config = get_llm_runtime_config()
     llm = build_llm_provider(
         provider="fake" if force_fake_llm else llm_config.provider,
@@ -118,6 +145,18 @@ def build_services(
         student_concurrency=settings.qa_student_concurrency,
         candidates_per_slide=settings.qa_candidates_per_slide,
     )
+    interaction_planner = InteractionPlanningService(
+        question_bank_generator,
+        question_bank_repository,
+        llm,
+        presentation_repository,
+    )
+    interaction_planning_jobs = InteractionPlanningJobService(
+        data_dir,
+        interaction_planner,
+        contents,
+        presentation_repository,
+    )
     local_ppt_provider = PPTSkillAdapter(
         libreoffice_bin=settings.libreoffice_bin,
     )
@@ -137,17 +176,7 @@ def build_services(
             raise ValueError("PRESENTON_API_KEY is required when METACLASS_PPT_PROVIDER=presenton")
         ppt_provider = presenton_provider
     elif not force_fake_llm and configured_ppt_provider == "codex":
-        codex_provider = CodexPPTProvider(
-            adapter=local_ppt_provider,
-            api_key=settings.codex_api_key,
-            model=settings.codex_model,
-            timeout_seconds=settings.codex_timeout_seconds,
-            repair_attempts=settings.codex_repair_attempts,
-            paper_craft_enabled=settings.codex_paper_craft_enabled,
-            paper_craft_max_images=settings.codex_paper_craft_max_images,
-            paper_craft_concurrency=settings.codex_paper_craft_concurrency,
-            paper_craft_skills_dir=settings.codex_paper_craft_skills_dir,
-        )
+        codex_provider = build_codex_ppt_provider(local_ppt_provider)
         fallback_provider = presenton_provider or UnavailablePPTProvider(
             "Presenton fallback is unavailable because PRESENTON_API_KEY is not configured"
         )
@@ -167,8 +196,8 @@ def build_services(
         materials,
         planner=PresentationPlanGenerator(llm),
         ppt_adapter=ppt_provider,
-        question_bank_generator=question_bank_generator,
-        question_bank_repository=question_bank_repository,
+        interaction_planner=interaction_planner,
+        interaction_planning_jobs=interaction_planning_jobs,
     )
     question_banks = QuestionBankService(
         question_bank_repository,
@@ -183,6 +212,7 @@ def build_services(
             dimension=settings.embedding_dimension,
         ),
     )
+    live_questions = LiveQuestionService(data_dir, llm)
     classrooms = ClassroomService(
         classroom_repository,
         contents,
@@ -193,6 +223,7 @@ def build_services(
         planner=ClassroomPlanGenerator(llm, fallback_teacher=TeacherAgent()),
         presentations=presentations,
         question_banks=question_banks,
+        live_questions=live_questions,
     )
     tts = build_tts_provider(
         provider="fake" if force_fake_llm else settings.tts_provider,
@@ -212,12 +243,48 @@ def build_services(
         tts,
         presentations=presentations,
     )
+    paper_workflows = PaperWorkflowService(
+        data_dir,
+        paper_workflow_repository,
+        materials,
+        PaperWorkflowOrchestrator(
+            data_dir,
+            [
+                ComposedSkillsProvider(
+                    register_presentation=lambda path, filename, derivation_key: (
+                        materials.register_generated_pptx(
+                            path,
+                            filename=filename,
+                            derivation_key=derivation_key,
+                        ).id
+                    )
+                ),
+                NativePaperDeckWorkflowRunner(
+                    data_dir=data_dir,
+                    materials=materials,
+                    contents=contents,
+                    presentations=presentations,
+                    presentation_repository=presentation_repository,
+                    question_banks=question_bank_repository,
+                    live_questions=live_questions,
+                    llm=llm,
+                    vision=vision_llm or llm,
+                ),
+            ],
+        ),
+        contents=contents,
+        presentations=presentations,
+        narration_provider=llm,
+    )
     return ApplicationServices(
         database,
         materials,
         contents,
         presentations,
         question_banks,
+        live_questions,
         classrooms,
         videos,
+        paper_workflows,
+        interaction_planning_jobs,
     )

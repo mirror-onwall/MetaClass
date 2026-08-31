@@ -9,6 +9,8 @@ import type {
   LearningContent,
   LearningContentDiagnostics,
   LearningMode,
+  InteractionIntensity,
+  InteractionPlanningJob,
   Material,
   MaterialCollection,
   MaterialLearningContentSummary,
@@ -26,6 +28,11 @@ import type {
   StudentAgentType,
   TTSArtifact,
   TTSArtifactRequest,
+  QuestionBank,
+  PaperDeckCourseResult,
+  PaperOutline,
+  PaperSlideEvidence,
+  PaperWorkflowJob,
   VideoJob,
   VideoResult,
 } from "./types";
@@ -86,6 +93,79 @@ async function poll<T>(
 }
 
 export const api = {
+  createPaperWorkflow(materialId: string, settings: {
+    duration_minutes: number;
+    audience: string;
+    interaction_intensity: InteractionIntensity;
+  }) {
+    return request<PaperWorkflowJob>("/api/v1/paper-workflows", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        material_id: materialId,
+        strategy: "native_paper_deck",
+        language: "zh-CN",
+        depth: "standard",
+        ...settings,
+      }),
+    });
+  },
+  getPaperWorkflow(jobId: string) {
+    return request<PaperWorkflowJob>(`/api/v1/paper-workflows/${jobId}`);
+  },
+  getLatestPaperWorkflow(materialId: string) {
+    return request<PaperWorkflowJob>(
+      `/api/v1/paper-workflows/latest?material_id=${encodeURIComponent(materialId)}`,
+    );
+  },
+  runPaperWorkflow(jobId: string) {
+    return request<PaperWorkflowJob>(`/api/v1/paper-workflows/${jobId}/run`, {
+      method: "POST",
+      timeoutMs: 3_600_000,
+    });
+  },
+  submitPaperWorkflow(jobId: string) {
+    return request<PaperWorkflowJob>(`/api/v1/paper-workflows/${jobId}/submit`, {
+      method: "POST",
+    });
+  },
+  async waitForPaperWorkflow(
+    jobId: string,
+    onUpdate?: (job: PaperWorkflowJob) => void,
+  ) {
+    // paper-deck itself may use the full 60-minute allowance; polling requests
+    // remain short and the durable backend Job is not canceled by this UI guard.
+    const startedAt = Date.now();
+    while (Date.now() - startedAt < 7_200_000) {
+      const job = await api.getPaperWorkflow(jobId);
+      onUpdate?.(job);
+      if (job.status === "succeeded") return job;
+      if (job.status === "paused") throw new Error("任务已暂停，进度已经保存");
+      if (job.status === "failed" || job.status === "canceled") {
+        throw new Error(job.error ?? `论文讲解任务${job.status}`);
+      }
+      await sleep(1_500);
+    }
+    throw new Error("论文讲解仍在后台运行，请稍后刷新查看进度");
+  },
+  pausePaperWorkflow(jobId: string) {
+    return request<PaperWorkflowJob>(`/api/v1/paper-workflows/${jobId}/pause`, { method: "POST" });
+  },
+  resumePaperWorkflow(jobId: string) {
+    return request<PaperWorkflowJob>(`/api/v1/paper-workflows/${jobId}/resume`, { method: "POST" });
+  },
+  getPaperOutline(jobId: string) {
+    return request<PaperOutline>(`/api/v1/paper-workflows/${jobId}/outline`);
+  },
+  getPaperSlideEvidence(jobId: string) {
+    return request<PaperSlideEvidence>(`/api/v1/paper-workflows/${jobId}/slide-evidence`);
+  },
+  createPaperDeckCourse(jobId: string) {
+    return request<PaperDeckCourseResult>(`/api/v1/paper-workflows/${jobId}/create-paper-deck-course`, {
+      method: "POST",
+      timeoutMs: 1_800_000,
+    });
+  },
   async upload(file: File) {
     const result = await api.uploadMany([file]);
     if (!result.items[0]) throw new Error("材料解析任务没有返回结果");
@@ -333,8 +413,23 @@ export const api = {
   generateQuestionBank(planId: string) {
     return request(`/api/v1/presentation-plans/${planId}/question-bank`, { method: "POST" });
   },
+  regenerateQuestionBank(planId: string) {
+    return request<QuestionBank>(`/api/v1/presentation-plans/${planId}/question-bank/regenerate`, {
+      method: "POST",
+      timeoutMs: 1_800_000,
+    });
+  },
+  listQuestionBankVersions(planId: string) {
+    return request<QuestionBank[]>(`/api/v1/presentation-plans/${planId}/question-bank/versions`);
+  },
+  archiveQuestionBankVersion(planId: string, generationId: string) {
+    return request<{ archived: boolean }>(
+      `/api/v1/presentation-plans/${planId}/question-bank/versions/${encodeURIComponent(generationId)}`,
+      { method: "DELETE" },
+    );
+  },
   getQuestionBank(planId: string) {
-    return request<{ items: unknown[] }>(`/api/v1/presentation-plans/${planId}/question-bank`);
+    return request<QuestionBank>(`/api/v1/presentation-plans/${planId}/question-bank`);
   },
   createLectureVariant(planId: string) {
     return request<{ id: string }>(`/api/v1/classroom-plans/${planId}/lecture-variant`, {
@@ -408,9 +503,14 @@ export const api = {
     contentId: string,
     prepareQuestionBank = true,
     onProgress?: (job: PresentationPlanJob) => void,
+    interactionIntensity: InteractionIntensity = "standard",
   ) {
+    const query = new URLSearchParams({
+      prepare_question_bank: String(prepareQuestionBank),
+      interaction_intensity: interactionIntensity,
+    });
     const created = await request<PresentationPlanJob>(
-      `/api/v1/learning-contents/${contentId}/presentation-plan-jobs?prepare_question_bank=${prepareQuestionBank}`,
+      `/api/v1/learning-contents/${contentId}/presentation-plan-jobs?${query}`,
       { method: "POST" },
     );
     onProgress?.(created);
@@ -422,10 +522,12 @@ export const api = {
     sourceMaterialId: string,
     prepareQuestionBank = true,
     onProgress?: (job: PresentationPlanJob) => void,
+    interactionIntensity: InteractionIntensity = "standard",
   ) {
     const query = new URLSearchParams({
       source_material_id: sourceMaterialId,
       prepare_question_bank: String(prepareQuestionBank),
+      interaction_intensity: interactionIntensity,
     });
     const created = await request<PresentationPlanJob>(
       `/api/v1/learning-contents/${contentId}/source-deck-presentation-plan-jobs?${query}`,
@@ -547,6 +649,23 @@ export const api = {
       await wait(1500);
     }
   },
+  getInteractionPlanningJobForPlan(planId: string) {
+    return request<InteractionPlanningJob>(`/api/v1/presentation-plans/${planId}/interaction-planning-job`);
+  },
+  getInteractionPlanningJob(jobId: string) {
+    return request<InteractionPlanningJob>(`/api/v1/interaction-planning-jobs/${jobId}`);
+  },
+  retryInteractionPlanningJob(jobId: string) {
+    return request<InteractionPlanningJob>(`/api/v1/interaction-planning-jobs/${jobId}/retry`, { method: "POST" });
+  },
+  async waitForInteractionPlanningJob(jobId: string, onProgress?: (job: InteractionPlanningJob) => void) {
+    for (;;) {
+      const job = await api.getInteractionPlanningJob(jobId);
+      onProgress?.(job);
+      if (["succeeded", "failed", "paused"].includes(job.status)) return job;
+      await wait(1000);
+    }
+  },
   next(sessionId: string, expectedVersion: number) {
     return request<ControllerResult>(`/api/v1/classroom-sessions/${sessionId}/next`, {
       method: "POST",
@@ -579,11 +698,12 @@ export const api = {
       body: JSON.stringify({ question }),
     });
   },
-  createTTSArtifact(payload: TTSArtifactRequest) {
+  createTTSArtifact(payload: TTSArtifactRequest, timeoutMs = 5_000) {
     return request<TTSArtifact>("/api/v1/tts-artifacts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
+      timeoutMs,
     });
   },
   ttsAudio(audioUrl: string) {

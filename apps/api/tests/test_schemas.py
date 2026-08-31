@@ -12,8 +12,8 @@ from metaclass.modules.assessment.service import estimate_mastery
 from metaclass.modules.classroom.agent_schemas import (
     AgentTurn,
     StudentAgentType,
-    get_default_student_agent_states,
     get_default_student_agent_profiles,
+    get_default_student_agent_states,
     get_student_agent_states,
 )
 from metaclass.modules.classroom.agents import TeacherAgent
@@ -32,9 +32,9 @@ from metaclass.modules.classroom.schemas import (
     ClassroomSession,
     ClassroomState,
     CreateClassroomSessionRequest,
-    GiveFeedbackAction,
     ExplainAction,
     ExplainPayload,
+    GiveFeedbackAction,
     ShowSlideAction,
     ShowSlidePayload,
     StudentQuestionAction,
@@ -57,21 +57,21 @@ from metaclass.modules.content.schemas import (
     VisualOpportunity,
 )
 from metaclass.modules.materials.schemas import PageMetadata, SourceRef
-from metaclass.modules.presentation.diagnostics import diagnose_presentation_plan
-from metaclass.modules.presentation.planner import (
-    PresentationPlanDraft,
-    PresentationPlanGenerator,
-    SlidePlanDraft,
+from metaclass.modules.presentation.brand_palette import (
+    BRAND_PALETTE,
+    apply_brand_palette,
 )
+from metaclass.modules.presentation.diagnostics import diagnose_presentation_plan
 from metaclass.modules.presentation.layout_registry import (
     LAYOUT_REGISTRY,
     build_fallback_elements,
     select_fallback_layout,
     split_points_for_layout,
 )
-from metaclass.modules.presentation.brand_palette import (
-    BRAND_PALETTE,
-    apply_brand_palette,
+from metaclass.modules.presentation.planner import (
+    PresentationPlanDraft,
+    PresentationPlanGenerator,
+    SlidePlanDraft,
 )
 from metaclass.modules.presentation.schemas import (
     PPTGenerationJob,
@@ -530,6 +530,14 @@ def test_source_deck_narration_uses_natural_style_prompt_file() -> None:
     assert "不要机械逐条复述页面文字" in prompt
     assert "`page_text`" in prompt
     assert "像老师面对学生讲课" in prompt
+    assert "事实依据的优先级" in prompt
+    assert "结合当前页面来看" in prompt
+    assert "参考长度按中文字符估算" in prompt
+    assert "严格一句" in prompt
+    assert "不要回顾已经讲过的知识" in prompt
+    assert "语义接力" in prompt
+    assert "显式预告下一页的句子最多出现一次" in prompt
+    assert "删除相邻页重复定义" in prompt
     assert '"slides"' in prompt
 
 
@@ -1043,6 +1051,8 @@ def test_question_bank_student_receives_course_history_and_teacher_receives_cour
     QuestionBankGenerator(llm)._teacher_answers(content, plan, [candidate])
     teacher_messages = llm.complete_json.call_args.args[0]
     assert "整节课的 PPT 页面内容、全部讲稿和 LearningContent" in teacher_messages[0].content
+    assert "先判断学生真正卡住的是概念、原因、区别、步骤还是应用" in teacher_messages[0].content
+    assert "第一句话就进入实质内容" in teacher_messages[0].content
     assert "这是第一页讲稿" in teacher_messages[1].content
     assert "LearningContent 中的完整课程材料" in teacher_messages[1].content
 
@@ -1053,6 +1063,60 @@ def test_question_bank_student_receives_course_history_and_teacher_receives_cour
         "slide_001",
         "slide_002",
     ]
+
+
+def test_question_bank_fallback_questions_follow_student_profiles() -> None:
+    slide = SlidePlan(
+        id="slide_fallback_questions",
+        order=1,
+        source_section_ids=["section_001"],
+        title="聚类分析",
+        key_points=["簇内相似度高、簇间相似度低"],
+        speaker_script="介绍聚类质量的基本判断标准。",
+        suggested_visual="聚类示意图",
+    )
+    profiles = get_default_student_agent_profiles()
+    questions = [
+        QuestionBankGenerator._fallback_candidate(slide, profile).canonical_question
+        for profile in profiles
+    ]
+
+    assert len(set(questions)) == len(profiles)
+    assert not any(question.endswith("为什么成立？") for question in questions)
+    assert any("实际" in question for question in questions)
+    assert any("区分" in question for question in questions)
+
+
+def test_question_bank_student_batches_use_only_recent_context() -> None:
+    slides = [
+        SlidePlan(
+            id=f"slide_context_{index}",
+            order=index,
+            source_section_ids=["section_001"],
+            title=f"第 {index} 页",
+            key_points=[f"知识点 {index}"],
+            speaker_script=f"第 {index} 页讲稿",
+            suggested_visual="示意图",
+        )
+        for index in range(1, 7)
+    ]
+    plan = PresentationPlan(
+        id="presentation_bounded_context",
+        content_id="content_bounded_context",
+        title="有限上下文",
+        slides=slides,
+    )
+    profile = get_default_student_agent_profiles()[0]
+
+    messages = QuestionBankGenerator._student_batch_messages(plan, profile, [slides[-1]])
+    checkpoint = json.loads(messages[1].content)["checkpoints"][0]
+
+    assert [item["slide_id"] for item in checkpoint["course_so_far"]] == [
+        "slide_context_4",
+        "slide_context_5",
+        "slide_context_6",
+    ]
+    assert "第 1 页讲稿" not in messages[1].content
 
 
 def test_question_bank_batches_students_in_parallel_and_teacher_once() -> None:
@@ -1066,7 +1130,7 @@ def test_question_bank_batches_students_in_parallel_and_teacher_once() -> None:
 
         def complete_json(self, messages, temperature=0.0):
             system = messages[0].content
-            if "一次性完成整节课各阶段" in system:
+            if "一小批课堂页面" in system:
                 with self.lock:
                     self.student_calls += 1
                 self.student_barrier.wait(timeout=3)
@@ -2036,7 +2100,7 @@ def test_planned_probe_dialog_skips_recent_student_speaker() -> None:
     assert result.directed_turn.turns[0].agent_id == students[1].id
 
 
-def test_scripted_qa_rotates_away_from_recent_preferred_student() -> None:
+def test_scripted_qa_keeps_preferred_type_even_if_similar_student_spoke_less() -> None:
     students = get_student_agent_states(
         [StudentAgentType.DEEP_THINKER, StudentAgentType.RESEARCHER]
     )
@@ -2070,6 +2134,78 @@ def test_scripted_qa_rotates_away_from_recent_preferred_student() -> None:
             qa_id="qa_rotation",
             preferred_agent_type=StudentAgentType.DEEP_THINKER,
             fallback_agent_types=[StudentAgentType.RESEARCHER],
+        ),
+    )
+
+    selected = ClassroomService._select_scripted_qa_student(session, action)
+
+    assert selected is not None
+    assert selected.id == students[0].id
+
+
+def test_scripted_qa_uses_similar_type_when_preferred_is_absent() -> None:
+    students = get_student_agent_states(
+        [StudentAgentType.RESEARCHER, StudentAgentType.FOUNDATION_WEAK]
+    )
+    session = ClassroomSession(
+        id="session_scripted_similar",
+        plan_id="plan_scripted_similar",
+        mode="interactive",
+        student_states=students,
+    )
+    action = StudentQuestionAction(
+        id="student_question_similar",
+        type="STUDENT_QUESTION",
+        actor="student",
+        payload=StudentQuestionPayload(
+            qa_id="qa_similar",
+            preferred_agent_type=StudentAgentType.DEEP_THINKER,
+            fallback_agent_types=[StudentAgentType.RESEARCHER],
+        ),
+    )
+
+    selected = ClassroomService._select_scripted_qa_student(session, action)
+
+    assert selected is not None
+    assert selected.agent_type == StudentAgentType.RESEARCHER
+
+
+def test_scripted_qa_uses_least_frequent_student_among_similar_types() -> None:
+    students = get_student_agent_states(
+        [StudentAgentType.RESEARCHER, StudentAgentType.CONCEPT_CONFUSED]
+    )
+    session = ClassroomSession(
+        id="session_scripted_fairness",
+        plan_id="plan_scripted_fairness",
+        mode="interactive",
+        student_states=students,
+        events=[
+            AgentTurnEvent(
+                id="event_scripted_fairness",
+                session_id="session_scripted_fairness",
+                type="AGENT_TURN",
+                payload=AgentTurnPayload(
+                    turn=AgentTurn(
+                        agent_id=students[0].id,
+                        role="student",
+                        speech="我已经发言过了。",
+                        intent="scripted_qa_question",
+                    )
+                ),
+            )
+        ],
+    )
+    action = StudentQuestionAction(
+        id="student_question_fairness",
+        type="STUDENT_QUESTION",
+        actor="student",
+        payload=StudentQuestionPayload(
+            qa_id="qa_fairness",
+            preferred_agent_type=StudentAgentType.DEEP_THINKER,
+            fallback_agent_types=[
+                StudentAgentType.RESEARCHER,
+                StudentAgentType.CONCEPT_CONFUSED,
+            ],
         ),
     )
 

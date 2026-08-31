@@ -1186,6 +1186,14 @@ def calculate_test_skill_digests(root: Path) -> dict[str, str]:
     return result
 
 
+def test_vendored_paper_craft_guidance_matches_provider_pins() -> None:
+    repository_root = Path(__file__).resolve().parents[3]
+
+    assert calculate_test_skill_digests(repository_root / ".agents" / "skills") == (
+        CodexPPTProvider.PAPER_CRAFT_EXPECTED_SHA256
+    )
+
+
 def test_paper_craft_skill_staging_copies_only_audited_guidance(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -2539,6 +2547,17 @@ def test_paper_craft_rejects_missing_and_corrupt_images(tmp_path: Path) -> None:
             allow_images=True,
         )
 
+    corrupt = workspace / "generated_visuals" / "figure.png"
+    corrupt.parent.mkdir(parents=True)
+    corrupt.write_bytes(b"this is not a raster image")
+    with pytest.raises(ValueError, match="generated image is unreadable"):
+        CodexPPTProvider._parse_design_element(
+            raw_element,
+            workspace=workspace,
+            asset_output_dir=tmp_path / "assets",
+            allow_images=True,
+        )
+
 
 def test_paper_craft_rejects_a_linked_generated_visuals_root(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
@@ -2556,17 +2575,6 @@ def test_paper_craft_rejects_a_linked_generated_visuals_root(tmp_path: Path) -> 
     )["slides"][0]["elements"][-1]
 
     with pytest.raises(ValueError, match="directory cannot be a link or junction"):
-        CodexPPTProvider._parse_design_element(
-            raw_element,
-            workspace=workspace,
-            asset_output_dir=tmp_path / "assets",
-            allow_images=True,
-        )
-
-    corrupt = workspace / "generated_visuals" / "figure.png"
-    corrupt.parent.mkdir(parents=True)
-    corrupt.write_bytes(b"this is not a raster image")
-    with pytest.raises(ValueError, match="generated image is unreadable"):
         CodexPPTProvider._parse_design_element(
             raw_element,
             workspace=workspace,
