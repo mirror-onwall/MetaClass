@@ -11,7 +11,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from threading import Lock
-from typing import Any
+from typing import Any, ClassVar
 
 from PIL import Image, ImageDraw, ImageOps, UnidentifiedImageError
 
@@ -64,9 +64,9 @@ class CodexPPTProvider:
     PAPER_CRAFT_SOURCE = "https://github.com/zsyggg/paper-craft-skills"
     PAPER_CRAFT_COMMIT = "3be47a2a53cc35a411c587bca5231a08de57287a"
     PAPER_CRAFT_SKILLS = ("paper-deck", "paper-comic")
-    PAPER_CRAFT_EXPECTED_SHA256 = {
+    PAPER_CRAFT_EXPECTED_SHA256: ClassVar[dict[str, str]] = {
         "paper-deck": "3ca4baef8071e41939c7672d4dfe284b55091e9a094c871eba35fd78f1e6efdb",
-        "paper-comic": "91d8d414cb31ae37d6c246828b8b9503e9ec3a7adae20ffddeb81880ac397e5b",
+        "paper-comic": "56d605c5d5fc005086c1574fc640554752580fc2d6b523be30e7739c0abe2fcb",
     }
     PAPER_CRAFT_MAX_FILE_BYTES = 20 * 1024 * 1024
     PAPER_CRAFT_MAX_TOTAL_BYTES = 120 * 1024 * 1024

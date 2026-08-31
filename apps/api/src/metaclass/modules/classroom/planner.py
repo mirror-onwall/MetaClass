@@ -14,10 +14,10 @@ from metaclass.modules.classroom.schemas import (
     ClassroomPlan,
     ClassroomPlanGenerationMeta,
     ClassroomScene,
-    ExplainAction,
-    GiveFeedbackAction,
     EndAction,
     EndPayload,
+    ExplainAction,
+    GiveFeedbackAction,
     ProbeAction,
     ProbePayload,
     ReviewAction,
@@ -233,7 +233,10 @@ class ClassroomPlanGenerator:
                     payload=StudentQuestionPayload(
                         qa_id=qa.id,
                         preferred_agent_type=qa.agent_type,
-                        fallback_agent_types=cls._fallback_agent_types(qa.agent_type),
+                        fallback_agent_types=(
+                            qa.compatible_agent_types
+                            or cls._fallback_agent_types(qa.agent_type)
+                        ),
                     ),
                 ),
                 TeacherQAResponseAction(
@@ -285,10 +288,6 @@ class ClassroomPlanGenerator:
         eligible = [
             slide for slide in presentation_plan.slides if slide.id not in student_qa_slide_ids
         ]
-        # A one-page lesson has no alternative page; keep one teacher check so
-        # the runtime still has an explicit listening-check action.
-        if not eligible and presentation_plan.slides:
-            eligible = list(presentation_plan.slides)
         # Let the teacher model choose checkpoints by instructional value rather
         # than page count. _generate_teacher_checks guarantees at least one check.
         prepared = self._generate_teacher_checks(eligible, presentation_plan.slides)

@@ -1,5 +1,6 @@
 import json
 import os
+import time
 from pathlib import Path
 from threading import Event, Thread
 
@@ -64,7 +65,7 @@ class SuccessfulPaperProvider:
             (ComposedStage.ANALYSIS, "paper-analyze"),
             (ComposedStage.FIGURES, "extract-paper-images"),
             (ComposedStage.OUTLINE, "academic-pptx"),
-            (ComposedStage.GENERATION, "academic-pptx-generate"),
+            (ComposedStage.GENERATION, "pptx"),
         ]:
 
             def execute(current_stage=stage):
@@ -194,7 +195,7 @@ class FailOncePaperProvider(SuccessfulPaperProvider):
         )
         for stage, skill_name in [
             (ComposedStage.OUTLINE, "academic-pptx"),
-            (ComposedStage.GENERATION, "academic-pptx-generate"),
+            (ComposedStage.GENERATION, "pptx"),
         ]:
 
             def execute(current_stage=stage):
@@ -285,6 +286,45 @@ def test_paper_workflow_api_lifecycle_and_result(tmp_path: Path) -> None:
         assert service.orchestrator.providers["composed_skills"].executions == {
             stage: 1 for stage in ComposedStage
         }
+
+
+def test_native_paper_deck_route_is_registered_and_selectable(tmp_path: Path) -> None:
+    app = create_app(tmp_path)
+    service = app.state.services.paper_workflows
+
+    assert "native_paper_deck" in service.orchestrator.providers
+    with TestClient(app) as client:
+        material_id = _create_pdf_material(client)
+        response = client.post(
+            "/api/v1/paper-workflows",
+            json={"material_id": material_id, "strategy": "native_paper_deck"},
+        )
+
+    assert response.status_code == 201
+    assert response.json()["strategy_selected"] == "native_paper_deck"
+
+
+def test_latest_paper_workflow_restores_newest_job_for_material(tmp_path: Path) -> None:
+    app = create_app(tmp_path)
+    with TestClient(app) as client:
+        material_id = _create_pdf_material(client)
+        first = client.post(
+            "/api/v1/paper-workflows",
+            json={"material_id": material_id, "strategy": "native_paper_deck"},
+        ).json()
+        second = client.post(
+            "/api/v1/paper-workflows",
+            json={"material_id": material_id, "strategy": "native_paper_deck"},
+        ).json()
+
+        latest = client.get(
+            "/api/v1/paper-workflows/latest",
+            params={"material_id": material_id},
+        )
+
+    assert latest.status_code == 200
+    assert latest.json()["id"] == second["id"]
+    assert latest.json()["id"] != first["id"]
 
 
 def test_succeeded_workflow_creates_reconciled_paper_deck_course(
@@ -472,9 +512,28 @@ def test_succeeded_workflow_creates_reconciled_paper_deck_course(
         assert plan["source_paper_material_id"] == source_material_id
         assert [slide["source_page_no"] for slide in plan["slides"]] == [1, 2]
         assert plan["slides"][1]["paper_claim_ids"] == ["claim_02"]
-        assert all(
-            slide["speaker_script_source"] == "paper_classroom_llm" for slide in plan["slides"]
-        )
+        assert all(slide["speaker_script_source"] == "authoring" for slide in plan["slides"])
+        assert [slide["speaker_script"] for slide in plan["slides"]] == [
+            "Authoring note one.",
+            "Authoring note two.",
+        ]
+        for _ in range(200):
+            interaction_job = client.get(
+                f"/api/v1/presentation-plans/{payload['presentation_plan_id']}"
+                "/interaction-planning-job"
+            ).json()
+            if interaction_job.get("status") in {"succeeded", "failed"}:
+                break
+            time.sleep(0.01)
+        assert interaction_job["status"] == "succeeded"
+        plan = client.get(
+            f"/api/v1/presentation-plans/{payload['presentation_plan_id']}"
+        ).json()
+        question_bank = client.get(
+            f"/api/v1/presentation-plans/{payload['presentation_plan_id']}/question-bank"
+        ).json()
+        assert question_bank["items"]
+        assert plan["interaction_planning_status"] == "complete"
         resource = client.get(
             f"/api/v1/presentation-plans/{payload['presentation_plan_id']}/resource"
         ).json()
@@ -595,6 +654,37 @@ def test_running_pause_resume_and_duplicate_calls_are_idempotent(tmp_path: Path)
         resumed_provider = SuccessfulPaperProvider()
         service.orchestrator = PaperWorkflowOrchestrator(tmp_path, [resumed_provider])
         assert service.run(job_id).status == PaperWorkflowStatus.SUCCEEDED
+
+
+def test_submit_runs_in_background_and_allows_live_pause(tmp_path: Path) -> None:
+    app = create_app(tmp_path)
+    provider = BlockingPaperProvider()
+    service = app.state.services.paper_workflows
+    service.orchestrator = PaperWorkflowOrchestrator(tmp_path, [provider])
+    with TestClient(app) as client:
+        material_id = _create_pdf_material(client)
+        job_id = client.post(
+            "/api/v1/paper-workflows", json={"material_id": material_id}
+        ).json()["id"]
+
+        submitted = client.post(f"/api/v1/paper-workflows/{job_id}/submit")
+        assert submitted.status_code == 202
+        assert provider.started.wait(timeout=5)
+        assert client.get(f"/api/v1/paper-workflows/{job_id}").json()["status"] == "running"
+
+        duplicate = client.post(f"/api/v1/paper-workflows/{job_id}/submit")
+        assert duplicate.status_code == 202
+        assert provider.executions[ComposedStage.ANALYSIS] == 1
+
+        paused = client.post(f"/api/v1/paper-workflows/{job_id}/pause")
+        assert paused.json()["status"] == "paused"
+        provider.release.set()
+        for _ in range(100):
+            if job_id not in service._active_jobs:
+                break
+            time.sleep(0.02)
+        assert job_id not in service._active_jobs
+        assert service.get(job_id).status == PaperWorkflowStatus.PAUSED
 
 
 def test_successful_checkpoint_stage_is_reused_after_retry(tmp_path: Path) -> None:

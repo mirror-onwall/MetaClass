@@ -14,7 +14,7 @@
    - `paper-analyze`
    - `extract-paper-images`（按需）
    - `academic-pptx`
-   - `academic-pptx-generate`
+   - Anthropic 官方 `pptx`
    - 适合强调中间结果、证据追踪、可恢复性和精细控制的任务。
 
 2. **端到端模式 `nature_paper2ppt`**
@@ -452,7 +452,7 @@ flowchart LR
     AJ --> O["Stage 3 academic-pptx"]
     P --> O
     O --> OL["outline.md + presentation_outline.json"]
-    OL --> R["Stage 4 academic-pptx-generate"]
+    OL --> R["Stage 4 官方 pptx 渲染与 QA"]
     P --> R
     R --> PPT["PPTX + slide_plan + QA"]
     PPT --> V["MetaClass 验收与归一化"]
@@ -649,7 +649,7 @@ Prompt 后缀：
 paper_analysis.json 是论文事实和 claim 的权威来源；figures.json 是可用视觉资产的权威来源。不得重新发明数字、结论或图表含义。
 
 生成：
-1. output/outline.md：符合 academic-pptx-generate 可接受的 Markdown outline；
+1. output/outline.md：符合官方 pptx Skill 可接受的 Markdown outline；
 2. output/presentation_outline.json：MetaClass 语义大纲；
 3. output/slide_evidence.json：每页绑定 claim_ids、source_refs 和 asset_ids。
 
@@ -703,14 +703,14 @@ paper_analysis.json 是论文事实和 claim 的权威来源；figures.json 是�
 - 不能引用未登记的本地文件；
 - 页数与汇报时长大体相符，允许有理由地偏离。
 
-### 6.7 Stage 4：`academic-pptx-generate`
+### 6.7 Stage 4：Anthropic 官方 `pptx`
 
 职责是从已经批准的大纲和资产生成、渲染并验证真实 PPTX。
 
 Prompt 后缀：
 
 ```text
-使用 academic-pptx-generate，从 output/outline.md 和 presentation_outline.json 生成真实 PPTX。
+使用官方 pptx Skill，从 output/outline.md 和 presentation_outline.json 生成真实 PPTX，并执行内容 QA、视觉 QA 与修复复验。
 
 内容契约：
 - 不增加 paper_analysis.json 中不存在的论文事实；
@@ -1781,7 +1781,7 @@ artifact_bundle_id
 | 局部重跑 | 支持 | 有限 |
 | 图像来源 | MinerU + arXiv 优先提取 | MinerU 资产 + PDF 裁切 |
 | PPT 结构 | academic-pptx | 六类论文叙事路由 |
-| PPT 生成 | academic-pptx-generate | Agent 临场 python-pptx/模板 |
+| PPT 生成 | Anthropic 官方 pptx | Agent 按冻结契约生成、渲染、QA 与修复 |
 | QA | 生成 Skill + MetaClass | 自带 XML audit + MetaClass |
 | 成熟度 | 由多个组件共同决定 | Skill 官方标记 Beta |
 | 推荐用途 | 正式汇报、需要审核 | 快速组会、实验性体验 |
@@ -1810,7 +1810,7 @@ UI 不应宣称一条路线绝对更好，而应说明差异：
 - 接入 `paper-analyze`；
 - 接入条件式 `extract-paper-images`；
 - 接入 `academic-pptx`；
-- 接入 `academic-pptx-generate`；
+- 接入 Anthropic 官方 `pptx`；
 - 完成阶段 checkpoint、hash 缓存和局部重试；
 - 跑通生成 PPTX → 派生 Material → `paper_deck` 基础课堂。
 

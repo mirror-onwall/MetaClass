@@ -7,6 +7,7 @@ from pathlib import Path
 import fitz
 from pydantic import ValidationError
 
+from metaclass.core.config import settings
 from metaclass.core.schemas import utc_now
 from metaclass.modules.paper_workflow.artifact_normalizer import (
     PaperArtifactNormalizer,
@@ -21,10 +22,10 @@ from metaclass.modules.paper_workflow.figure_catalog import (
 )
 from metaclass.modules.paper_workflow.presentation_stages import (
     AcademicOutlineAdapter,
-    AcademicPptxGenerateAdapter,
     OutlineEvidenceError,
     OutlineNarrativeError,
     OutlineStructureError,
+    PptxGenerateAdapter,
     RepairableGenerationError,
     file_hash,
     validate_and_render_pptx,
@@ -84,19 +85,26 @@ class ComposedSkillsProvider:
         skill_directory: Path | None = None,
         figure_skill_directory: Path | None = None,
         outline_skill_directory: Path | None = None,
-        generation_skill_directory: Path | None = None,
+        pptx_skill_directory: Path | None = None,
         register_presentation: Callable[[Path, str, str], str] | None = None,
     ) -> None:
         self.runtime = runtime or CodexSkillRuntime()
         self.skill_directory = skill_directory
         self.figure_skill_directory = figure_skill_directory
         self.outline_skill_directory = outline_skill_directory
-        self.generation_skill_directory = generation_skill_directory
+        self.pptx_skill_directory = pptx_skill_directory
         self.register_presentation = register_presentation
         self.validator = PaperArtifactValidator()
         self.prompt_directory = Path(__file__).resolve().parents[1] / "prompts"
 
     def run(self, context: PaperProviderContext) -> PaperArtifactBundle:
+        analysis = self.run_analysis(context)
+        figures = self._run_figures(context, analysis)
+        outline, evidence = self._run_outline(context, analysis, figures)
+        return self._run_generation(context, analysis, figures, outline, evidence)
+
+    def run_analysis(self, context: PaperProviderContext) -> PaperAnalysis:
+        """Run or restore only the authoritative paper-analysis stage."""
         skill_directory = self.skill_directory or self._resolve_skill_directory()
         skill_version = self._directory_hash(skill_directory)
         stage_root = context.workspace / "stages" / "01_analysis"
@@ -166,7 +174,7 @@ class ComposedSkillsProvider:
             }
             return analysis, outputs
 
-        analysis = context.run_stage(
+        return context.run_stage(
             stage=ComposedStage.ANALYSIS,
             input_hash=input_hash,
             skill_name=self.skill_name,
@@ -176,9 +184,6 @@ class ComposedSkillsProvider:
             validate_cached=validate_cached,
             restore=restore,
         )
-        figures = self._run_figures(context, analysis)
-        outline, evidence = self._run_outline(context, analysis, figures)
-        return self._run_generation(context, analysis, figures, outline, evidence)
 
     def _run_outline(
         self,
@@ -396,8 +401,8 @@ class ComposedSkillsProvider:
         stage_root = context.workspace / "stages/04_generation"
         output = stage_root / "output"
         output.mkdir(parents=True, exist_ok=True)
-        skill_directory = self.generation_skill_directory or self._resolve_skill_directory_for(
-            "academic-pptx-generate", "METACLASS_ACADEMIC_PPTX_GENERATE_SKILL_DIR"
+        skill_directory = self.pptx_skill_directory or self._resolve_skill_directory_for(
+            "pptx", "METACLASS_PPTX_SKILL_DIR"
         )
         skill_version = self._directory_hash(skill_directory)
         inputs = [
@@ -414,7 +419,7 @@ class ComposedSkillsProvider:
         cache = StageCache(context.workspace)
         input_hash = cache.input_hash(
             skill_version=skill_version,
-            prompt_version=AcademicPptxGenerateAdapter.prompt_version,
+            prompt_version=PptxGenerateAdapter.prompt_version,
             schema_version="paper-pptx-generation-v1",
             request_subset={"outline_hash": file_hash(inputs[1])},
             input_files=inputs,
@@ -430,7 +435,7 @@ class ComposedSkillsProvider:
                 return False
 
         def execute():
-            adapter = AcademicPptxGenerateAdapter(self.runtime, skill_directory)
+            adapter = PptxGenerateAdapter(self.runtime, skill_directory)
             attempt = context.current_attempt(ComposedStage.GENERATION)
             report = adapter.run(
                 workspace=context.workspace,
@@ -440,7 +445,7 @@ class ComposedSkillsProvider:
                 attempt=attempt,
             )
             if report.status != StageStatus.SUCCEEDED:
-                raise RuntimeError("academic-pptx-generate runtime execution failed")
+                raise RuntimeError("pptx runtime execution failed")
             try:
                 validate_and_render_pptx(output, outline=outline, evidence=evidence)
             except RepairableGenerationError:
@@ -453,7 +458,7 @@ class ComposedSkillsProvider:
                     repair=True,
                 )
                 if repaired.status != StageStatus.SUCCEEDED:
-                    raise RuntimeError("academic-pptx-generate repair pass failed")
+                    raise RuntimeError("pptx repair pass failed")
                 report = repaired
                 validate_and_render_pptx(output, outline=outline, evidence=evidence)
             (output / "execution_report.json").write_text(
@@ -477,9 +482,9 @@ class ComposedSkillsProvider:
         context.run_stage(
             stage=ComposedStage.GENERATION,
             input_hash=input_hash,
-            skill_name="academic-pptx-generate",
+            skill_name="pptx",
             skill_version=skill_version,
-            prompt_version=AcademicPptxGenerateAdapter.prompt_version,
+            prompt_version=PptxGenerateAdapter.prompt_version,
             execute=execute,
             validate_cached=validate_cached,
             restore=lambda _: True,
@@ -970,8 +975,10 @@ class ComposedSkillsProvider:
         if skill_name == "academic-pptx":
             installed_names.append("academic-pptx-skill")
         for installed_name in installed_names:
+            managed_root = Path(os.getenv("METACLASS_SKILL_ROOT", settings.skill_root))
             candidates.extend(
                 [
+                    managed_root / installed_name,
                     Path.cwd() / "skills" / installed_name,
                     Path.home() / ".codex" / "skills" / installed_name,
                     Path.home() / ".agents" / "skills" / installed_name,

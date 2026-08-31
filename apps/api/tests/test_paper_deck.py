@@ -268,15 +268,12 @@ def test_paper_deck_builder_preserves_final_pages_authoring_notes_and_evidence(
     assert plan.source_material_id == "mat_deck"
     assert plan.source_paper_material_id == "mat_paper"
     assert [slide.source_page_no for slide in plan.slides] == [1, 2]
-    assert len(plan.slides[0].speaker_script) >= 120
-    assert plan.slides[0].speaker_script != "Final authoring note one."
+    assert plan.slides[0].speaker_script == "Final authoring note one."
     assert plan.slides[0].authoring_note == "Final authoring note one."
-    assert plan.slides[0].speaker_script_source == "paper_classroom_fallback"
+    assert plan.slides[0].speaker_script_source == "authoring"
     assert plan.slides[0].paper_evidence_packet is not None
     assert plan.slides[0].paper_evidence_packet["evidence_contexts"][0]["block_id"] == ("block_001")
-    assert "under the stated assumptions" in plan.slides[0].speaker_script
     assert "claim_01" in plan.slides[0].paper_claim_ids
-    assert "The method addresses the target problem." in plan.slides[0].speaker_script
     assert plan.slides[1].paper_claim_ids == ["claim_02"]
     assert plan.slides[1].paper_asset_ids == ["fig_01"]
     assert plan.slides[1].paper_source_refs[0]["page_no"] == 2
@@ -377,6 +374,39 @@ def test_narration_validator_allows_numbers_from_neighbor_slide_titles() -> None
     assert PaperNarrationValidator().validate(
         packets=[packet], narrations=[narration]
     ) == []
+
+
+def test_narration_validator_accepts_semantic_transition_without_exact_next_title() -> None:
+    packet = PaperSlideEvidencePacket.model_validate(
+        {
+            "slide_id": "slide_01",
+            "order": 1,
+            "title": "研究背景",
+            "purpose": "建立上下文",
+            "authoring_note": "实验使用 397B 模型作为强求解器。",
+            "next_slide_title": "弱强求解器的实验配置",
+        }
+    )
+    narration = PaperSlideNarration.model_validate(
+        {
+            "slide_id": "slide_01",
+            "opening": "先看研究背景。",
+            "main_explanation": "实验使用 397B 模型作为强求解器，并解释其作用。",
+            "evidence_interpretation": "这一设置来自作者已经确认的逐页讲稿。",
+            "teaching_emphasis": "这里需要区分强模型与目标训练模型。",
+            "transition": "接下来具体看看实验是如何配置的。",
+            "speaker_script": (
+                "先看研究背景。实验使用 397B 模型作为强求解器，并解释其作用。"
+                "这一设置来自作者已经确认的逐页讲稿。这里需要区分强模型与目标训练模型。"
+                "接下来具体看看实验是如何配置的，并说明两类模型在闭环中的不同职责。"
+            ),
+        }
+    )
+
+    issues = PaperNarrationValidator().validate(packets=[packet], narrations=[narration])
+
+    assert "missing_transition" not in {issue.code for issue in issues}
+    assert "unsupported_number" not in {issue.code for issue in issues}
 
 
 def test_llm_paper_narration_is_batched_without_changing_slide_order() -> None:

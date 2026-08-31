@@ -20,6 +20,21 @@ def _pdf_bytes() -> bytes:
     return payload
 
 
+def _vector_figure_pdf_bytes() -> bytes:
+    document = fitz.open()
+    page = document.new_page()
+    page.draw_rect(fitz.Rect(150, 100, 450, 260), color=(0, 0, 0))
+    page.draw_line((170, 230), (420, 130), color=(0, 0, 1), width=3)
+    page.insert_textbox(
+        fitz.Rect(108, 275, 504, 315),
+        "Figure 1: A vector result that is not an embedded bitmap.",
+        fontsize=10,
+    )
+    payload = document.tobytes()
+    document.close()
+    return payload
+
+
 def _material(client: TestClient) -> str:
     response = client.post(
         "/api/v1/materials/process",
@@ -145,3 +160,27 @@ def test_source_bundle_falls_back_to_page_metadata(tmp_path: Path) -> None:
     )
     markdown = (workspace / "source" / bundle.paper_content_path).read_text(encoding="utf-8")
     assert "Embedded fallback figure" in markdown
+
+
+def test_source_bundle_crops_captioned_vector_figures(tmp_path: Path) -> None:
+    app = create_app(tmp_path)
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/v1/materials/process",
+            files={"file": ("vector-paper.pdf", _vector_figure_pdf_bytes(), "application/pdf")},
+        )
+        assert response.status_code == 201
+        material_id = response.json()["material"]["id"]
+
+    workspace = tmp_path / "runtime" / "paper_workflows" / "paper_job_vector"
+    bundle = PaperSourceBundleBuilder(app.state.services.materials).build(
+        material_id=material_id, workspace=workspace
+    )
+
+    vector = next(asset for asset in bundle.assets if asset.id.endswith("_1"))
+    assert vector.caption == "Figure 1: A vector result that is not an embedded bitmap."
+    assert vector.source == "pdf"
+    assert vector.bbox is not None
+    image = fitz.open(workspace / "source" / vector.path)
+    assert image[0].rect.width >= 300
+    assert image[0].rect.height >= 160

@@ -105,6 +105,7 @@ class PaperDeckBuilder:
             packets=packets,
             audience=audience,
             language=language,
+            use_final_speaker_notes=set(notes) == outline_ids,
         )
         packet_by_slide = {packet.slide_id: packet for packet in packets}
         narration_by_slide = {item.slide_id: item for item in narrations}
@@ -243,7 +244,33 @@ class PaperDeckBuilder:
         packets: list[PaperSlideEvidencePacket],
         audience: str,
         language: str,
+        use_final_speaker_notes: bool = False,
     ) -> tuple[list[PaperSlideNarration], str, list[str]]:
+        # The PPTX skill already authors a complete note for every frozen slide.
+        # Treat those notes as the authoritative classroom script so creating a
+        # course is a fast persistence step rather than another blocking LLM job.
+        if (
+            use_final_speaker_notes
+            and packets
+            and all(packet.authoring_note.strip() for packet in packets)
+        ):
+            narrations = [
+                PaperSlideNarration(
+                    slide_id=packet.slide_id,
+                    opening=packet.authoring_note,
+                    main_explanation=packet.authoring_note,
+                    evidence_interpretation=packet.authoring_note,
+                    teaching_emphasis=packet.authoring_note,
+                    transition="",
+                    speaker_script=packet.authoring_note,
+                    used_claim_ids=[claim.id for claim in packet.claims],
+                    used_result_ids=[result.id for result in packet.quantitative_results],
+                    used_source_refs=packet.source_refs,
+                )
+                for packet in packets
+            ]
+            return narrations, "authoring", []
+
         validator = PaperNarrationValidator()
         if self.narration_provider is not None:
             try:

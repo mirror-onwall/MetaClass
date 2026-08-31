@@ -1,16 +1,10 @@
-from datetime import timezone
 from dataclasses import dataclass
+from datetime import UTC
 from typing import Protocol
 
 from sqlalchemy import delete, select
 
 from metaclass.infrastructure.database import Database
-from metaclass.modules.materials.models import (
-    MaterialCollectionRecord,
-    MaterialRecord,
-    PageRecord,
-)
-from metaclass.modules.materials.schemas import Material, MaterialCollection, PageMetadata
 from metaclass.modules.classroom.models import (
     ClassroomPlanGenerationMetaRecord,
     ClassroomPlanJobRecord,
@@ -19,6 +13,12 @@ from metaclass.modules.classroom.models import (
     ClassroomSessionRecord,
 )
 from metaclass.modules.content.models import LearningContentRecord, PageUnderstandingRecord
+from metaclass.modules.materials.models import (
+    MaterialCollectionRecord,
+    MaterialRecord,
+    PageRecord,
+)
+from metaclass.modules.materials.schemas import Material, MaterialCollection, PageMetadata
 from metaclass.modules.presentation.models import (
     PPTArtifactRecord,
     PPTGenerationJobRecord,
@@ -73,6 +73,10 @@ class SqlAlchemyMaterialRepository:
                     file_hash=material.file_hash,
                     status=material.status.value,
                     storage_path=material.storage_path,
+                    source=material.source,
+                    source_role=material.source_role.value,
+                    parent_material_id=material.parent_material_id,
+                    derivation_key=material.derivation_key,
                     page_count=material.page_count,
                     error=material.error,
                     created_at=material.created_at,
@@ -93,15 +97,19 @@ class SqlAlchemyMaterialRepository:
                     "file_hash": record.file_hash,
                     "status": record.status,
                     "storage_path": record.storage_path,
+                    "source": record.source or "upload",
+                    "source_role": record.source_role or "uploaded",
+                    "parent_material_id": record.parent_material_id,
+                    "derivation_key": record.derivation_key,
                     "page_count": record.page_count,
                     "error": record.error,
                     "created_at": (
-                        record.created_at.replace(tzinfo=timezone.utc)
+                        record.created_at.replace(tzinfo=UTC)
                         if record.created_at.tzinfo is None
                         else record.created_at
                     ),
                     "updated_at": (
-                        record.updated_at.replace(tzinfo=timezone.utc)
+                        record.updated_at.replace(tzinfo=UTC)
                         if record.updated_at.tzinfo is None
                         else record.updated_at
                     ),
@@ -374,15 +382,19 @@ class SqlAlchemyMaterialRepository:
                 "file_hash": record.file_hash,
                 "status": record.status,
                 "storage_path": record.storage_path,
+                "source": record.source or "upload",
+                "source_role": record.source_role or "uploaded",
+                "parent_material_id": record.parent_material_id,
+                "derivation_key": record.derivation_key,
                 "page_count": record.page_count,
                 "error": record.error,
                 "created_at": (
-                    record.created_at.replace(tzinfo=timezone.utc)
+                    record.created_at.replace(tzinfo=UTC)
                     if record.created_at.tzinfo is None
                     else record.created_at
                 ),
                 "updated_at": (
-                    record.updated_at.replace(tzinfo=timezone.utc)
+                    record.updated_at.replace(tzinfo=UTC)
                     if record.updated_at.tzinfo is None
                     else record.updated_at
                 ),
@@ -398,12 +410,12 @@ class SqlAlchemyMaterialRepository:
                 "material_ids": record.material_ids,
                 "primary_material_id": record.primary_material_id,
                 "created_at": (
-                    record.created_at.replace(tzinfo=timezone.utc)
+                    record.created_at.replace(tzinfo=UTC)
                     if record.created_at.tzinfo is None
                     else record.created_at
                 ),
                 "updated_at": (
-                    record.updated_at.replace(tzinfo=timezone.utc)
+                    record.updated_at.replace(tzinfo=UTC)
                     if record.updated_at.tzinfo is None
                     else record.updated_at
                 ),

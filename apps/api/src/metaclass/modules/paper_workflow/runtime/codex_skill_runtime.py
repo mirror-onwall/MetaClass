@@ -47,7 +47,7 @@ class CodexSkillInvocation:
     expected_outputs: tuple[str, ...] = field(default_factory=tuple)
     output_schema_path: Path | None = None
     attempt: int = 1
-    timeout_seconds: float = 600
+    timeout_seconds: float = 1200
     network_enabled: bool = False
     cancel_event: Event | None = None
 

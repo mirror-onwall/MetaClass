@@ -18,6 +18,7 @@ import type {
   MaterialProcessingJob,
   StudentAgentType,
   ClassroomQA,
+  QuestionBank,
 } from "../../shared/types";
 
 type LibraryPageProps = {
@@ -109,6 +110,8 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
   const [qaViewer, setQaViewer] = useState<{
     plan: PresentationPlanLibrarySummary;
     items: ClassroomQA[];
+    versions: QuestionBank[];
+    generationId?: string;
     loading: boolean;
     error?: string;
   } | null>(null);
@@ -425,11 +428,18 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
   }
 
   async function viewQuestionBank(plan: PresentationPlanLibrarySummary) {
-    setQaViewer({ plan, items: [], loading: true });
+    setQaViewer({ plan, items: [], versions: [], loading: true });
     try {
-      const bank = await api.getQuestionBank(plan.id);
+      const versions = await api.listQuestionBankVersions(plan.id);
+      const bank = versions[0];
       setQaViewer((current) => current?.plan.id === plan.id
-        ? { ...current, items: bank.items, loading: false }
+        ? {
+            ...current,
+            versions,
+            generationId: bank?.generation_id,
+            items: bank?.items ?? [],
+            loading: false,
+          }
         : current);
     } catch (reason) {
       setQaViewer((current) => current?.plan.id === plan.id
@@ -439,6 +449,64 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
             error: reason instanceof Error ? reason.message : "QA 问答对读取失败",
           }
         : current);
+    }
+  }
+
+  async function regenerateInteractiveClassroom(plan: PresentationPlanLibrarySummary) {
+    const confirmed = window.confirm(
+      "确定生成一个新的互动课堂版本吗？\n\n将新增一套 QA 问答和对应课堂剧本；原问答、原课堂、PPT、知识树和逐页讲稿都会保留。",
+    );
+    if (!confirmed) return;
+    setAssetBusy("正在生成新版问答与互动课堂");
+    setError(null);
+    setQaViewer((current) => current?.plan.id === plan.id
+      ? { ...current, loading: true, error: undefined }
+      : current);
+    try {
+      const bank = await api.regenerateQuestionBank(plan.id);
+      const job = await api.createClassroomPlanJob(plan.content_id, plan.id);
+      await api.waitForClassroomPlanJob(job.id);
+      const [versions, scripts] = await Promise.all([
+        api.listQuestionBankVersions(plan.id),
+        api.listClassroomPlanLibrary(),
+      ]);
+      setClassroomPlans(scripts);
+      setQaViewer({
+        plan,
+        items: bank.items,
+        versions,
+        generationId: bank.generation_id,
+        loading: false,
+      });
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "新版互动课堂生成失败";
+      setError(`${message}；原问答库和原课堂均已保留。`);
+      setQaViewer((current) => current?.plan.id === plan.id
+        ? { ...current, loading: false, error: `${message}；历史版本未被覆盖。` }
+        : current);
+    } finally {
+      setAssetBusy(null);
+    }
+  }
+
+  async function archiveQuestionBankVersion(plan: PresentationPlanLibrarySummary, generationId: string) {
+    if (!window.confirm("从资料库隐藏这一版问答吗？已保存的旧课堂仍可继续播放。")) return;
+    setAssetBusy("正在归档问答版本");
+    try {
+      await api.archiveQuestionBankVersion(plan.id, generationId);
+      const versions = await api.listQuestionBankVersions(plan.id);
+      const next = versions[0];
+      setQaViewer({
+        plan,
+        versions,
+        generationId: next?.generation_id,
+        items: next?.items ?? [],
+        loading: false,
+      });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "问答版本归档失败");
+    } finally {
+      setAssetBusy(null);
     }
   }
 
@@ -645,6 +713,9 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                         <button className="asset-qa-action" disabled={!!assetBusy} onClick={() => viewQuestionBank(plan)}>
                           <span>查看 QA 问答对</span><small>Q / A</small>
                         </button>
+                        <button className="asset-qa-regenerate" disabled={!!assetBusy} onClick={() => regenerateInteractiveClassroom(plan)}>
+                          <span>生成新版互动课堂</span><small>新增 QA + 新课堂 · 保留历史</small>
+                        </button>
                       </div>
                       {scripts.map((script) => <button className="asset-script-action" disabled={!!assetBusy} key={script.id} onClick={() => openClassroomAsset(selected, contentSummary.content_id, plan, script.id)}>
                         <span>▶ 播放已保存剧本</span><small>{script.scene_count} 场景 · {script.action_count} 动作</small>
@@ -731,8 +802,31 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                 <p>{qaViewer.plan.title} · {qaViewer.plan.slide_count} 页演示规划</p>
               </div>
               <div className="library-qa-count"><b>{qaViewer.items.length}</b><span>PAIRS</span></div>
+              <button
+                className="library-qa-regenerate"
+                type="button"
+                disabled={!!assetBusy || qaViewer.loading}
+                onClick={() => regenerateInteractiveClassroom(qaViewer.plan)}
+              >{qaViewer.loading ? "生成中…" : "＋ 新版互动课堂"}</button>
               <button type="button" aria-label="关闭 QA 问答对" onClick={() => setQaViewer(null)}>×</button>
             </header>
+            {qaViewer.versions.length > 0 && (
+              <nav className="library-qa-versions" aria-label="问答库历史版本">
+                {qaViewer.versions.map((version, index) => (
+                  <span className={qaViewer.generationId === version.generation_id ? "active" : ""} key={version.generation_id}>
+                    <button type="button" onClick={() => setQaViewer((current) => current ? {
+                      ...current,
+                      generationId: version.generation_id,
+                      items: version.items,
+                      error: undefined,
+                    } : current)}>
+                      版本 {qaViewer.versions.length - index} · {version.items.length} 对
+                    </button>
+                    <button type="button" aria-label="删除这一版问答" disabled={!!assetBusy} onClick={() => archiveQuestionBankVersion(qaViewer.plan, version.generation_id)}>×</button>
+                  </span>
+                ))}
+              </nav>
+            )}
             <div className="library-qa-body">
               {qaViewer.loading ? (
                 <div className="library-qa-empty loading"><i />正在调取课堂问答档案…</div>

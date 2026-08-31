@@ -25,6 +25,7 @@ from metaclass.modules.materials.schemas import (
     MaterialCollection,
     MaterialProcessingJob,
     MaterialProcessingJobStatus,
+    MaterialSourceRole,
     MaterialStatus,
     MaterialType,
     PageImage,
@@ -128,7 +129,7 @@ class MaterialService:
             raise ValueError("generated material derivation_key must not be empty")
         file_hash = self._sha256(source)
         identity = hashlib.sha256(
-            f"generated-pptx\0{derivation_key}\0{file_hash}".encode("utf-8")
+            f"generated-pptx\0{derivation_key}\0{file_hash}".encode()
         ).hexdigest()
         material_id = f"mat_{identity[:24]}"
         destination = self.data_dir / "raw" / material_id / "source.pptx"
@@ -159,6 +160,127 @@ class MaterialService:
             )
             self.repository.save_material(material)
             return material
+
+    @staticmethod
+    def paper_deck_derivation_key(
+        *,
+        paper_pdf_hash: str,
+        paper_deck_skill_version: str,
+        resolved_request_hash: str,
+        generation_output_hash: str,
+    ) -> str:
+        parts = (
+            paper_pdf_hash,
+            paper_deck_skill_version,
+            resolved_request_hash,
+            generation_output_hash,
+        )
+        if any(not part.strip() for part in parts):
+            raise ValueError("paper-deck derivation components must not be empty")
+        return hashlib.sha256("\0".join(parts).encode("utf-8")).hexdigest()
+
+    def register_paper_deck_pdf(
+        self,
+        source: Path,
+        *,
+        filename: str,
+        derivation_key: str,
+        parent_material_id: str,
+    ) -> Material:
+        """Idempotently register the authoritative paper-deck PDF."""
+        if not source.is_file() or source.suffix.lower() != ".pdf":
+            raise ValueError("paper-deck material must be an existing PDF")
+        if not derivation_key.strip():
+            raise ValueError("paper-deck derivation_key must not be empty")
+        parent = self.get(parent_material_id)
+        if parent.file_type != MaterialType.PDF:
+            raise ValueError("paper-deck parent material must be the source paper PDF")
+        file_hash = self._sha256(source)
+        identity = hashlib.sha256(
+            f"paper-deck-pdf\0{derivation_key}\0{file_hash}".encode()
+        ).hexdigest()
+        material_id = f"mat_{identity[:24]}"
+        destination = self.data_dir / "raw" / material_id / "source.pdf"
+        with self._job_lock:
+            existing = self.repository.get_material(material_id)
+            if existing is not None:
+                if (
+                    existing.file_type != MaterialType.PDF
+                    or existing.file_hash != file_hash
+                    or existing.parent_material_id != parent_material_id
+                    or existing.source_role != MaterialSourceRole.PRESENTATION_DECK
+                ):
+                    raise ValueError("paper-deck material identity collision")
+                if Path(existing.storage_path).is_file():
+                    return existing
+
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            temporary = destination.with_name(f".{destination.name}.{uuid4().hex}.tmp")
+            try:
+                shutil.copyfile(source, temporary)
+                if self._sha256(temporary) != file_hash:
+                    raise OSError("paper-deck PDF changed while it was being registered")
+                os.replace(temporary, destination)
+            finally:
+                temporary.unlink(missing_ok=True)
+
+            if parent.source_role != MaterialSourceRole.PAPER_SOURCE:
+                parent = parent.model_copy(
+                    update={"source_role": MaterialSourceRole.PAPER_SOURCE, "updated_at": utc_now()}
+                )
+                self.repository.save_material(parent)
+            material = Material(
+                id=material_id,
+                filename=safe_filename(filename),
+                file_type=MaterialType.PDF,
+                file_hash=file_hash,
+                storage_path=str(destination),
+                source="paper_deck",
+                source_role=MaterialSourceRole.PRESENTATION_DECK,
+                parent_material_id=parent_material_id,
+                derivation_key=derivation_key,
+            )
+            self.repository.save_material(material)
+            return material
+
+    def install_page_images(self, material_id: str, image_paths: list[Path]) -> Material:
+        """Persist validated source raster pages as the material's preview pages."""
+        material = self.get(material_id)
+        if material.file_type != MaterialType.PDF or not image_paths:
+            raise ValueError("PDF material requires at least one page image")
+        page_dir = self.data_dir / "processed" / material_id / "pages"
+        temporary_dir = page_dir.with_name(f".{page_dir.name}.{uuid4().hex}.tmp")
+        temporary_dir.mkdir(parents=True, exist_ok=False)
+        pages: list[PageMetadata] = []
+        try:
+            for number, source in enumerate(image_paths, start=1):
+                if not source.is_file():
+                    raise ValueError(f"page image does not exist: {source}")
+                suffix = source.suffix.lower()
+                if suffix not in {".png", ".jpg", ".jpeg", ".webp"}:
+                    raise ValueError(f"unsupported page image: {source.name}")
+                destination = temporary_dir / f"page_{number:03d}{suffix}"
+                shutil.copyfile(source, destination)
+                with Image.open(destination) as image:
+                    image.verify()
+            if page_dir.exists():
+                shutil.rmtree(page_dir)
+            os.replace(temporary_dir, page_dir)
+            for number, image_path in enumerate(sorted(page_dir.iterdir()), start=1):
+                pages.append(self._metadata(material_id, number, "", image_path))
+            self._save_pages(material_id, pages)
+            material = material.model_copy(
+                update={
+                    "status": MaterialStatus.PARSED,
+                    "page_count": len(pages),
+                    "error": None,
+                    "updated_at": utc_now(),
+                }
+            )
+            self.repository.save_material(material)
+            return material
+        finally:
+            shutil.rmtree(temporary_dir, ignore_errors=True)
 
     def get(self, material_id: str) -> Material:
         material = self.repository.get_material(material_id)

@@ -12,6 +12,7 @@ from metaclass.modules.paper_workflow.schemas import (
     PaperWorkflowJob,
     PaperWorkflowRequest,
     PaperWorkflowStatus,
+    PaperWorkflowStrategy,
     PresentationOutline,
     StageExecutionReport,
     StageStatus,
@@ -36,6 +37,16 @@ def test_composed_request_can_use_default_presentation_profile() -> None:
     request = PaperWorkflowRequest(material_id="mat_shapefile_gpt", strategy="composed_skills")
     assert request.duration_minutes is None
     assert request.language == "zh-CN"
+    assert request.interaction_intensity == "standard"
+
+
+def test_native_paper_deck_strategy_is_a_stable_api_value() -> None:
+    request = PaperWorkflowRequest(
+        material_id="mat_native_paper",
+        strategy="native_paper_deck",
+    )
+
+    assert request.strategy == PaperWorkflowStrategy.NATIVE_PAPER_DECK
 
 
 def test_nature_request_allows_deferred_presentation_context() -> None:

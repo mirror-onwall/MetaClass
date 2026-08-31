@@ -1,0 +1,37 @@
+flowchart TD
+  SRC["论文证据层<br/>paper.pdf + paper_source.json"]
+  PA["论文理解层<br/>paper analysis"]
+  PD["原生 paper-deck<br/>analysis + deck brief + outline + prompts"]
+  PPT["最终页面事实<br/>images + PPTX + PDF"]
+
+  SRC --> ANALYZE["Evidence and Claim Index"]
+  PA --> ANALYZE
+  PD --> MAP["PaperDeck Artifact Adapter"]
+  PPT --> MAP
+  MAP --> RECON["Reconciled Slide Manifest"]
+  ANALYZE --> LINK["Slide Evidence Linker"]
+  RECON --> LINK
+  LINK --> PACK["Grounded Slide Packets"]
+
+  PA --> TREE["Paper Knowledge Tree Builder"]
+  RECON --> TREE
+  PACK --> TREE
+
+  TREE --> SCRIPT["Paper Narration Composer"]
+  PACK --> SCRIPT
+  RECON --> SCRIPT
+
+  TREE --> QA["Interaction Planning Context"]
+  PACK --> QA
+  SCRIPT -. "delivery context only" .-> QA
+
+  QA --> BLUE["Teaching Node Selector and Blueprints"]
+  BLUE --> BANK["Validated Scripted QA Bank"]
+  TREE --> RAG["Live Question Evidence Index"]
+  PACK --> RAG
+
+  PPT --> CLASS["Existing Classroom Runtime"]
+  SCRIPT --> CLASS
+  BANK --> CLASS
+  RAG --> CLASS
+

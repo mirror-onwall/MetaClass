@@ -28,6 +28,7 @@ class QuestionBankGenerator:
 
     STUDENT_SLIDES_PER_BATCH = 8
     STUDENT_CONTEXT_WINDOW = 3
+    NODE_BATCH_SIZE = 6
 
     def __init__(
         self,
@@ -49,6 +50,7 @@ class QuestionBankGenerator:
         plan: PresentationPlan,
         *,
         completed_slide_ids: set[str] | None = None,
+        target_slide_ids: set[str] | None = None,
     ):
         """Yield complete QA records in durable slide batches.
 
@@ -58,10 +60,254 @@ class QuestionBankGenerator:
         """
         profiles = get_default_student_agent_profiles()
         completed = completed_slide_ids or set()
-        pending = [slide for slide in plan.slides if slide.id not in completed]
+        pending = [
+            slide
+            for slide in plan.slides
+            if slide.id not in completed
+            and (target_slide_ids is None or slide.id in target_slide_ids)
+        ]
         for start in range(0, len(pending), self.STUDENT_SLIDES_PER_BATCH):
             slides = pending[start : start + self.STUDENT_SLIDES_PER_BATCH]
             yield self._generate_slide_batch(content, plan, profiles, slides)
+
+    def generate_node_batches(
+        self,
+        content: LearningContent,
+        plan: PresentationPlan,
+        *,
+        target_slide_ids: set[str],
+        completed_slide_ids: set[str] | None = None,
+    ):
+        """Generate exactly one primary classroom QA for each selected node."""
+        completed = completed_slide_ids or set()
+        selected = [
+            slide
+            for slide in plan.slides
+            if slide.id in target_slide_ids and slide.id not in completed
+        ]
+        for start in range(0, len(selected), self.NODE_BATCH_SIZE):
+            slides = selected[start : start + self.NODE_BATCH_SIZE]
+            yield self._generate_node_batch(content, plan, slides)
+
+    def _generate_node_batch(
+        self,
+        content: LearningContent,
+        plan: PresentationPlan,
+        slides: list[SlidePlan],
+    ) -> list[ClassroomQA]:
+        fallback = {slide.id: self._fallback_node_qa(content, plan, slide) for slide in slides}
+        if not self.llm:
+            return list(fallback.values())
+        try:
+            raw = self.llm.complete_json(
+                self._node_batch_messages(content, plan, slides), temperature=0.3
+            )
+            payload = json.loads(raw)
+            questions = payload.get("questions") if isinstance(payload, dict) else None
+            if not isinstance(questions, list):
+                raise TypeError("questions must be a list")
+            profiles = {
+                profile.type.value: profile
+                for profile in get_default_student_agent_profiles()
+            }
+            slide_by_id = {slide.id: slide for slide in slides}
+            generated: dict[str, ClassroomQA] = {}
+            sections = {section.id: section for section in content.sections}
+            for item in questions:
+                if not isinstance(item, dict):
+                    continue
+                slide_id = str(item.get("slide_id") or "")
+                slide = slide_by_id.get(slide_id)
+                profile = profiles.get(str(item.get("agent_type") or ""))
+                if not slide or not profile or slide_id in generated:
+                    continue
+                required = {
+                    key: str(item.get(key) or "").strip()
+                    for key in (
+                        "knowledge_point",
+                        "canonical_question",
+                        "student_question",
+                        "canonical_answer",
+                        "teacher_answer",
+                    )
+                }
+                if not all(required.values()):
+                    continue
+                compatible_types = []
+                for value in item.get("compatible_agent_types") or []:
+                    compatible = profiles.get(str(value))
+                    if (
+                        compatible
+                        and compatible.type != profile.type
+                        and compatible.type not in compatible_types
+                    ):
+                        compatible_types.append(compatible.type)
+                generated[slide_id] = ClassroomQA(
+                    id=f"qa_{uuid4().hex[:12]}",
+                    presentation_plan_id=plan.id,
+                    content_id=content.id,
+                    slide_id=slide.id,
+                    slide_order=slide.order,
+                    agent_type=profile.type,
+                    compatible_agent_types=compatible_types[:3],
+                    student_profile_id=profile.id,
+                    **required,
+                    moment="after_explanation",
+                    placement_reason=(
+                        str(item.get("placement_reason") or "").strip()
+                        or f"在第 {slide.order} 页讲解后提出该节点的主问题。"
+                    ),
+                    source_refs=self._source_refs_for_slide(slide, sections),
+                )
+            return [generated.get(slide.id, fallback[slide.id]) for slide in slides]
+        except (RuntimeError, TimeoutError, TypeError, ValueError, json.JSONDecodeError):
+            return list(fallback.values())
+
+    @staticmethod
+    def _node_batch_messages(
+        content: LearningContent,
+        plan: PresentationPlan,
+        slides: list[SlidePlan],
+    ) -> list[LLMMessage]:
+        profiles = get_default_student_agent_profiles()
+        system = """INTERACTION_NODE_QUESTION_GENERATOR_V1
+你是课堂备课问答生成器。输入页面已经由全局规划器选为最终互动节点，不要重新选页。
+
+对每个节点必须且只能生成一道中性的主要问题，并同时完成首选学生类型、1-3 个兼容学生类型、自然学生问法、标准答案和教师课堂回答。
+问题应针对该页最有教学价值的概念、证据、机制、对比、条件、局限、图表、公式、步骤、实验或案例。
+避免复述页面已经直接说清楚的句子。只能使用截至当前页已经出现的内容，不得提前使用未来页面知识。
+canonical_answer 应准确完整；teacher_answer 应自然、简洁、直接回应学生疑问。
+不得虚构数据、实验结果、论文结论或来源。每个 slide_id 只能出现一次，不能遗漏或增加页面。
+
+只输出 JSON：
+{"questions":[{"slide_id":"节点ID","agent_type":"首选学生类型","compatible_agent_types":["兼容学生类型"],"knowledge_point":"知识点","canonical_question":"中性标准问题","student_question":"自然学生问法","canonical_answer":"标准答案","teacher_answer":"教师课堂回答","placement_reason":"为什么适合在本页讲解后互动"}]}
+"""
+        user = {
+            "lesson_title": plan.title,
+            "student_profiles": [
+                {
+                    "agent_type": profile.type.value,
+                    "role": profile.core_role,
+                    "learning_goal": profile.learning_goal,
+                    "response_style": profile.response_style,
+                }
+                for profile in profiles
+            ],
+            "nodes": [
+                {
+                    "slide_id": slide.id,
+                    "order": slide.order,
+                    "title": slide.title,
+                    "key_points": slide.key_points,
+                    "visual_content": slide.visual_payload,
+                    "speaker_script": slide.speaker_script,
+                    "source_sections": [
+                        {
+                            "title": section.title,
+                            "summary": section.summary,
+                            "knowledge_points": section.knowledge_points,
+                            "source_excerpts": [
+                                excerpt.model_dump(mode="json")
+                                for excerpt in section.source_excerpts
+                            ],
+                        }
+                        for section in content.sections
+                        if section.id in slide.source_section_ids
+                    ],
+                }
+                for slide in slides
+            ],
+        }
+        return [
+            LLMMessage(role="system", content=system),
+            LLMMessage(role="user", content=json.dumps(user, ensure_ascii=False)),
+        ]
+
+    def _fallback_node_qa(
+        self,
+        content: LearningContent,
+        plan: PresentationPlan,
+        slide: SlidePlan,
+    ) -> ClassroomQA:
+        text = self._normalize_for_match(
+            " ".join([slide.title, *slide.key_points, slide.speaker_script])
+        )
+        if any(term in text for term in ("机制", "条件", "局限", "证据", "mechanism")):
+            agent_type = StudentAgentType.DEEP_THINKER
+        elif any(term in text for term in ("案例", "应用", "实践", "case", "application")):
+            agent_type = StudentAgentType.PRACTICAL_APPLIER
+        elif any(term in text for term in ("对比", "区别", "概念", "compare")):
+            agent_type = StudentAgentType.CONCEPT_CONFUSED
+        else:
+            agent_type = StudentAgentType.FOUNDATION_WEAK
+        profiles = {profile.type: profile for profile in get_default_student_agent_profiles()}
+        profile = profiles[agent_type]
+        candidate = self._fallback_candidate(slide, profile)
+        answer = self._fallback_answer(plan, candidate)
+        sections = {section.id: section for section in content.sections}
+        return ClassroomQA(
+            id=f"qa_{uuid4().hex[:12]}",
+            presentation_plan_id=plan.id,
+            content_id=content.id,
+            slide_id=slide.id,
+            slide_order=slide.order,
+            agent_type=profile.type,
+            compatible_agent_types=self._fallback_compatible_types(profile.type),
+            student_profile_id=profile.id,
+            knowledge_point=candidate.knowledge_point,
+            canonical_question=candidate.canonical_question,
+            student_question=candidate.student_question,
+            canonical_answer=answer.canonical_answer,
+            teacher_answer=answer.teacher_answer,
+            moment="after_explanation",
+            placement_reason=f"在第 {slide.order} 页讲解后提出该节点的主问题。",
+            source_refs=self._source_refs_for_slide(slide, sections),
+        )
+
+    @classmethod
+    def _source_refs_for_slide(cls, slide: SlidePlan, sections) -> list:
+        source_refs = []
+        for section_id in slide.source_section_ids:
+            if section_id in sections:
+                source_refs.extend(sections[section_id].source_refs)
+        return cls._unique_source_refs(source_refs)
+
+    @staticmethod
+    def _normalize_for_match(text: str) -> str:
+        return " ".join(text.lower().split())
+
+    @staticmethod
+    def _fallback_compatible_types(agent_type: StudentAgentType) -> list[StudentAgentType]:
+        similarities = {
+            StudentAgentType.DEEP_THINKER: [
+                StudentAgentType.RESEARCHER,
+                StudentAgentType.CONCEPT_CONFUSED,
+            ],
+            StudentAgentType.RESEARCHER: [
+                StudentAgentType.DEEP_THINKER,
+                StudentAgentType.PRACTICAL_APPLIER,
+            ],
+            StudentAgentType.FOUNDATION_WEAK: [
+                StudentAgentType.CONCEPT_CONFUSED,
+                StudentAgentType.SILENT_OBSERVER,
+            ],
+            StudentAgentType.CONCEPT_CONFUSED: [
+                StudentAgentType.FOUNDATION_WEAK,
+                StudentAgentType.DEEP_THINKER,
+            ],
+            StudentAgentType.PRACTICAL_APPLIER: [
+                StudentAgentType.RESEARCHER,
+                StudentAgentType.ATMOSPHERE_REGULATOR,
+            ],
+            StudentAgentType.NOTE_TAKER: [
+                StudentAgentType.SILENT_OBSERVER,
+                StudentAgentType.FOUNDATION_WEAK,
+            ],
+        }
+        return similarities.get(
+            agent_type,
+            [StudentAgentType.RESEARCHER, StudentAgentType.NOTE_TAKER],
+        )
 
     def _generate_slide_batch(
         self,

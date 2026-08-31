@@ -64,7 +64,14 @@ class Database:
         if self.engine.dialect.name != "sqlite":
             return
         additions = {
-            "materials": {"file_hash": "VARCHAR(64)", "updated_at": "DATETIME"},
+            "materials": {
+                "file_hash": "VARCHAR(64)",
+                "updated_at": "DATETIME",
+                "source": "VARCHAR(50) DEFAULT 'upload'",
+                "source_role": "VARCHAR(50) DEFAULT 'uploaded'",
+                "parent_material_id": "VARCHAR(64)",
+                "derivation_key": "VARCHAR(64)",
+            },
             "page_metadata": {"embedded_images": "JSON"},
             "learning_contents": {
                 "material_ids": "JSON",
@@ -120,8 +127,16 @@ class Database:
                 "generation_provider": "VARCHAR(100)",
                 "generation_model": "VARCHAR(200)",
                 "fallback_reason": "TEXT",
+                "interaction_intensity": "VARCHAR(20)",
+                "interaction_node_ids": "JSON",
+                "interaction_planning_status": "VARCHAR(30)",
             },
-            "classroom_qa_items": {"embedding": "JSON"},
+            "classroom_qa_items": {
+                "embedding": "JSON",
+                "compatible_agent_types": "JSON",
+                "generation_id": "VARCHAR(64) DEFAULT 'legacy'",
+                "archived": "BOOLEAN DEFAULT 0",
+            },
         }
         unique_indexes = {
             "page_metadata": (

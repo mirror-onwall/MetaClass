@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Protocol
 
 from sqlalchemy import delete, select
@@ -23,7 +23,7 @@ from metaclass.modules.presentation.schemas import (
 
 
 def ensure_utc(value: datetime) -> datetime:
-    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value
 
 
 class PresentationRepository(Protocol):
@@ -77,6 +77,9 @@ class SqlAlchemyPresentationRepository:
                     generation_provider=plan.generation_provider,
                     generation_model=plan.generation_model,
                     fallback_reason=plan.fallback_reason,
+                    interaction_intensity=plan.interaction_intensity,
+                    interaction_node_ids=plan.interaction_node_ids,
+                    interaction_planning_status=plan.interaction_planning_status,
                     created_at=plan.created_at,
                     updated_at=plan.updated_at,
                 )
@@ -283,6 +286,11 @@ class SqlAlchemyPresentationRepository:
             generation_provider=record.generation_provider,
             generation_model=record.generation_model,
             fallback_reason=record.fallback_reason,
+            interaction_intensity=record.interaction_intensity,
+            interaction_node_ids=record.interaction_node_ids or [],
+            interaction_planning_status=(
+                record.interaction_planning_status or "not_started"
+            ),
             created_at=ensure_utc(record.created_at),
             updated_at=ensure_utc(record.updated_at),
         )

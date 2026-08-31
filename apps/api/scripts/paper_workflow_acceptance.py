@@ -19,7 +19,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import UploadFile
+from fastapi import HTTPException, UploadFile
 from pptx import Presentation
 
 from metaclass.core.application import build_services
@@ -36,7 +36,7 @@ EXPECTED_SKILLS = {
     "paper-analyze",
     "extract-paper-images",
     "academic-pptx",
-    "academic-pptx-generate",
+    "pptx",
 }
 
 
@@ -277,7 +277,7 @@ def run_sample(
                 content_id=existing_plan.content_id,
                 presentation_plan_id=existing_plan.id,
             )
-        except Exception:
+        except (HTTPException, LookupError):
             course = services.paper_workflows.create_paper_deck_course(job.id)
         plan = services.presentations.get_plan(course.presentation_plan_id)
         content = services.contents.get(course.content_id)
@@ -301,7 +301,7 @@ def run_sample(
         bundle = services.paper_workflows.result(job.id)
         root = args.data_dir / bundle.root_path
         result["rendering"] = render_pptx(root / "presentation.pptx", sample_dir)
-    except Exception as exc:  # acceptance report must survive one bad sample
+    except Exception as exc:  # noqa: BLE001 - report must survive one bad sample
         result["fatal_error"] = f"{type(exc).__name__}: {exc}"
     finally:
         result["duration_seconds"] = round(time.monotonic() - started, 2)

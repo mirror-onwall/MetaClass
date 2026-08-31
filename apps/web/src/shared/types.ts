@@ -216,6 +216,7 @@ export type ContentGenerationJob = {
 };
 
 export type LearningMode = "lecture" | "interactive";
+export type InteractionIntensity = "none" | "light" | "standard" | "rich";
 
 export type StudentAgentType =
   | "classroom_atmosphere_regulator"
@@ -468,8 +469,8 @@ export type PaperWorkflowStatus =
 export type PaperWorkflowJob = {
   id: string;
   source_material_id: string;
-  strategy_requested: "auto" | "composed_skills" | "nature_paper2ppt";
-  strategy_selected?: "auto" | "composed_skills" | "nature_paper2ppt";
+  strategy_requested: "auto" | "composed_skills" | "native_paper_deck" | "nature_paper2ppt";
+  strategy_selected?: "auto" | "composed_skills" | "native_paper_deck" | "nature_paper2ppt";
   status: PaperWorkflowStatus;
   stage: string;
   progress: number;
@@ -556,12 +557,15 @@ export type ClassroomQA = {
   placement_reason: string;
   source_refs: SourceRef[];
   status: "approved" | "rejected";
+  generation_id: string;
+  archived: boolean;
   created_at: string;
 };
 
 export type QuestionBank = {
   presentation_plan_id: string;
   content_id: string;
+  generation_id: string;
   items: ClassroomQA[];
 };
 
@@ -569,6 +573,7 @@ export type PresentationPlanJob = {
   id: string;
   content_id: string;
   prepare_question_bank: boolean;
+  interaction_intensity: InteractionIntensity;
   mode?: "generated" | "source_deck";
   source_material_id?: string;
   status: "queued" | "running" | "paused" | "succeeded" | "failed";
@@ -576,6 +581,20 @@ export type PresentationPlanJob = {
   step: string;
   message: string;
   plan_id?: string;
+  error?: string;
+};
+
+export type InteractionPlanningJob = {
+  id: string;
+  presentation_plan_id: string;
+  content_id: string;
+  intensity: InteractionIntensity;
+  status: "queued" | "running" | "paused" | "succeeded" | "failed";
+  progress: number;
+  step: string;
+  message: string;
+  selected_node_count: number;
+  completed_node_count: number;
   error?: string;
 };
 

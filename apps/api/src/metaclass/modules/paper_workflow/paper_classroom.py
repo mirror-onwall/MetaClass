@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 
@@ -21,9 +23,12 @@ from metaclass.modules.paper_workflow.schemas import (
     PresentationOutline,
     QuantitativeResult,
     SlideEvidence,
+    SourceAsset,
+    SourceBlock,
     SourceReference,
 )
 
+from .grounded_slide_packet import GroundedSlidePacket
 from .paper_evidence import PaperEvidenceContext, PaperEvidenceRetriever
 
 
@@ -65,6 +70,153 @@ class PaperSlideNarration(SchemaModel):
 
 class PaperNarrationBatch(SchemaModel):
     slides: list[PaperSlideNarration] = Field(min_length=1)
+
+
+class GroundedPaperNarrationPacket(SchemaModel):
+    slide: GroundedSlidePacket
+    knowledge_units: list[KnowledgeUnit] = Field(default_factory=list)
+    claims: list[PaperClaim] = Field(default_factory=list)
+    quantitative_results: list[QuantitativeResult] = Field(default_factory=list)
+    source_blocks: list[SourceBlock] = Field(default_factory=list)
+    source_assets: list[SourceAsset] = Field(default_factory=list)
+    paper_deck_analysis: str = ""
+    outline_message: str
+    previous_message: str | None = None
+    next_message: str | None = None
+    verified_numbers: list[str] = Field(default_factory=list)
+    unverified_numbers: list[str] = Field(default_factory=list)
+
+
+class SlideNarration(SchemaModel):
+    slide_id: str = Field(min_length=1)
+    speaker_script: str = Field(min_length=1)
+    transition: str = ""
+    used_claim_ids: list[str] = Field(default_factory=list)
+    used_source_refs: list[SourceReference] = Field(default_factory=list)
+    used_asset_ids: list[str] = Field(default_factory=list)
+    validation_status: Literal["pending", "validated", "invalid"] = "pending"
+
+
+class GroundedNarrationBatch(SchemaModel):
+    slides: list[SlideNarration] = Field(min_length=1)
+
+
+class GroundedNarrationPacketBuilder:
+    """Resolve GroundedSlidePacket IDs into authoritative narration inputs."""
+
+    _number = re.compile(
+        r"(?<![\w.])-?\d+(?:[.,]\d+)*(?:\s*(?:%|×|x|k|K|M|B))?"
+    )
+
+    def build(
+        self,
+        *,
+        packets: list[GroundedSlidePacket],
+        knowledge_units: list[KnowledgeUnit],
+        analysis: PaperAnalysis,
+        source_bundle: PaperSourceBundle,
+        paper_deck_analysis: str,
+    ) -> list[GroundedPaperNarrationPacket]:
+        claims = {item.id: item for item in analysis.claims}
+        results = {item.id: item for item in analysis.quantitative_results}
+        units = {item.id: item for item in knowledge_units}
+        blocks = {item.id: item for item in source_bundle.blocks}
+        assets = {item.id: item for item in source_bundle.assets}
+        output: list[GroundedPaperNarrationPacket] = []
+        for index, packet in enumerate(packets):
+            unknown_units = set(packet.knowledge_unit_ids) - units.keys()
+            if unknown_units:
+                raise ValueError(f"narration packet references unknown knowledge units: {unknown_units}")
+            resolved_unit_ids = list(
+                dict.fromkeys(
+                    [
+                        *packet.knowledge_unit_ids,
+                        *(
+                            unit.id
+                            for unit in knowledge_units
+                            if packet.slide_id in unit.source_unit_ids
+                            or any(
+                                ref.material_id != source_bundle.material_id
+                                and ref.page_no == packet.order
+                                for ref in unit.page_refs
+                            )
+                        ),
+                    ]
+                )
+            )
+            selected_blocks = []
+            for ref in packet.source_refs:
+                if ref.block_id and ref.block_id in blocks:
+                    selected_blocks.append(blocks[ref.block_id])
+                else:
+                    selected_blocks.extend(
+                        item for item in source_bundle.blocks if item.page_no == ref.page_no
+                    )
+            asset_ids = list(
+                dict.fromkeys(
+                    [*packet.asset_ids, *(ref.asset_id for ref in packet.source_refs if ref.asset_id)]
+                )
+            )
+            selected_claims = [claims[item] for item in packet.claim_ids]
+            selected_results = [results[item] for item in packet.result_ids]
+            selected_blocks = self._dedupe_by_id(selected_blocks)
+            selected_assets = [assets[item] for item in asset_ids if item in assets]
+            authoritative_number_text = " ".join(
+                [
+                    *(item.statement for item in selected_claims),
+                    *(item.statement for item in selected_results),
+                    *(
+                        str(item.value)
+                        for item in selected_results
+                        if item.value is not None
+                    ),
+                    *(item.text for item in selected_blocks),
+                    *(item.caption or "" for item in selected_assets),
+                ]
+            )
+            verified_numbers = list(
+                dict.fromkeys(
+                    [
+                        *(
+                            item.mention
+                            for item in packet.numeric_verifications
+                            if item.status in {"verified", "figure_verified"}
+                        ),
+                        *self._number.findall(authoritative_number_text),
+                    ]
+                )
+            )
+            output.append(
+                GroundedPaperNarrationPacket(
+                    slide=packet,
+                    knowledge_units=[units[item] for item in resolved_unit_ids],
+                    claims=selected_claims,
+                    quantitative_results=selected_results,
+                    source_blocks=selected_blocks,
+                    source_assets=selected_assets,
+                    paper_deck_analysis=paper_deck_analysis[:12000],
+                    outline_message=packet.authoring_intent.message,
+                    previous_message=(
+                        packets[index - 1].authoring_intent.message if index else None
+                    ),
+                    next_message=(
+                        packets[index + 1].authoring_intent.message
+                        if index + 1 < len(packets)
+                        else None
+                    ),
+                    verified_numbers=verified_numbers,
+                    unverified_numbers=[
+                        item.mention
+                        for item in packet.numeric_verifications
+                        if item.status == "unverified"
+                    ],
+                )
+            )
+        return output
+
+    @staticmethod
+    def _dedupe_by_id(items):
+        return list({item.id: item for item in items}.values())
 
 
 @dataclass(frozen=True)
@@ -380,6 +532,7 @@ class LLMPaperClassroomComposer:
         self.provider = provider
         self.batch_size = batch_size
         self.prompt_path = Path(__file__).with_name("paper_narration_prompt.md")
+        self.grounded_prompt_path = Path(__file__).with_name("grounded_paper_narration_prompt.md")
 
     def compose(
         self,
@@ -414,6 +567,143 @@ class LLMPaperClassroomComposer:
                 raise ValueError("paper narration batch changed slide ids or order")
             narrations.extend(generated)
         return narrations
+
+    def compose_grounded(
+        self,
+        packets: list[GroundedPaperNarrationPacket],
+        *,
+        audience: str,
+        language: str,
+        check_cancelled: Callable[[], None] | None = None,
+    ) -> list[SlideNarration]:
+        prompt = self.grounded_prompt_path.read_text(encoding="utf-8")
+        narrations: list[SlideNarration] = []
+        for start in range(0, len(packets), self.batch_size):
+            if check_cancelled:
+                check_cancelled()
+            batch = packets[start : start + self.batch_size]
+            payload = {
+                "audience": audience,
+                "language": language,
+                "slides": [packet.model_dump(mode="json") for packet in batch],
+                "output_schema": GroundedNarrationBatch.model_json_schema(),
+            }
+            raw = self.provider.complete_json(
+                [
+                    LLMMessage(role="system", content=prompt),
+                    LLMMessage(role="user", content=json.dumps(payload, ensure_ascii=False)),
+                ],
+                temperature=0.3,
+            )
+            try:
+                validated = self._parse_and_validate_grounded_batch(batch, raw)
+            except ValueError as exc:
+                repair_payload = {
+                    "validation_error": str(exc),
+                    "invalid_response": raw,
+                    "slides": [packet.model_dump(mode="json") for packet in batch],
+                    "output_schema": GroundedNarrationBatch.model_json_schema(),
+                }
+                repaired = self.provider.complete_json(
+                    [
+                        LLMMessage(
+                            role="system",
+                            content=(
+                                "REPAIR_GROUNDED_PAPER_CLASSROOM_NARRATION_V1\n"
+                                "Repair the narration JSON using only the supplied slide packets. "
+                                "Preserve slide IDs and order. Remove unsupported numbers and claims; "
+                                "copy used_source_refs and used_asset_ids exactly from each packet; "
+                                "ensure each non-final slide has a transition. Return JSON only."
+                            ),
+                        ),
+                        LLMMessage(
+                            role="user",
+                            content=json.dumps(repair_payload, ensure_ascii=False),
+                        ),
+                    ],
+                    temperature=0.2,
+                )
+                validated = self._parse_and_validate_grounded_batch(batch, repaired)
+            narrations.extend(validated)
+        return narrations
+
+    @classmethod
+    def _parse_and_validate_grounded_batch(
+        cls,
+        batch: list[GroundedPaperNarrationPacket],
+        raw: str,
+    ) -> list[SlideNarration]:
+        generated = GroundedNarrationBatch.model_validate_json(raw).slides
+        expected_ids = [packet.slide.slide_id for packet in batch]
+        if [item.slide_id for item in generated] != expected_ids:
+            raise ValueError("grounded narration batch changed slide ids or order")
+        return [
+            cls._validate_grounded_narration(packet, narration)
+            for packet, narration in zip(batch, generated, strict=True)
+        ]
+
+    @classmethod
+    def _validate_grounded_narration(
+        cls,
+        packet: GroundedPaperNarrationPacket,
+        narration: SlideNarration,
+    ) -> SlideNarration:
+        if narration.validation_status == "invalid":
+            raise ValueError(f"grounded narration was marked invalid: {narration.slide_id}")
+        if len(narration.speaker_script.strip()) < 80:
+            raise ValueError(f"grounded narration is too short: {narration.slide_id}")
+        if packet.next_message and not narration.transition.strip():
+            raise ValueError(f"grounded narration lacks a transition: {narration.slide_id}")
+        allowed_claims = {item.id for item in packet.claims}
+        if not set(narration.used_claim_ids).issubset(allowed_claims):
+            raise ValueError(f"grounded narration used an unauthorized claim: {narration.slide_id}")
+        allowed_assets = {item.id for item in packet.source_assets}
+        if not set(narration.used_asset_ids).issubset(allowed_assets):
+            raise ValueError(f"grounded narration used an unauthorized asset: {narration.slide_id}")
+        allowed_refs = {
+            (item.page_no, item.block_id, item.asset_id): item
+            for item in packet.slide.source_refs
+        }
+        used_ref_keys = {
+            (item.page_no, item.block_id, item.asset_id)
+            for item in narration.used_source_refs
+        }
+        if not used_ref_keys.issubset(allowed_refs):
+            raise ValueError(f"grounded narration used an unauthorized source ref: {narration.slide_id}")
+        script_numbers = cls._grounded_numbers(narration.speaker_script)
+        verified_numbers = {
+            cls._normalize_grounded_number(item) for item in packet.verified_numbers
+        }
+        unsupported = script_numbers - verified_numbers
+        if unsupported:
+            raise ValueError(
+                f"grounded narration contains unverified numbers on {narration.slide_id}: "
+                f"{sorted(unsupported)}"
+            )
+        canonical_refs = [
+            allowed_refs[(item.page_no, item.block_id, item.asset_id)]
+            for item in narration.used_source_refs
+        ]
+        return narration.model_copy(
+            update={
+                "used_source_refs": canonical_refs,
+                "validation_status": "validated",
+            }
+        )
+
+    @staticmethod
+    def _grounded_numbers(value: str) -> set[str]:
+        return {
+            LLMPaperClassroomComposer._normalize_grounded_number(item)
+            for item in re.findall(
+                r"(?<![\w.])-?\d+(?:[.,]\d+)*(?:\s*(?:%|×|x|k|K|M|B))?",
+                value,
+            )
+        }
+
+    @staticmethod
+    def _normalize_grounded_number(value: str) -> str:
+        return re.sub(r"[\s,]", "", value).casefold().replace("×", "x")
 
 
 class PaperNarrationValidator:
@@ -508,12 +798,12 @@ class PaperNarrationValidator:
                         f"Narration contains unsupported numbers: {sorted(unsupported_numbers)}",
                     )
                 )
-            if packet.next_slide_title and packet.next_slide_title not in narration.transition:
+            if packet.next_slide_title and not narration.transition.strip():
                 issues.append(
                     NarrationValidationIssue(
                         packet.slide_id,
                         "missing_transition",
-                        "Narration does not introduce next slide",
+                        "Narration does not provide a transition to the next slide",
                     )
                 )
         return issues
@@ -534,6 +824,7 @@ class PaperNarrationValidator:
             packet.next_slide_title or "",
             packet.purpose,
             packet.visible_text,
+            packet.authoring_note,
             *packet.key_points,
             *(claim.statement for claim in packet.claims),
             *(result.statement for result in packet.quantitative_results),

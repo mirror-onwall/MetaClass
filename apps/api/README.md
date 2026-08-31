@@ -47,6 +47,26 @@ ruff check apps/api/src apps/api/tests
 
 默认测试不得调用真实 LLM/TTS。新增 provider 时同时提供 fake 实现，并把密钥留在环境变量中。
 
+## 部署 Skill 管理
+
+论文工作流使用部署期安装的完整 Skill 目录。应用 Job 不会自行联网或安装依赖。
+
+```bash
+# 查看所有 Skill 及完整性
+python apps/api/scripts/manage_skills.py list
+
+# 检查生产必需 Skill；非零退出码表示部署不完整
+python apps/api/scripts/manage_skills.py check --required-only
+
+# 安装 academic-pptx 及其官方 pptx 依赖
+python apps/api/scripts/manage_skills.py install academic-pptx
+
+# 安装所有已启用的固定来源
+python apps/api/scripts/manage_skills.py install
+```
+
+默认安装目录为 `data/skills`，可用 `METACLASS_SKILL_ROOT` 覆盖。来源、revision、仓库子目录、依赖和必要文件记录在 `config/skills.lock.json`。安装使用临时 checkout 和原子目录替换，并写入 `.metaclass-skill.json` receipt；`GET /health/skills` 返回生产必需 Skill 的预检状态。
+
 课堂智能体默认使用 `METACLASS_LLM_PROVIDER=fake`。接真实模型时使用 OpenAI-compatible 配置：
 
 ```bash

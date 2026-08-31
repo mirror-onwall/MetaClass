@@ -1,14 +1,14 @@
 import hashlib
 from pathlib import Path
-from threading import Event, RLock
+from threading import Event, RLock, Thread
 from typing import Literal, TypeVar
 from uuid import uuid4
 
 from fastapi import HTTPException
 from pydantic import BaseModel
 
-from metaclass.infrastructure.providers.llm import LLMProvider
 from metaclass.core.schemas import utc_now
+from metaclass.infrastructure.providers.llm import LLMProvider
 from metaclass.modules.content.service import ContentService
 from metaclass.modules.materials.schemas import MaterialType
 from metaclass.modules.materials.service import MaterialService
@@ -64,6 +64,7 @@ class PaperWorkflowService:
         self.source_bundles = PaperSourceBundleBuilder(materials)
         self._lock = RLock()
         self._pause_events: dict[str, Event] = {}
+        self._active_jobs: set[str] = set()
         self.checkpoints = PaperWorkflowCheckpointStore(data_dir)
         self._restore_interrupted_jobs()
 
@@ -117,6 +118,20 @@ class PaperWorkflowService:
         job = self.repository.get_job(job_id)
         if not job:
             raise HTTPException(404, "Paper workflow job not found")
+        return job
+
+    def latest_for_material(self, material_id: str) -> PaperWorkflowJob:
+        job = next(
+            (
+                item
+                for item in self.repository.list_jobs()
+                if item.source_material_id == material_id
+                and item.status != PaperWorkflowStatus.CANCELED
+            ),
+            None,
+        )
+        if job is None:
+            raise HTTPException(404, "Paper workflow job not found for material")
         return job
 
     def provide_input(
@@ -247,6 +262,32 @@ class PaperWorkflowService:
             self._mark_failed(job.id, request, checkpoint, exc)
         return self.get(job.id)
 
+    def submit(self, job_id: str) -> PaperWorkflowJob:
+        """Start a workflow in the background while preserving synchronous ``run``."""
+        with self._lock:
+            job = self.get(job_id)
+            if job.status == PaperWorkflowStatus.SUCCEEDED:
+                return job
+            if job.status not in {PaperWorkflowStatus.QUEUED, PaperWorkflowStatus.RUNNING}:
+                raise HTTPException(409, f"Cannot submit paper workflow in {job.status.value} state")
+            if job_id in self._active_jobs:
+                return job
+            self._active_jobs.add(job_id)
+        Thread(
+            target=self._run_submitted,
+            args=(job_id,),
+            daemon=True,
+            name=f"paper-workflow-{job_id}",
+        ).start()
+        return self.get(job_id)
+
+    def _run_submitted(self, job_id: str) -> None:
+        try:
+            self.run(job_id)
+        finally:
+            with self._lock:
+                self._active_jobs.discard(job_id)
+
     def pause(self, job_id: str) -> PaperWorkflowJob:
         with self._lock:
             job = self.get(job_id)
@@ -293,6 +334,15 @@ class PaperWorkflowService:
         if job.status != PaperWorkflowStatus.SUCCEEDED:
             raise HTTPException(409, "Paper workflow must succeed before creating a paper deck")
         bundle = self.result(job_id)
+        if bundle.provider == "native_paper_deck":
+            root = (self.data_dir / bundle.root_path).resolve()
+            root.relative_to(self.data_dir.resolve())
+            classroom = root / "classroom.json"
+            if not classroom.is_file():
+                raise HTTPException(500, "Native paper-deck classroom checkpoint is missing")
+            return PaperDeckCourseResult.model_validate_json(
+                classroom.read_text(encoding="utf-8")
+            )
         if not bundle.derived_material_id:
             raise HTTPException(500, "Paper artifact bundle has no derived material")
         deck_material = self.materials.get(bundle.derived_material_id)
@@ -339,6 +389,9 @@ class PaperWorkflowService:
         if persisted_content.id != plan.content_id:
             plan = plan.model_copy(update={"content_id": persisted_content.id})
         persisted_plan = self.presentations.save_paper_deck_plan(plan)
+        self.presentations.enqueue_interactions(
+            persisted_plan.id, request.interaction_intensity
+        )
         return PaperDeckCourseResult(
             paper_job_id=job.id,
             derived_material_id=deck_material.id,

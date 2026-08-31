@@ -329,7 +329,7 @@ def _provider(tmp_path: Path, runtime: FakeCodexSkillRuntime) -> ComposedSkillsP
         skill_directory=_skill(tmp_path),
         figure_skill_directory=_skill(tmp_path, "extract-paper-images"),
         outline_skill_directory=_skill(tmp_path, "academic-pptx"),
-        generation_skill_directory=_skill(tmp_path, "academic-pptx-generate"),
+        pptx_skill_directory=_skill(tmp_path, "pptx"),
     )
 
 

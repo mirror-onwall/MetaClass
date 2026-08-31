@@ -1614,12 +1614,19 @@ class ContentService:
 
         expected_unit_ids = {unit.id for unit in units}
         assigned_unit_ids = [unit_id for node in tree.nodes for unit_id in node.knowledge_unit_ids]
+        orphan_unit_ids = tree.orphan_unit_ids
         if any(unit_id not in expected_unit_ids for unit_id in assigned_unit_ids):
             raise ValueError("Course knowledge tree references an unknown knowledge unit")
+        if any(unit_id not in expected_unit_ids for unit_id in orphan_unit_ids):
+            raise ValueError("Course knowledge tree references an unknown orphan knowledge unit")
         if len(assigned_unit_ids) != len(set(assigned_unit_ids)):
             raise ValueError("A knowledge unit appears in more than one tree node")
-        if set(assigned_unit_ids) != expected_unit_ids:
-            raise ValueError("Course knowledge tree does not cover every knowledge unit")
+        if len(orphan_unit_ids) != len(set(orphan_unit_ids)):
+            raise ValueError("Course knowledge tree contains duplicate orphan knowledge units")
+        if set(assigned_unit_ids) & set(orphan_unit_ids):
+            raise ValueError("A knowledge unit cannot be both taught and evidence-indexed")
+        if set(assigned_unit_ids) | set(orphan_unit_ids) != expected_unit_ids:
+            raise ValueError("Course knowledge tree does not account for every knowledge unit")
 
     @staticmethod
     def _validate_draft_tree_coverage(
@@ -2313,7 +2320,7 @@ class ContentService:
         ]
         self.repository.save_understandings(understandings)
 
-        organizer = getattr(self.provider, "organize_learning_content")
+        organizer = self.provider.organize_learning_content
         self._report_progress(
             progress_callback,
             82,
@@ -2343,7 +2350,7 @@ class ContentService:
             describe_page_visual = getattr(self.provider, "describe_page_visual", None)
             if describe_page_visual:
                 visual_description = describe_page_visual(page)
-            understand_page_with_context = getattr(self.provider, "understand_page_with_context")
+            understand_page_with_context = self.provider.understand_page_with_context
             result.append(
                 understand_page_with_context(
                     page_no=page.page_no,

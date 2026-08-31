@@ -29,6 +29,11 @@ class PresentationPlanRecord(Base):
     generation_provider: Mapped[str | None] = mapped_column(String(100), nullable=True)
     generation_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
     fallback_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    interaction_intensity: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    interaction_node_ids: Mapped[list[str]] = mapped_column(JSON, default=list)
+    interaction_planning_status: Mapped[str | None] = mapped_column(
+        String(30), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 

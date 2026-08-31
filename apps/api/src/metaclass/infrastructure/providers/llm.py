@@ -11,7 +11,6 @@ from urllib import error, request
 
 import certifi
 
-
 LLMRole = Literal["system", "user", "assistant"]
 
 
@@ -94,6 +93,58 @@ class FakeLLMProvider:
                     }
                 )
             return json.dumps({"slides": slides}, ensure_ascii=False)
+        if "INTERACTION_NODE_SELECTOR_V1" in system_text:
+            request_payload = json.loads(user_text)
+            maximum = request_payload["budget"]["maximum"]
+            ranked = sorted(
+                request_payload["candidates"],
+                key=lambda item: (-item["deterministic_score"], item["order"]),
+            )
+            selected = ranked[:maximum]
+            return json.dumps(
+                {
+                    "selected_slide_ids": [item["slide_id"] for item in selected],
+                    "reasons": [
+                        {
+                            "slide_id": item["slide_id"],
+                            "interaction_focus": "concept",
+                            "reason": "候选页具有较高的确定性教学价值。",
+                        }
+                        for item in selected
+                    ],
+                },
+                ensure_ascii=False,
+            )
+        if "INTERACTION_NODE_QUESTION_GENERATOR_V1" in system_text:
+            request_payload = json.loads(user_text)
+            questions = []
+            agent_types = [
+                "deep_thinker",
+                "concept_confused",
+                "practical_applier",
+                "researcher",
+            ]
+            for index, node in enumerate(request_payload["nodes"]):
+                point = (node.get("key_points") or [node["title"]])[0]
+                questions.append(
+                    {
+                        "slide_id": node["slide_id"],
+                        "agent_type": agent_types[index % len(agent_types)],
+                        "compatible_agent_types": [
+                            "researcher",
+                            "concept_confused",
+                        ],
+                        "knowledge_point": point,
+                        "canonical_question": f"{point}的关键条件和实际含义是什么？",
+                        "student_question": f"老师，{point}到底要满足什么条件，实际该怎么理解？",
+                        "canonical_answer": (
+                            f"理解{point}需要结合当前页面给出的定义、条件和上下文。"
+                        ),
+                        "teacher_answer": f"关键是把{point}放回这一页的条件和上下文中理解。",
+                        "placement_reason": "适合在本页讲解后检查学生是否形成准确理解。",
+                    }
+                )
+            return json.dumps({"questions": questions}, ensure_ascii=False)
         if "MetaClass 的 ClassroomPlan planner" in system_text:
             request_payload = json.loads(user_text)
             section_count = len(request_payload["sections"])

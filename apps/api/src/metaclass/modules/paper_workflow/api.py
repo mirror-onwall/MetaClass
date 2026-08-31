@@ -21,6 +21,10 @@ def create_router(workflows: PaperWorkflowService) -> APIRouter:
     def create_paper_workflow(request: PaperWorkflowRequest) -> PaperWorkflowJob:
         return workflows.create(request)
 
+    @router.get("/latest", response_model=PaperWorkflowJob)
+    def get_latest_paper_workflow(material_id: str) -> PaperWorkflowJob:
+        return workflows.latest_for_material(material_id)
+
     @router.get("/{job_id}", response_model=PaperWorkflowJob)
     def get_paper_workflow(job_id: str) -> PaperWorkflowJob:
         return workflows.get(job_id)
@@ -35,6 +39,10 @@ def create_router(workflows: PaperWorkflowService) -> APIRouter:
     @router.post("/{job_id}/run", response_model=PaperWorkflowJob)
     def run_paper_workflow(job_id: str) -> PaperWorkflowJob:
         return workflows.run(job_id)
+
+    @router.post("/{job_id}/submit", response_model=PaperWorkflowJob, status_code=202)
+    def submit_paper_workflow(job_id: str) -> PaperWorkflowJob:
+        return workflows.submit(job_id)
 
     @router.post("/{job_id}/pause", response_model=PaperWorkflowJob)
     def pause_paper_workflow(job_id: str) -> PaperWorkflowJob:

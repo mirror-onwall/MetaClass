@@ -12,6 +12,8 @@ class QuestionBankRepository(Protocol):
     def replace_for_plan(self, plan_id: str, items: list[ClassroomQA]) -> None: ...
     def append_for_plan(self, items: list[ClassroomQA]) -> None: ...
     def list_for_plan(self, plan_id: str) -> list[ClassroomQA]: ...
+    def list_versions_for_plan(self, plan_id: str) -> list[list[ClassroomQA]]: ...
+    def archive_generation(self, plan_id: str, generation_id: str) -> None: ...
     def get_item(self, qa_id: str) -> ClassroomQA | None: ...
     def save_embeddings(self, embeddings: dict[str, list[float]]) -> None: ...
 
@@ -37,13 +39,36 @@ class SqlAlchemyQuestionBankRepository:
                 session.merge(self._record(item))
 
     def list_for_plan(self, plan_id: str) -> list[ClassroomQA]:
+        versions = self.list_versions_for_plan(plan_id)
+        return versions[0] if versions else []
+
+    def list_versions_for_plan(self, plan_id: str) -> list[list[ClassroomQA]]:
         with self.database.session() as session:
             records = session.scalars(
                 select(ClassroomQARecord)
-                .where(ClassroomQARecord.presentation_plan_id == plan_id)
-                .order_by(ClassroomQARecord.slide_order, ClassroomQARecord.created_at)
+                .where(
+                    ClassroomQARecord.presentation_plan_id == plan_id,
+                    ClassroomQARecord.archived.is_(False),
+                )
+                .order_by(ClassroomQARecord.created_at.desc(), ClassroomQARecord.slide_order)
             ).all()
-            return [self._item(record) for record in records]
+            grouped: dict[str, list[ClassroomQA]] = {}
+            for record in records:
+                grouped.setdefault(record.generation_id or "legacy", []).append(
+                    self._item(record)
+                )
+            return list(grouped.values())
+
+    def archive_generation(self, plan_id: str, generation_id: str) -> None:
+        with self.database.session() as session:
+            records = session.scalars(
+                select(ClassroomQARecord).where(
+                    ClassroomQARecord.presentation_plan_id == plan_id,
+                    ClassroomQARecord.generation_id == generation_id,
+                )
+            ).all()
+            for record in records:
+                record.archived = True
 
     def get_item(self, qa_id: str) -> ClassroomQA | None:
         with self.database.session() as session:
@@ -69,6 +94,9 @@ class SqlAlchemyQuestionBankRepository:
             slide_id=item.slide_id,
             slide_order=item.slide_order,
             agent_type=item.agent_type.value,
+            compatible_agent_types=[
+                agent_type.value for agent_type in item.compatible_agent_types
+            ],
             student_profile_id=item.student_profile_id,
             knowledge_point=item.knowledge_point,
             canonical_question=item.canonical_question,
@@ -79,13 +107,11 @@ class SqlAlchemyQuestionBankRepository:
             placement_reason=item.placement_reason,
             source_refs=[ref.model_dump(mode="json") for ref in item.source_refs],
             status=item.status,
-            search_text=" ".join(
-                [
-                    item.knowledge_point,
-                    item.canonical_question,
-                    item.student_question,
-                    item.canonical_answer,
-                ]
+            generation_id=item.generation_id,
+            archived=item.archived,
+            search_text=(
+                f"{item.knowledge_point} {item.canonical_question} "
+                f"{item.student_question} {item.canonical_answer}"
             ).lower(),
             embedding=item.embedding,
             created_at=item.created_at,
@@ -100,6 +126,7 @@ class SqlAlchemyQuestionBankRepository:
             slide_id=record.slide_id,
             slide_order=record.slide_order,
             agent_type=record.agent_type,
+            compatible_agent_types=record.compatible_agent_types or [],
             student_profile_id=record.student_profile_id,
             knowledge_point=record.knowledge_point,
             canonical_question=record.canonical_question,
@@ -110,6 +137,8 @@ class SqlAlchemyQuestionBankRepository:
             placement_reason=record.placement_reason,
             source_refs=[SourceRef.model_validate(ref) for ref in (record.source_refs or [])],
             status=record.status,
+            generation_id=record.generation_id or "legacy",
+            archived=bool(record.archived),
             created_at=record.created_at,
             embedding=record.embedding,
         )

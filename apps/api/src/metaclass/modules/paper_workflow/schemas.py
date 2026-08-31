@@ -18,6 +18,7 @@ SCHEMA_VERSION = "1.0"
 class PaperWorkflowStrategy(StrEnum):
     AUTO = "auto"
     COMPOSED_SKILLS = "composed_skills"
+    NATIVE_PAPER_DECK = "native_paper_deck"
     NATURE_PAPER2PPT = "nature_paper2ppt"
 
 
@@ -33,6 +34,18 @@ class PaperWorkflowStatus(StrEnum):
 
 
 class PaperWorkflowStage(StrEnum):
+    # Native paper-deck classroom stages. The legacy values below remain readable
+    # for jobs created before the PDF-first route was introduced.
+    PREPARING_SOURCE = "preparing_source"
+    ANALYZING_PAPER = "analyzing_paper"
+    GENERATING_NATIVE_PAPER_DECK = "generating_native_paper_deck"
+    VALIDATING_PDF = "validating_pdf"
+    RECONCILING_SLIDES = "reconciling_slides"
+    GROUNDING_EVIDENCE = "grounding_evidence"
+    BUILDING_KNOWLEDGE_TREE = "building_knowledge_tree"
+    GENERATING_NARRATION = "generating_narration"
+    PLANNING_INTERACTIONS = "planning_interactions"
+    REGISTERING_CLASSROOM = "registering_classroom"
     PREPARE_SOURCE = "prepare_source"
     ANALYZE_PAPER = "analyze_paper"
     PREPARE_FIGURES = "prepare_figures"
@@ -83,6 +96,7 @@ class PaperWorkflowRequest(SchemaModel):
     audience: str | None = None
     language: str = Field(default="zh-CN", min_length=2)
     depth: Literal["introductory", "standard", "advanced"] = "standard"
+    interaction_intensity: Literal["none", "light", "standard", "rich"] = "standard"
 
 
 class PaperWorkflowSettings(SchemaModel):
@@ -508,6 +522,21 @@ class ArtifactFile(SchemaModel):
     required: bool = True
 
 
+class PaperPresentationArtifact(SchemaModel):
+    """PDF-first output contract for a native raster presentation provider."""
+
+    provider: str = Field(min_length=1)
+    format: Literal["pdf"] = "pdf"
+    presentation_pdf_path: str = Field(min_length=1)
+    source_images_dir: str = Field(min_length=1)
+    analysis_path: str = Field(min_length=1)
+    deck_brief_path: str = Field(min_length=1)
+    outline_path: str = Field(min_length=1)
+    prompts_dir: str = Field(min_length=1)
+    generation_log_path: str = Field(min_length=1)
+    debug_pptx_path: str | None = None
+
+
 class PaperArtifactBundle(SchemaModel):
     """Validated final delivery shared by every paper presentation provider."""
 
@@ -518,6 +547,7 @@ class PaperArtifactBundle(SchemaModel):
     provider: str = Field(min_length=1)
     root_path: str = Field(min_length=1)
     files: list[ArtifactFile] = Field(min_length=1)
+    presentation_artifact: PaperPresentationArtifact | None = None
     validation_status: Literal["pending", "passed", "failed"] = "pending"
     derived_material_id: str | None = None
     created_at: datetime = Field(default_factory=utc_now)
@@ -573,7 +603,7 @@ COMPOSED_STAGE_BOUNDARIES: tuple[StageBoundary, ...] = (
     ),
     StageBoundary(
         stage=ComposedStage.GENERATION,
-        skill_name="academic-pptx-generate",
+        skill_name="pptx",
         consumes=("PresentationOutline", "SlideEvidence", "FigureCatalog"),
         produces=("PaperArtifactBundle", "StageExecutionReport"),
         forbidden_responsibilities=("reanalyze_paper", "invent_claims", "change_outline_semantics"),

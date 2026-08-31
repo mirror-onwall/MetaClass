@@ -110,6 +110,7 @@ class SlidePlan(SchemaModel):
     visual_payload: list[str] = Field(default_factory=list)
     background: str = Field(default="F7F9F7", pattern=r"^[0-9A-Fa-f]{6}$")
     elements: list[SlideElement] = Field(default_factory=list, max_length=40)
+    knowledge_unit_ids: list[str] = Field(default_factory=list)
     paper_claim_ids: list[str] = Field(default_factory=list)
     paper_asset_ids: list[str] = Field(default_factory=list)
     paper_source_refs: list[dict[str, object]] = Field(default_factory=list)
@@ -142,6 +143,11 @@ class PresentationPlan(SchemaModel):
     generation_provider: str | None = None
     generation_model: str | None = None
     fallback_reason: str | None = None
+    interaction_intensity: Literal["none", "light", "standard", "rich"] | None = None
+    interaction_node_ids: list[str] = Field(default_factory=list)
+    interaction_planning_status: Literal[
+        "not_started", "nodes_selected", "complete"
+    ] = "not_started"
     created_at: datetime = Field(default_factory=utc_now)
     updated_at: datetime = Field(default_factory=utc_now)
 
@@ -185,6 +191,7 @@ class PresentationPlanJob(SchemaModel):
     id: str = Field(min_length=1)
     content_id: str = Field(min_length=1)
     prepare_question_bank: bool = True
+    interaction_intensity: Literal["none", "light", "standard", "rich"] = "standard"
     mode: Literal["generated", "source_deck", "paper_deck"] = "generated"
     source_material_id: str | None = None
     source_paper_material_id: str | None = None

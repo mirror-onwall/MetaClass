@@ -1,9 +1,12 @@
 import hashlib
 import json
+import re
 import shutil
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
+
+import pymupdf
 
 from metaclass.modules.materials.schemas import MaterialType, PageMetadata
 from metaclass.modules.materials.service import MaterialRichParseResult, MaterialService
@@ -46,6 +49,7 @@ class PaperSourceBundleBuilder:
             raw_items = self._items_from_pages(pages)
 
         blocks, assets = self._normalize_items(raw_items, rich, assets_dir)
+        assets.extend(self._extract_captioned_pdf_figures(pdf_path, assets_dir, assets))
         sections = self._sections(blocks)
         page_count = max(
             material.page_count,
@@ -78,6 +82,83 @@ class PaperSourceBundleBuilder:
             self._markdown(material.filename, blocks, assets), encoding="utf-8"
         )
         return bundle
+
+    @staticmethod
+    def _extract_captioned_pdf_figures(
+        pdf_path: Path,
+        assets_dir: Path,
+        existing_assets: list[SourceAsset],
+    ) -> list[SourceAsset]:
+        """Crop vector figures that PDF embedded-image extraction cannot see.
+
+        The crop is anchored by a Figure caption and the nearest substantial drawing
+        rectangle immediately above it. This deliberately excludes tables and avoids
+        guessing a crop when the PDF exposes no reliable drawing boundary.
+        """
+        label_pattern = re.compile(
+            r"^\s*(?:figure|fig\.)\s*(\d+[A-Za-z]?)\s*[:.]", re.IGNORECASE
+        )
+        existing_labels = {
+            matched.group(1).lower()
+            for asset in existing_assets
+            if asset.caption and (matched := label_pattern.match(asset.caption))
+        }
+        extracted: list[SourceAsset] = []
+        document = pymupdf.open(pdf_path)
+        try:
+            for page in document:
+                drawings = [item["rect"] for item in page.get_drawings()]
+                for block in page.get_text("blocks"):
+                    caption = " ".join(str(block[4]).split())
+                    matched = label_pattern.match(caption)
+                    if not matched or matched.group(1).lower() in existing_labels:
+                        continue
+                    caption_rect = pymupdf.Rect(block[:4])
+                    candidates = [
+                        rect
+                        for rect in drawings
+                        if rect.width >= 100
+                        and rect.height >= 60
+                        and rect.y1 <= caption_rect.y0 + 2
+                        and 0 <= caption_rect.y0 - rect.y1 <= 50
+                    ]
+                    if not candidates:
+                        continue
+                    drawing_rect = max(candidates, key=lambda rect: rect.width * rect.height)
+                    clip = pymupdf.Rect(
+                        min(drawing_rect.x0, caption_rect.x0) - 6,
+                        drawing_rect.y0 - 6,
+                        max(drawing_rect.x1, caption_rect.x1) + 6,
+                        caption_rect.y1 + 4,
+                    ) & page.rect
+                    if clip.width < 100 or clip.height < 60:
+                        continue
+                    label = matched.group(1).lower()
+                    asset_id = f"asset_figure_crop_{page.number + 1:03d}_{label}"
+                    destination = assets_dir / f"{asset_id}.png"
+                    page.get_pixmap(matrix=pymupdf.Matrix(3, 3), clip=clip, alpha=False).save(
+                        destination
+                    )
+                    extracted.append(
+                        SourceAsset(
+                            id=asset_id,
+                            type="figure",
+                            page_no=page.number + 1,
+                            path=f"existing_assets/{destination.name}",
+                            caption=caption,
+                            bbox=(
+                                clip.x0 * 1000 / page.rect.width,
+                                clip.y0 * 1000 / page.rect.height,
+                                clip.x1 * 1000 / page.rect.width,
+                                clip.y1 * 1000 / page.rect.height,
+                            ),
+                            source="pdf",
+                        )
+                    )
+                    existing_labels.add(label)
+        finally:
+            document.close()
+        return extracted
 
     def bundle_hash(self, bundle: PaperSourceBundle, workspace: Path) -> str:
         """Hash normalized content and copied assets, independent of absolute paths."""

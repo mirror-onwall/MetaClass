@@ -28,6 +28,8 @@ import type {
   LearningContent,
   LearningSection,
   LearningMode,
+  InteractionIntensity,
+  InteractionPlanningJob,
   Material,
   MaterialCollection,
   MaterialProcessingJob,
@@ -331,6 +333,7 @@ function KnowledgeTreeBranch({
 
 const runtimeWorkspaceKey = "metaclass-runtime-workspace-v1";
 const completedWorkspacesKey = "metaclass-completed-workspaces-v1";
+const paperWorkflowJobsKey = "metaclass-paper-workflow-jobs-v1";
 
 type RuntimeWorkspace = {
   material: Material | null;
@@ -340,8 +343,10 @@ type RuntimeWorkspace = {
   pages: PageMetadata[];
   content: LearningContent | null;
   contentJob: ContentGenerationJob | null;
+  paperWorkflowJob: PaperWorkflowJob | null;
   presentationPlan: PresentationPlan | null;
   presentationPlanJob: PresentationPlanJob | null;
+  interactionPlanningJob: InteractionPlanningJob | null;
   pptJob: PPTGenerationJob | null;
   presentationArtifact: PPTArtifact | null;
   presentationSlideImages: Record<number, PresentationSlideDisplay>;
@@ -351,6 +356,7 @@ type RuntimeWorkspace = {
   action: TeachingAction | null;
   currentSlide: { src: string; pageNo: number; generated: boolean } | null;
   learningMode: LearningMode;
+  interactionIntensity: InteractionIntensity;
   studentAgentTypes: StudentAgentType[];
   agentTurn: DirectedAgentTurn | null;
   feedback: string;
@@ -380,6 +386,36 @@ function loadCompletedWorkspaces(): CompletedWorkspace[] {
   } catch {
     return [];
   }
+}
+
+function loadPaperWorkflowJobIds(): Record<string, string> {
+  try {
+    const saved = window.localStorage.getItem(paperWorkflowJobsKey);
+    return saved ? JSON.parse(saved) as Record<string, string> : {};
+  } catch {
+    window.localStorage.removeItem(paperWorkflowJobsKey);
+    return {};
+  }
+}
+
+function rememberPaperWorkflowJob(job: PaperWorkflowJob) {
+  const jobs = loadPaperWorkflowJobIds();
+  jobs[job.source_material_id] = job.id;
+  window.localStorage.setItem(paperWorkflowJobsKey, JSON.stringify(jobs));
+}
+
+function forgetPaperWorkflowJob(materialId: string) {
+  const jobs = loadPaperWorkflowJobIds();
+  delete jobs[materialId];
+  window.localStorage.setItem(paperWorkflowJobsKey, JSON.stringify(jobs));
+}
+
+function learningModeForIntensity(intensity: InteractionIntensity): LearningMode {
+  return intensity === "none" ? "lecture" : "interactive";
+}
+
+function intensityForLegacyMode(mode: LearningMode | undefined): InteractionIntensity {
+  return mode === "interactive" ? "standard" : "none";
 }
 
 function actionNarrationCue(
@@ -533,12 +569,15 @@ function App() {
     runtimeWorkspace.presentationPlan?.mode
       ?? (runtimeWorkspace.content ? "source_deck" : "generated"),
   );
-  const [paperWorkflowJob, setPaperWorkflowJob] = useState<PaperWorkflowJob | null>(null);
+  const [paperWorkflowJob, setPaperWorkflowJob] = useState<PaperWorkflowJob | null>(
+    runtimeWorkspace.paperWorkflowJob ?? null,
+  );
   const [paperAudience, setPaperAudience] = useState("具备基础专业背景的高校学生和研究生");
   const [paperDuration, setPaperDuration] = useState(30);
   const [editingSlideId, setEditingSlideId] = useState<string | null>(null);
   const [editingScript, setEditingScript] = useState("");
   const [presentationPlanJob, setPresentationPlanJob] = useState<PresentationPlanJob | null>(runtimeWorkspace.presentationPlanJob ?? null);
+  const [interactionPlanningJob, setInteractionPlanningJob] = useState<InteractionPlanningJob | null>(runtimeWorkspace.interactionPlanningJob ?? null);
   const [pptJob, setPptJob] = useState<PPTGenerationJob | null>(runtimeWorkspace.pptJob ?? null);
   const [pptThemes, setPptThemes] = useState<PPTThemeOption[]>(fallbackPptThemes);
   const [pptThemeId, setPptThemeId] = useState(() =>
@@ -577,7 +616,13 @@ function App() {
     pageNo: number;
     generated: boolean;
   } | null>(runtimeWorkspace.currentSlide ?? null);
-  const [learningMode, setLearningMode] = useState<LearningMode>(runtimeWorkspace.learningMode ?? "lecture");
+  const [interactionIntensity, setInteractionIntensity] = useState<InteractionIntensity>(
+    runtimeWorkspace.interactionIntensity
+      ?? (runtimeWorkspace.learningMode || runtimeWorkspace.session
+        ? intensityForLegacyMode(runtimeWorkspace.learningMode ?? runtimeWorkspace.session?.mode)
+        : "standard"),
+  );
+  const learningMode = learningModeForIntensity(interactionIntensity);
   const [studentAgentTypes, setStudentAgentTypes] = useState<StudentAgentType[]>(
     runtimeWorkspace.studentAgentTypes ?? defaultStudentAgentTypes,
   );
@@ -634,6 +679,33 @@ function App() {
     }, 1500);
     return () => window.clearInterval(timer);
   }, [paperWorkflowJob?.id, paperWorkflowJob?.status]);
+
+  useEffect(() => {
+    if (paperWorkflowJob) rememberPaperWorkflowJob(paperWorkflowJob);
+  }, [paperWorkflowJob]);
+
+  useEffect(() => {
+    if (!material || paperWorkflowJob?.source_material_id === material.id) return;
+    const savedJobId = loadPaperWorkflowJobIds()[material.id];
+    let cancelled = false;
+    (savedJobId ? api.getPaperWorkflow(savedJobId) : api.getLatestPaperWorkflow(material.id))
+      .then((job) => {
+        if (cancelled) return;
+        if (job.source_material_id !== material.id || job.status === "canceled") {
+          forgetPaperWorkflowJob(material.id);
+          setPaperWorkflowJob(null);
+          return;
+        }
+        setPaperWorkflowJob(job);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          forgetPaperWorkflowJob(material.id);
+          setPaperWorkflowJob(null);
+        }
+      });
+    return () => { cancelled = true; };
+  }, [material?.id, paperWorkflowJob?.source_material_id]);
 
   useEffect(() => {
     window.localStorage.setItem("metaclass-ppt-theme", pptThemeId);
@@ -749,6 +821,29 @@ function App() {
   }, [runtimeWorkspace]);
 
   useEffect(() => {
+    if (!presentationPlan || interactionIntensity === "none") {
+      setInteractionPlanningJob(null);
+      return;
+    }
+    let cancelled = false;
+    void api.getInteractionPlanningJobForPlan(presentationPlan.id)
+      .then(async (job) => {
+        if (cancelled) return;
+        setInteractionPlanningJob(job);
+        if (["queued", "running"].includes(job.status)) {
+          const finished = await api.waitForInteractionPlanningJob(job.id, (latest) => {
+            if (!cancelled) setInteractionPlanningJob(latest);
+          });
+          if (!cancelled) setInteractionPlanningJob(finished);
+        }
+      })
+      .catch(() => {
+        // Older plans and no-interaction plans have no separate interaction job.
+      });
+    return () => { cancelled = true; };
+  }, [interactionIntensity, presentationPlan?.id]);
+
+  useEffect(() => {
     if (!content || !presentationPlan || session || classroomPlanJob) return;
     let cancelled = false;
     api.getLatestClassroomPlanJob(content.id, presentationPlan.id)
@@ -772,8 +867,10 @@ function App() {
       pages,
       content,
       contentJob,
+      paperWorkflowJob,
       presentationPlan,
       presentationPlanJob,
+      interactionPlanningJob,
       pptJob,
       presentationArtifact,
       presentationSlideImages,
@@ -783,6 +880,7 @@ function App() {
       action,
       currentSlide,
       learningMode,
+      interactionIntensity,
       studentAgentTypes,
       agentTurn,
       feedback,
@@ -799,9 +897,11 @@ function App() {
     agentTurn,
     content,
     contentJob,
+    paperWorkflowJob,
     currentSlide,
     feedback,
     learningMode,
+    interactionIntensity,
     material,
     materialCollection,
     materialProcessingJob,
@@ -810,6 +910,7 @@ function App() {
     presentationArtifact,
     presentationPlan,
     presentationPlanJob,
+    interactionPlanningJob,
     pptJob,
     presentationSlideImages,
     session,
@@ -1145,6 +1246,7 @@ function App() {
     setEditingSlideId(null);
     setEditingScript("");
     setPresentationPlanJob(null);
+    setInteractionPlanningJob(null);
     setPptJob(null);
     setClassroomPlanJob(null);
     setPresentationArtifact(null);
@@ -1207,7 +1309,7 @@ function App() {
     setSession(asset.session ?? null);
     if (asset.session) {
       setStudentAgentTypes(asset.session.student_states.map((student) => student.agent_type));
-      setLearningMode(asset.session.mode);
+      setInteractionIntensity(intensityForLegacyMode(asset.session.mode));
       setClassroomPlanIds({ [asset.session.mode]: asset.session.plan_id });
       setAutoPlaying(true);
       autoPlayingRef.current = true;
@@ -1290,16 +1392,36 @@ function App() {
     const result = await run("正在生成论文讲解课件", async () => {
       let job = paperWorkflowJob;
       if (!job) {
+        const savedJobId = loadPaperWorkflowJobIds()[material.id];
+        try {
+          const savedJob = savedJobId
+            ? await api.getPaperWorkflow(savedJobId)
+            : await api.getLatestPaperWorkflow(material.id);
+          if (savedJob.source_material_id === material.id && savedJob.status !== "canceled") {
+            job = savedJob;
+            rememberPaperWorkflowJob(savedJob);
+            setPaperWorkflowJob(savedJob);
+          } else {
+            forgetPaperWorkflowJob(material.id);
+          }
+        } catch {
+          if (savedJobId) forgetPaperWorkflowJob(material.id);
+        }
+      }
+      if (!job) {
         job = await api.createPaperWorkflow(material.id, {
           audience: paperAudience,
           duration_minutes: paperDuration,
+          interaction_intensity: interactionIntensity,
         });
+        rememberPaperWorkflowJob(job);
         setPaperWorkflowJob(job);
       } else if (["paused", "failed"].includes(job.status)) {
         job = await api.resumePaperWorkflow(job.id);
         setPaperWorkflowJob(job);
       }
-      const finished = await api.runPaperWorkflow(job.id);
+      await api.submitPaperWorkflow(job.id);
+      const finished = await api.waitForPaperWorkflow(job.id, setPaperWorkflowJob);
       setPaperWorkflowJob(finished);
       if (finished.status !== "succeeded") throw new Error(finished.error ?? "论文讲解链路尚未完成");
       const course = await api.createPaperDeckCourse(finished.id);
@@ -1420,18 +1542,20 @@ function App() {
     setPresentationPlanJob(null);
     const useSourceDeck = presentationMode === "source_deck";
     const plan = await run(
-      useSourceDeck ? "正在分析原稿并生成逐页讲稿与题库" : "正在生成 PPT 计划、讲稿与题库",
+      useSourceDeck ? "正在分析原稿并生成逐页讲稿" : "正在生成 PPT 计划与讲稿",
       () => useSourceDeck
         ? api.createSourceDeckPresentationPlan(
             content.id,
             material.id,
-            true,
+            interactionIntensity !== "none",
             setPresentationPlanJob,
+            interactionIntensity,
           )
         : api.createPresentationPlan(
             content.id,
-            true,
+            interactionIntensity !== "none",
             setPresentationPlanJob,
+            interactionIntensity,
           ),
     );
     if (!plan) return;
@@ -1446,8 +1570,8 @@ function App() {
     );
     setFeedback(
       plan.mode === "source_deck"
-        ? "原稿逐页讲稿与题库已保存，可以直接创建课堂。"
-        : "PPT 计划、讲稿与题库已保存。现在可以生成 PPT，或继续创建课堂。",
+        ? "原稿逐页讲稿已保存，互动规划正在后台独立进行。"
+        : "PPT 计划与讲稿已保存，互动规划正在后台独立进行。",
     );
   }
 
@@ -1559,10 +1683,16 @@ function App() {
     }
   }
 
-  async function switchClassroomMode(nextMode: LearningMode) {
-    if (nextMode === learningMode && session?.mode === nextMode) return;
+  async function switchInteractionIntensity(nextIntensity: InteractionIntensity) {
+    const nextMode = learningModeForIntensity(nextIntensity);
+    if (nextIntensity === interactionIntensity) return;
+    if (nextMode === learningMode) {
+      setInteractionIntensity(nextIntensity);
+      setFeedback(`互动强度已切换为${nextIntensity === "light" ? "轻量" : nextIntensity === "standard" ? "标准" : "丰富"}；当前阶段仍沿用互动课堂执行逻辑。`);
+      return;
+    }
     if (!session) {
-      setLearningMode(nextMode);
+      setInteractionIntensity(nextIntensity);
       return;
     }
     if (!content || !presentationPlan) return;
@@ -1581,7 +1711,7 @@ function App() {
     if (!nextSession) return;
     playbackVersionRef.current += 1;
     autoPlayingRef.current = false;
-    setLearningMode(nextMode);
+    setInteractionIntensity(nextIntensity);
     setSession(nextSession);
     setClassroomPlanIds((current) => ({ ...current, [nextMode]: nextSession.plan_id }));
     setAgentTurn(null);
@@ -1619,8 +1749,10 @@ function App() {
       pages,
       content,
       contentJob,
+      paperWorkflowJob,
       presentationPlan,
       presentationPlanJob,
+      interactionPlanningJob,
       pptJob,
       presentationArtifact,
       presentationSlideImages,
@@ -1630,6 +1762,7 @@ function App() {
       action,
       currentSlide,
       learningMode,
+      interactionIntensity,
       studentAgentTypes,
       agentTurn,
       feedback,
@@ -1651,6 +1784,7 @@ function App() {
     setContentJob(saved.contentJob ?? null);
     setPresentationPlan(saved.presentationPlan);
     setPresentationPlanJob(saved.presentationPlanJob ?? null);
+    setInteractionPlanningJob(saved.interactionPlanningJob ?? null);
     setPptJob(saved.pptJob ?? null);
     setPresentationArtifact(saved.presentationArtifact);
     setPresentationSlideImages(normalizePresentationSlideImages(
@@ -1666,7 +1800,9 @@ function App() {
     );
     setAction(saved.action);
     setCurrentSlide(saved.currentSlide);
-    setLearningMode(saved.learningMode);
+    setInteractionIntensity(
+      saved.interactionIntensity ?? intensityForLegacyMode(saved.learningMode ?? saved.session?.mode)
+    );
     setStudentAgentTypes(saved.studentAgentTypes);
     setAgentTurn(saved.agentTurn);
     setFeedback(saved.feedback || "已重新打开保存的课堂项目。");
@@ -2105,25 +2241,57 @@ function App() {
 
           <section className="quick-actions">
             <div className="section-caption"><span>备课控制</span><small>ACTIONS</small></div>
-            <div className="mode-switch" aria-label="选择学习方式">
-              <button
-                className={learningMode === "lecture" ? "selected" : ""}
-                disabled={!!busy || userQuestionBlockedByAgentExchange}
-                onClick={() => switchClassroomMode("lecture")}
+            <div className="interaction-intensity-picker">
+              <div className="interaction-intensity-heading">
+                <span>互动强度</span>
+              </div>
+              <div
+                className="interaction-intensity-options"
+                data-intensity={interactionIntensity}
+                aria-label="选择互动强度"
+                role="radiogroup"
               >
-                <span>A</span>
-                <b>连续讲解</b>
-                <small>老师按 PPT 一页页讲，不安排同学插嘴</small>
-              </button>
-              <button
-                className={learningMode === "interactive" ? "selected" : ""}
-                disabled={!!busy || userQuestionBlockedByAgentExchange}
-                onClick={() => switchClassroomMode("interactive")}
-              >
-                <span>B</span>
-                <b>互动课堂</b>
-                <small>允许 agent 同学提问、总结和插话</small>
-              </button>
+                <button
+                  className={interactionIntensity === "none" ? "selected" : ""}
+                  disabled={!!busy || userQuestionBlockedByAgentExchange}
+                  onClick={() => switchInteractionIntensity("none")}
+                  role="radio"
+                  aria-checked={interactionIntensity === "none"}
+                >
+                  <b>无</b>
+                  <small>连续课堂，不生成或执行预设互动</small>
+                </button>
+                <button
+                  className={interactionIntensity === "light" ? "selected" : ""}
+                  disabled={!!busy || userQuestionBlockedByAgentExchange}
+                  onClick={() => switchInteractionIntensity("light")}
+                  role="radio"
+                  aria-checked={interactionIntensity === "light"}
+                >
+                  <b>轻量</b>
+                  <small>少量学生互动，保持讲解连贯</small>
+                </button>
+                <button
+                  className={interactionIntensity === "standard" ? "selected" : ""}
+                  disabled={!!busy || userQuestionBlockedByAgentExchange}
+                  onClick={() => switchInteractionIntensity("standard")}
+                  role="radio"
+                  aria-checked={interactionIntensity === "standard"}
+                >
+                  <b>标准</b>
+                  <small>默认互动课堂，兼顾讲解与参与</small>
+                </button>
+                <button
+                  className={interactionIntensity === "rich" ? "selected" : ""}
+                  disabled={!!busy || userQuestionBlockedByAgentExchange}
+                  onClick={() => switchInteractionIntensity("rich")}
+                  role="radio"
+                  aria-checked={interactionIntensity === "rich"}
+                >
+                  <b>丰富</b>
+                  <small>高密度互动，增加学生参与机会</small>
+                </button>
+              </div>
             </div>
             {pages.length > 0 && !content && !presentationPlan && (
               <div className="presentation-route-picker">
@@ -2157,7 +2325,7 @@ function App() {
                   >
                     <span>C</span>
                     <b>论文讲解</b>
-                    <small>四个 Skill 分析原文、图表和证据，再回到原课堂播放</small>
+                    <small>原生 paper-deck 生成 PDF，再结合论文证据进入课堂播放</small>
                   </button>
                 </div>
                 {presentationMode === "paper_deck" && (
@@ -2217,12 +2385,28 @@ function App() {
                 ))}
               </div>
             </div>}
-            {presentationMode !== "paper_deck" && <button disabled={!content || !!presentationPlan || !!busy} onClick={preparePresentationPlan}><span>03</span><b>{presentationPlan ? "讲稿与题库已准备" : presentationMode === "source_deck" ? "使用原稿生成逐页讲稿与题库" : "生成 PPT 计划、讲稿与题库"}</b><i>↗</i></button>}
+            {presentationMode !== "paper_deck" && <button disabled={!content || !!presentationPlan || !!busy} onClick={preparePresentationPlan}><span>03</span><b>{presentationPlan ? "课件与讲稿已准备" : presentationMode === "source_deck" ? "使用原稿生成逐页讲稿" : "生成 PPT 计划与讲稿"}</b><i>↗</i></button>}
+            {interactionPlanningJob && interactionPlanningJob.intensity !== "none" && ["failed", "paused"].includes(interactionPlanningJob.status) && (
+              <section className={`interaction-job-card ${interactionPlanningJob.status}`} aria-live="polite">
+                <div><b>互动规划</b><span>{interactionPlanningJob.message}</span><em>{interactionPlanningJob.progress}%</em></div>
+                <i><span style={{ width: `${interactionPlanningJob.progress}%` }} /></i>
+                <small>已选 {interactionPlanningJob.selected_node_count} 个节点 · 已生成 {interactionPlanningJob.completed_node_count} 道问答</small>
+                {["failed", "paused"].includes(interactionPlanningJob.status) && (
+                  <button type="button" onClick={async () => {
+                    const retried = await api.retryInteractionPlanningJob(interactionPlanningJob.id);
+                    setInteractionPlanningJob(retried);
+                    setInteractionPlanningJob(
+                      await api.waitForInteractionPlanningJob(retried.id, setInteractionPlanningJob),
+                    );
+                  }}>继续互动规划</button>
+                )}
+              </section>
+            )}
             {presentationPlan && !session && (
               <button disabled={!!busy} onClick={chooseAnotherPresentationRoute}><span>↺</span><b>重新选择课件使用方式</b><i>→</i></button>
             )}
             {presentationMode !== "paper_deck" && <button disabled={!presentationPlan || presentationPlan.mode === "source_deck" || !!presentationArtifact || !!busy} onClick={generatePresentationArtifact}><span>03</span><b>{presentationPlan?.mode === "source_deck" ? "使用原 PPT" : presentationArtifact ? "PPT 已生成" : "生成 PPT（创建课堂前必需）"}</b><i>↗</i></button>}
-            <button disabled={!content || !presentationPlan || (presentationPlan.mode === "generated" && !presentationArtifact) || !!session || !!busy} onClick={startClassroom}><span>04</span><b>{session ? "课堂已创建" : classroomPlanJob && classroomPlanJob.status !== "failed" ? "继续进入已生成课堂" : learningMode === "interactive" ? "创建互动课堂" : "创建连续课堂"}</b><i>↗</i></button>
+            <button disabled={!content || !presentationPlan || (presentationPlan.mode === "generated" && !presentationArtifact) || !!session || !!busy || (learningMode === "interactive" && !!interactionPlanningJob && interactionPlanningJob.status !== "succeeded")} onClick={startClassroom}><span>04</span><b>{session ? "课堂已创建" : classroomPlanJob && classroomPlanJob.status !== "failed" ? "继续进入已生成课堂" : learningMode === "interactive" && interactionPlanningJob && interactionPlanningJob.status !== "succeeded" ? "等待互动规划完成" : learningMode === "interactive" ? "创建互动课堂" : "创建连续课堂"}</b><i>↗</i></button>
             <button disabled={!content || !presentationArtifact || !!video || !!busy} onClick={createVideo}><span>05</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
             <button disabled={!content || !presentationPlan || !!busy} onClick={completeWorkspace}><span>✓</span><b>完成当前材料</b><i>→</i></button>
             {presentationPlan && (
@@ -2651,6 +2835,36 @@ function App() {
         </div>
       )}
       {error && <div className="error-toast" role="alert"><span>!</span><div><b>流程暂停</b><p>{error}</p></div><button onClick={() => setError(null)}>×</button></div>}
+      {interactionPlanningJob && interactionPlanningJob.intensity !== "none" && ["queued", "running"].includes(interactionPlanningJob.status) && !busy && (
+        <div className="busy-overlay interaction-planning-overlay" aria-live="polite" aria-busy="true">
+          <section className="loading-board interaction-planning-board" role="status">
+            <header><span>METACLASS · INTERACTION PLAN</span><b>正在规划课堂互动</b></header>
+            <div className="interaction-planning-current">
+              <span className="writing-mark" aria-hidden="true" />
+              <div>
+                <b>{interactionPlanningJob.message}</b>
+                <small>系统正在根据课件结构安排提问节点与问答内容</small>
+              </div>
+            </div>
+            <div className="interaction-planning-stats" aria-label="互动规划统计">
+              <span><b>{interactionPlanningJob.selected_node_count}</b><small>已选节点</small></span>
+              <i aria-hidden="true" />
+              <span><b>{interactionPlanningJob.completed_node_count}</b><small>已生成问答</small></span>
+            </div>
+            <footer>
+              <div
+                className="generation-progress"
+                role="progressbar"
+                aria-label="互动规划进度"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={interactionPlanningJob.progress}
+              ><i style={{ width: `${interactionPlanningJob.progress}%` }} /></div>
+              <small>{interactionPlanningJob.progress}% · 完成后即可创建互动课堂</small>
+            </footer>
+          </section>
+        </div>
+      )}
       {busy && busy !== answeringUserQuestionLabel && (
         <div className="busy-overlay" aria-live="polite">
           <section className="loading-board">

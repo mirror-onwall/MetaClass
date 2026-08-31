@@ -221,9 +221,9 @@ class AcademicOutlineAdapter:
         )
 
 
-class AcademicPptxGenerateAdapter:
-    skill_name = "academic-pptx-generate"
-    prompt_version = "academic-pptx-generate-v1"
+class PptxGenerateAdapter:
+    skill_name = "pptx"
+    prompt_version = "pptx-academic-contract-v1"
 
     def __init__(self, runtime: SkillRuntime, skill_directory: Path) -> None:
         self.runtime = runtime
@@ -239,7 +239,7 @@ class AcademicPptxGenerateAdapter:
         attempt: int,
         repair: bool = False,
     ) -> StageExecutionReport:
-        prompt_name = "academic_generate_repair.md" if repair else "academic_generate_contract.md"
+        prompt_name = "pptx_generate_repair.md" if repair else "pptx_generate_contract.md"
         prompt = output.parent / ("repair_prompt.md" if repair else "prompt.md")
         prompt.write_text(
             (Path(__file__).parent / "prompts" / prompt_name).read_text(encoding="utf-8"),
@@ -277,6 +277,7 @@ class AcademicPptxGenerateAdapter:
                     "qa_report.json",
                 ),
                 attempt=attempt,
+                timeout_seconds=1200,
                 network_enabled=False,
             )
         )
