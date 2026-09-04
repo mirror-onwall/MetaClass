@@ -1,3 +1,4 @@
+import time
 from collections.abc import Iterator
 from io import BytesIO
 from pathlib import Path
@@ -49,6 +50,36 @@ def make_pptx() -> bytes:
     return stream.getvalue()
 
 
+def make_source_deck_pptx() -> bytes:
+    presentation = Presentation()
+    for index, title in enumerate(
+        ["课程主题", "核心机制", "证据分析", "应用边界"], start=1
+    ):
+        slide = presentation.slides.add_slide(presentation.slide_layouts[1])
+        slide.shapes.title.text = title
+        slide.placeholders[1].text = (
+            f"第 {index} 页详细解释概念、机制、成立条件、证据与实际案例，"
+            "并说明它和前后知识之间的关系。"
+        )
+    stream = BytesIO()
+    presentation.save(stream)
+    return stream.getvalue()
+
+
+def wait_for_interactions(client: TestClient, plan_id: str) -> dict:
+    for _ in range(200):
+        response = client.get(
+            f"/api/v1/presentation-plans/{plan_id}/interaction-planning-job"
+        )
+        if response.status_code == 200:
+            job = response.json()
+            if job["status"] in {"succeeded", "failed"}:
+                assert job["status"] == "succeeded", job
+                return job
+        time.sleep(0.01)
+    raise AssertionError("Interaction planning job did not finish")
+
+
 def test_pptx_upload_and_parse(client: TestClient) -> None:
     upload = client.post(
         "/api/v1/materials",
@@ -64,6 +95,60 @@ def test_pptx_upload_and_parse(client: TestClient) -> None:
     assert parsed.status_code == 200, parsed.text
     assert parsed.json()[0]["title"] == "Classroom Plan"
     assert Path(parsed.json()[0]["image_path"]).exists()
+
+
+@pytest.mark.parametrize(
+    ("intensity", "expect_questions"),
+    [("standard", True), ("none", False)],
+)
+def test_source_deck_route_respects_interaction_intensity(
+    client: TestClient,
+    intensity: str,
+    expect_questions: bool,
+) -> None:
+    processed = client.post(
+        "/api/v1/materials/process",
+        files={
+            "file": (
+                "source-course.pptx",
+                make_source_deck_pptx(),
+                "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            )
+        },
+    )
+    material_id = processed.json()["material"]["id"]
+    content_response = client.post(
+        f"/api/v1/materials/{material_id}/learning-content"
+    )
+    assert content_response.status_code == 201, content_response.text
+    content = content_response.json()
+    plan_job = client.post(
+        f"/api/v1/learning-contents/{content['id']}/source-deck-presentation-plan-jobs",
+        params={
+            "source_material_id": material_id,
+            "interaction_intensity": intensity,
+        },
+    ).json()
+    plan = client.get(
+        f"/api/v1/presentation-plan-jobs/{plan_job['id']}/result"
+    ).json()
+    if intensity == "none":
+        interaction_job = client.get(
+            f"/api/v1/presentation-plans/{plan['id']}/interaction-planning-job"
+        )
+        assert interaction_job.status_code == 404
+    else:
+        wait_for_interactions(client, plan["id"])
+    plan = client.get(f"/api/v1/presentation-plans/{plan['id']}").json()
+    question_bank = client.get(
+        f"/api/v1/presentation-plans/{plan['id']}/question-bank"
+    ).json()
+
+    assert plan["mode"] == "source_deck"
+    assert bool(question_bank["items"]) is expect_questions
+    assert plan["interaction_planning_status"] == (
+        "not_started" if intensity == "none" else "complete"
+    )
 
 
 def test_combined_upload_and_parse(client: TestClient) -> None:
@@ -494,13 +579,16 @@ def test_presentation_plan_and_ppt_skill_request_flow(client: TestClient) -> Non
     assert plan.json()["slides"][0]["source_section_ids"]
     assert plan.json()["slides"][0]["speaker_script"]
 
+    wait_for_interactions(client, plan.json()["id"])
     question_bank = client.get(
         f"/api/v1/presentation-plans/{plan.json()['id']}/question-bank"
     )
     assert question_bank.status_code == 200
     assert question_bank.json()["items"]
     prepared_question = question_bank.json()["items"][0]
-    assert prepared_question["slide_id"] == plan.json()["slides"][0]["id"]
+    assert prepared_question["slide_id"] in {
+        slide["id"] for slide in plan.json()["slides"]
+    }
     assert prepared_question["agent_type"]
     assert prepared_question["canonical_answer"]
     assert prepared_question["teacher_answer"]
@@ -510,8 +598,41 @@ def test_presentation_plan_and_ppt_skill_request_flow(client: TestClient) -> Non
         if slide["id"] == prepared_question["slide_id"]
     )
     assert prepared_question["teacher_answer"] != source_slide["speaker_script"]
-    assert prepared_question["canonical_question"] in prepared_question["teacher_answer"]
+    assert prepared_question["knowledge_point"] in prepared_question["teacher_answer"]
     assert prepared_question["moment"] == "after_explanation"
+
+    regenerated = client.post(
+        f"/api/v1/presentation-plans/{plan.json()['id']}/question-bank/regenerate"
+    )
+    assert regenerated.status_code == 201, regenerated.text
+    assert regenerated.json()["items"]
+    assert {item["id"] for item in regenerated.json()["items"]}.isdisjoint(
+        {item["id"] for item in question_bank.json()["items"]}
+    )
+    versions = client.get(
+        f"/api/v1/presentation-plans/{plan.json()['id']}/question-bank/versions"
+    )
+    assert versions.status_code == 200
+    assert [item["generation_id"] for item in versions.json()] == [
+        regenerated.json()["generation_id"],
+        question_bank.json()["generation_id"],
+    ]
+    saved_regenerated = client.get(
+        f"/api/v1/presentation-plans/{plan.json()['id']}/question-bank"
+    )
+    assert [item["id"] for item in saved_regenerated.json()["items"]] == [
+        item["id"] for item in regenerated.json()["items"]
+    ]
+
+    archived = client.delete(
+        f"/api/v1/presentation-plans/{plan.json()['id']}/question-bank/versions/"
+        f"{regenerated.json()['generation_id']}"
+    )
+    assert archived.status_code == 200
+    restored = client.get(
+        f"/api/v1/presentation-plans/{plan.json()['id']}/question-bank"
+    )
+    assert restored.json()["generation_id"] == question_bank.json()["generation_id"]
 
     search = client.get(
         f"/api/v1/presentation-plans/{plan.json()['id']}/question-bank/search",
@@ -584,15 +705,20 @@ def test_lecture_presentation_job_skips_question_bank(client: TestClient) -> Non
 
     job = client.post(
         f"/api/v1/learning-contents/{content['id']}/presentation-plan-jobs",
-        params={"prepare_question_bank": False},
+        params={"prepare_question_bank": False, "interaction_intensity": "none"},
     ).json()
     finished = client.get(f"/api/v1/presentation-plan-jobs/{job['id']}").json()
 
     assert job["prepare_question_bank"] is False
+    assert job["interaction_intensity"] == "none"
     assert finished["status"] == "succeeded"
     plan = client.get(
         f"/api/v1/presentation-plan-jobs/{job['id']}/result"
     ).json()
+    interaction_job = client.get(
+        f"/api/v1/presentation-plans/{plan['id']}/interaction-planning-job"
+    )
+    assert interaction_job.status_code == 404
     question_bank = client.get(
         f"/api/v1/presentation-plans/{plan['id']}/question-bank"
     ).json()
@@ -609,10 +735,11 @@ def test_prepared_question_bank_runs_as_classroom_script(client: TestClient) -> 
     presentation = client.post(
         f"/api/v1/learning-contents/{content['id']}/presentation-plans"
     ).json()
+    wait_for_interactions(client, presentation["id"])
     question_bank = client.get(
         f"/api/v1/presentation-plans/{presentation['id']}/question-bank"
     ).json()
-    prepared = question_bank["items"][0]
+    prepared_by_id = {item["id"]: item for item in question_bank["items"]}
 
     missing_artifact = client.post(
         f"/api/v1/learning-contents/{content['id']}/classroom-plans",
@@ -630,21 +757,27 @@ def test_prepared_question_bank_runs_as_classroom_script(client: TestClient) -> 
     )
     assert classroom_plan_response.status_code == 201, classroom_plan_response.text
     classroom_plan = classroom_plan_response.json()
-    action_types = [
-        action["type"] for action in classroom_plan["scenes"][0]["actions"]
-    ]
+    interaction_scene = next(
+        scene
+        for scene in classroom_plan["scenes"]
+        if any(action["type"] == "STUDENT_QUESTION" for action in scene["actions"])
+    )
+    action_types = [action["type"] for action in interaction_scene["actions"]]
     end_action = next(
         action
-        for action in classroom_plan["scenes"][0]["actions"]
+        for scene in classroom_plan["scenes"]
+        for action in scene["actions"]
         if action["type"] == "END"
     )
     assert not end_action["payload"]["summary"].startswith("本页要点：")
     student_index = action_types.index("STUDENT_QUESTION")
     assert action_types[student_index + 1] == "TEACHER_QA_RESPONSE"
-    assert (
-        classroom_plan["scenes"][0]["actions"][student_index]["payload"]["qa_id"]
-        == prepared["id"]
-    )
+    student_action = interaction_scene["actions"][student_index]
+    teacher_action = interaction_scene["actions"][student_index + 1]
+    selected_qa_id = student_action["payload"]["qa_id"]
+    assert selected_qa_id in prepared_by_id
+    assert teacher_action["payload"]["qa_id"] == selected_qa_id
+    prepared = prepared_by_id[selected_qa_id]
 
     session = client.post(
         f"/api/v1/classroom-plans/{classroom_plan['id']}/sessions",
@@ -662,6 +795,10 @@ def test_prepared_question_bank_runs_as_classroom_script(client: TestClient) -> 
     assert user_question.json()["status"] == "answered"
     assert user_question.json()["source_refs"] == prepared["source_refs"]
     student_step = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
+    for _ in range(10):
+        if student_step.json().get("status") == "agent_turn":
+            break
+        student_step = client.post(f"/api/v1/classroom-sessions/{session_id}/auto-step")
     blocked_question = client.post(
         f"/api/v1/classroom-sessions/{session_id}/questions",
         json={"question": "这里可以再解释一下吗？"},

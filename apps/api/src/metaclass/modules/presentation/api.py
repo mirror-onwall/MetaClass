@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, BackgroundTasks
 from fastapi.responses import FileResponse
 
@@ -37,9 +39,12 @@ def create_router(presentations: PresentationService) -> APIRouter:
         content_id: str,
         background_tasks: BackgroundTasks,
         prepare_question_bank: bool = True,
+        interaction_intensity: Literal["none", "light", "standard", "rich"] = "standard",
     ) -> PresentationPlanJob:
         job = presentations.create_plan_job(
-            content_id, prepare_question_bank=prepare_question_bank
+            content_id,
+            prepare_question_bank=prepare_question_bank,
+            interaction_intensity=interaction_intensity,
         )
         background_tasks.add_task(presentations.run_plan_job, job.id)
         return job
@@ -54,11 +59,13 @@ def create_router(presentations: PresentationService) -> APIRouter:
         source_material_id: str,
         background_tasks: BackgroundTasks,
         prepare_question_bank: bool = True,
+        interaction_intensity: Literal["none", "light", "standard", "rich"] = "standard",
     ) -> PresentationPlanJob:
         job = presentations.create_source_deck_plan_job(
             content_id,
             source_material_id,
             prepare_question_bank=prepare_question_bank,
+            interaction_intensity=interaction_intensity,
         )
         background_tasks.add_task(presentations.run_plan_job, job.id)
         return job

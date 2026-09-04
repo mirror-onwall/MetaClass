@@ -1,4 +1,5 @@
 from datetime import timezone
+from threading import RLock
 from typing import Protocol
 
 from sqlalchemy import select
@@ -17,7 +18,7 @@ class ContentRepository(Protocol):
 
     def list_understandings(self, material_id: str) -> list[PageUnderstanding]: ...
 
-    def save(self, content: LearningContent) -> None: ...
+    def save(self, content: LearningContent) -> LearningContent: ...
 
     def get(self, content_id: str) -> LearningContent | None: ...
 
@@ -33,41 +34,61 @@ class ContentRepository(Protocol):
 class SqlAlchemyContentRepository:
     def __init__(self, database: Database) -> None:
         self.database = database
+        self._save_lock = RLock()
 
-    def save(self, content: LearningContent) -> None:
-        with self.database.session() as session:
-            session.merge(
-                LearningContentRecord(
-                    id=content.id,
-                    material_id=content.material_id,
-                    material_ids=content.material_ids or [content.material_id],
-                    collection_id=content.collection_id,
-                    organization_mode=content.organization_mode,
-                    title=content.title,
-                    subtitle=content.subtitle,
-                    audience=content.audience,
-                    teaching_intent=content.teaching_intent,
-                    material_overview=content.material_overview,
-                    global_concepts=[
-                        item.model_dump(mode="json") for item in content.global_concepts
-                    ],
-                    knowledge_units=[
-                        item.model_dump(mode="json") for item in content.knowledge_units
-                    ],
-                    knowledge_tree=(
-                        content.knowledge_tree.model_dump(mode="json")
-                        if content.knowledge_tree
-                        else None
-                    ),
-                    objectives=content.objectives,
-                    sections=[item.model_dump(mode="json") for item in content.sections],
-                    generation_guidance=content.generation_guidance,
-                    quality=content.quality,
-                    version=content.version,
-                    created_at=content.created_at,
-                    updated_at=content.updated_at,
+    def save(self, content: LearningContent) -> LearningContent:
+        # The database treats (material_id, version) as the stable identity. Older
+        # records may have an ID that differs from today's deterministic ID, so an
+        # ID-only merge would attempt an INSERT and violate that unique constraint.
+        # Serialize the lookup/update pair to avoid the same race between local jobs.
+        with self._save_lock, self.database.session() as session:
+            existing = session.scalar(
+                select(LearningContentRecord).where(
+                    LearningContentRecord.material_id == content.material_id,
+                    LearningContentRecord.version == content.version,
                 )
             )
+            persisted = content
+            if existing and existing.id != content.id:
+                created_at = existing.created_at
+                if created_at.tzinfo is None:
+                    created_at = created_at.replace(tzinfo=timezone.utc)
+                persisted = content.model_copy(
+                    update={"id": existing.id, "created_at": created_at}
+                )
+            session.merge(
+                LearningContentRecord(
+                    id=persisted.id,
+                    material_id=persisted.material_id,
+                    material_ids=persisted.material_ids or [persisted.material_id],
+                    collection_id=persisted.collection_id,
+                    organization_mode=persisted.organization_mode,
+                    title=persisted.title,
+                    subtitle=persisted.subtitle,
+                    audience=persisted.audience,
+                    teaching_intent=persisted.teaching_intent,
+                    material_overview=persisted.material_overview,
+                    global_concepts=[
+                        item.model_dump(mode="json") for item in persisted.global_concepts
+                    ],
+                    knowledge_units=[
+                        item.model_dump(mode="json") for item in persisted.knowledge_units
+                    ],
+                    knowledge_tree=(
+                        persisted.knowledge_tree.model_dump(mode="json")
+                        if persisted.knowledge_tree
+                        else None
+                    ),
+                    objectives=persisted.objectives,
+                    sections=[item.model_dump(mode="json") for item in persisted.sections],
+                    generation_guidance=persisted.generation_guidance,
+                    quality=persisted.quality,
+                    version=persisted.version,
+                    created_at=persisted.created_at,
+                    updated_at=persisted.updated_at,
+                )
+            )
+            return persisted
 
     def get(self, content_id: str) -> LearningContent | None:
         with self.database.session() as session:

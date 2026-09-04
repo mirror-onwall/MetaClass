@@ -1,0 +1,19 @@
+flowchart LR
+  A["PPT 原稿<br/>保留作者设计与页序"] --> B["逐页解析<br/>文本 · 页面图 · 页码 · 来源锚点"]
+  B --> C["逐页理解<br/>页面角色 · 摘要 · 知识点<br/>上下页关系 · 视觉语义"]
+  C --> D["知识单元提取与规范化<br/>过滤导航页 · 相邻同主题合并<br/>建立前置 / 深化 / 示例关系"]
+  C --> E["原稿结构恢复<br/>优先目录与章节页<br/>全页覆盖 · 连续分章 · 原序不变"]
+  D --> F["章内教学段规划<br/>按连续认知任务组织页面<br/>知识单元挂接到教学段"]
+  E --> F
+  F ==> G["统一 LearningContent"]
+  G --> H["大纲<br/>sections：章节顺序、目标、页码范围"]
+  G --> I["知识树<br/>章节 → 教学段 → 知识单元<br/>附来源页与依赖关系"]
+
+  classDef source fill:#EEF4FF,stroke:#4070C0,color:#16345C,stroke-width:1.5px;
+  classDef ai fill:#FFF4DE,stroke:#C48118,color:#5D3B08,stroke-width:1.5px;
+  classDef core fill:#E8F7F0,stroke:#27825C,color:#134B37,stroke-width:2px;
+  classDef output fill:#F2ECFF,stroke:#7856B8,color:#3D286B,stroke-width:1.5px;
+  class A,B source;
+  class C,D,E,F ai;
+  class G core;
+  class H,I output;

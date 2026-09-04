@@ -11,7 +11,6 @@ from urllib import error, request
 
 import certifi
 
-
 LLMRole = Literal["system", "user", "assistant"]
 
 
@@ -37,6 +36,115 @@ class FakeLLMProvider:
     def complete_json(self, messages: list[LLMMessage], *, temperature: float = 0.2) -> str:
         system_text = messages[0].content if messages else ""
         user_text = messages[-1].content if messages else ""
+        if "PAPER_CLASSROOM_NARRATION_V1" in system_text:
+            request_payload = json.loads(user_text)
+            slides = []
+            input_slides = request_payload["slides"]
+            for index, slide in enumerate(input_slides):
+                previous_title = slide.get("previous_slide_title")
+                next_title = slide.get("next_slide_title")
+                opening = (
+                    f"承接前面对“{previous_title}”的讨论，现在来看“{slide['title']}”。"
+                    if previous_title
+                    else f"我们先从“{slide['title']}”进入论文真正要回答的问题。"
+                )
+                claims = [item["statement"] for item in slide.get("claims", [])]
+                results = [item["statement"] for item in slide.get("quantitative_results", [])]
+                contexts = [item["exact_text"] for item in slide.get("evidence_contexts", [])]
+                main = (
+                    f"这部分的讲解目标是{slide['purpose']}。"
+                    f"页面上的信息需要结合论文论证来理解，而不是只记住结论标签。"
+                )
+                evidence = (
+                    "论文的相关主张可以概括为："
+                    + ("；".join(claims) if claims else "这一页主要承担背景和衔接作用")
+                    + "。"
+                    + ("相应结果是：" + "；".join(results) + "。" if results else "")
+                    + (
+                        "结合原文上下文，作者是在明确条件下讨论这一点，因此讲解时需要保留结论边界。"
+                        if contexts
+                        else ""
+                    )
+                )
+                emphasis = (
+                    "这里最重要的是区分作者直接报告的事实与我们对事实意义的解释，"
+                    "这样才能判断证据是否真正支持研究问题。"
+                )
+                transition = (
+                    f"理解这一层关系之后，下一步转向“{next_title}”。"
+                    if next_title
+                    else "最后把这些证据重新放回研究问题，评估论文贡献及其适用边界。"
+                )
+                script = f"{opening}\n\n{main}\n\n{evidence}\n\n{emphasis}\n\n{transition}"
+                slides.append(
+                    {
+                        "slide_id": slide["slide_id"],
+                        "opening": opening,
+                        "main_explanation": main,
+                        "evidence_interpretation": evidence,
+                        "teaching_emphasis": emphasis,
+                        "transition": transition,
+                        "speaker_script": script,
+                        "used_claim_ids": [item["id"] for item in slide.get("claims", [])],
+                        "used_result_ids": [
+                            item["id"] for item in slide.get("quantitative_results", [])
+                        ],
+                        "used_source_refs": slide.get("source_refs", []),
+                    }
+                )
+            return json.dumps({"slides": slides}, ensure_ascii=False)
+        if "INTERACTION_NODE_SELECTOR_V1" in system_text:
+            request_payload = json.loads(user_text)
+            maximum = request_payload["budget"]["maximum"]
+            ranked = sorted(
+                request_payload["candidates"],
+                key=lambda item: (-item["deterministic_score"], item["order"]),
+            )
+            selected = ranked[:maximum]
+            return json.dumps(
+                {
+                    "selected_slide_ids": [item["slide_id"] for item in selected],
+                    "reasons": [
+                        {
+                            "slide_id": item["slide_id"],
+                            "interaction_focus": "concept",
+                            "reason": "候选页具有较高的确定性教学价值。",
+                        }
+                        for item in selected
+                    ],
+                },
+                ensure_ascii=False,
+            )
+        if "INTERACTION_NODE_QUESTION_GENERATOR_V1" in system_text:
+            request_payload = json.loads(user_text)
+            questions = []
+            agent_types = [
+                "deep_thinker",
+                "concept_confused",
+                "practical_applier",
+                "researcher",
+            ]
+            for index, node in enumerate(request_payload["nodes"]):
+                point = (node.get("key_points") or [node["title"]])[0]
+                questions.append(
+                    {
+                        "slide_id": node["slide_id"],
+                        "agent_type": agent_types[index % len(agent_types)],
+                        "compatible_agent_types": [
+                            "researcher",
+                            "concept_confused",
+                        ],
+                        "knowledge_point": point,
+                        "canonical_question": f"{point}的关键条件和实际含义是什么？",
+                        "student_question": f"老师，{point}到底要满足什么条件，实际该怎么理解？",
+                        "canonical_answer": (
+                            f"理解{point}需要结合当前页面给出的定义、条件和上下文。"
+                        ),
+                        "teacher_answer": f"关键是把{point}放回这一页的条件和上下文中理解。",
+                        "placement_reason": "适合在本页讲解后检查学生是否形成准确理解。",
+                    }
+                )
+            return json.dumps({"questions": questions}, ensure_ascii=False)
         if "MetaClass 的 ClassroomPlan planner" in system_text:
             request_payload = json.loads(user_text)
             section_count = len(request_payload["sections"])
@@ -358,6 +466,7 @@ class OpenAICompatibleLLMProvider:
         self.default_temperature = default_temperature
         self.max_tokens = max_tokens
         self.ssl_context = ssl.create_default_context(cafile=certifi.where())
+        self._requires_temperature_one = self._model_requires_temperature_one(model)
 
     def complete_json(self, messages: list[LLMMessage], *, temperature: float = 0.2) -> str:
         payload = {
@@ -410,14 +519,22 @@ class OpenAICompatibleLLMProvider:
 
     def _compatible_temperature(self, temperature: float | None) -> float:
         requested = temperature if temperature is not None else self.default_temperature
-        model = self.model.strip().lower()
-        if model.startswith(("gpt-5", "o1", "o3", "o4")):
+        if self._requires_temperature_one:
             return 1.0
         return requested
 
-    def _read_chat_json_with_temperature_fallback(
-        self, payload: dict, label: str
-    ) -> dict:
+    @staticmethod
+    def _model_requires_temperature_one(model: str) -> bool:
+        """Return known model capabilities without forcing unrelated models.
+
+        Hosted model names often include an owner prefix, such as
+        ``moonshotai/kimi-k3``. Unknown models are discovered from an explicit
+        upstream validation error and cached on this provider instance instead.
+        """
+        model_name = model.strip().lower().rsplit("/", 1)[-1]
+        return model_name.startswith(("gpt-5", "o1", "o3", "o4", "kimi-k2", "kimi-k3"))
+
+    def _read_chat_json_with_temperature_fallback(self, payload: dict, label: str) -> dict:
         try:
             return self._read_json_with_retry(self._chat_request(payload), label)
         except RuntimeError as exc:
@@ -427,6 +544,9 @@ class OpenAICompatibleLLMProvider:
                 and "invalid temperature" in detail
                 and "only 1 is allowed" in detail
             ):
+                # Remember the capability so later requests for an unknown or
+                # newly released model do not repeat the same failed probe.
+                self._requires_temperature_one = True
                 retry_payload = {**payload, "temperature": 1.0}
                 return self._read_json_with_retry(
                     self._chat_request(retry_payload), f"{label} temperature-compatible retry"
@@ -457,11 +577,13 @@ class OpenAICompatibleLLMProvider:
             except error.HTTPError as exc:
                 detail = exc.read().decode("utf-8", errors="replace")
                 raise RuntimeError(f"{label} request failed: HTTP {exc.code} {detail}") from exc
-            except (TimeoutError, error.URLError) as exc:
+            except (TimeoutError, error.URLError, ConnectionError) as exc:
                 if attempt == 0:
                     continue
                 reason = exc.reason if isinstance(exc, error.URLError) else str(exc)
-                raise RuntimeError(f"{label} request timed out after 2 attempts: {reason}") from exc
+                raise RuntimeError(
+                    f"{label} transient request failed after 2 attempts: {reason}"
+                ) from exc
             except json.JSONDecodeError as exc:
                 raise RuntimeError(f"{label} returned invalid JSON") from exc
         raise RuntimeError(f"{label} request failed")

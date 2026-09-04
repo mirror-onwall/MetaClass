@@ -12,6 +12,7 @@ from metaclass.core.schemas import utc_now
 from metaclass.infrastructure.providers.base import LearningProvider
 from metaclass.modules.content.repository import ContentRepository
 from metaclass.modules.content.schemas import (
+    ConceptNote,
     ContentGenerationJob,
     ContentGenerationJobStatus,
     CourseKnowledgeTree,
@@ -20,32 +21,29 @@ from metaclass.modules.content.schemas import (
     KnowledgeRelation,
     KnowledgeUnit,
     LearningContent,
-    LearningContentDraft,
     LearningContentDiagnostics,
-    MaterialLearningContentSummary,
+    LearningContentDraft,
     LearningSection,
     LearningSectionDraft,
-    ConceptNote,
+    MaterialLearningContentSummary,
     PageRef,
     PageUnderstanding,
     PageUnderstandingDraft,
     QuizItem,
-    SourceExcerpt,
     SourceDeckLearningContentDraft,
     SourceDeckSectionDraft,
     SourceDeckTeachingStructureDraft,
-    TeachingSegment,
+    SourceExcerpt,
     TeachingPoint,
+    TeachingSegment,
     VisualOpportunity,
 )
 from metaclass.modules.materials.schemas import PageMetadata
 from metaclass.modules.materials.service import MaterialService
 
-
 logger = logging.getLogger(__name__)
 ProgressCallback = Callable[[int, str, str], None]
 PageProgressCallback = Callable[[int, int], None]
-MAX_UNITS_PER_TOPIC_NODE = 3
 MAX_TREE_NODES_PER_SECTION = 2
 
 
@@ -173,13 +171,17 @@ class ContentService:
 
     def resume_generation_job(self, job_id: str) -> ContentGenerationJob:
         job = self.get_generation_job(job_id)
-        if job.status != ContentGenerationJobStatus.PAUSED:
-            raise HTTPException(409, "Only paused jobs can be resumed")
+        if job.status not in {
+            ContentGenerationJobStatus.PAUSED,
+            ContentGenerationJobStatus.FAILED,
+        }:
+            raise HTTPException(409, "Only paused or failed jobs can be resumed")
         with self._job_lock:
             self._pause_events[job_id] = Event()
         job.status = ContentGenerationJobStatus.QUEUED
         job.step = "queued"
         job.message = "等待从 checkpoint 继续"
+        job.error = None
         job.updated_at = utc_now()
         self._save_job(job)
         return job
@@ -595,10 +597,26 @@ class ContentService:
                 )
             }
         )
-        self.repository.save(content)
+        content = self.repository.save(content)
         self._report_progress(progress_callback, 96, "saving", "Source-deck content saved")
         self._clear_source_checkpoint(material_id)
         return content
+
+    def save_paper_deck_content(self, content: LearningContent) -> LearningContent:
+        """Persist deterministic content produced from validated paper artifacts."""
+        if content.organization_mode != "paper_deck":
+            raise ValueError("Paper-deck content must use paper_deck organization mode")
+        pages = self.materials.pages(content.material_id)
+        expected = [page.page_no for page in sorted(pages, key=lambda item: item.page_no)]
+        actual = [page_no for section in content.sections for page_no in section.page_nos]
+        if not expected or actual != expected:
+            raise ValueError(
+                f"Paper-deck content page mapping mismatch: expected {expected}, got {actual}"
+            )
+        if not content.knowledge_units or not content.knowledge_tree:
+            raise ValueError("Paper-deck content requires a paper knowledge tree")
+        self._validate_course_knowledge_tree(content.knowledge_tree, content.knowledge_units)
+        return self.repository.save(content)
 
     @staticmethod
     def _validate_source_deck_draft(
@@ -1322,7 +1340,7 @@ class ContentService:
                         )
                     }
                 )
-                self.repository.save(content)
+                content = self.repository.save(content)
                 self._report_progress(progress_callback, 96, "saving", "Learning content saved")
                 return content
             except ContentGenerationPaused:
@@ -1357,7 +1375,7 @@ class ContentService:
                 )
             }
         )
-        self.repository.save(content)
+        content = self.repository.save(content)
         self._report_progress(progress_callback, 96, "saving", "Learning content saved")
         return content
 
@@ -1480,18 +1498,20 @@ class ContentService:
                 )
             )
             existing_node_ids.add(root_id)
-            for chunk_index in range(0, len(missing_units), MAX_UNITS_PER_TOPIC_NODE):
-                chunk = missing_units[chunk_index : chunk_index + MAX_UNITS_PER_TOPIC_NODE]
-                child_id = f"{root_id}_topic_{chunk_index // MAX_UNITS_PER_TOPIC_NODE + 1:02d}"
+            units_by_type: dict[str, list[KnowledgeUnit]] = {}
+            for unit in missing_units:
+                units_by_type.setdefault(unit.unit_type, []).append(unit)
+            for group_index, (unit_type, group) in enumerate(units_by_type.items(), start=1):
+                child_id = f"{root_id}_{self._normalize_topic(unit_type) or 'topic'}"
                 nodes.append(
                     CourseKnowledgeTreeNode(
                         id=child_id,
-                        title=chunk[0].title if len(chunk) == 1 else "Supplementary Topic",
-                        role=chunk[0].unit_type,
-                        summary=" ".join(unit.summary for unit in chunk)[:1200],
+                        title=group[0].title if len(group) == 1 else "Supplementary Topic",
+                        role=unit_type,
+                        summary=" ".join(unit.summary for unit in group)[:1200],
                         parent_id=root_id,
-                        knowledge_unit_ids=[unit.id for unit in chunk],
-                        order=chunk_index // MAX_UNITS_PER_TOPIC_NODE + 1,
+                        knowledge_unit_ids=[unit.id for unit in group],
+                        order=group_index,
                     )
                 )
             warnings.append(
@@ -1543,24 +1563,23 @@ class ContentService:
                 )
             )
             previous_root_id = root_id
-            for chunk_index in range(0, len(category_units), MAX_UNITS_PER_TOPIC_NODE):
-                chunk = category_units[chunk_index : chunk_index + MAX_UNITS_PER_TOPIC_NODE]
-                child_index = chunk_index // MAX_UNITS_PER_TOPIC_NODE + 1
-                child_id = f"{root_id}_topic_{child_index:02d}"
+            units_by_type: dict[str, list[KnowledgeUnit]] = {}
+            for unit in category_units:
+                units_by_type.setdefault(unit.unit_type, []).append(unit)
+            for child_index, (unit_type, group) in enumerate(units_by_type.items(), start=1):
+                child_id = f"{root_id}_{self._normalize_topic(unit_type) or 'topic'}"
                 nodes.append(
                     CourseKnowledgeTreeNode(
                         id=child_id,
-                        title=(
-                            chunk[0].title if len(chunk) == 1 else f"{category_title} {child_index}"
-                        ),
-                        role=chunk[0].unit_type,
-                        summary=" ".join(unit.summary for unit in chunk)[:1200],
+                        title=group[0].title if len(group) == 1 else category_title,
+                        role=unit_type,
+                        summary=" ".join(unit.summary for unit in group)[:1200],
                         parent_id=root_id,
-                        knowledge_unit_ids=[unit.id for unit in chunk],
+                        knowledge_unit_ids=[unit.id for unit in group],
                         order=child_index,
                     )
                 )
-                assigned_ids.update(unit.id for unit in chunk)
+                assigned_ids.update(unit.id for unit in group)
 
         unassigned = [unit for unit in units if unit.id not in assigned_ids]
         if unassigned:
@@ -1602,26 +1621,28 @@ class ContentService:
                 raise ValueError(f"Tree node {node.id} references an unknown parent")
             if any(item not in node_id_set for item in node.prerequisite_node_ids):
                 raise ValueError(f"Tree node {node.id} references an unknown prerequisite")
-            if len(node.knowledge_unit_ids) > MAX_UNITS_PER_TOPIC_NODE:
-                raise ValueError(
-                    f"Tree node {node.id} contains too many knowledge units for one topic"
-                )
 
         expected_unit_ids = {unit.id for unit in units}
         assigned_unit_ids = [unit_id for node in tree.nodes for unit_id in node.knowledge_unit_ids]
+        orphan_unit_ids = tree.orphan_unit_ids
         if any(unit_id not in expected_unit_ids for unit_id in assigned_unit_ids):
             raise ValueError("Course knowledge tree references an unknown knowledge unit")
+        if any(unit_id not in expected_unit_ids for unit_id in orphan_unit_ids):
+            raise ValueError("Course knowledge tree references an unknown orphan knowledge unit")
         if len(assigned_unit_ids) != len(set(assigned_unit_ids)):
             raise ValueError("A knowledge unit appears in more than one tree node")
-        if set(assigned_unit_ids) != expected_unit_ids:
-            raise ValueError("Course knowledge tree does not cover every knowledge unit")
+        if len(orphan_unit_ids) != len(set(orphan_unit_ids)):
+            raise ValueError("Course knowledge tree contains duplicate orphan knowledge units")
+        if set(assigned_unit_ids) & set(orphan_unit_ids):
+            raise ValueError("A knowledge unit cannot be both taught and evidence-indexed")
+        if set(assigned_unit_ids) | set(orphan_unit_ids) != expected_unit_ids:
+            raise ValueError("Course knowledge tree does not account for every knowledge unit")
 
     @staticmethod
     def _validate_draft_tree_coverage(
         draft: LearningContentDraft,
         tree: CourseKnowledgeTree,
     ) -> None:
-        node_by_id = {node.id: node for node in tree.nodes}
         required_node_ids = {node.id for node in tree.nodes if node.knowledge_unit_ids}
         section_node_ids = [
             node_id for section in draft.sections for node_id in section.tree_node_ids
@@ -1639,11 +1660,6 @@ class ContentService:
         for section in draft.sections:
             if len(section.tree_node_ids) > MAX_TREE_NODES_PER_SECTION:
                 raise ValueError("LearningContent section merges too many teaching topics")
-            unit_count = sum(
-                len(node_by_id[node_id].knowledge_unit_ids) for node_id in section.tree_node_ids
-            )
-            if unit_count > MAX_UNITS_PER_TOPIC_NODE:
-                raise ValueError("LearningContent section contains too many knowledge units")
 
     def _sections_from_knowledge_tree(
         self,
@@ -1842,20 +1858,8 @@ class ContentService:
             )
             for section in content.sections
         }
-        overloaded_section_ids = sorted(
-            section_id
-            for section_id, unit_count in section_unit_counts.items()
-            if unit_count > MAX_UNITS_PER_TOPIC_NODE
-        )
-        recommended_min_section_count = (
-            (len(expected_unit_ids) + MAX_UNITS_PER_TOPIC_NODE - 1) // MAX_UNITS_PER_TOPIC_NODE
-            if expected_unit_ids
-            else 0
-        )
-        if overloaded_section_ids:
-            warnings.append("Some LearningContent sections contain too many knowledge units.")
-        if len(content.sections) < recommended_min_section_count:
-            warnings.append("LearningContent may be over-compressed for the available knowledge.")
+        overloaded_section_ids: list[str] = []
+        recommended_min_section_count = 1 if expected_unit_ids else 0
 
         low_confidence_unit_ids = sorted(
             unit.id for unit in content.knowledge_units if unit.confidence < 0.7
@@ -2326,7 +2330,7 @@ class ContentService:
         ]
         self.repository.save_understandings(understandings)
 
-        organizer = getattr(self.provider, "organize_learning_content")
+        organizer = self.provider.organize_learning_content
         self._report_progress(
             progress_callback,
             82,
@@ -2356,7 +2360,7 @@ class ContentService:
             describe_page_visual = getattr(self.provider, "describe_page_visual", None)
             if describe_page_visual:
                 visual_description = describe_page_visual(page)
-            understand_page_with_context = getattr(self.provider, "understand_page_with_context")
+            understand_page_with_context = self.provider.understand_page_with_context
             result.append(
                 understand_page_with_context(
                     page_no=page.page_no,

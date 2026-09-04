@@ -1,15 +1,10 @@
-from datetime import timezone
+from dataclasses import dataclass
+from datetime import UTC
 from typing import Protocol
 
 from sqlalchemy import delete, select
 
 from metaclass.infrastructure.database import Database
-from metaclass.modules.materials.models import (
-    MaterialCollectionRecord,
-    MaterialRecord,
-    PageRecord,
-)
-from metaclass.modules.materials.schemas import Material, MaterialCollection, PageMetadata
 from metaclass.modules.classroom.models import (
     ClassroomPlanGenerationMetaRecord,
     ClassroomPlanJobRecord,
@@ -18,6 +13,12 @@ from metaclass.modules.classroom.models import (
     ClassroomSessionRecord,
 )
 from metaclass.modules.content.models import LearningContentRecord, PageUnderstandingRecord
+from metaclass.modules.materials.models import (
+    MaterialCollectionRecord,
+    MaterialRecord,
+    PageRecord,
+)
+from metaclass.modules.materials.schemas import Material, MaterialCollection, PageMetadata
 from metaclass.modules.presentation.models import (
     PPTArtifactRecord,
     PPTGenerationJobRecord,
@@ -26,6 +27,12 @@ from metaclass.modules.presentation.models import (
 )
 from metaclass.modules.question_bank.models import ClassroomQARecord
 from metaclass.modules.video.models import VideoJobRecord, VideoResultRecord
+
+
+@dataclass(frozen=True)
+class MaterialProjectCleanup:
+    file_paths: list[str]
+    presentation_job_ids: list[str]
 
 
 class MaterialRepository(Protocol):
@@ -37,7 +44,7 @@ class MaterialRepository(Protocol):
 
     def delete_material(self, material_id: str) -> None: ...
 
-    def delete_material_project(self, material_id: str) -> list[str]: ...
+    def delete_material_project(self, material_id: str) -> MaterialProjectCleanup: ...
 
     def save_collection(self, collection: MaterialCollection) -> None: ...
 
@@ -66,6 +73,10 @@ class SqlAlchemyMaterialRepository:
                     file_hash=material.file_hash,
                     status=material.status.value,
                     storage_path=material.storage_path,
+                    source=material.source,
+                    source_role=material.source_role.value,
+                    parent_material_id=material.parent_material_id,
+                    derivation_key=material.derivation_key,
                     page_count=material.page_count,
                     error=material.error,
                     created_at=material.created_at,
@@ -86,15 +97,19 @@ class SqlAlchemyMaterialRepository:
                     "file_hash": record.file_hash,
                     "status": record.status,
                     "storage_path": record.storage_path,
+                    "source": record.source or "upload",
+                    "source_role": record.source_role or "uploaded",
+                    "parent_material_id": record.parent_material_id,
+                    "derivation_key": record.derivation_key,
                     "page_count": record.page_count,
                     "error": record.error,
                     "created_at": (
-                        record.created_at.replace(tzinfo=timezone.utc)
+                        record.created_at.replace(tzinfo=UTC)
                         if record.created_at.tzinfo is None
                         else record.created_at
                     ),
                     "updated_at": (
-                        record.updated_at.replace(tzinfo=timezone.utc)
+                        record.updated_at.replace(tzinfo=UTC)
                         if record.updated_at.tzinfo is None
                         else record.updated_at
                     ),
@@ -113,7 +128,7 @@ class SqlAlchemyMaterialRepository:
             session.execute(delete(PageRecord).where(PageRecord.material_id == material_id))
             session.execute(delete(MaterialRecord).where(MaterialRecord.id == material_id))
 
-    def delete_material_project(self, material_id: str) -> list[str]:
+    def delete_material_project(self, material_id: str) -> MaterialProjectCleanup:
         with self.database.session() as session:
             # `material_ids` is currently stored as JSON, so the database cannot
             # enforce a foreign key for every member. Inspect all content records
@@ -163,7 +178,15 @@ class SqlAlchemyMaterialRepository:
             file_paths = [
                 path
                 for item in artifacts
-                for path in [item.pptx_path, item.skill_request_path]
+                for path in [
+                    item.pptx_path,
+                    item.skill_request_path,
+                    *[
+                        slide.get("image_path")
+                        for slide in (item.slide_images or [])
+                        if isinstance(slide, dict)
+                    ],
+                ]
                 if path
             ] + [
                 path
@@ -265,7 +288,10 @@ class SqlAlchemyMaterialRepository:
                 else:
                     session.delete(collection)
             session.execute(delete(MaterialRecord).where(MaterialRecord.id == material_id))
-            return file_paths
+            return MaterialProjectCleanup(
+                file_paths=file_paths,
+                presentation_job_ids=ppt_job_ids,
+            )
 
     def save_collection(self, collection: MaterialCollection) -> None:
         with self.database.session() as session:
@@ -356,15 +382,19 @@ class SqlAlchemyMaterialRepository:
                 "file_hash": record.file_hash,
                 "status": record.status,
                 "storage_path": record.storage_path,
+                "source": record.source or "upload",
+                "source_role": record.source_role or "uploaded",
+                "parent_material_id": record.parent_material_id,
+                "derivation_key": record.derivation_key,
                 "page_count": record.page_count,
                 "error": record.error,
                 "created_at": (
-                    record.created_at.replace(tzinfo=timezone.utc)
+                    record.created_at.replace(tzinfo=UTC)
                     if record.created_at.tzinfo is None
                     else record.created_at
                 ),
                 "updated_at": (
-                    record.updated_at.replace(tzinfo=timezone.utc)
+                    record.updated_at.replace(tzinfo=UTC)
                     if record.updated_at.tzinfo is None
                     else record.updated_at
                 ),
@@ -380,12 +410,12 @@ class SqlAlchemyMaterialRepository:
                 "material_ids": record.material_ids,
                 "primary_material_id": record.primary_material_id,
                 "created_at": (
-                    record.created_at.replace(tzinfo=timezone.utc)
+                    record.created_at.replace(tzinfo=UTC)
                     if record.created_at.tzinfo is None
                     else record.created_at
                 ),
                 "updated_at": (
-                    record.updated_at.replace(tzinfo=timezone.utc)
+                    record.updated_at.replace(tzinfo=UTC)
                     if record.updated_at.tzinfo is None
                     else record.updated_at
                 ),

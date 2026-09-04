@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "skills": [
+    {
+      "name": "paper-analyze",
+      "environment_variable": "METACLASS_PAPER_ANALYZE_SKILL_DIR",
+      "required": true,
+      "source_url": "https://github.com/juliye2025/evil-read-arxiv.git",
+      "revision": "d361cd7e6c5547d919eac01f93671a056d5deb91",
+      "subdirectory": "paper-analyze",
+      "required_files": [
+        "SKILL.md",
+        "scripts/generate_note.py",
+        "scripts/resolve_source.py",
+        "scripts/update_graph.py"
+      ]
+    },
+    {
+      "name": "extract-paper-images",
+      "environment_variable": "METACLASS_EXTRACT_PAPER_IMAGES_SKILL_DIR",
+      "required": false,
+      "source_url": "https://github.com/juliye2025/evil-read-arxiv.git",
+      "revision": "d361cd7e6c5547d919eac01f93671a056d5deb91",
+      "subdirectory": "extract-paper-images",
+      "required_files": ["SKILL.md", "scripts/extract_images.py"]
+    },
+    {
+      "name": "pptx",
+      "environment_variable": "METACLASS_PPTX_SKILL_DIR",
+      "required": true,
+      "source_url": "https://github.com/anthropics/skills.git",
+      "revision": "3b3fad96af16a10759d930941b4520ba0c40edae",
+      "subdirectory": "skills/pptx",
+      "required_files": [
+        "SKILL.md",
+        "pptxgenjs.md",
+        "editing.md",
+        "scripts/thumbnail.py",
+        "scripts/office/soffice.py"
+      ]
+    },
+    {
+      "name": "academic-pptx",
+      "directory_name": "academic-pptx-skill",
+      "environment_variable": "METACLASS_ACADEMIC_PPTX_SKILL_DIR",
+      "required": true,
+      "source_url": "https://github.com/Gabberflast/academic-pptx-skill.git",
+      "revision": "f77d3a0e8d0dc2c6da14707beef6de739eae7a48",
+      "required_files": ["SKILL.md", "content_guidelines.md", "slide_patterns.md"],
+      "dependencies": [{"name": "pptx"}]
+    },
+    {
+      "name": "nature-shared",
+      "required": false,
+      "source_url": "https://github.com/Yuan1z0825/nature-skills.git",
+      "revision": "3817cd194c31010febb1312ab786e53cd8154333",
+      "subdirectory": "skills/nature-shared",
+      "required_files": ["SKILL.md", "core/terminology-ledger.md"]
+    },
+    {
+      "name": "nature-paper2ppt",
+      "required": false,
+      "source_url": "https://github.com/Yuan1z0825/nature-skills.git",
+      "revision": "3817cd194c31010febb1312ab786e53cd8154333",
+      "subdirectory": "skills/nature-paper2ppt",
+      "required_files": [
+        "SKILL.md",
+        "manifest.yaml",
+        "static/core/workflow.md",
+        "static/core/output-and-quality.md",
+        "scripts/audit_pptx_quality.py"
+      ],
+      "dependencies": [{"name": "nature-shared"}]
+    }
+  ]
+}

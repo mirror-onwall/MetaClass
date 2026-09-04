@@ -1,4 +1,5 @@
 import re
+from uuid import uuid4
 
 from fastapi import HTTPException
 
@@ -29,18 +30,51 @@ class QuestionBankService:
         plan = self.presentations.get_plan(plan_id)
         content = self.contents.get(plan.content_id)
         existing = self.repository.list_for_plan(plan.id)
-        if existing:
-            return QuestionBank(
-                presentation_plan_id=plan.id,
-                content_id=content.id,
-                items=existing,
-            )
-        items = self.generator.generate(content, plan)
-        self.repository.replace_for_plan(plan.id, items)
+        completed_slide_ids = {item.slide_id for item in existing}
+        target_slide_ids = set(plan.interaction_node_ids) or {
+            slide.id for slide in plan.slides
+        }
+        for batch in self.generator.generate_node_batches(
+            content,
+            plan,
+            target_slide_ids=target_slide_ids,
+            completed_slide_ids=completed_slide_ids,
+        ):
+            self.repository.append_for_plan(batch)
+        items = self.repository.list_for_plan(plan.id)
         return QuestionBank(
             presentation_plan_id=plan.id,
             content_id=content.id,
+            generation_id=items[0].generation_id if items else "legacy",
             items=items,
+        )
+
+    def regenerate_for_plan(self, plan_id: str) -> QuestionBank:
+        """Build and append a fresh bank generation without touching history."""
+        plan = self.presentations.get_plan(plan_id)
+        content = self.contents.get(plan.content_id)
+        target_slide_ids = set(plan.interaction_node_ids) or {
+            slide.id for slide in plan.slides
+        }
+        generation_id = f"qa_bank_{uuid4().hex[:12]}"
+        fresh_items = [
+            item.model_copy(update={"generation_id": generation_id})
+            for batch in self.generator.generate_node_batches(
+                content,
+                plan,
+                target_slide_ids=target_slide_ids,
+                completed_slide_ids=set(),
+            )
+            for item in batch
+        ]
+        if target_slide_ids and not fresh_items:
+            raise HTTPException(502, "Question bank regeneration returned no questions")
+        self.repository.append_for_plan(fresh_items)
+        return QuestionBank(
+            presentation_plan_id=plan.id,
+            content_id=content.id,
+            generation_id=generation_id,
+            items=fresh_items,
         )
 
     def get_for_plan(self, plan_id: str) -> QuestionBank:
@@ -48,8 +82,26 @@ class QuestionBankService:
         return QuestionBank(
             presentation_plan_id=plan.id,
             content_id=plan.content_id,
-            items=self.repository.list_for_plan(plan.id),
+            generation_id=(items[0].generation_id if (items := self.repository.list_for_plan(plan.id)) else "legacy"),
+            items=items,
         )
+
+    def list_versions_for_plan(self, plan_id: str) -> list[QuestionBank]:
+        plan = self.presentations.get_plan(plan_id)
+        return [
+            QuestionBank(
+                presentation_plan_id=plan.id,
+                content_id=plan.content_id,
+                generation_id=items[0].generation_id,
+                items=items,
+            )
+            for items in self.repository.list_versions_for_plan(plan.id)
+            if items
+        ]
+
+    def archive_generation(self, plan_id: str, generation_id: str) -> None:
+        self.presentations.get_plan(plan_id)
+        self.repository.archive_generation(plan_id, generation_id)
 
     def get_item(self, qa_id: str) -> ClassroomQA:
         item = self.repository.get_item(qa_id)

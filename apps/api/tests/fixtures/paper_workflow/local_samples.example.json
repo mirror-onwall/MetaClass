@@ -1,0 +1,27 @@
+{
+  "schema_version": "1.0",
+  "samples": [
+    {
+      "id": "shapefile_gpt",
+      "path": "/Users/mirror/Desktop/shapefileGPT.pdf",
+      "paper_type": "methods",
+      "focus": [
+        "method_architecture",
+        "gis_tool_chain",
+        "experiment_metrics",
+        "limitations"
+      ]
+    },
+    {
+      "id": "kimi_k3",
+      "path": "/Users/mirror/Desktop/kimi-k3.pdf",
+      "paper_type": "methods",
+      "focus": [
+        "model_architecture",
+        "training_pipeline",
+        "benchmark_tables",
+        "ablation_and_boundaries"
+      ]
+    }
+  ]
+}

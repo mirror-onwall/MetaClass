@@ -17,6 +17,8 @@ import type {
   PPTGenerationJob,
   MaterialProcessingJob,
   StudentAgentType,
+  ClassroomQA,
+  QuestionBank,
 } from "../../shared/types";
 
 type LibraryPageProps = {
@@ -52,12 +54,30 @@ const statusCopy: Record<Material["status"], string> = {
   failed: "解析失败",
 };
 
+const qaMomentCopy: Record<ClassroomQA["moment"], string> = {
+  before_explanation: "讲解前",
+  during_explanation: "讲解中",
+  after_explanation: "讲解后",
+  before_next_slide: "翻页前",
+};
+
 function displayDate(value?: string) {
   if (!value) return "历史资料";
   return new Intl.DateTimeFormat("zh-CN", {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
+  }).format(new Date(value));
+}
+
+function displayDateTime(value?: string) {
+  if (!value) return "时间未知";
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
   }).format(new Date(value));
 }
 
@@ -88,6 +108,14 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
     plan: PresentationPlanLibrarySummary;
   } | null>(null);
   const [draftStudentTypes, setDraftStudentTypes] = useState<StudentAgentType[]>(defaultStudentAgentTypes);
+  const [qaViewer, setQaViewer] = useState<{
+    plan: PresentationPlanLibrarySummary;
+    items: ClassroomQA[];
+    versions: QuestionBank[];
+    generationId?: string;
+    loading: boolean;
+    error?: string;
+  } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -350,7 +378,8 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
         const item = result.items.find((entry) => entry.material.id === selected?.id) ?? result.items[0];
         if (item) onUseMaterial(item.material, item.pages);
       } else if (kind === "content" && selected) {
-        await api.resumeContentGenerationJob(id);
+        const resumed = await api.resumeContentGenerationJob(id);
+        setContentJobs((items) => items.map((item) => item.id === id ? resumed : item));
         const content = await api.waitForContentGenerationJob(id, (job) => setContentJobs((items) => items.map((item) => item.id === id ? job : item)));
         onOpenAsset({ material: selected, pages, content });
       } else if (kind === "plan" && selected) {
@@ -446,6 +475,89 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
     const draft = classroomDraft;
     setClassroomDraft(null);
     await openClassroomAsset(draft.material, draft.contentId, draft.plan, undefined, draftStudentTypes);
+  }
+
+  async function viewQuestionBank(plan: PresentationPlanLibrarySummary) {
+    setQaViewer({ plan, items: [], versions: [], loading: true });
+    try {
+      const versions = await api.listQuestionBankVersions(plan.id);
+      const bank = versions[0];
+      setQaViewer((current) => current?.plan.id === plan.id
+        ? {
+            ...current,
+            versions,
+            generationId: bank?.generation_id,
+            items: bank?.items ?? [],
+            loading: false,
+          }
+        : current);
+    } catch (reason) {
+      setQaViewer((current) => current?.plan.id === plan.id
+        ? {
+            ...current,
+            loading: false,
+            error: reason instanceof Error ? reason.message : "QA 问答对读取失败",
+          }
+        : current);
+    }
+  }
+
+  async function regenerateInteractiveClassroom(plan: PresentationPlanLibrarySummary) {
+    const confirmed = window.confirm(
+      "确定生成一个新的互动课堂版本吗？\n\n将新增一套 QA 问答和对应课堂剧本；原问答、原课堂、PPT、知识树和逐页讲稿都会保留。",
+    );
+    if (!confirmed) return;
+    setAssetBusy("正在生成新版问答与互动课堂");
+    setError(null);
+    setQaViewer((current) => current?.plan.id === plan.id
+      ? { ...current, loading: true, error: undefined }
+      : current);
+    try {
+      const bank = await api.regenerateQuestionBank(plan.id);
+      const job = await api.createClassroomPlanJob(plan.content_id, plan.id);
+      await api.waitForClassroomPlanJob(job.id);
+      const [versions, scripts] = await Promise.all([
+        api.listQuestionBankVersions(plan.id),
+        api.listClassroomPlanLibrary(),
+      ]);
+      setClassroomPlans(scripts);
+      setQaViewer({
+        plan,
+        items: bank.items,
+        versions,
+        generationId: bank.generation_id,
+        loading: false,
+      });
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "新版互动课堂生成失败";
+      setError(`${message}；原问答库和原课堂均已保留。`);
+      setQaViewer((current) => current?.plan.id === plan.id
+        ? { ...current, loading: false, error: `${message}；历史版本未被覆盖。` }
+        : current);
+    } finally {
+      setAssetBusy(null);
+    }
+  }
+
+  async function archiveQuestionBankVersion(plan: PresentationPlanLibrarySummary, generationId: string) {
+    if (!window.confirm("从资料库隐藏这一版问答吗？已保存的旧课堂仍可继续播放。")) return;
+    setAssetBusy("正在归档问答版本");
+    try {
+      await api.archiveQuestionBankVersion(plan.id, generationId);
+      const versions = await api.listQuestionBankVersions(plan.id);
+      const next = versions[0];
+      setQaViewer({
+        plan,
+        versions,
+        generationId: next?.generation_id,
+        items: next?.items ?? [],
+        loading: false,
+      });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "问答版本归档失败");
+    } finally {
+      setAssetBusy(null);
+    }
   }
 
   return (
@@ -618,19 +730,43 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
               {(() => {
                 const summary = contentSummaryByMaterialId.get(selected.id);
                 const relatedPlanIds = new Set(presentationPlans.filter((plan) => plan.content_id === summary?.content_id).map((plan) => plan.id));
+                const relevantContentJobs = contentJobs.filter((job) => job.material_id === selected.id);
+                const latestFailedByMode = new Map<string, string>();
+                relevantContentJobs
+                  .filter((job) => job.status === "failed")
+                  .sort((left, right) => Date.parse(right.updated_at ?? right.created_at ?? "") - Date.parse(left.updated_at ?? left.created_at ?? ""))
+                  .forEach((job) => {
+                    const mode = job.organization_mode ?? "knowledge";
+                    if (!latestFailedByMode.has(mode)) latestFailedByMode.set(mode, job.id);
+                  });
                 const active = [
-                  ...materialJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.material_ids.includes(selected.id)).map((job) => ({ kind: "material" as const, id: job.id, status: job.status, title: "材料解析", detail: `${job.message} · ${job.progress}%` })),
-                  ...contentJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.material_id === selected.id).map((job) => ({ kind: "content" as const, id: job.id, status: job.status, title: job.organization_mode === "source_deck" ? "原稿 LearningContent" : "LearningContent", detail: `${job.message} · ${job.progress}%` })),
-                  ...planJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.content_id === summary?.content_id).map((job) => ({ kind: "plan" as const, id: job.id, status: job.status, title: job.mode === "source_deck" ? "原稿讲稿 / PresentationPlan" : "PresentationPlan / 题库", detail: `${job.message} · ${job.progress}%` })),
-                  ...pptJobs.filter((job) => (["queued", "running", "waiting_for_skill", "paused"].includes(job.status) || (job.status === "failed" && !!job.artifact_id)) && relatedPlanIds.has(job.presentation_plan_id)).map((job) => ({ kind: "ppt" as const, id: job.id, status: job.status, title: "PPT 生成", detail: job.status === "failed" ? `生成中断 · 已保存 ${Math.round(job.progress * 100)}%` : `PPT 产物进度 ${Math.round(job.progress * 100)}%` })),
-                ];
+                  ...materialJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.material_ids.includes(selected.id)).map((job) => ({ kind: "material" as const, id: job.id, status: job.status, title: "材料解析", detail: `${job.message} · ${job.progress}%`, historicalFailure: false })),
+                  ...relevantContentJobs.filter((job) => ["queued", "running", "paused", "failed"].includes(job.status)).map((job) => {
+                    const mode = job.organization_mode ?? "knowledge";
+                    const latestFailure = job.status === "failed" && latestFailedByMode.get(mode) === job.id;
+                    const historicalFailure = job.status === "failed" && !latestFailure;
+                    const baseTitle = mode === "source_deck" ? "原稿 LearningContent" : "LearningContent";
+                    return {
+                      kind: "content" as const,
+                      id: job.id,
+                      status: job.status,
+                      title: `${latestFailure ? "【最近失败】" : historicalFailure ? "【历史失败】" : ""}${baseTitle}`,
+                      detail: job.status === "failed"
+                        ? `${displayDateTime(job.updated_at)} · ${latestFailure ? "可从 checkpoint 重试" : "仅作历史记录"}`
+                        : `${job.message} · ${job.progress}%`,
+                      historicalFailure,
+                    };
+                  }),
+                  ...planJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.content_id === summary?.content_id).map((job) => ({ kind: "plan" as const, id: job.id, status: job.status, title: job.mode === "source_deck" ? "原稿讲稿 / PresentationPlan" : "PresentationPlan / 题库", detail: `${job.message} · ${job.progress}%`, historicalFailure: false })),
+                  ...pptJobs.filter((job) => (["queued", "running", "waiting_for_skill", "paused"].includes(job.status) || (job.status === "failed" && !!job.artifact_id)) && relatedPlanIds.has(job.presentation_plan_id)).map((job) => ({ kind: "ppt" as const, id: job.id, status: job.status, title: "PPT 生成", detail: job.status === "failed" ? `生成中断 · 已保存 ${Math.round(job.progress * 100)}%` : `PPT 产物进度 ${Math.round(job.progress * 100)}%`, historicalFailure: false })),
+                ].sort((left, right) => Number(Boolean(left.historicalFailure)) - Number(Boolean(right.historicalFailure)));
                 if (!active.length) return null;
                 return <div className="library-in-progress-assets">
                   <div className="in-progress-heading"><span>Ⅱ</span><div><b>进行中的备课</b><small>{active.length} 项进度已安全保存</small></div></div>
                   {active.map((job) => <article key={`${job.kind}:${job.id}`}>
                     <div><b>{job.title}</b><p>{job.detail}</p></div>
-                    <button disabled={!!assetBusy} onClick={() => job.status === "paused" || (job.kind === "ppt" && job.status === "failed") ? resumeLibraryJob(job.kind, job.id) : pauseLibraryJob(job.kind, job.id)}>{job.status === "paused" || (job.kind === "ppt" && job.status === "failed") ? "从中断处继续" : "停止并保存"}</button>
-                    <button className="discard" disabled={!!assetBusy || job.status !== "paused"} onClick={() => discardLibraryJob(job.kind, job.id)}>放弃</button>
+                    <button disabled={!!assetBusy || Boolean(job.historicalFailure)} onClick={() => ["paused", "failed"].includes(job.status) ? resumeLibraryJob(job.kind, job.id) : pauseLibraryJob(job.kind, job.id)}>{job.historicalFailure ? "历史记录" : job.status === "failed" ? "从失败处重试" : job.status === "paused" ? "从中断处继续" : "停止并保存"}</button>
+                    <button className="discard" disabled={!!assetBusy || !["paused", "failed"].includes(job.status)} onClick={() => discardLibraryJob(job.kind, job.id)}>放弃</button>
                   </article>)}
                 </div>;
               })()}
@@ -659,8 +795,16 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                     );
                     return <div className="asset-plan-group" key={plan.id}>
                       <div className="asset-plan-heading"><span>PLAN</span><b>{plan.title}</b><small>{plan.slide_count} 页{plan.artifact_id ? " · PPT 已就绪" : ""}</small></div>
-                      <button className="asset-open-plan-action" disabled={!!assetBusy} onClick={() => openPresentationAsset(selected, plan)}>{plan.artifact_id ? "复用此 Plan / 重新生成 PPT" : "打开并继续使用"}</button>
-                      <button className="asset-primary-action" disabled={!!assetBusy} onClick={() => prepareNewClassroom(selected, contentSummary.content_id, plan)}>创建互动课堂</button>
+                      <div className="asset-plan-actions">
+                        <button className="asset-open-plan-action" disabled={!!assetBusy} onClick={() => openPresentationAsset(selected, plan)}>{plan.artifact_id ? "复用此 Plan / 重新生成 PPT" : "打开并继续使用"}</button>
+                        <button className="asset-primary-action" disabled={!!assetBusy} onClick={() => prepareNewClassroom(selected, contentSummary.content_id, plan)}>创建互动课堂</button>
+                        <button className="asset-qa-action" disabled={!!assetBusy} onClick={() => viewQuestionBank(plan)}>
+                          <span>查看 QA 问答对</span><small>Q / A</small>
+                        </button>
+                        <button className="asset-qa-regenerate" disabled={!!assetBusy} onClick={() => regenerateInteractiveClassroom(plan)}>
+                          <span>生成新版互动课堂</span><small>新增 QA + 新课堂 · 保留历史</small>
+                        </button>
+                      </div>
                       {scripts.map((script) => <button className="asset-script-action" disabled={!!assetBusy} key={script.id} onClick={() => openClassroomAsset(selected, contentSummary.content_id, plan, script.id)}>
                         <span>▶ 播放已保存剧本</span><small>{script.scene_count} 场景 · {script.action_count} 动作</small>
                       </button>)}
@@ -733,6 +877,79 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                 用 {draftStudentTypes.length} 位学生创建课堂
               </button>
             </footer>
+          </div>
+        </div>
+      )}
+      {qaViewer && (
+        <div className="library-qa-modal" role="dialog" aria-modal="true" aria-labelledby="library-qa-title">
+          <div className="library-qa-dialog">
+            <header>
+              <div>
+                <small>PREPARED CLASSROOM DIALOGUE</small>
+                <h2 id="library-qa-title">QA 问答对</h2>
+                <p>{qaViewer.plan.title} · {qaViewer.plan.slide_count} 页演示规划</p>
+              </div>
+              <div className="library-qa-count"><b>{qaViewer.items.length}</b><span>PAIRS</span></div>
+              <button
+                className="library-qa-regenerate"
+                type="button"
+                disabled={!!assetBusy || qaViewer.loading}
+                onClick={() => regenerateInteractiveClassroom(qaViewer.plan)}
+              >{qaViewer.loading ? "生成中…" : "＋ 新版互动课堂"}</button>
+              <button type="button" aria-label="关闭 QA 问答对" onClick={() => setQaViewer(null)}>×</button>
+            </header>
+            {qaViewer.versions.length > 0 && (
+              <nav className="library-qa-versions" aria-label="问答库历史版本">
+                {qaViewer.versions.map((version, index) => (
+                  <span className={qaViewer.generationId === version.generation_id ? "active" : ""} key={version.generation_id}>
+                    <button type="button" onClick={() => setQaViewer((current) => current ? {
+                      ...current,
+                      generationId: version.generation_id,
+                      items: version.items,
+                      error: undefined,
+                    } : current)}>
+                      版本 {qaViewer.versions.length - index} · {version.items.length} 对
+                    </button>
+                    <button type="button" aria-label="删除这一版问答" disabled={!!assetBusy} onClick={() => archiveQuestionBankVersion(qaViewer.plan, version.generation_id)}>×</button>
+                  </span>
+                ))}
+              </nav>
+            )}
+            <div className="library-qa-body">
+              {qaViewer.loading ? (
+                <div className="library-qa-empty loading"><i />正在调取课堂问答档案…</div>
+              ) : qaViewer.error ? (
+                <div className="library-qa-empty"><b>读取失败</b><p>{qaViewer.error}</p></div>
+              ) : qaViewer.items.length ? (
+                qaViewer.items.map((item, index) => {
+                  const agent = studentAgentChoices.find((choice) => choice.type === item.agent_type);
+                  return <article className="library-qa-card" key={item.id}>
+                    <div className="library-qa-index">{String(index + 1).padStart(2, "0")}</div>
+                    <div className="library-qa-meta">
+                      <span>SLIDE {String(item.slide_order).padStart(2, "0")}</span>
+                      <span>{qaMomentCopy[item.moment]}</span>
+                      <span className={item.status}>{item.status === "approved" ? "已采用" : "未采用"}</span>
+                    </div>
+                    <div className="library-qa-exchange">
+                      <section className="student">
+                        {agent && <img src={agent.avatar} alt="" />}
+                        <div><small>{agent ? `${agent.studentName} · ${agent.name}` : item.student_profile_id}</small><p>{item.student_question}</p></div>
+                      </section>
+                      <section className="teacher">
+                        <span>师</span>
+                        <div><small>芊芊老师 · PREPARED ANSWER</small><p>{item.teacher_answer}</p></div>
+                      </section>
+                    </div>
+                    <footer><b>{item.knowledge_point}</b><span>{item.placement_reason}</span></footer>
+                  </article>;
+                })
+              ) : (
+                <div className="library-qa-empty">
+                  <span>Q / A</span><b>这个演示规划还没有 QA 问答对</b>
+                  <p>创建演示规划时未生成题库，或题库中没有可用的已保存问答。</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

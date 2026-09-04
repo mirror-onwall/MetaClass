@@ -3,7 +3,6 @@ from pathlib import Path
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[5]
 
 
@@ -15,6 +14,8 @@ class Settings(BaseSettings):
     )
 
     data_dir: Path = PROJECT_ROOT / "data"
+    skill_root: Path = PROJECT_ROOT / "data" / "skills"
+    skill_lock_path: Path = PROJECT_ROOT / "config" / "skills.lock.json"
     database_url: str | None = None
     llm_provider: str = "fake"
     llm_base_url: str = "https://api.openai.com/v1"

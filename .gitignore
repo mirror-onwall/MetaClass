@@ -27,6 +27,8 @@ data/processed/*
 data/generated/*
 data/runtime/*
 data/archive/
+data/backups/
+data/reports/
 !data/**/.gitkeep
 
 # Local runtime and test artifacts
@@ -34,6 +36,8 @@ logs/
 outputs/
 work/
 data/test-tmp/
+data/acceptance/
+data/skills/
 .codex-pytest-*/
 .tmp-edge-diagram/
 

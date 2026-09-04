@@ -175,6 +175,32 @@ def test_learning_content_build_reuses_existing_material_version() -> None:
     assert updates == [(100, "completed", "Existing LearningContent reused")]
 
 
+def test_failed_content_job_can_resume_with_same_identity(tmp_path: Path) -> None:
+    material = Material(
+        id="mat_failed_job",
+        filename="failed.pdf",
+        file_type="pdf",
+        status="parsed",
+        storage_path=str(tmp_path / "failed.pdf"),
+    )
+    materials = SimpleNamespace(data_dir=tmp_path, get=lambda _: material)
+    service = ContentService(Mock(), materials, Mock())
+    failed = service.create_source_deck_generation_job(material.id)
+    failed.status = "failed"
+    failed.step = "failed"
+    failed.progress = 100
+    failed.error = "temporary validation failure"
+    service._save_job(failed)
+
+    resumed = service.resume_generation_job(failed.id)
+
+    assert resumed.id == failed.id
+    assert resumed.status == "queued"
+    assert resumed.step == "queued"
+    assert resumed.error is None
+    assert resumed.message == "等待从 checkpoint 继续"
+
+
 def test_video_generation_failure_is_persisted_as_failed_job(tmp_path: Path) -> None:
     source_ref = SourceRef(
         material_id="mat_001",
@@ -354,7 +380,7 @@ def test_content_service_canonicalizes_units_without_losing_sources() -> None:
     assert worked_example.relations[0].relation_type == "example_of"
 
 
-def test_knowledge_tree_fallback_keeps_teaching_topics_at_usable_granularity() -> None:
+def test_knowledge_tree_fallback_groups_units_semantically_without_a_fixed_limit() -> None:
     service = ContentService(Mock(), Mock(), Mock())
     units = []
     for index in range(1, 8):
@@ -378,14 +404,14 @@ def test_knowledge_tree_fallback_keeps_teaching_topics_at_usable_granularity() -
     sections = service._sections_from_knowledge_tree(tree, units)
 
     assert len(tree.root_node_ids) == 1
-    assert len(sections) == 3
+    assert len(sections) == 1
     assert [
         sum(
             len(next(node for node in tree.nodes if node.id == node_id).knowledge_unit_ids)
             for node_id in section.tree_node_ids
         )
         for section in sections
-    ] == [3, 3, 1]
+    ] == [7]
 
     content = LearningContent(
         id="content_001",
@@ -398,7 +424,7 @@ def test_knowledge_tree_fallback_keeps_teaching_topics_at_usable_granularity() -
     )
     quality = service._assess_content_quality(content, expected_material_ids=["mat_001"])
 
-    assert quality["recommended_min_section_count"] == 3
+    assert quality["recommended_min_section_count"] == 1
     assert quality["overloaded_section_ids"] == []
     assert "LearningContent may be over-compressed" not in " ".join(quality["warnings"])
 
@@ -872,6 +898,33 @@ def test_source_deck_outline_repair_preserves_titles_and_fills_contiguous_ranges
         list(range(1, 5)),
         list(range(5, 9)),
     ]
+
+
+def test_source_deck_drafts_normalize_nullable_optional_text() -> None:
+    outline = SourceDeckOutlineDraft.model_validate(
+        {
+            "title": "时间序列",
+            "subtitle": None,
+            "structure_summary": None,
+            "sections": [
+                {
+                    "title": "预测方法",
+                    "content_goal": None,
+                    "summary": None,
+                    "teaching_approach": None,
+                    "transition_to_next": None,
+                    "page_refs": [{"material_id": "mat_001", "page_no": 1}],
+                }
+            ],
+        }
+    )
+
+    assert outline.subtitle == ""
+    assert outline.structure_summary == ""
+    assert outline.sections[0].content_goal == ""
+    assert outline.sections[0].summary == ""
+    assert outline.sections[0].teaching_approach == ""
+    assert outline.sections[0].transition_to_next == ""
 
 
 def test_source_deck_teaching_segments_retry_then_store_valid_result() -> None:
@@ -1648,6 +1701,29 @@ def test_openai_compatible_provider_uses_temperature_one_for_restricted_models()
     assert captured[0]["temperature"] == 1.0
 
 
+@pytest.mark.parametrize(
+    "model",
+    ["kimi-k3", "moonshotai/kimi-k3-preview", "kimi-k2.5"],
+)
+def test_openai_compatible_provider_uses_temperature_one_for_kimi_models(model) -> None:
+    provider = OpenAICompatibleLLMProvider(
+        base_url="https://example.test/v1",
+        api_key="test-key-12345",
+        model=model,
+    )
+    captured = []
+
+    def read(req, label):
+        captured.append(json.loads(req.data.decode("utf-8")))
+        return {"choices": [{"message": {"content": '{"ok":true}'}}]}
+
+    provider._read_json_with_retry = read
+
+    provider.complete_json([LLMMessage(role="user", content="test")], temperature=0.2)
+
+    assert captured[0]["temperature"] == 1.0
+
+
 def test_openai_compatible_provider_retries_temperature_specific_400_once() -> None:
     provider = OpenAICompatibleLLMProvider(
         base_url="https://example.test/v1",
@@ -1672,6 +1748,43 @@ def test_openai_compatible_provider_retries_temperature_specific_400_once() -> N
 
     assert result == '{"ok":true}'
     assert [payload["temperature"] for payload in captured] == [0.2, 1.0]
+
+    provider.complete_json([LLMMessage(role="user", content="again")], temperature=0.3)
+
+    assert captured[-1]["temperature"] == 1.0
+
+
+def test_openai_compatible_provider_retries_remote_disconnect(monkeypatch) -> None:
+    provider = OpenAICompatibleLLMProvider(
+        base_url="https://example.test/v1",
+        api_key="test-key-12345",
+        model="custom-model",
+    )
+    calls = 0
+
+    class Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return None
+
+        def read(self):
+            return b'{"choices":[{"message":{"content":"{\\"ok\\":true}"}}]}'
+
+    def open_request(*_, **__):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise ConnectionResetError("remote closed connection")
+        return Response()
+
+    monkeypatch.setattr("metaclass.infrastructure.providers.llm.request.urlopen", open_request)
+
+    result = provider.complete_json([LLMMessage(role="user", content="test")])
+
+    assert result == '{"ok":true}'
+    assert calls == 2
 
 
 def test_llm_learning_provider_describes_visual_and_organizes_content(tmp_path: Path) -> None:
