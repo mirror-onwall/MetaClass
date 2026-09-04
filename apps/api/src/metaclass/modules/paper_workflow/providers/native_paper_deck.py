@@ -315,15 +315,15 @@ directives:
         debug_pptx = output / "presentation.pptx"
         return PaperPresentationArtifact(
             provider=NativePaperDeckProvider.name,
-            presentation_pdf_path=str(relative / "presentation.pdf"),
-            source_images_dir=str(relative / "images"),
-            analysis_path=str(relative / "analysis.md"),
-            deck_brief_path=str(relative / "deck-brief.md"),
-            outline_path=str(relative / "outline.md"),
-            prompts_dir=str(relative / "prompts"),
-            generation_log_path=str(relative / "generation-log.md"),
+            presentation_pdf_path=(relative / "presentation.pdf").as_posix(),
+            source_images_dir=(relative / "images").as_posix(),
+            analysis_path=(relative / "analysis.md").as_posix(),
+            deck_brief_path=(relative / "deck-brief.md").as_posix(),
+            outline_path=(relative / "outline.md").as_posix(),
+            prompts_dir=(relative / "prompts").as_posix(),
+            generation_log_path=(relative / "generation-log.md").as_posix(),
             debug_pptx_path=(
-                str(debug_pptx.relative_to(workspace)) if debug_pptx.is_file() else None
+                debug_pptx.relative_to(workspace).as_posix() if debug_pptx.is_file() else None
             ),
         )
 

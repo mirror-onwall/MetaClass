@@ -229,6 +229,37 @@ class FakeLLMProvider:
             slides = []
             for index, section in enumerate(request_payload["sections"]):
                 points = (section.get("knowledge_points") or [section["title"]])[:4]
+                summary = section.get("summary") or f"{section['title']}的核心知识"
+                visible_content = [
+                    {
+                        "id": "content_01",
+                        "type": "definition",
+                        "heading": "核心认识",
+                        "body": (
+                            f"{summary}。学习时需要明确研究对象、基本目标以及结论成立的条件。"
+                        ),
+                        "items": [],
+                        "formula": "",
+                        "source_type": "learning_content",
+                        "source_ref_ids": [section["id"]],
+                        "importance": "core",
+                        "visual_role": "primary",
+                    },
+                    {
+                        "id": "content_02",
+                        "type": "mechanism",
+                        "heading": "理解路径",
+                        "body": (
+                            "从输入与问题出发，分析关键关系和处理过程，再结合适用条件判断输出的意义。"
+                        ),
+                        "items": [],
+                        "formula": "",
+                        "source_type": "expanded_knowledge",
+                        "source_ref_ids": [section["id"]],
+                        "importance": "supporting",
+                        "visual_role": "supporting",
+                    },
+                ]
                 elements = [
                     {
                         "type": "shape",
@@ -285,7 +316,13 @@ class FakeLLMProvider:
                     {
                         "source_section_ids": [section["id"]],
                         "title": section["title"],
-                        "key_points": points,
+                        "slide_role": "concept",
+                        "guiding_question": f"{section['title']}解决的核心问题是什么？",
+                        "core_claim": f"理解{section['title']}需要同时把握定义、作用机制与适用条件。",
+                        "visible_content": visible_content,
+                        "takeaway": f"判断{section['title']}时，应同时检查问题目标、过程和成立条件。",
+                        "knowledge_unit_ids": [],
+                        "key_points": [],
                         "speaker_script": (
                             f"这一页我们讲{section['title']}。"
                             f"{section.get('summary', '')} "
@@ -303,6 +340,7 @@ class FakeLLMProvider:
             return json.dumps(
                 {
                     "title": request_payload["title"],
+                    "content_contract_version": "visible_blocks_v1",
                     "slides": slides,
                 },
                 ensure_ascii=False,
