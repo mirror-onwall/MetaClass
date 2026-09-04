@@ -136,6 +136,45 @@ def test_content_job_state_survives_restart_and_pauses_running_job(
     assert restored.error is None
 
 
+def test_learning_content_build_reuses_existing_material_version() -> None:
+    existing = LearningContent(
+        id="content_001",
+        material_id="mat_001",
+        material_ids=["mat_001"],
+        title="Reusable course content",
+        sections=[
+            LearningSection(
+                id="section_001",
+                title="Existing section",
+                summary="Already generated and saved.",
+                source_refs=[
+                    SourceRef(
+                        material_id="mat_001",
+                        page_id="page_001",
+                        page_no=1,
+                    )
+                ],
+            )
+        ],
+    )
+    repository = Mock()
+    repository.get_for_material_version.return_value = existing
+    materials = Mock()
+    provider = Mock()
+    updates: list[tuple[int, str, str]] = []
+    service = ContentService(repository, materials, provider)
+
+    result = service.build(
+        "mat_001",
+        progress_callback=lambda progress, step, message: updates.append((progress, step, message)),
+    )
+
+    assert result is existing
+    repository.get_for_material_version.assert_called_once_with("mat_001", 1)
+    materials.pages.assert_not_called()
+    assert updates == [(100, "completed", "Existing LearningContent reused")]
+
+
 def test_video_generation_failure_is_persisted_as_failed_job(tmp_path: Path) -> None:
     source_ref = SourceRef(
         material_id="mat_001",

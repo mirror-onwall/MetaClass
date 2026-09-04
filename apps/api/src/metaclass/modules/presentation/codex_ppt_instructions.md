@@ -57,15 +57,18 @@ compiles `deck.pptx` without grouping the visual objects.
   `0.04` of its text block. Prefer paper-figure composition, side notes, process paths,
   evidence strips, and local zoom arrangements. No connector or partial shape may
   cross a text writing area.
-- When a content page uses a local illustration or missing-asset placeholder, it
-  reserves one substantial left/right visual bay whose combined bounds are
-  `w=0.32–0.44`, `h=0.44–0.74`, with at least `0.03` clearance from all Plan
-  text and substantive modules. A slim rule, side band, or marker may bridge the
-  visual and copy fields with at least `0.015` clearance. Two local pictures are
-  separated inside that bay.
-  `visual_assets` and `visual_placeholders` are mutually exclusive; the exact-copy
-  editorial text treatments remain in the opposite field and may not invade this
-  visual bay.
+- Every page follows its backend-assigned Paper Deck composition role. Across a
+  deck, alternate editorial heroes, focal rails, central annotated mechanisms,
+  horizontal or vertical processes, comparison fields, evidence strips, matrices,
+  and synthesis paths. Keep one visual identity, but do not repeat a generic
+  left/right silhouette on adjacent content pages.
+- When a content page uses a local illustration or missing-asset placeholder,
+  place it inside the assigned composition. The visual may be central, wide,
+  horizontal, inset, asymmetric, or paired. A placeholder must remain useful
+  (`w>=0.24`, `h>=0.18`, area `>=0.08`), and every unrelated object keeps at
+  least `0.015` clearance. Two local pictures remain separate top-level objects.
+  `visual_assets` and `visual_placeholders` are mutually exclusive; exact-copy
+  editorial text may surround the visual region but may not overlap it.
 - Separation is structural as well as visual: each frame, node, rule, connector,
   and local picture must become a separate top-level PowerPoint object with a
   unique `object_id`. Never return one all-page group or one full-slide picture.
@@ -84,7 +87,9 @@ compiles `deck.pptx` without grouping the visual objects.
   paths directly under `generated_visuals/`, remain smaller than the slide, and
   contain no text, labels, numbers, formulas, logos, watermarks, pseudo-text, or
   invented evidence. Prefer transparent-background scientific cutouts, mechanism
-  fragments, evidence motifs, and zoomed details. No full-slide picture is accepted.
+  fragments, evidence motifs, and zoomed details. Reference the exact generated
+  filename of the final accepted image; if a draft is rejected and regenerated,
+  return only the replacement image in `visual_assets`. No full-slide picture is accepted.
 - Do not run shell commands, third-party scripts, package managers, web search,
   or network requests. The workspace is disposable and the final PPTX remains
   backend-owned.

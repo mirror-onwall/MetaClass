@@ -10,12 +10,17 @@ import tempfile
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path, PurePosixPath, PureWindowsPath
-from threading import Lock
-from typing import Any
+from threading import Event, Lock
+from typing import Any, Callable
 
 from PIL import Image, ImageDraw, ImageOps, UnidentifiedImageError
 
 from metaclass.modules.presentation.brand_palette import apply_brand_palette
+from metaclass.modules.presentation.layout_registry import (
+    LAYOUT_REGISTRY,
+    LayoutSpec,
+    select_fallback_layout,
+)
 from metaclass.modules.presentation.planner import PresentationPlanGenerator
 from metaclass.modules.presentation.providers import validate_deck_against_plan
 from metaclass.modules.presentation.schemas import (
@@ -38,7 +43,7 @@ class CodexGenerationError(RuntimeError):
 class CodexPPTProvider:
     """Generate an editable PPTX with a pinned Codex non-interactive runtime."""
 
-    PROMPT_VERSION = "2026-08-22-v18-paper-deck-anchor-clearance"
+    PROMPT_VERSION = "2026-09-02-v19-paper-deck-layout-rhythm"
     PAPER_DECK_STYLE_PRESET = "journal-minimal"
     PAPER_DECK_MANIFEST_VERSION = 3
     PAPER_DECK_STYLE_SIGNATURE_VERSION = "v3"
@@ -52,6 +57,11 @@ class CodexPPTProvider:
     PAPER_DECK_VISUAL_COLUMN_MAX_HEIGHT = 0.74
     PAPER_DECK_LOCAL_VISUAL_MIN_WIDTH = 0.14
     PAPER_DECK_LOCAL_VISUAL_MIN_HEIGHT = 0.18
+    PAPER_DECK_VISUAL_REGION_MIN_WIDTH = 0.24
+    PAPER_DECK_VISUAL_REGION_MIN_HEIGHT = 0.18
+    PAPER_DECK_VISUAL_REGION_MIN_AREA = 0.08
+    PAPER_DECK_VISUAL_REGION_MAX_WIDTH = 0.82
+    PAPER_DECK_VISUAL_REGION_MAX_HEIGHT = 0.76
     PAPER_DECK_VISUAL_COLUMN_GAP = 0.03
     PAPER_DECK_VISUAL_COLUMN_LEFT_MAX_X = 0.10
     PAPER_DECK_VISUAL_COLUMN_RIGHT_MIN_EDGE = 0.90
@@ -66,12 +76,28 @@ class CodexPPTProvider:
     PAPER_CRAFT_SKILLS = ("paper-deck", "paper-comic")
     PAPER_CRAFT_EXPECTED_SHA256 = {
         "paper-deck": "3ca4baef8071e41939c7672d4dfe284b55091e9a094c871eba35fd78f1e6efdb",
-        "paper-comic": "91d8d414cb31ae37d6c246828b8b9503e9ec3a7adae20ffddeb81880ac397e5b",
+        "paper-comic": "56d605c5d5fc005086c1574fc640554752580fc2d6b523be30e7739c0abe2fcb",
     }
     PAPER_CRAFT_MAX_FILE_BYTES = 20 * 1024 * 1024
     PAPER_CRAFT_MAX_TOTAL_BYTES = 120 * 1024 * 1024
     PAPER_CRAFT_MAX_PIXELS = 16_777_216
-    PAPER_CRAFT_MAX_GUIDANCE_BYTES = 100_000
+    PAPER_CRAFT_MAX_GUIDANCE_BYTES = 40_000
+    PAPER_CRAFT_RUNTIME_GUIDANCE_FILES = {
+        "paper-deck": {
+            "SKILL.md",
+            "references/guidance.md",
+            "references/layouts.md",
+            "references/notes.txt",
+            "references/source-visuals.md",
+            "references/style-system.md",
+        },
+        "paper-comic": {
+            "SKILL.md",
+            "references/guidance.md",
+            "references/notes.txt",
+            "references/styles/paper-figure.md",
+        },
+    }
     PAPER_CRAFT_BACKGROUND_SIZE = (1920, 1080)
     PAPER_CRAFT_BACKGROUND_MIN_SIZE = (640, 360)
     PAPER_CRAFT_BACKGROUND_ASPECT_RANGE = (1.4, 2.0)
@@ -86,11 +112,11 @@ class CodexPPTProvider:
         api_key: str | None = None,
         model: str | None = None,
         timeout_seconds: float = 900.0,
-        repair_attempts: int = 2,
+        repair_attempts: int = 1,
         codex_bin: str | None = None,
         paper_craft_enabled: bool = False,
         paper_craft_max_images: int = 24,
-        paper_craft_concurrency: int = 2,
+        paper_craft_concurrency: int = 1,
         paper_craft_skills_dir: str | Path | None = None,
     ) -> None:
         if not 0 <= paper_craft_max_images <= 64:
@@ -121,6 +147,7 @@ class CodexPPTProvider:
         job_id: str,
         output_dir: Path,
         theme: PresentationTheme | None = None,
+        progress_callback: Callable[[PPTArtifact, int, int], None] | None = None,
     ) -> PPTArtifact:
         selected_theme = theme or get_presentation_theme()
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -130,6 +157,7 @@ class CodexPPTProvider:
                 job_id=job_id,
                 output_dir=output_dir,
                 theme=selected_theme,
+                progress_callback=progress_callback,
             )
         except CodexGenerationError:
             raise
@@ -138,7 +166,7 @@ class CodexPPTProvider:
 
         # Preview rendering is shared infrastructure. Let its error propagate instead
         # of spending Presenton credits on a fallback that would use the same renderer.
-        return self.adapter.prepare_external_pptx(
+        artifact = self.adapter.prepare_external_pptx(
             plan=plan,
             job_id=job_id,
             output_dir=output_dir,
@@ -148,6 +176,9 @@ class CodexPPTProvider:
             external_slide_images=None,
             preview_plan=preview_plan,
         )
+        if progress_callback is not None:
+            artifact = artifact.model_copy(update={"id": self._artifact_id_for_job(job_id)})
+        return artifact
 
     def _generate_validated_deck(
         self,
@@ -156,6 +187,7 @@ class CodexPPTProvider:
         job_id: str,
         output_dir: Path,
         theme: PresentationTheme,
+        progress_callback: Callable[[PPTArtifact, int, int], None] | None = None,
     ) -> tuple[Path, dict[str, Any], PresentationPlan | None]:
         instructions_source = Path(__file__).with_name("codex_ppt_instructions.md")
         if not instructions_source.exists():
@@ -249,6 +281,7 @@ class CodexPPTProvider:
                         paper_craft_attempts_used,
                     ) = self._generate_paper_deck_hybrid_result(
                         plan=plan,
+                        job_id=job_id,
                         plan_hash=plan_hash,
                         theme=theme,
                         workspace=workspace,
@@ -256,6 +289,7 @@ class CodexPPTProvider:
                         instructions_text=instructions_source.read_text(encoding="utf-8"),
                         skill_guidance=paper_craft_guidance,
                         first_attempt=first_attempt,
+                        progress_callback=progress_callback,
                     )
                 except (CodexGenerationError, OSError, ValueError) as exc:
                     error = str(exc)
@@ -294,7 +328,8 @@ class CodexPPTProvider:
                     validation = None
                     preview_plan = None
                     generated_image_count = 0
-                    self._clear_paper_craft_assets(output_dir)
+                    if not (output_dir / "partial_status.json").is_file():
+                        self._clear_paper_craft_assets(output_dir)
                 else:
                     self._paper_craft_capability = True
                     self._paper_craft_capability_reason = None
@@ -397,8 +432,17 @@ class CodexPPTProvider:
 
             if validation is None:
                 raise CodexGenerationError("Codex did not produce a validated PPTX")
-            final_pptx_path = output_dir / "deck.pptx"
-            shutil.copy2(deck_path, final_pptx_path)
+            if progress_callback is None:
+                final_pptx_path = output_dir / "deck.pptx"
+                staged_final_path = output_dir / "deck.finalizing.pptx"
+            else:
+                # Never replace a PPTX that the browser or PowerPoint may still
+                # have open on Windows. A new published file is immutable.
+                publication_id = time.time_ns()
+                final_pptx_path = output_dir / f"deck.complete.{publication_id}.pptx"
+                staged_final_path = output_dir / f"deck.complete.{publication_id}.building.pptx"
+            shutil.copy2(deck_path, staged_final_path)
+            staged_final_path.replace(final_pptx_path)
 
         return (
             final_pptx_path,
@@ -417,11 +461,7 @@ class CodexPPTProvider:
                 "responses": [
                     {
                         "run_mode": record["mode"],
-                        **(
-                            {"slide_id": record["slide_id"]}
-                            if record.get("slide_id")
-                            else {}
-                        ),
+                        **({"slide_id": record["slide_id"]} if record.get("slide_id") else {}),
                         **self._public_result(record["result"]),
                     }
                     for record in run_records
@@ -528,6 +568,7 @@ class CodexPPTProvider:
         self,
         *,
         plan: PresentationPlan,
+        job_id: str,
         plan_hash: str,
         theme: PresentationTheme,
         workspace: Path,
@@ -535,13 +576,12 @@ class CodexPPTProvider:
         instructions_text: str,
         skill_guidance: str,
         first_attempt: int,
+        progress_callback: Callable[[PPTArtifact, int, int], None] | None = None,
     ) -> tuple[dict[str, Any], list[dict[str, Any]], int]:
         """Generate one editable layered slide design in an isolated session per slide."""
 
         if len(plan.slides) > self.paper_craft_max_images:
-            raise ValueError(
-                "paper-deck per-slide mode exceeds the configured image safety limit"
-            )
+            raise ValueError("paper-deck per-slide mode exceeds the configured image safety limit")
 
         slide_workspaces = workspace / "paper_deck_slides"
         slide_workspaces.mkdir()
@@ -549,11 +589,17 @@ class CodexPPTProvider:
         generated_visuals.mkdir(exist_ok=True)
         prompt_dir = output_dir / "paper_deck_prompts"
         prompt_dir.mkdir(parents=True, exist_ok=True)
-        deck_context = self._paper_deck_deck_context(plan, theme)
+        composition_plan = self._paper_deck_composition_plan(plan)
+        deck_context = self._paper_deck_deck_context(
+            plan,
+            theme,
+            composition_plan=composition_plan,
+        )
 
         work_items: list[dict[str, Any]] = []
         for slide_index, slide in enumerate(plan.slides):
             visual_requirement = self._paper_deck_visual_requirement(slide)
+            composition = composition_plan[slide_index]
             slide_workspace_root = slide_workspaces / f"{slide_index + 1:03d}"
             slide_workspace_root.mkdir()
             single_plan = plan.model_copy(update={"slides": [slide]})
@@ -574,6 +620,7 @@ class CodexPPTProvider:
                 slide_plan_hash=single_plan_hash,
                 deck_context=deck_context,
                 visual_requirement=visual_requirement,
+                composition=composition,
             )
             safe_slide_id = re.sub(r"[^A-Za-z0-9_-]+", "-", slide.id).strip("-") or "slide"
             work_items.append(
@@ -588,10 +635,12 @@ class CodexPPTProvider:
                     "workspace_root": slide_workspace_root,
                     "attempt": first_attempt + slide_index,
                     "visual_requirement": visual_requirement,
+                    "composition": composition,
                 }
             )
 
         counter_lock = Lock()
+        stop_event = Event()
         next_retry_attempt = first_attempt + len(work_items)
         attempts_used = 0
         style_manifest_references: dict[str, dict[str, Any]] = {}
@@ -609,6 +658,10 @@ class CodexPPTProvider:
         def execute_slide(item: dict[str, Any]) -> tuple[int, dict[str, Any], dict[str, Any]]:
             repair_errors: list[str] = []
             for repair_round in range(self.repair_attempts + 1):
+                if stop_event.is_set():
+                    raise CodexGenerationError(
+                        "paper-deck generation stopped after a non-retryable Codex failure"
+                    )
                 attempt = reserve_attempt(item, repair_round)
                 attempt_workspace = item["workspace_root"] / f"attempt-{repair_round + 1:02d}"
                 attempt_workspace.mkdir()
@@ -630,13 +683,9 @@ class CodexPPTProvider:
                     ),
                     min_visual_assets=int(item["visual_requirement"]["min_assets"]),
                     max_visual_assets=int(item["visual_requirement"]["max_assets"]),
-                    min_visual_placeholders=int(
-                        item["visual_requirement"]["min_placeholders"]
-                    ),
-                    max_visual_placeholders=int(
-                        item["visual_requirement"]["max_placeholders"]
-                    ),
-                    require_dominant_visual_column=item["index"] > 0,
+                    min_visual_placeholders=int(item["visual_requirement"]["min_placeholders"]),
+                    max_visual_placeholders=int(item["visual_requirement"]["max_placeholders"]),
+                    require_dominant_visual_column=False,
                 )
                 (attempt_workspace / "generated_visuals").mkdir()
                 prompt = str(item["prompt"])
@@ -675,16 +724,13 @@ class CodexPPTProvider:
                         "at or above 0.05; keep blocks non-overlapping."
                         " Keep every module as an independent object, keep different semantic refs "
                         "separated, and never return a full-slide raster or grouped mega-panel."
-                        " On non-cover slides, visual_assets and visual_placeholders are mutually "
-                        "exclusive; when either is used, keep one left/right visual column with "
-                        f"w={self.PAPER_DECK_VISUAL_COLUMN_MIN_WIDTH:.2f}-"
-                        f"{self.PAPER_DECK_VISUAL_COLUMN_MAX_WIDTH:.2f}, "
-                        f"h={self.PAPER_DECK_VISUAL_COLUMN_MIN_HEIGHT:.2f}-"
-                        f"{self.PAPER_DECK_VISUAL_COLUMN_MAX_HEIGHT:.2f}, and at least "
-                        f"{self.PAPER_DECK_VISUAL_COLUMN_GAP:.2f} clearance from Plan copy and "
-                        "substantive modules. A slim rule, side band, or marker may bridge the "
-                        f"visual and copy fields with at least {self.PAPER_DECK_MIN_MODULE_GAP:.3f} "
-                        "clearance."
+                        " visual_assets and visual_placeholders are mutually exclusive. Preserve "
+                        f"the assigned {item['composition']['layout_id']} composition instead of "
+                        "falling back to a generic left/right split. A visual may be central, "
+                        "full-width within safe margins, horizontal, stepped, or lateral when that "
+                        "matches the assigned composition. Keep every image separate and keep at "
+                        f"least {self.PAPER_DECK_MIN_MODULE_GAP:.3f} clearance from unrelated Plan "
+                        "copy and modules."
                     )
                 prompt_path = prompt_dir / (
                     f"{item['prompt_stem']}-attempt-{repair_round + 1:02d}.md"
@@ -707,8 +753,7 @@ class CodexPPTProvider:
                         current_hash = ""
                     if current_hash != item["plan_hash"]:
                         raise ValueError(
-                            "Codex modified or removed the immutable plan for "
-                            f"{item['slide'].id}"
+                            f"Codex modified or removed the immutable plan for {item['slide'].id}"
                         )
                     prepared_slide = self._prepare_paper_deck_slide_result(
                         result=result,
@@ -720,18 +765,25 @@ class CodexPPTProvider:
                         visual_requirement=item["visual_requirement"],
                     )
                     if item["index"] >= 2 and "content" in style_manifest_references:
+                        prepared_slide = self._normalize_paper_deck_typography_to_anchor(
+                            prepared_slide=prepared_slide,
+                            anchor_manifest=style_manifest_references["content"],
+                        )
                         self._validate_paper_deck_typography_continuity(
                             prepared_slide=prepared_slide,
                             anchor_manifest=style_manifest_references["content"],
                             slide_id=item["slide"].id,
                         )
-                    self._validate_prepared_paper_deck_slide(
+                    prepared_slide = self._validate_or_repair_prepared_paper_deck_slide(
                         prepared_slide=prepared_slide,
                         single_plan=item["single_plan"],
                         theme=theme,
                     )
                 except (CodexGenerationError, OSError, RuntimeError, ValueError) as exc:
                     repair_errors.append(str(exc))
+                    if self._is_codex_usage_limit(repair_errors[-1]):
+                        stop_event.set()
+                        raise
                     if self._is_paper_craft_capability_failure(repair_errors[-1]):
                         raise
                     if repair_round >= self.repair_attempts:
@@ -750,6 +802,125 @@ class CodexPPTProvider:
         prepared_slides: list[dict[str, Any] | None] = [None] * len(work_items)
         records: list[dict[str, Any] | None] = [None] * len(work_items)
         errors: list[tuple[int, str, str]] = []
+        published_prefix = 0
+
+        def publish_contiguous_prefix() -> None:
+            """Atomically expose every validated prefix as a downloadable partial deck."""
+
+            nonlocal published_prefix
+            prefix_count = 0
+            for prepared in prepared_slides:
+                if prepared is None:
+                    break
+                prefix_count += 1
+            persistent_visuals = output_dir / "paper_deck_generated_visuals"
+            persistent_visuals.mkdir(parents=True, exist_ok=True)
+            for source in generated_visuals.glob("*.png"):
+                if source.is_file():
+                    shutil.copy2(source, persistent_visuals / source.name)
+            checkpoint_path = output_dir / "paper_deck_checkpoint.json"
+            staged_checkpoint_path = output_dir / "paper_deck_checkpoint.tmp.json"
+            staged_checkpoint_path.write_text(
+                json.dumps(
+                    {
+                        "prompt_version": self.PROMPT_VERSION,
+                        "plan_sha256": plan_hash,
+                        "theme_id": theme.id,
+                        "completed_slides": sum(
+                            prepared is not None for prepared in prepared_slides
+                        ),
+                        "prepared_slides": prepared_slides,
+                        "style_manifest_references": style_manifest_references,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            staged_checkpoint_path.replace(checkpoint_path)
+            # A progress callback is the publication sink used by the application
+            # service. Direct/internal provider calls still keep a resumable
+            # checkpoint, but do not spend time rendering intermediate decks that
+            # nobody can observe.
+            if progress_callback is None:
+                return
+            if prefix_count <= published_prefix:
+                return
+
+            partial_plan = plan.model_copy(update={"slides": plan.slides[:prefix_count]})
+            partial_result = {
+                "status": "completed",
+                "summary": "Validated incremental Paper Deck prefix",
+                "slides": prepared_slides[:prefix_count],
+            }
+            partial_designed_plan = self._design_plan_from_result(
+                partial_plan,
+                partial_result,
+                theme,
+                workspace=workspace,
+                asset_output_dir=output_dir / "codex_assets",
+                allow_images=True,
+                max_images=self.paper_craft_max_images,
+                require_editable_layers_per_slide=True,
+            )
+            previous_partial_paths = list(output_dir.glob("deck.partial.*.pptx"))
+            publication_id = time.time_ns()
+            partial_pptx_path = (
+                output_dir / f"deck.partial.{prefix_count:03d}.{publication_id}.pptx"
+            )
+            staged_partial_path = (
+                output_dir / f"deck.partial.{prefix_count:03d}.{publication_id}.building.pptx"
+            )
+            self.adapter.render_declarative_pptx(
+                partial_designed_plan,
+                staged_partial_path,
+            )
+            staged_partial_path.replace(partial_pptx_path)
+            slide_images = self.adapter.render_incremental_previews(
+                partial_designed_plan,
+                output_dir / "slides",
+                previously_rendered=published_prefix,
+            )
+            status_path = output_dir / "partial_status.json"
+            staged_status_path = output_dir / "partial_status.tmp.json"
+            staged_status_path.write_text(
+                json.dumps(
+                    {
+                        "provider": "codex",
+                        "status": "partial",
+                        "presentation_plan_id": plan.id,
+                        "completed_slides": prefix_count,
+                        "total_slides": len(plan.slides),
+                        "pptx_path": str(partial_pptx_path),
+                        "prompt_version": self.PROMPT_VERSION,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            staged_status_path.replace(status_path)
+            artifact = PPTArtifact(
+                id=self._artifact_id_for_job(job_id),
+                job_id=job_id,
+                presentation_plan_id=plan.id,
+                pptx_path=str(partial_pptx_path),
+                skill_request_path=str(status_path),
+                slide_images=slide_images,
+            )
+            published_prefix = prefix_count
+            if progress_callback is not None:
+                progress_callback(artifact, prefix_count, len(plan.slides))
+            # The repository now points at the new immutable publication. Remove
+            # older versions when Windows allows it; an open/downloaded version
+            # may remain until a later publication without blocking generation.
+            for previous_path in previous_partial_paths:
+                if previous_path == partial_pptx_path:
+                    continue
+                try:
+                    previous_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
 
         def store_success(
             index: int,
@@ -766,8 +937,7 @@ class CodexPPTProvider:
                     prepared_text = [
                         element
                         for element in prepared_slide.get("elements", [])
-                        if isinstance(element, dict)
-                        and element.get("contract_role") == "plan_copy"
+                        if isinstance(element, dict) and element.get("contract_role") == "plan_copy"
                     ]
                     compiled_blocks: list[dict[str, Any]] = []
                     if isinstance(raw_blocks, list) and len(raw_blocks) == len(prepared_text):
@@ -783,10 +953,7 @@ class CodexPPTProvider:
                                 continue
                             compiled_block = dict(raw_block)
                             compiled_block.update(
-                                {
-                                    key: prepared_element[key]
-                                    for key in ("x", "y", "w", "h")
-                                }
+                                {key: prepared_element[key] for key in ("x", "y", "w", "h")}
                             )
                             prepared_style = prepared_element.get("style", {})
                             if isinstance(prepared_style, dict):
@@ -816,11 +983,60 @@ class CodexPPTProvider:
                             and isinstance(module.get("style_token"), str)
                         ],
                     }
+            publish_contiguous_prefix()
+
+        checkpoint_path = output_dir / "paper_deck_checkpoint.json"
+        if checkpoint_path.is_file():
+            try:
+                checkpoint = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                checkpoint = None
+            if (
+                isinstance(checkpoint, dict)
+                and checkpoint.get("prompt_version") == self.PROMPT_VERSION
+                and checkpoint.get("plan_sha256") == plan_hash
+                and checkpoint.get("theme_id") == theme.id
+                and isinstance(checkpoint.get("prepared_slides"), list)
+            ):
+                persistent_visuals = output_dir / "paper_deck_generated_visuals"
+                for source in persistent_visuals.glob("*.png"):
+                    if source.is_file():
+                        shutil.copy2(source, generated_visuals / source.name)
+                restored = checkpoint["prepared_slides"][: len(prepared_slides)]
+                for index, prepared in enumerate(restored):
+                    if not isinstance(prepared, dict):
+                        continue
+                    restored_slide = self._validate_or_repair_prepared_paper_deck_slide(
+                        prepared_slide=prepared,
+                        single_plan=work_items[index]["single_plan"],
+                        theme=theme,
+                    )
+                    prepared_slides[index] = restored_slide
+                    records[index] = {
+                        "mode": "paper-deck-slide-checkpoint",
+                        "slide_id": work_items[index]["slide"].id,
+                        "result": {
+                            "status": "completed",
+                            "summary": "Restored validated slide from incremental checkpoint",
+                            "slides": [restored_slide],
+                            "_metaclass_staged_image_count": sum(
+                                element.get("type") == "image"
+                                for element in restored_slide.get("elements", [])
+                                if isinstance(element, dict)
+                            ),
+                        },
+                    }
+                restored_references = checkpoint.get("style_manifest_references")
+                if isinstance(restored_references, dict):
+                    style_manifest_references.update(restored_references)
+                publish_contiguous_prefix()
 
         # Paper Deck explicitly uses the first page as a visual anchor. Generate the cover and
         # first content page behind a barrier, then fan out the remaining isolated slide jobs.
         anchor_count = min(2, len(work_items))
         for item in work_items[:anchor_count]:
+            if prepared_slides[item["index"]] is not None:
+                continue
             try:
                 index, prepared_slide, record = execute_slide(item)
             except (CodexGenerationError, OSError, RuntimeError, ValueError) as exc:
@@ -829,7 +1045,11 @@ class CodexPPTProvider:
             else:
                 store_success(index, prepared_slide, record)
 
-        remaining_items = work_items[anchor_count:] if not errors else []
+        remaining_items = (
+            [item for item in work_items[anchor_count:] if prepared_slides[item["index"]] is None]
+            if not errors
+            else []
+        )
         worker_count = min(self.paper_craft_concurrency, len(remaining_items))
         if worker_count == 1:
             for item in remaining_items:
@@ -844,9 +1064,7 @@ class CodexPPTProvider:
                 max_workers=worker_count,
                 thread_name_prefix="paper-deck-slide",
             ) as executor:
-                futures = {
-                    executor.submit(execute_slide, item): item for item in remaining_items
-                }
+                futures = {executor.submit(execute_slide, item): item for item in remaining_items}
                 for future in as_completed(futures):
                     item = futures[future]
                     try:
@@ -858,17 +1076,13 @@ class CodexPPTProvider:
 
         if errors:
             errors.sort(key=lambda item: item[0])
-            details = "; ".join(
-                f"{slide_id}: {message}" for _, slide_id, message in errors[:3]
-            )
+            details = "; ".join(f"{slide_id}: {message}" for _, slide_id, message in errors[:3])
             if len(errors) > 3:
                 details += f"; and {len(errors) - 3} more slide failure(s)"
             raise CodexGenerationError(details)
 
         total_bytes = sum(
-            path.stat().st_size
-            for path in generated_visuals.glob("*.png")
-            if path.is_file()
+            path.stat().st_size for path in generated_visuals.glob("*.png") if path.is_file()
         )
         if total_bytes > self.PAPER_CRAFT_MAX_TOTAL_BYTES:
             raise ValueError("paper-deck generated visual assets exceed the deck asset budget")
@@ -891,6 +1105,542 @@ class CodexPPTProvider:
         )
 
     @staticmethod
+    def _normalize_paper_deck_typography_to_anchor(
+        *,
+        prepared_slide: dict[str, Any],
+        anchor_manifest: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Apply deterministic deck typography continuity without another model call."""
+
+        anchor_blocks = anchor_manifest.get("text_blocks")
+        if not isinstance(anchor_blocks, list) or not anchor_blocks:
+            return prepared_slide
+        normalized = json.loads(json.dumps(prepared_slide, ensure_ascii=False))
+        candidate_blocks = [
+            element
+            for element in normalized.get("elements", [])
+            if isinstance(element, dict) and element.get("contract_role") == "plan_copy"
+        ]
+        if not candidate_blocks:
+            return prepared_slide
+        title_style = candidate_blocks[0].get("style")
+        anchor_title = anchor_blocks[0]
+        if isinstance(title_style, dict) and isinstance(anchor_title, dict):
+            title_style["font_role"] = anchor_title.get(
+                "font_role",
+                title_style.get("font_role"),
+            )
+            title_style["bold"] = anchor_title.get("bold", title_style.get("bold"))
+            anchor_size = anchor_title.get("font_size")
+            candidate_size = title_style.get("font_size")
+            if isinstance(anchor_size, (int, float)) and isinstance(
+                candidate_size,
+                (int, float),
+            ):
+                title_style["font_size"] = min(
+                    max(float(candidate_size), float(anchor_size) - 6),
+                    float(anchor_size) + 6,
+                )
+
+        anchor_body_roles = [
+            block.get("font_role")
+            for block in anchor_blocks[1:]
+            if isinstance(block, dict) and isinstance(block.get("font_role"), str)
+        ]
+        anchor_body_sizes = [
+            float(block["font_size"])
+            for block in anchor_blocks[1:]
+            if isinstance(block, dict)
+            and isinstance(block.get("font_size"), (int, float))
+            and not isinstance(block.get("font_size"), bool)
+        ]
+        for block in candidate_blocks[1:]:
+            style = block.get("style")
+            if not isinstance(style, dict):
+                continue
+            if anchor_body_roles and style.get("font_role") not in {
+                *anchor_body_roles,
+                "mono",
+            }:
+                style["font_role"] = anchor_body_roles[0]
+            size = style.get("font_size")
+            if anchor_body_sizes and isinstance(size, (int, float)):
+                style["font_size"] = min(
+                    max(float(size), min(anchor_body_sizes) - 6),
+                    max(anchor_body_sizes) + 6,
+                )
+        return normalized
+
+    @classmethod
+    def _shift_paper_deck_semantic_group(
+        cls,
+        *,
+        raw_elements: list[dict[str, Any]],
+        parsed: list[SlideElement],
+        moving: SlideElement,
+        fixed: SlideElement,
+        required_gap: float,
+    ) -> bool:
+        """Move one editable semantic island by the smallest safe translation."""
+
+        moving_indices = [
+            index
+            for index, element in enumerate(parsed)
+            if element.semantic_ref == moving.semantic_ref
+            and element.contract_role in {"plan_copy", "visual_module"}
+        ]
+        if not moving_indices:
+            moving_indices = [
+                index for index, element in enumerate(parsed) if element is moving
+            ]
+
+        moving_group = [parsed[index] for index in moving_indices]
+        moving_left = min(element.x for element in moving_group)
+        moving_top = min(element.y for element in moving_group)
+        moving_right = max(element.x + element.w for element in moving_group)
+        moving_bottom = max(element.y + element.h for element in moving_group)
+        fixed_group = [fixed]
+        if fixed.semantic_ref is not None and fixed.contract_role in {
+            "plan_copy",
+            "visual_module",
+        }:
+            fixed_group = [
+                element
+                for element in parsed
+                if element.semantic_ref == fixed.semantic_ref
+                and element.contract_role in {"plan_copy", "visual_module"}
+            ]
+        fixed_left = min(element.x for element in fixed_group)
+        fixed_top = min(element.y for element in fixed_group)
+        fixed_right = max(element.x + element.w for element in fixed_group)
+        fixed_bottom = max(element.y + element.h for element in fixed_group)
+
+        translations = [
+            (fixed_right + required_gap - moving_left, 0.0),
+            (fixed_left - required_gap - moving_right, 0.0),
+            (0.0, fixed_bottom + required_gap - moving_top),
+            (0.0, fixed_top - required_gap - moving_bottom),
+        ]
+        translations.sort(key=lambda delta: abs(delta[0]) + abs(delta[1]))
+        for delta_x, delta_y in translations:
+            if abs(delta_x) <= 1e-9 and abs(delta_y) <= 1e-9:
+                continue
+            shifted: list[tuple[int, float, float]] = []
+            for index in moving_indices:
+                element = parsed[index]
+                new_x, new_y = element.x + delta_x, element.y + delta_y
+                if (
+                    new_x < cls.PAPER_CRAFT_SAFE_MARGIN_X - 1e-9
+                    or new_x + element.w
+                    > 1 - cls.PAPER_CRAFT_SAFE_MARGIN_X + 1e-9
+                    or new_y < cls.PAPER_CRAFT_SAFE_MARGIN_Y - 1e-9
+                    or new_y + element.h
+                    > 1 - cls.PAPER_CRAFT_SAFE_MARGIN_Y + 1e-9
+                ):
+                    break
+                shifted.append((index, new_x, new_y))
+            else:
+                for index, new_x, new_y in shifted:
+                    raw_elements[index]["x"] = round(new_x, 5)
+                    raw_elements[index]["y"] = round(new_y, 5)
+                return True
+        return False
+
+    @classmethod
+    def _repair_paper_deck_connector(
+        cls,
+        *,
+        raw_elements: list[dict[str, Any]],
+        parsed: list[SlideElement],
+        object_id: str,
+    ) -> bool:
+        """Replace a crossing connector with a short, independently editable text anchor."""
+
+        connector_index = next(
+            (
+                index
+                for index, element in enumerate(parsed)
+                if element.type == "line" and element.object_id == object_id
+            ),
+            None,
+        )
+        if connector_index is None:
+            return False
+        connector = parsed[connector_index]
+        text = next(
+            (
+                element
+                for element in parsed
+                if element.contract_role == "plan_copy"
+                and element.semantic_ref == connector.semantic_ref
+                and element.semantic_ref != "title"
+            ),
+            None,
+        )
+        if text is None:
+            raw_elements.pop(connector_index)
+            return True
+
+        visual_regions = [
+            element
+            for element in parsed
+            if element.contract_role in {"visual_asset", "visual_placeholder"}
+        ]
+        anchor_gap = max(0.008, cls.PAPER_DECK_MIN_MODULE_GAP)
+        candidates = [
+            (text.x - anchor_gap, text.y + 0.01, 0.0, max(0.01, text.h - 0.02)),
+            (text.x + text.w + anchor_gap, text.y + 0.01, 0.0, max(0.01, text.h - 0.02)),
+            (text.x + 0.01, text.y - anchor_gap, max(0.01, text.w - 0.02), 0.0),
+            (text.x + 0.01, text.y + text.h + anchor_gap, max(0.01, text.w - 0.02), 0.0),
+        ]
+        for x, y, w, h in candidates:
+            replacement = connector.model_copy(update={"x": x, "y": y, "w": w, "h": h})
+            if not cls._is_paper_deck_text_within_safe_canvas(replacement):
+                continue
+            if any(
+                cls._paper_deck_line_intersects_element(replacement, plan_text)
+                for plan_text in parsed
+                if plan_text.type == "text" and plan_text.contract_role == "plan_copy"
+            ):
+                continue
+            if any(
+                max(
+                    visual.x - (replacement.x + replacement.w),
+                    replacement.x - (visual.x + visual.w),
+                )
+                < cls.PAPER_DECK_MIN_MODULE_GAP
+                and max(
+                    visual.y - (replacement.y + replacement.h),
+                    replacement.y - (visual.y + visual.h),
+                )
+                < cls.PAPER_DECK_MIN_MODULE_GAP
+                for visual in visual_regions
+            ):
+                continue
+            raw = raw_elements[connector_index]
+            raw.update(
+                {
+                    "x": round(x, 5),
+                    "y": round(y, 5),
+                    "w": round(w, 5),
+                    "h": round(h, 5),
+                    "z": max(1, text.z - 1),
+                }
+            )
+            return True
+
+        # Removing the unsafe line is lossless: the next local-validation pass will add a
+        # deterministic anchor when this connector was the point's only editorial treatment.
+        raw_elements.pop(connector_index)
+        return True
+
+    @classmethod
+    def _validate_or_repair_prepared_paper_deck_slide(
+        cls,
+        *,
+        prepared_slide: dict[str, Any],
+        single_plan: PresentationPlan,
+        theme: PresentationTheme,
+    ) -> dict[str, Any]:
+        """Repair mechanical geometry/contrast defects locally before spending a retry."""
+
+        candidate = json.loads(json.dumps(prepared_slide, ensure_ascii=False))
+        for _ in range(12):
+            try:
+                cls._validate_prepared_paper_deck_slide(
+                    prepared_slide=candidate,
+                    single_plan=single_plan,
+                    theme=theme,
+                )
+                return candidate
+            except ValueError as exc:
+                message = str(exc)
+                raw_elements = candidate.get("elements")
+                if not isinstance(raw_elements, list):
+                    raise
+                parsed = [SlideElement.model_validate(element) for element in raw_elements]
+
+                if "contrast is too low" in message:
+                    modules = [
+                        element for element in parsed if element.contract_role == "visual_module"
+                    ]
+                    changed = False
+                    for raw, element in zip(raw_elements, parsed, strict=True):
+                        if element.contract_role != "plan_copy" or element.type != "text":
+                            continue
+                        large_text = element.style.font_size >= 24 or (
+                            element.style.bold and element.style.font_size >= 18.66
+                        )
+                        minimum = 3.0 if large_text else 4.5
+                        current = cls._paper_deck_layered_text_contrast(
+                            element,
+                            visual_modules=modules,
+                            slide_background=str(candidate.get("background", theme.palette.paper)),
+                        )
+                        if current + 1e-9 >= minimum:
+                            continue
+                        best_color = element.style.color
+                        best_ratio = current
+                        for color in dict.fromkeys(theme.palette.allowed_colors):
+                            tested = element.model_copy(
+                                update={"style": element.style.model_copy(update={"color": color})}
+                            )
+                            ratio = cls._paper_deck_layered_text_contrast(
+                                tested,
+                                visual_modules=modules,
+                                slide_background=str(
+                                    candidate.get("background", theme.palette.paper)
+                                ),
+                            )
+                            if ratio > best_ratio:
+                                best_color, best_ratio = color, ratio
+                        if best_ratio + 1e-9 < minimum:
+                            continue
+                        raw["style"]["color"] = best_color
+                        changed = True
+                    if changed:
+                        continue
+
+                if "leaves the safe canvas" in message:
+                    changed = False
+                    for raw, element in zip(raw_elements, parsed, strict=True):
+                        min_x, max_x = (
+                            cls.PAPER_CRAFT_SAFE_MARGIN_X,
+                            (1 - cls.PAPER_CRAFT_SAFE_MARGIN_X - element.w),
+                        )
+                        min_y, max_y = (
+                            cls.PAPER_CRAFT_SAFE_MARGIN_Y,
+                            (1 - cls.PAPER_CRAFT_SAFE_MARGIN_Y - element.h),
+                        )
+                        if max_x < min_x or max_y < min_y:
+                            continue
+                        new_x = min(max(element.x, min_x), max_x)
+                        new_y = min(max(element.y, min_y), max_y)
+                        if abs(new_x - element.x) > 1e-9 or abs(new_y - element.y) > 1e-9:
+                            raw["x"], raw["y"] = new_x, new_y
+                            changed = True
+                    if changed:
+                        continue
+
+                connector_crossing = re.search(
+                    r"connector crosses a Plan text writing area on [^:]+: ([^ ]+)",
+                    message,
+                )
+                if connector_crossing and cls._repair_paper_deck_connector(
+                    raw_elements=raw_elements,
+                    parsed=parsed,
+                    object_id=connector_crossing.group(1),
+                ):
+                    continue
+
+                clearance = re.search(
+                    r"(?:reserved visual column|visual region) has less than "
+                    r"([0-9.]+) clearance from ([^ ]+) on ",
+                    message,
+                )
+                if clearance:
+                    required_gap = float(clearance.group(1))
+                    object_id = clearance.group(2)
+                    visual_regions = [
+                        element
+                        for element in parsed
+                        if element.contract_role in {"visual_asset", "visual_placeholder"}
+                    ]
+                    offender_index = next(
+                        (
+                            index
+                            for index, element in enumerate(parsed)
+                            if (element.object_id or element.semantic_ref or element.type)
+                            == object_id
+                        ),
+                        None,
+                    )
+                    if visual_regions and offender_index is not None:
+                        offender = parsed[offender_index]
+                        if offender.type == "line" and cls._repair_paper_deck_connector(
+                            raw_elements=raw_elements,
+                            parsed=parsed,
+                            object_id=offender.object_id or object_id,
+                        ):
+                            continue
+                        left = min(element.x for element in visual_regions)
+                        right = max(element.x + element.w for element in visual_regions)
+                        top = min(element.y for element in visual_regions)
+                        bottom = max(element.y + element.h for element in visual_regions)
+                        visual_region = SlideElement(
+                            type="shape",
+                            contract_role="visual_asset",
+                            x=left,
+                            y=top,
+                            w=right - left,
+                            h=bottom - top,
+                            shape="rectangle",
+                        )
+                        if cls._shift_paper_deck_semantic_group(
+                            raw_elements=raw_elements,
+                            parsed=parsed,
+                            moving=offender,
+                            fixed=visual_region,
+                            required_gap=required_gap,
+                        ):
+                            continue
+
+                if "visual modules are fused or too tightly clustered" in message:
+                    body_text = [
+                        element
+                        for element in parsed
+                        if element.type == "text"
+                        and not (
+                            element.contract_role == "plan_copy"
+                            and element.semantic_ref == "title"
+                        )
+                    ]
+                    repaired = False
+                    for index, left in enumerate(body_text):
+                        for right in body_text[index + 1 :]:
+                            horizontal_gap = max(
+                                right.x - (left.x + left.w),
+                                left.x - (right.x + right.w),
+                            )
+                            vertical_gap = max(
+                                right.y - (left.y + left.h),
+                                left.y - (right.y + right.h),
+                            )
+                            if (
+                                horizontal_gap < cls.PAPER_DECK_MIN_MODULE_GAP
+                                and vertical_gap < cls.PAPER_DECK_MIN_MODULE_GAP
+                                and cls._shift_paper_deck_semantic_group(
+                                    raw_elements=raw_elements,
+                                    parsed=parsed,
+                                    moving=right,
+                                    fixed=left,
+                                    required_gap=cls.PAPER_DECK_MIN_MODULE_GAP,
+                                )
+                            ):
+                                repaired = True
+                                break
+                        if repaired:
+                            break
+                    if repaired:
+                        continue
+
+                if (
+                    "local illustrations overlap or fuse" in message
+                    or "independent visual objects overlap or form one merged cluster" in message
+                ):
+                    if "local illustrations" in message:
+                        visual_islands = [
+                            element
+                            for element in parsed
+                            if element.contract_role == "visual_asset"
+                        ]
+                    else:
+                        visual_islands = [
+                            element
+                            for element in parsed
+                            if (
+                                element.contract_role in {"visual_module", "visual_asset"}
+                                and element.type != "line"
+                            )
+                            or element.contract_role == "visual_placeholder"
+                        ]
+                    repaired = False
+                    for index, left in enumerate(visual_islands):
+                        for right in visual_islands[index + 1 :]:
+                            if left.semantic_ref == right.semantic_ref:
+                                continue
+                            horizontal_gap = max(
+                                right.x - (left.x + left.w),
+                                left.x - (right.x + right.w),
+                            )
+                            vertical_gap = max(
+                                right.y - (left.y + left.h),
+                                left.y - (right.y + right.h),
+                            )
+                            if (
+                                horizontal_gap < cls.PAPER_DECK_MIN_MODULE_GAP
+                                and vertical_gap < cls.PAPER_DECK_MIN_MODULE_GAP
+                                and cls._shift_paper_deck_semantic_group(
+                                    raw_elements=raw_elements,
+                                    parsed=parsed,
+                                    moving=right,
+                                    fixed=left,
+                                    required_gap=cls.PAPER_DECK_MIN_MODULE_GAP,
+                                )
+                            ):
+                                repaired = True
+                                break
+                        if repaired:
+                            break
+                    if repaired:
+                        continue
+
+                missing_anchor = re.search(
+                    r"no independent editorial anchor for (key_points\.[0-9]+) on ",
+                    message,
+                )
+                if missing_anchor:
+                    content_ref = missing_anchor.group(1)
+                    text = next(
+                        (
+                            element
+                            for element in parsed
+                            if element.contract_role == "plan_copy"
+                            and element.semantic_ref == content_ref
+                        ),
+                        None,
+                    )
+                    if text is not None:
+                        existing_ids = {
+                            element.object_id for element in parsed if element.object_id
+                        }
+                        suffix = content_ref.replace(".", "_")
+                        object_id = f"local_{suffix}_anchor"
+                        counter = 2
+                        while object_id in existing_ids:
+                            object_id = f"local_{suffix}_anchor_{counter}"
+                            counter += 1
+                        anchor_x = max(
+                            cls.PAPER_CRAFT_SAFE_MARGIN_X,
+                            text.x - 0.012,
+                        )
+                        raw_elements.append(
+                            {
+                                "type": "shape",
+                                "contract_role": "visual_module",
+                                "object_id": object_id,
+                                "semantic_ref": content_ref,
+                                "x": anchor_x,
+                                "y": text.y,
+                                "w": 0.006,
+                                "h": text.h,
+                                "z": max(1, text.z - 1),
+                                "text": None,
+                                "items": [],
+                                "shape": "rectangle",
+                                "image_path": None,
+                                "image_fit": "cover",
+                                "style": {
+                                    "font_size": 18,
+                                    "font_role": "sans",
+                                    "text_margin_x": 0,
+                                    "text_margin_y": 0,
+                                    "bold": False,
+                                    "color": theme.palette.ink,
+                                    "fill": theme.palette.amber,
+                                    "line_color": theme.palette.amber,
+                                    "line_width": 0,
+                                    "align": "left",
+                                    "valign": "top",
+                                    "opacity": 100,
+                                },
+                            }
+                        )
+                        continue
+                raise
+        raise ValueError(f"paper-deck local repair did not converge on {single_plan.slides[0].id}")
+
+    @staticmethod
     def _validate_paper_deck_typography_continuity(
         *,
         prepared_slide: dict[str, Any],
@@ -904,8 +1654,7 @@ class CodexPPTProvider:
             [
                 element
                 for element in raw_candidate_elements
-                if isinstance(element, dict)
-                and element.get("contract_role") == "plan_copy"
+                if isinstance(element, dict) and element.get("contract_role") == "plan_copy"
             ]
             if isinstance(raw_candidate_elements, list)
             else None
@@ -932,17 +1681,12 @@ class CodexPPTProvider:
             )
         try:
             size_delta = abs(
-                float(candidate_title.get("font_size"))
-                - float(anchor_title.get("font_size"))
+                float(candidate_title.get("font_size")) - float(anchor_title.get("font_size"))
             )
         except (TypeError, ValueError) as exc:
-            raise ValueError(
-                f"paper-deck title size is invalid on {slide_id}"
-            ) from exc
+            raise ValueError(f"paper-deck title size is invalid on {slide_id}") from exc
         if size_delta > 6:
-            raise ValueError(
-                f"paper-deck title size drifted from the content anchor on {slide_id}"
-            )
+            raise ValueError(f"paper-deck title size drifted from the content anchor on {slide_id}")
 
         anchor_body_roles = {
             block.get("font_role")
@@ -969,12 +1713,8 @@ class CodexPPTProvider:
                 try:
                     candidate_size = float(block.get("font_size"))
                 except (TypeError, ValueError) as exc:
-                    raise ValueError(
-                        f"paper-deck body font size is invalid on {slide_id}"
-                    ) from exc
-                if not min(anchor_body_sizes) - 6 <= candidate_size <= max(
-                    anchor_body_sizes
-                ) + 6:
+                    raise ValueError(f"paper-deck body font size is invalid on {slide_id}") from exc
+                if not min(anchor_body_sizes) - 6 <= candidate_size <= max(anchor_body_sizes) + 6:
                     raise ValueError(
                         f"paper-deck body font size drifted from the content anchor on {slide_id}"
                     )
@@ -993,9 +1733,7 @@ class CodexPPTProvider:
         raw_elements = prepared_slide.get("elements")
         if not isinstance(raw_elements, list) or not raw_elements:
             raise ValueError(f"paper-deck prepared no elements for {expected.id}")
-        expected_background = (
-            theme.palette.board if expected.order == 1 else theme.palette.paper
-        )
+        expected_background = theme.palette.board if expected.order == 1 else theme.palette.paper
         if str(prepared_slide.get("background", "")).upper() != expected_background:
             raise ValueError(f"paper-deck prepared the wrong page background on {expected.id}")
         parsed_elements = [SlideElement.model_validate(raw) for raw in raw_elements]
@@ -1007,14 +1745,10 @@ class CodexPPTProvider:
                 f"paper-deck editable object ids are missing or duplicated on {expected.id}"
             )
         visual_modules = [
-            element
-            for element in parsed_elements
-            if element.contract_role == "visual_module"
+            element for element in parsed_elements if element.contract_role == "visual_module"
         ]
         visual_assets = [
-            element
-            for element in parsed_elements
-            if element.contract_role == "visual_asset"
+            element for element in parsed_elements if element.contract_role == "visual_asset"
         ]
         if not visual_modules:
             raise ValueError(f"paper-deck prepared no editable visual modules for {expected.id}")
@@ -1054,9 +1788,7 @@ class CodexPPTProvider:
                         f"paper-deck Plan text must use invisible text boxes on {expected.id}"
                     )
                 if element.style.opacity != 100:
-                    raise ValueError(
-                        f"paper-deck Plan text must be fully opaque on {expected.id}"
-                    )
+                    raise ValueError(f"paper-deck Plan text must be fully opaque on {expected.id}")
                 ratio = cls._paper_deck_layered_text_contrast(
                     element,
                     visual_modules=visual_modules,
@@ -1119,9 +1851,7 @@ class CodexPPTProvider:
             raise ValueError(f"paper-deck local illustration is not Plan-bound on {expected.id}")
         requirement = cls._paper_deck_visual_requirement(expected)
         if not (
-            int(requirement["min_assets"])
-            <= len(visual_assets)
-            <= int(requirement["max_assets"])
+            int(requirement["min_assets"]) <= len(visual_assets) <= int(requirement["max_assets"])
         ):
             raise ValueError(
                 f"paper-deck local illustration count violates the slide visual requirement on "
@@ -1136,9 +1866,9 @@ class CodexPPTProvider:
                 f"paper-deck placeholder count violates the slide visual requirement on "
                 f"{expected.id}"
             )
-        if {
-            element.semantic_ref for element in visual_assets
-        } & {element.semantic_ref for element in placeholder_elements}:
+        if {element.semantic_ref for element in visual_assets} & {
+            element.semantic_ref for element in placeholder_elements
+        }:
             raise ValueError(
                 f"paper-deck cannot generate and reserve the same visual on {expected.id}"
             )
@@ -1244,26 +1974,22 @@ class CodexPPTProvider:
         return True
 
     @classmethod
-    def _validate_paper_deck_visual_column(
+    def _validate_paper_deck_visual_region(
         cls,
         elements: list[SlideElement],
         *,
         slide: SlidePlan,
     ) -> None:
-        """Reserve one useful left/right column when a content page needs a picture bay."""
+        """Keep visual assets useful and separate without prescribing one page silhouette."""
 
         visual_regions = [
             element
             for element in elements
             if element.contract_role in {"visual_asset", "visual_placeholder"}
         ]
-        assets = [
-            element for element in visual_regions if element.contract_role == "visual_asset"
-        ]
+        assets = [element for element in visual_regions if element.contract_role == "visual_asset"]
         placeholders = [
-            element
-            for element in visual_regions
-            if element.contract_role == "visual_placeholder"
+            element for element in visual_regions if element.contract_role == "visual_placeholder"
         ]
         if len(assets) > cls.PAPER_DECK_MAX_VISUAL_ASSETS or len(placeholders) > 1:
             raise ValueError(f"paper-deck returned too many visual objects on {slide.id}")
@@ -1287,21 +2013,27 @@ class CodexPPTProvider:
             h=bottom - top,
             shape="rectangle",
         )
+        minimum_width = (
+            cls.PAPER_DECK_VISUAL_REGION_MIN_WIDTH
+            if placeholders
+            else cls.PAPER_DECK_LOCAL_VISUAL_MIN_WIDTH
+        )
+        minimum_height = (
+            cls.PAPER_DECK_VISUAL_REGION_MIN_HEIGHT
+            if placeholders
+            else cls.PAPER_DECK_LOCAL_VISUAL_MIN_HEIGHT
+        )
+        minimum_area = cls.PAPER_DECK_VISUAL_REGION_MIN_AREA if placeholders else 0.04
         if not (
-            cls.PAPER_DECK_VISUAL_COLUMN_MIN_WIDTH - 1e-9
-            <= region.w
-            <= cls.PAPER_DECK_VISUAL_COLUMN_MAX_WIDTH + 1e-9
-            and cls.PAPER_DECK_VISUAL_COLUMN_MIN_HEIGHT - 1e-9
-            <= region.h
-            <= cls.PAPER_DECK_VISUAL_COLUMN_MAX_HEIGHT + 1e-9
+            minimum_width - 1e-9 <= region.w <= cls.PAPER_DECK_VISUAL_REGION_MAX_WIDTH + 1e-9
+            and minimum_height - 1e-9 <= region.h <= cls.PAPER_DECK_VISUAL_REGION_MAX_HEIGHT + 1e-9
+            and region.w * region.h >= minimum_area - 1e-9
         ):
             raise ValueError(
-                f"paper-deck reserved visual column is too small or too large on {slide.id}: "
+                f"paper-deck visual region is too small or too large on {slide.id}: "
                 f"w={region.w:.3f}, h={region.h:.3f}; expected "
-                f"w={cls.PAPER_DECK_VISUAL_COLUMN_MIN_WIDTH:.2f}-"
-                f"{cls.PAPER_DECK_VISUAL_COLUMN_MAX_WIDTH:.2f}, "
-                f"h={cls.PAPER_DECK_VISUAL_COLUMN_MIN_HEIGHT:.2f}-"
-                f"{cls.PAPER_DECK_VISUAL_COLUMN_MAX_HEIGHT:.2f}"
+                f"w={minimum_width:.2f}-{cls.PAPER_DECK_VISUAL_REGION_MAX_WIDTH:.2f}, "
+                f"h={minimum_height:.2f}-{cls.PAPER_DECK_VISUAL_REGION_MAX_HEIGHT:.2f}"
             )
         if len(assets) == 2:
             first, second = assets
@@ -1317,60 +2049,39 @@ class CodexPPTProvider:
                 horizontal_gap < cls.PAPER_DECK_MIN_MODULE_GAP
                 and vertical_gap < cls.PAPER_DECK_MIN_MODULE_GAP
             ):
-                raise ValueError(
-                    f"paper-deck local illustrations overlap or fuse on {slide.id}"
-                )
-        if not (
-            region.x <= cls.PAPER_DECK_VISUAL_COLUMN_LEFT_MAX_X + 1e-9
-            or region.x + region.w
-            >= cls.PAPER_DECK_VISUAL_COLUMN_RIGHT_MIN_EDGE - 1e-9
-        ):
-            raise ValueError(
-                f"paper-deck reserved visual column must anchor to the left or right edge on "
-                f"{slide.id}"
-            )
-
+                raise ValueError(f"paper-deck local illustrations overlap or fuse on {slide.id}")
         protected_elements = [
             element
             for element in elements
             if element.contract_role in {"plan_copy", "visual_module"}
         ]
-        for protected in protected_elements:
-            required_gap = cls.PAPER_DECK_VISUAL_COLUMN_GAP
-            if protected.contract_role == "visual_module" and (
-                protected.type == "line"
-                or (
-                    protected.type == "shape"
-                    and (
-                        protected.w <= 0.025
-                        or protected.h <= 0.025
-                        or protected.w * protected.h <= 0.006
+        for visual in visual_regions:
+            for protected in protected_elements:
+                if (
+                    protected.contract_role == "visual_module"
+                    and protected.semantic_ref == visual.semantic_ref
+                    and cls._paper_deck_element_contains(protected, visual)
+                ):
+                    # A separately movable figure frame may deliberately contain its matching image.
+                    continue
+                horizontal_gap = max(
+                    protected.x - (visual.x + visual.w),
+                    visual.x - (protected.x + protected.w),
+                )
+                vertical_gap = max(
+                    protected.y - (visual.y + visual.h),
+                    visual.y - (protected.y + protected.h),
+                )
+                if (
+                    horizontal_gap < cls.PAPER_DECK_MIN_MODULE_GAP
+                    and vertical_gap < cls.PAPER_DECK_MIN_MODULE_GAP
+                ):
+                    raise ValueError(
+                        "paper-deck visual region has less than "
+                        f"{cls.PAPER_DECK_MIN_MODULE_GAP:.3f} clearance from "
+                        f"{protected.object_id or protected.semantic_ref or protected.type} on "
+                        f"{slide.id}"
                     )
-                )
-            ):
-                # A slim rule, side band, or point marker intentionally bridges the visual bay
-                # and the adjacent copy field.  It is still a separate editable object, so use
-                # the normal inter-module gap instead of the wider image-to-copy clearance.
-                required_gap = cls.PAPER_DECK_MIN_MODULE_GAP
-            horizontal_gap = max(
-                protected.x - (region.x + region.w),
-                region.x - (protected.x + protected.w),
-            )
-            vertical_gap = max(
-                protected.y - (region.y + region.h),
-                region.y - (protected.y + protected.h),
-            )
-            if (
-                horizontal_gap < required_gap
-                and vertical_gap < required_gap
-            ):
-                gap_label = f"{required_gap:.3f}".rstrip("0").rstrip(".")
-                raise ValueError(
-                    f"paper-deck reserved visual column has less than "
-                    f"{gap_label} clearance from "
-                    f"{protected.object_id or protected.semantic_ref or protected.type} on "
-                    f"{slide.id}"
-                )
 
     @classmethod
     def _is_paper_deck_text_within_safe_canvas(cls, element: SlideElement) -> bool:
@@ -1381,11 +2092,9 @@ class CodexPPTProvider:
         tolerance_y = cls.PAPER_CRAFT_SAFE_TOLERANCE_PX / target_height
         return (
             element.x >= cls.PAPER_CRAFT_SAFE_MARGIN_X - tolerance_x
-            and element.x + element.w
-            <= 1 - cls.PAPER_CRAFT_SAFE_MARGIN_X + tolerance_x
+            and element.x + element.w <= 1 - cls.PAPER_CRAFT_SAFE_MARGIN_X + tolerance_x
             and element.y >= cls.PAPER_CRAFT_SAFE_MARGIN_Y - tolerance_y
-            and element.y + element.h
-            <= 1 - cls.PAPER_CRAFT_SAFE_MARGIN_Y + tolerance_y
+            and element.y + element.h <= 1 - cls.PAPER_CRAFT_SAFE_MARGIN_Y + tolerance_y
         )
 
     def _prepare_paper_deck_slide_result(
@@ -1409,9 +2118,7 @@ class CodexPPTProvider:
         raw_slide = raw_slides[0]
         if not isinstance(raw_slide, dict) or raw_slide.get("slide_id") != slide.id:
             raise ValueError(f"paper-deck slide-id mismatch for {slide.id}")
-        expected_background = (
-            theme.palette.board if slide_index == 0 else theme.palette.paper
-        )
+        expected_background = theme.palette.board if slide_index == 0 else theme.palette.paper
         expected_style_signature = (
             f"{self._paper_deck_style_preset(theme)}:{theme.id}:"
             f"{self.PAPER_DECK_STYLE_SIGNATURE_VERSION}"
@@ -1420,8 +2127,7 @@ class CodexPPTProvider:
             raw_slide.get("manifest_version") != self.PAPER_DECK_MANIFEST_VERSION
             or raw_slide.get("layout_mode") != "editable-layered-objects"
             or raw_slide.get("style_signature") != expected_style_signature
-            or raw_slide.get("raster_audit")
-            != "inspected-local-assets-text-free"
+            or raw_slide.get("raster_audit") != "inspected-local-assets-text-free"
         ):
             raise ValueError(f"paper-deck Skill manifest identity mismatch for {slide.id}")
         if str(raw_slide.get("background", "")).upper() != expected_background:
@@ -1456,9 +2162,7 @@ class CodexPPTProvider:
             )
         raw_text_blocks = raw_slide.get("text_blocks")
         expected_texts = [slide.title, *slide.key_points]
-        if not isinstance(raw_text_blocks, list) or len(raw_text_blocks) != len(
-            expected_texts
-        ):
+        if not isinstance(raw_text_blocks, list) or len(raw_text_blocks) != len(expected_texts):
             raise ValueError(
                 f"paper-deck Skill text-block count mismatch on {slide.id}: "
                 f"expected {len(expected_texts)}"
@@ -1573,7 +2277,10 @@ class CodexPPTProvider:
         """Compile exact Plan strings into the Skill-authored graphic-block manifest."""
 
         exact_texts = [slide.title, *slide.key_points]
-        expected_refs = ["title", *[f"key_points.{index}" for index in range(len(slide.key_points))]]
+        expected_refs = [
+            "title",
+            *[f"key_points.{index}" for index in range(len(slide.key_points))],
+        ]
         elements: list[dict[str, Any]] = []
         for content_index, (raw_block, content_ref, exact_text) in enumerate(
             zip(raw_text_blocks, expected_refs, exact_texts, strict=True)
@@ -1586,16 +2293,13 @@ class CodexPPTProvider:
                 )
             if raw_block.get("content_ref") != content_ref:
                 raise ValueError(
-                    f"paper-deck Skill content_ref mismatch on {slide.id}: "
-                    f"expected {content_ref}"
+                    f"paper-deck Skill content_ref mismatch on {slide.id}: expected {content_ref}"
                 )
             numeric: dict[str, float] = {}
             for key in ("x", "y", "w", "h", "font_size", "min_font_size"):
                 value = raw_block.get(key)
                 if isinstance(value, bool) or not isinstance(value, (int, float)):
-                    raise ValueError(
-                        f"paper-deck Skill text block has invalid {key} on {slide.id}"
-                    )
+                    raise ValueError(f"paper-deck Skill text block has invalid {key} on {slide.id}")
                 numeric[key] = float(value)
             font_role = raw_block.get("font_role")
             if font_role not in {"sans", "serif", "handwritten", "display", "mono"}:
@@ -1639,7 +2343,7 @@ class CodexPPTProvider:
                 )
                 minimum_line_count = line_count
                 minimum_required_height = required_height
-                if required_height <= numeric["h"] + 0.003 and line_count <= 10:
+                if required_height <= numeric["h"] + 0.003:
                     if physical_fit_size is None:
                         physical_fit_size = fitted_size
                     if line_count <= max_lines:
@@ -1684,10 +2388,7 @@ class CodexPPTProvider:
 
         references = {"title": slide.title, "decoration": "deck decoration"}
         references.update(
-            {
-                f"key_points.{index}": value
-                for index, value in enumerate(slide.key_points)
-            }
+            {f"key_points.{index}": value for index, value in enumerate(slide.key_points)}
         )
         references.update(CodexPPTProvider._visual_placeholder_reference_map(slide))
         return references
@@ -1724,16 +2425,12 @@ class CodexPPTProvider:
         }
         if element_type == "line":
             if style_token not in line_tokens:
-                raise ValueError(
-                    f"paper-deck line cannot use module style token {style_token!r}"
-                )
+                raise ValueError(f"paper-deck line cannot use module style token {style_token!r}")
             line_color, line_width, opacity = line_tokens[style_token]
             fill = None
         else:
             if style_token not in shape_tokens:
-                raise ValueError(
-                    f"paper-deck shape cannot use module style token {style_token!r}"
-                )
+                raise ValueError(f"paper-deck shape cannot use module style token {style_token!r}")
             fill, line_color, line_width, opacity = shape_tokens[style_token]
         return {
             "font_size": 18,
@@ -1980,6 +2677,163 @@ class CodexPPTProvider:
         }
 
     @classmethod
+    def _paper_deck_composition_plan(
+        cls,
+        plan: PresentationPlan,
+    ) -> list[dict[str, str]]:
+        """Assign a deterministic Paper Deck rhythm without changing any Plan copy."""
+
+        registry = {spec.id: spec for spec in LAYOUT_REGISTRY}
+        role_candidates: dict[str, tuple[str, ...]] = {
+            "cover": ("hero_minimal",),
+            "section": ("hero_statement", "quote_field"),
+            "concept": ("constellation", "focus_rail", "split_left", "split_right"),
+            "method": ("sequence_horizontal", "ladder", "sequence_vertical"),
+            "formula": ("focus_rail", "constellation", "evidence_strip"),
+            "comparison": ("comparison_split", "matrix", "before_after"),
+            "case": ("evidence_strip", "before_after", "split_right"),
+            "practice": ("sequence_vertical", "timeline_alternating", "evidence_strip"),
+            "summary": ("summary_path", "hero_statement", "focus_rail"),
+            "other": (
+                "focus_rail",
+                "evidence_strip",
+                "constellation",
+                "sequence_horizontal",
+                "split_left",
+                "split_right",
+            ),
+        }
+        planned: list[dict[str, str]] = []
+        previous_layout_id = ""
+        previous_family = ""
+        role_occurrences: dict[str, int] = {}
+        for index, slide in enumerate(plan.slides):
+            if index == 0:
+                candidates = [registry["hero_minimal"]]
+            else:
+                candidate_ids = list(
+                    role_candidates.get(slide.slide_role, role_candidates["other"])
+                )
+                fallback = select_fallback_layout(slide, index)
+                if slide.slide_role == "other" and slide.layout_id in registry:
+                    candidate_ids.insert(0, str(slide.layout_id))
+                elif slide.layout_id in registry:
+                    candidate_ids.append(str(slide.layout_id))
+                candidate_ids.append(fallback.id)
+                candidates = []
+                seen: set[str] = set()
+                for candidate_id in candidate_ids:
+                    if candidate_id in registry and candidate_id not in seen:
+                        candidates.append(registry[candidate_id])
+                        seen.add(candidate_id)
+
+            point_count = len(slide.key_points)
+            average_length = sum(len(point) for point in slide.key_points) / max(1, point_count)
+            if average_length > 42 or point_count > 5:
+                roomy_ids = ("evidence_strip", "split_left", "split_right", "focus_rail")
+                roomy = [registry[item] for item in roomy_ids if item in registry]
+                candidates = [
+                    *[item for item in roomy if item in candidates],
+                    *[item for item in candidates if item not in roomy],
+                    *[item for item in roomy if item not in candidates],
+                ]
+
+            occurrence = role_occurrences.get(slide.slide_role, 0)
+            role_occurrences[slide.slide_role] = occurrence + 1
+            selected = candidates[occurrence % len(candidates)]
+            if len(candidates) > 1 and (
+                selected.id == previous_layout_id
+                or (selected.family == previous_family and selected.family == "split")
+            ):
+                selected = next(
+                    (
+                        item
+                        for item in candidates
+                        if item.id != previous_layout_id and item.family != previous_family
+                    ),
+                    next(item for item in candidates if item.id != previous_layout_id),
+                )
+            planned.append(cls._paper_deck_composition_payload(selected))
+            previous_layout_id = selected.id
+            previous_family = selected.family
+        return planned
+
+    @staticmethod
+    def _paper_deck_composition_payload(spec: LayoutSpec) -> dict[str, str]:
+        directions = {
+            "hero_minimal": (
+                "Editorial hero: place the title as the dominant field with one large visual anchor "
+                "offset from center and only sparse supporting copy."
+            ),
+            "hero_statement": (
+                "Full-width statement page: use one oversized claim, a restrained secondary line, "
+                "and an asymmetric visual accent; do not turn it into two columns."
+            ),
+            "split_left": (
+                "Asymmetric split: give the left editorial field more weight and place evidence or a "
+                "local visual on the right, with unequal widths and a deliberate gutter."
+            ),
+            "split_right": (
+                "Asymmetric split: stage evidence or a local visual on the left and place the main "
+                "copy field on the right, with unequal widths and a deliberate gutter."
+            ),
+            "focus_rail": (
+                "Focal field plus interpretation rail: use a large central or off-center concept, "
+                "with independent notes arranged on a narrow top, bottom, or side rail."
+            ),
+            "quote_field": (
+                "Definition field: use a large typographic statement across the canvas with two or "
+                "three small marginal annotations, not a card grid."
+            ),
+            "sequence_horizontal": (
+                "Horizontal process: build a wide left-to-right path through the middle of the page; "
+                "place exact-copy annotations above and below its independent nodes."
+            ),
+            "sequence_vertical": (
+                "Vertical process: build a top-to-bottom method spine with alternating annotations on "
+                "both sides; keep every node, connector, and text anchor independent."
+            ),
+            "comparison_split": (
+                "Comparison spread: create two balanced evidence fields separated by a clear axis, "
+                "with differences emphasized through restrained rules and labels."
+            ),
+            "before_after": (
+                "Before/after narrative: use two staged states connected by one directional transition; "
+                "reserve a separate conclusion strip instead of stacking cards."
+            ),
+            "timeline_alternating": (
+                "Alternating timeline: run a strong time or reasoning axis across the page and alternate "
+                "independent annotations around it."
+            ),
+            "ladder": (
+                "Progressive ladder: arrange method stages diagonally or as stepped bands, with a clear "
+                "start, escalation, and outcome."
+            ),
+            "constellation": (
+                "Annotated mechanism: place one central scientific figure or concept and distribute "
+                "independent callouts around it with short semantic connectors."
+            ),
+            "matrix": (
+                "Analytical matrix: use a two-axis field or four distinct quadrants, keeping each region "
+                "flat, independent, and evidence-led rather than UI-like."
+            ),
+            "evidence_strip": (
+                "Evidence stage: give a wide central or lower visual/evidence region 60-75% of the useful "
+                "canvas and place interpretation in a separate top, bottom, or marginal strip."
+            ),
+            "summary_path": (
+                "Synthesis path: arrange the final ideas as a curved or stepped reading path ending in "
+                "one dominant takeaway, without introducing new content."
+            ),
+        }
+        return {
+            "layout_id": spec.id,
+            "family": spec.family,
+            "description": spec.description,
+            "direction": directions[spec.id],
+        }
+
+    @classmethod
     def _visual_placeholder_label(cls, slide: SlidePlan, content_ref: str) -> str:
         references = cls._visual_placeholder_reference_map(slide)
         if content_ref not in references:
@@ -2030,9 +2884,7 @@ class CodexPPTProvider:
                 )
             content_ref = raw_placeholder.get("content_ref")
             if not isinstance(content_ref, str):
-                raise ValueError(
-                    f"paper-deck visual placeholder has no content_ref on {slide.id}"
-                )
+                raise ValueError(f"paper-deck visual placeholder has no content_ref on {slide.id}")
             numeric: dict[str, float] = {}
             for key in ("x", "y", "w", "h"):
                 value = raw_placeholder.get(key)
@@ -2107,16 +2959,13 @@ class CodexPPTProvider:
     ) -> None:
         """Keep body treatments as separate visual islands instead of one fused cluster."""
 
-        cls._validate_paper_deck_visual_column(elements, slide=slide)
+        cls._validate_paper_deck_visual_region(elements, slide=slide)
 
         body_text = [
             element
             for element in elements
             if element.type == "text"
-            and not (
-                element.contract_role == "plan_copy"
-                and element.semantic_ref == "title"
-            )
+            and not (element.contract_role == "plan_copy" and element.semantic_ref == "title")
         ]
         for index, left in enumerate(body_text):
             for right in body_text[index + 1 :]:
@@ -2143,9 +2992,7 @@ class CodexPPTProvider:
             if element.type == "text" and element.contract_role == "plan_copy"
         ]
         visual_modules = [
-            element
-            for element in elements
-            if element.contract_role == "visual_module"
+            element for element in elements if element.contract_role == "visual_module"
         ]
         for module in visual_modules:
             if module.type == "line":
@@ -2290,18 +3137,15 @@ class CodexPPTProvider:
                     horizontal_gap <= maximum_anchor_gap
                     and text.y - 0.01 <= line_y <= text.y + text.h + 0.01
                 )
-                under_or_over_text = (
-                    vertical_gap <= maximum_anchor_gap
-                    and x_overlap >= min(0.08, text.w * 0.25)
+                under_or_over_text = vertical_gap <= maximum_anchor_gap and x_overlap >= min(
+                    0.08, text.w * 0.25
                 )
                 return beside_text or under_or_over_text
-            beside_text = (
-                horizontal_gap <= maximum_anchor_gap
-                and y_overlap >= min(0.06, text.h * 0.35)
+            beside_text = horizontal_gap <= maximum_anchor_gap and y_overlap >= min(
+                0.06, text.h * 0.35
             )
-            above_or_below_text = (
-                vertical_gap <= maximum_anchor_gap
-                and x_overlap >= min(0.06, text.w * 0.2)
+            above_or_below_text = vertical_gap <= maximum_anchor_gap and x_overlap >= min(
+                0.06, text.w * 0.2
             )
             return beside_text or above_or_below_text
         marker_area = module.w * module.h
@@ -2508,9 +3352,7 @@ class CodexPPTProvider:
             sample_flattened() if sample_flattened is not None else sample.getdata()
         )
         pixels = [
-            pixel
-            for pixel, alpha in zip(sample_pixels, mask_pixels, strict=True)
-            if alpha >= 32
+            pixel for pixel, alpha in zip(sample_pixels, mask_pixels, strict=True) if alpha >= 32
         ]
         if not pixels:
             return 0.0
@@ -2519,19 +3361,14 @@ class CodexPPTProvider:
         for red, green, blue in pixels:
             channels = [value / 255 for value in (red, green, blue)]
             linear = [
-                value / 12.92
-                if value <= 0.04045
-                else ((value + 0.055) / 1.055) ** 2.4
+                value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
                 for value in channels
             ]
-            pixel_luminances.append(
-                0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2]
-            )
+            pixel_luminances.append(0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2])
 
         foreground = cls._relative_luminance(style.color)
         ratios = sorted(
-            (max(foreground, background) + 0.05)
-            / (min(foreground, background) + 0.05)
+            (max(foreground, background) + 0.05) / (min(foreground, background) + 0.05)
             for background in pixel_luminances
         )
         percentile_index = max(0, int((len(pixel_luminances) - 1) * 0.10))
@@ -2574,18 +3411,13 @@ class CodexPPTProvider:
             require_editable_layers_per_slide=require_image,
         )
         if require_image and any(
-            not any(
-                element.contract_role == "visual_module"
-                for element in slide.elements
-            )
+            not any(element.contract_role == "visual_module" for element in slide.elements)
             for slide in designed_plan.slides
         ):
             raise ValueError("paper-deck must provide editable visual modules on every slide")
         self.adapter.render_declarative_pptx(designed_plan, deck_path)
         return designed_plan, (
-            "paper-craft-layered-safe-render"
-            if require_image
-            else "structured-design-safe-render"
+            "paper-craft-layered-safe-render" if require_image else "structured-design-safe-render"
         )
 
     @classmethod
@@ -2715,18 +3547,19 @@ class CodexPPTProvider:
                         f"{expected.id}"
                     )
                 editable_modules = [
-                    element
-                    for element in elements
-                    if element.contract_role == "visual_module"
+                    element for element in elements if element.contract_role == "visual_module"
                 ]
-                if not editable_modules or len(editable_modules) > cls.PAPER_DECK_MAX_VISUAL_MODULES:
+                if (
+                    not editable_modules
+                    or len(editable_modules) > cls.PAPER_DECK_MAX_VISUAL_MODULES
+                ):
                     raise ValueError(
                         f"paper-deck layered mode has an invalid module count on {expected.id}"
                     )
                 object_ids = [element.object_id for element in elements]
-                if any(object_id is None for object_id in object_ids) or len(
-                    object_ids
-                ) != len(set(object_ids)):
+                if any(object_id is None for object_id in object_ids) or len(object_ids) != len(
+                    set(object_ids)
+                ):
                     raise ValueError(
                         f"paper-deck layered object ids are missing or duplicated on {expected.id}"
                     )
@@ -2916,9 +3749,7 @@ class CodexPPTProvider:
             if not isinstance(optional_color, str) or not re.fullmatch(
                 r"[0-9A-Fa-f]{6}", optional_color
             ):
-                raise ValueError(
-                    f"Invalid Codex design color: {color_key}={optional_color!r}"
-                )
+                raise ValueError(f"Invalid Codex design color: {color_key}={optional_color!r}")
         payload = {
             "type": element_type,
             "contract_role": raw_element.get("contract_role", "content"),
@@ -3091,9 +3922,7 @@ class CodexPPTProvider:
         require_slide_background: bool = False,
         background_color: str | None = None,
     ) -> None:
-        if background_color is not None and not re.fullmatch(
-            r"[0-9A-Fa-f]{6}", background_color
-        ):
+        if background_color is not None and not re.fullmatch(r"[0-9A-Fa-f]{6}", background_color):
             raise ValueError("Codex generated-image background color is invalid")
         try:
             with Image.open(source) as candidate:
@@ -3108,8 +3937,7 @@ class CodexPPTProvider:
                     cls._validate_slide_background_dimensions(candidate.size)
                 if background_color is not None:
                     background_rgb = tuple(
-                        int(background_color[index : index + 2], 16)
-                        for index in (0, 2, 4)
+                        int(background_color[index : index + 2], 16) for index in (0, 2, 4)
                     )
                     canvas = Image.new(
                         "RGBA",
@@ -3121,9 +3949,7 @@ class CodexPPTProvider:
                         candidate.convert("RGBA"),
                     ).convert("RGB")
                 else:
-                    normalized = candidate.convert(
-                        "RGBA" if "A" in candidate.getbands() else "RGB"
-                    )
+                    normalized = candidate.convert("RGBA" if "A" in candidate.getbands() else "RGB")
                 if target_size is not None:
                     cls._validate_image_dimensions(target_size)
                     normalized = ImageOps.fit(
@@ -3167,13 +3993,15 @@ class CodexPPTProvider:
 
     @staticmethod
     def _canonical_skill_guidance_bytes(content: bytes) -> bytes:
-        """Make pinned text guidance hashes independent of Git's checkout line endings."""
+        """Normalize checkout-only whitespace before hashing pinned text guidance."""
 
         try:
             text = content.decode("utf-8")
         except UnicodeDecodeError as exc:
             raise ValueError("paper-craft skill guidance must be valid UTF-8 text") from exc
-        return text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+        normalized = text.replace("\r\n", "\n").replace("\r", "\n")
+        normalized = "\n".join(line.rstrip(" \t") for line in normalized.split("\n"))
+        return normalized.encode("utf-8")
 
     def _stage_paper_craft_skills(self, workspace: Path) -> list[dict[str, Any]]:
         source_root = self.paper_craft_skills_dir
@@ -3271,6 +4099,11 @@ class CodexPPTProvider:
                     part in {"", ".", ".."} for part in relative.parts
                 ):
                     raise ValueError("paper-craft guidance path escaped its skill directory")
+                if relative.as_posix() not in self.PAPER_CRAFT_RUNTIME_GUIDANCE_FILES.get(
+                    skill_name,
+                    set(),
+                ):
+                    continue
                 source_entry = skill_root / skill_name / Path(*relative.parts)
                 if self._is_link_or_reparse_point(source_entry):
                     raise ValueError("paper-craft guidance cannot be a link or junction")
@@ -3299,11 +4132,14 @@ class CodexPPTProvider:
         environment: dict[str, str],
         stderr: str,
         reported_image_count: int = 1,
+        reported_image_paths: tuple[str, ...] | None = None,
     ) -> tuple[int, str | None]:
+        if reported_image_paths is not None:
+            reported_image_count = len(reported_image_paths)
         if reported_image_count == 0:
             return 0, None
-        if reported_image_count != 1:
-            return 0, "Codex multi-image recovery has no unambiguous source mapping"
+        if not 1 <= reported_image_count <= self.PAPER_DECK_MAX_VISUAL_ASSETS:
+            return 0, "Codex image recovery exceeds the per-slide asset limit"
 
         session_id = self._extract_codex_session_id(stderr)
         if session_id is None:
@@ -3333,8 +4169,35 @@ class CodexPPTProvider:
         )
         if not candidates:
             return 0, "Codex image generation produced no local raster asset"
-        if len(candidates) != 1:
-            return 0, "Codex image recovery found multiple sources with no safe mapping"
+
+        selected_sources: list[Path | None] = [None] * reported_image_count
+        used_sources: set[Path] = set()
+        if reported_image_paths is not None:
+            for index, reported_path in enumerate(reported_image_paths):
+                reported_name = PurePosixPath(reported_path.replace("\\", "/")).name
+                exact_matches = [
+                    candidate
+                    for candidate in candidates
+                    if candidate.name == reported_name and candidate not in used_sources
+                ]
+                if len(exact_matches) == 1:
+                    selected_sources[index] = exact_matches[0]
+                    used_sources.add(exact_matches[0])
+
+        unmatched_indices = [
+            index for index, source in enumerate(selected_sources) if source is None
+        ]
+        remaining_sources = [
+            candidate for candidate in candidates if candidate not in used_sources
+        ]
+        if len(remaining_sources) < len(unmatched_indices):
+            return 0, "Codex image recovery produced fewer sources than the returned manifest"
+        # The image tool stores every regeneration in the trusted session directory. When the
+        # manifest uses a logical safe name rather than the generated UUID, the newest N unused
+        # sources are the final audited outputs; earlier files are rejected drafts.
+        fallback_sources = remaining_sources[-len(unmatched_indices) :] if unmatched_indices else []
+        for index, source in zip(unmatched_indices, fallback_sources, strict=True):
+            selected_sources[index] = source
 
         staged_root = workspace / ".codex_image_outputs"
         if os.path.lexists(staged_root):
@@ -3342,14 +4205,19 @@ class CodexPPTProvider:
         try:
             staged_root.mkdir()
             staged_root.resolve().relative_to(workspace.resolve())
-            source = candidates[0]
-            source_root = source.resolve()
-            source_root.relative_to(session_root)
-            self._validate_image_source_entry(source, source_root)
-            self._normalize_generated_image(source_root, staged_root / "01.png")
+            for index, source in enumerate(selected_sources, start=1):
+                if source is None:
+                    raise ValueError("Codex generated image mapping is incomplete")
+                source_root = source.resolve()
+                source_root.relative_to(session_root)
+                self._validate_image_source_entry(source, source_root)
+                self._normalize_generated_image(
+                    source_root,
+                    staged_root / f"{index:02d}.png",
+                )
         except (OSError, ValueError):
             return 0, "Codex generated raster assets were unreadable"
-        return 1, None
+        return len(selected_sources), None
 
     @staticmethod
     def _extract_codex_session_id(stderr: str) -> str | None:
@@ -3538,9 +4406,9 @@ class CodexPPTProvider:
         result = self._read_result(result_path)
         if run_mode in {"paper-craft-hybrid", "paper-deck-slide-hybrid"}:
             reported_slides = result.get("slides")
-            reported_image_count = (
-                sum(
-                    1
+            reported_image_paths = (
+                tuple(
+                    str(element.get("image_path", ""))
                     for slide in reported_slides
                     if isinstance(slide, dict)
                     for element in (
@@ -3549,19 +4417,16 @@ class CodexPPTProvider:
                         else slide.get("elements", [])
                     )
                     if isinstance(element, dict)
-                    and (
-                        element.get("type") == "image"
-                        or "image_path" in element
-                    )
+                    and (element.get("type") == "image" or "image_path" in element)
                 )
                 if isinstance(reported_slides, list)
-                else 0
+                else ()
             )
             staged_image_count, staged_image_error = self._stage_codex_generated_images(
                 workspace=workspace,
                 environment=environment,
                 stderr=stderr,
-                reported_image_count=reported_image_count,
+                reported_image_paths=reported_image_paths,
             )
         result["_metaclass_staged_image_count"] = staged_image_count
         if staged_image_error:
@@ -3693,6 +4558,11 @@ class CodexPPTProvider:
     @staticmethod
     def _tail(value: str, limit: int) -> str:
         return value[-limit:] if len(value) > limit else value
+
+    @staticmethod
+    def _artifact_id_for_job(job_id: str) -> str:
+        safe_job_id = re.sub(r"[^A-Za-z0-9_-]+", "-", job_id).strip("-")
+        return f"ppt_artifact_{safe_job_id[-32:]}"
 
     @staticmethod
     def _public_result(result: dict[str, Any]) -> dict[str, Any]:
@@ -3850,6 +4720,20 @@ class CodexPPTProvider:
         )
 
     @staticmethod
+    def _is_codex_usage_limit(error: str) -> bool:
+        normalized = error.casefold()
+        return any(
+            marker in normalized
+            for marker in (
+                "you've hit your usage limit",
+                "usage limit",
+                "purchase more credits",
+                "insufficient_quota",
+                "rate_limit_exceeded",
+            )
+        )
+
+    @staticmethod
     def _write_paper_deck_output_schema(
         destination: Path,
         *,
@@ -3881,16 +4765,16 @@ class CodexPPTProvider:
             "decoration",
         ]
         module_common_properties = {
-                "object_id": {
-                    "type": "string",
-                    "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,63}$",
-                },
-                "content_ref": {"type": "string", "enum": module_refs},
-                "x": {"type": "number", "minimum": 0.045, "maximum": 0.955},
-                "y": {"type": "number", "minimum": 0.04, "maximum": 0.96},
-                "w": {"type": "number", "minimum": 0, "maximum": 0.88},
-                "h": {"type": "number", "minimum": 0, "maximum": 0.84},
-                "z": {"type": "integer", "minimum": 1, "maximum": 19},
+            "object_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,63}$",
+            },
+            "content_ref": {"type": "string", "enum": module_refs},
+            "x": {"type": "number", "minimum": 0.045, "maximum": 0.955},
+            "y": {"type": "number", "minimum": 0.04, "maximum": 0.96},
+            "w": {"type": "number", "minimum": 0, "maximum": 0.88},
+            "h": {"type": "number", "minimum": 0, "maximum": 0.84},
+            "z": {"type": "integer", "minimum": 1, "maximum": 19},
         }
         module_required = [
             "object_id",
@@ -3970,7 +4854,7 @@ class CodexPPTProvider:
         visual_max_width = (
             CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MAX_WIDTH
             if require_dominant_visual_column
-            else 0.72
+            else CodexPPTProvider.PAPER_DECK_VISUAL_REGION_MAX_WIDTH
         )
         visual_min_height = (
             CodexPPTProvider.PAPER_DECK_LOCAL_VISUAL_MIN_HEIGHT
@@ -3980,7 +4864,7 @@ class CodexPPTProvider:
         visual_max_height = (
             CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MAX_HEIGHT
             if require_dominant_visual_column
-            else 0.72
+            else CodexPPTProvider.PAPER_DECK_VISUAL_REGION_MAX_HEIGHT
         )
         visual_asset = {
             "type": "object",
@@ -4080,7 +4964,7 @@ class CodexPPTProvider:
                     "minimum": (
                         CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MIN_WIDTH
                         if require_dominant_visual_column
-                        else 0.22
+                        else CodexPPTProvider.PAPER_DECK_VISUAL_REGION_MIN_WIDTH
                     ),
                     "maximum": visual_max_width,
                 },
@@ -4089,12 +4973,12 @@ class CodexPPTProvider:
                     "minimum": (
                         CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MIN_HEIGHT
                         if require_dominant_visual_column
-                        else 0.14
+                        else CodexPPTProvider.PAPER_DECK_VISUAL_REGION_MIN_HEIGHT
                     ),
                     "maximum": (
                         visual_max_height
                         if require_dominant_visual_column
-                        else 0.58
+                        else CodexPPTProvider.PAPER_DECK_VISUAL_REGION_MAX_HEIGHT
                     ),
                 },
             },
@@ -4196,16 +5080,14 @@ class CodexPPTProvider:
         slide_plan_hash: str | None = None,
         deck_context: str = "",
         visual_requirement: dict[str, Any] | None = None,
+        composition: dict[str, str] | None = None,
     ) -> str:
         slide_count = deck_slide_count or len(plan.slides)
         slide_number = slide_index + 1
-        expected_background = (
-            theme.palette.board if slide_index == 0 else theme.palette.paper
-        )
+        expected_background = theme.palette.board if slide_index == 0 else theme.palette.paper
         style_preset = CodexPPTProvider._paper_deck_style_preset(theme)
         style_signature = (
-            f"{style_preset}:{theme.id}:"
-            f"{CodexPPTProvider.PAPER_DECK_STYLE_SIGNATURE_VERSION}"
+            f"{style_preset}:{theme.id}:{CodexPPTProvider.PAPER_DECK_STYLE_SIGNATURE_VERSION}"
         )
         requirement = visual_requirement or CodexPPTProvider._paper_deck_visual_requirement(
             plan.slides[0]
@@ -4214,16 +5096,28 @@ class CodexPPTProvider:
         max_assets = int(requirement["max_assets"])
         min_placeholders = int(requirement["min_placeholders"])
         max_placeholders = int(requirement["max_placeholders"])
+        planned_composition = composition or CodexPPTProvider._paper_deck_composition_plan(plan)[0]
         visual_instruction = (
             f"This slide is classified as {requirement['mode']}: {requirement['reason']}. "
             f"Return {min_assets}-{max_assets} visual_assets and "
             f"{min_placeholders}-{max_placeholders} visual_placeholders. These counts are a hard "
             "backend contract."
         )
+        composition_instruction = (
+            "PAPER_DECK_COMPOSITION_DIRECTIVE:\n"
+            f"- layout_id={planned_composition['layout_id']}\n"
+            f"- family={planned_composition['family']}\n"
+            f"- spatial direction: {planned_composition['direction']}\n"
+            "This directive controls geometry only. Preserve every exact Plan string. Do not replace "
+            "it with a generic left/right split unless the assigned layout_id is split_left or "
+            "split_right. Keep the same journal-minimal identity while changing the page silhouette."
+        )
         return (
-            "Use $paper-deck as the required presentation visual-director skill and "
-            "$paper-comic only when an explanatory figure genuinely helps. Their pinned, verified "
-            "SKILL.md files and text references are embedded below, so apply that guidance "
+            "Use $paper-deck as the required presentation visual-director skill. Apply the "
+            "embedded pinned Paper Deck workflow and $paper-comic's compact verified "
+            "paper-figure guidance "
+            "when an explanatory figure genuinely helps. The relevant verified guidance "
+            "is embedded below, so apply it "
             "directly and do not try to read the staged skill files with shell commands. The "
             "user has already authorized this generation, so do not pause for confirmation. "
             "This is MetaClass's editable-layer Paper Deck mode: the supplied PresentationPlan is "
@@ -4234,6 +5128,8 @@ class CodexPPTProvider:
             "typography mood, material, illustration language, or decorative treatment. "
             f"Style anchor: {CodexPPTProvider.PAPER_DECK_STYLE_PROMPT}.\n"
             + visual_instruction
+            + "\n"
+            + composition_instruction
             + "\n"
             "The user explicitly requires independently movable PowerPoint objects, so adapt the "
             "skill's art direction to a layered DrawingML manifest instead of its usual full-page "
@@ -4255,33 +5151,32 @@ class CodexPPTProvider:
             "When suggested_visual requires an unavailable real or source-specific asset such as "
             "a photograph, screenshot, map, remote-sensing image, experimental chart, original "
             "paper figure, or document page, do not hallucinate it. On non-cover slides, reserve "
-            "one substantial independent empty visual column and return one visual_placeholders "
+            "one substantial independent visual region that follows the assigned composition and "
+            "return one visual_placeholders "
             "manifest entry "
             "that references suggested_visual or the most specific visual_payload.N. Do not write "
             "placeholder copy or return its frame as a module; MetaClass will add one "
             "editable academic frame with deterministic text. Do not return a placeholder for an "
             "explanatory diagram that can be truthfully constructed from visual_payload. Cover "
             "slides must return visual_placeholders=[]. On content slides, visual_assets and "
-            "visual_placeholders are mutually exclusive. If either is returned, reserve a single "
-            f"left/right visual bay whose combined bounds are w={CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MIN_WIDTH:.2f}-"
-            f"{CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MAX_WIDTH:.2f} and "
-            f"h={CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MIN_HEIGHT:.2f}-"
-            f"{CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MAX_HEIGHT:.2f}; keep at least "
-            f"{CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_GAP:.2f} clearance from the title, "
-            "every Plan text block, and substantive modules. Slim rules, side bands, and markers "
-            f"may sit at least {CodexPPTProvider.PAPER_DECK_MIN_MODULE_GAP:.3f} from the visual bay. "
-            "When there are two pictures, "
-            "stack or pair them inside that bay with visible separation; each remains an independent "
-            "Picture object. Keep Plan copy in the opposite editorial field without shortening or "
-            "rewriting it.\n"
+            "visual_placeholders are mutually exclusive. If either is returned, it may occupy a "
+            "central figure stage, a wide evidence strip, a top/bottom band, an inset, or an "
+            "asymmetric side field as required by the assigned composition. It does not have to be "
+            "a vertical left/right column. Keep at least "
+            f"{CodexPPTProvider.PAPER_DECK_MIN_MODULE_GAP:.3f} clearance from unrelated Plan copy "
+            "and modules. When there are two pictures, keep visible separation and preserve each as "
+            "an independent Picture object. Arrange exact Plan copy around the visual without "
+            "shortening or rewriting it.\n"
             "Use Codex's built-in image-generation capability for the required count of truthfully "
             "generatable local scientific illustrations. Each illustration must follow "
             "suggested_visual and visual_payload without inventing facts, and it must remain a "
             "local independent picture rather than a slide background. "
             "Do not run shell commands or local file operations. The built-in image tool stores "
-            "its result in the current Codex session; return the intended logical "
-            "generated_visuals/<safe-name> path and the backend will recover and normalize that "
-            "auditable images in order. Do not execute skill scripts or other programs, install "
+            "its result in the current Codex session. In visual_assets, return generated_visuals/"
+            "<exact-generated-filename> for the final accepted image, preserving the UUID-style "
+            "basename emitted by the image tool. If you reject a draft and regenerate it, reference "
+            "only the final accepted image; the backend will recover that exact auditable source. "
+            "Do not execute skill scripts or other programs, install "
             "packages, use web search, make network requests, or write files. "
             "If the semantic visual needs unavailable real/source-specific evidence, do not call "
             "image generation; return visual_assets=[] and use the authorized placeholder. An "
@@ -4301,7 +5196,7 @@ class CodexPPTProvider:
             "16:9 slide image.\n"
             "After image generation, inspect the local asset at original resolution. Regenerate it "
             "if it contains glyphs, pseudo-text, a watermark, invented evidence, or accidental "
-            "slide chrome. Set raster_audit=\"inspected-local-assets-text-free\" after inspecting "
+            'slide chrome. Set raster_audit="inspected-local-assets-text-free" after inspecting '
             "all local assets, or directly when visual_assets is empty.\n"
             "Return no visible copy in modules or visual_assets; text_blocks and "
             "visual_placeholders are layout metadata, while modules and visual_assets become "
@@ -4316,9 +5211,7 @@ class CodexPPTProvider:
             "and contrast before compiling the exact PresentationPlan into PPTX.\n"
             f"Immutable deck plan SHA-256: {plan_hash}\n"
             f"Immutable current-slide plan SHA-256: {slide_plan_hash or plan_hash}\n"
-            "\nDECK_DIRECTOR_CONTEXT_BEGIN\n"
-            + deck_context
-            + "\nDECK_DIRECTOR_CONTEXT_END\n"
+            "\nDECK_DIRECTOR_CONTEXT_BEGIN\n" + deck_context + "\nDECK_DIRECTOR_CONTEXT_END\n"
             "\nVERIFIED_PAPER_CRAFT_GUIDANCE_BEGIN\n"
             + skill_guidance
             + "\nVERIFIED_PAPER_CRAFT_GUIDANCE_END\n"
@@ -4329,6 +5222,7 @@ class CodexPPTProvider:
                 expected_background=expected_background,
                 style_signature=style_signature,
                 visual_requirement=requirement,
+                composition=planned_composition,
             )
             + "\nIMMUTABLE_SLIDE_CONTENT:\n"
             + CodexPPTProvider._design_payload_json(plan)
@@ -4338,8 +5232,13 @@ class CodexPPTProvider:
     def _paper_deck_deck_context(
         plan: PresentationPlan,
         theme: PresentationTheme,
+        *,
+        composition_plan: list[dict[str, str]] | None = None,
     ) -> str:
         style_preset = CodexPPTProvider._paper_deck_style_preset(theme)
+        planned_compositions = composition_plan or CodexPPTProvider._paper_deck_composition_plan(
+            plan
+        )
         return json.dumps(
             {
                 "deck_title": plan.title,
@@ -4355,6 +5254,8 @@ class CodexPPTProvider:
                     "Keep one typography hierarchy and graphic-block language across the deck.",
                     "Use at most two recurring accent motifs.",
                     "Vary composition by slide role without changing the visual identity.",
+                    "Do not repeat the same silhouette on adjacent content slides; follow the "
+                    "assigned layout_director_plan instead of defaulting to left/right columns.",
                     "Treat cover and first content page as style anchors for later pages.",
                     "Keep journal-minimal visual language even when the selected palette changes.",
                     "Keep every key point and missing-asset placeholder as a separate visual island; "
@@ -4373,9 +5274,12 @@ class CodexPPTProvider:
                         "title": slide.title,
                         "key_point_count": len(slide.key_points),
                         "layout_id": slide.layout_id,
+                        "directed_layout_id": planned_compositions[index]["layout_id"],
+                        "directed_layout_family": planned_compositions[index]["family"],
+                        "composition_direction": planned_compositions[index]["direction"],
                         "suggested_visual": slide.suggested_visual,
                     }
-                    for slide in plan.slides
+                    for index, slide in enumerate(plan.slides)
                 ],
             },
             ensure_ascii=False,
@@ -4389,24 +5293,29 @@ class CodexPPTProvider:
         expected_background: str,
         style_signature: str,
         visual_requirement: dict[str, Any],
+        composition: dict[str, str] | None = None,
     ) -> str:
         min_assets = int(visual_requirement["min_assets"])
         max_assets = int(visual_requirement["max_assets"])
         min_placeholders = int(visual_requirement["min_placeholders"])
         max_placeholders = int(visual_requirement["max_placeholders"])
+        planned_composition = composition or {
+            "layout_id": "focus_rail",
+            "family": "spotlight",
+            "direction": ("Use a focal scientific field with an independent interpretation rail."),
+        }
         placeholder_contract = (
             f"- visual_placeholders must contain {min_placeholders}-{max_placeholders} item(s). "
             "Use it only when the requested "
             "visual needs an unavailable real/source-specific asset. Reference immutable "
             "suggested_visual or visual_payload.N; return geometry only and no authored text. "
-            "Reserve one dominant left/right empty visual column at that geometry, with width "
-            f"{CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MIN_WIDTH:.2f}-"
-            f"{CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MAX_WIDTH:.2f}, height "
-            f"{CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MIN_HEIGHT:.2f}-"
-            f"{CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MAX_HEIGHT:.2f}, and at least "
-            f"{CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_GAP:.2f} clearance from every text block "
-            "and substantive visual island; a slim rule, side band, or marker may use "
-            f"{CodexPPTProvider.PAPER_DECK_MIN_MODULE_GAP:.3f}. visual_assets and "
+            "Reserve one useful empty visual region at that geometry. It may be central, wide, "
+            "horizontal, inset, or lateral according to the assigned composition, with width at "
+            f"least {CodexPPTProvider.PAPER_DECK_VISUAL_REGION_MIN_WIDTH:.2f}, height at least "
+            f"{CodexPPTProvider.PAPER_DECK_VISUAL_REGION_MIN_HEIGHT:.2f}, and area at least "
+            f"{CodexPPTProvider.PAPER_DECK_VISUAL_REGION_MIN_AREA:.2f}. Keep at least "
+            f"{CodexPPTProvider.PAPER_DECK_MIN_MODULE_GAP:.3f} clearance from every unrelated text "
+            "block and substantive visual island. visual_assets and "
             "visual_placeholders are mutually exclusive. "
             "Do not return a competing module there; MetaClass will add "
             "the editable frame and deterministic Chinese label."
@@ -4437,18 +5346,14 @@ Paper Deck editable-layer contract:
   visual_payload.N, be smaller than the full canvas, contain no text or invented evidence, and use
   contain/cover deliberately. Each is a top-level movable Picture, never a page background. Prefer
   transparent-background scientific cutouts, mechanism fragments, evidence motifs, and local zooms.
+- Assigned composition: {planned_composition["layout_id"]} ({planned_composition["family"]}).
+  {planned_composition["direction"]}
 - On a non-cover slide, visual_assets and visual_placeholders are mutually exclusive. If either is
-  present, their combined bounds must form one dominant left/right visual bay with width
-  {CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MIN_WIDTH:.2f}-
-  {CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MAX_WIDTH:.2f}, height
-  {CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MIN_HEIGHT:.2f}-
-  {CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MAX_HEIGHT:.2f}, and at least
-  {CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_GAP:.2f} clearance from all Plan text and substantive
-  modules. A slim rule, side band, or marker may bridge the two fields with at least
-  {CodexPPTProvider.PAPER_DECK_MIN_MODULE_GAP:.3f} clearance.
-  When two assets are present, separate them inside the bay and bind them to distinct visual refs.
-  Put the exact-copy editorial field in the opposite column; never shrink the picture bay into a
-  small corner card.
+  present, place it according to the assigned composition. A visual region may be a central figure,
+  wide evidence strip, top/bottom stage, inset, asymmetric side field, or paired small multiple; it
+  is not required to be a vertical left/right column. Keep each visual independently movable and at
+  least {CodexPPTProvider.PAPER_DECK_MIN_MODULE_GAP:.3f} from unrelated Plan text and substantive
+  modules. When two assets are present, separate them and bind them to distinct visual refs.
 - Use a distributed editorial composition. Do not combine unrelated key points into one shared
   card, nested container, collage, overlapping cluster, or central pile. Do not put every point in
   a rounded rectangle. Each key_points.N needs its own independent editorial anchor with the same

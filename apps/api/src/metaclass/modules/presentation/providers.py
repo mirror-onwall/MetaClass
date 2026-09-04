@@ -9,7 +9,7 @@ from collections import Counter
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
@@ -36,6 +36,8 @@ from metaclass.modules.presentation.themes import (
 
 
 logger = logging.getLogger(__name__)
+
+PPTProgressCallback = Callable[[PPTArtifact, int, int], None]
 
 
 @dataclass
@@ -73,6 +75,7 @@ class PPTProvider(Protocol):
         job_id: str,
         output_dir: Path,
         theme: PresentationTheme | None = None,
+        progress_callback: PPTProgressCallback | None = None,
     ) -> PPTArtifact: ...
 
 
@@ -105,6 +108,7 @@ class PresentonPPTProvider:
         job_id: str,
         output_dir: Path,
         theme: PresentationTheme | None = None,
+        progress_callback: PPTProgressCallback | None = None,
     ) -> PPTArtifact:
         selected_theme = theme or get_presentation_theme()
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -902,6 +906,7 @@ class UnavailablePPTProvider:
         job_id: str,
         output_dir: Path,
         theme: PresentationTheme | None = None,
+        progress_callback: PPTProgressCallback | None = None,
     ) -> PPTArtifact:
         raise RuntimeError(self.message)
 
@@ -929,6 +934,7 @@ class FallbackPPTProvider:
         job_id: str,
         output_dir: Path,
         theme: PresentationTheme | None = None,
+        progress_callback: PPTProgressCallback | None = None,
     ) -> PPTArtifact:
         provider_kwargs = {
             "plan": plan,
@@ -937,6 +943,8 @@ class FallbackPPTProvider:
         }
         if theme is not None:
             provider_kwargs["theme"] = theme
+        if progress_callback is not None:
+            provider_kwargs["progress_callback"] = progress_callback
         try:
             return self.primary.prepare_request(**provider_kwargs)
         except self.fallback_exceptions as primary_error:

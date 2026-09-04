@@ -21,6 +21,12 @@ class ContentRepository(Protocol):
 
     def get(self, content_id: str) -> LearningContent | None: ...
 
+    def get_for_material_version(
+        self,
+        material_id: str,
+        version: int,
+    ) -> LearningContent | None: ...
+
     def list_material_summaries(self) -> list[MaterialLearningContentSummary]: ...
 
 
@@ -101,12 +107,26 @@ class SqlAlchemyContentRepository:
                 }
             )
 
+    def get_for_material_version(
+        self,
+        material_id: str,
+        version: int,
+    ) -> LearningContent | None:
+        with self.database.session() as session:
+            content_id = session.scalar(
+                select(LearningContentRecord.id)
+                .where(
+                    LearningContentRecord.material_id == material_id,
+                    LearningContentRecord.version == version,
+                )
+                .order_by(LearningContentRecord.updated_at.desc())
+            )
+        return self.get(content_id) if content_id else None
+
     def list_material_summaries(self) -> list[MaterialLearningContentSummary]:
         with self.database.session() as session:
             records = session.scalars(
-                select(LearningContentRecord).order_by(
-                    LearningContentRecord.updated_at.desc()
-                )
+                select(LearningContentRecord).order_by(LearningContentRecord.updated_at.desc())
             ).all()
             seen: set[str] = set()
             summaries: list[MaterialLearningContentSummary] = []

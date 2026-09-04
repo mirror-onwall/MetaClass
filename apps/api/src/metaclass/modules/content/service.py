@@ -156,7 +156,10 @@ class ContentService:
 
     def pause_generation_job(self, job_id: str) -> ContentGenerationJob:
         job = self.get_generation_job(job_id)
-        if job.status not in {ContentGenerationJobStatus.QUEUED, ContentGenerationJobStatus.RUNNING}:
+        if job.status not in {
+            ContentGenerationJobStatus.QUEUED,
+            ContentGenerationJobStatus.RUNNING,
+        }:
             raise HTTPException(409, "Only queued or running jobs can be paused")
         with self._job_lock:
             self._pause_events.setdefault(job_id, Event()).set()
@@ -450,6 +453,16 @@ class ContentService:
         *,
         progress_callback: ProgressCallback | None = None,
     ) -> LearningContent:
+        existing_lookup = getattr(self.repository, "get_for_material_version", None)
+        existing = existing_lookup(material_id, 1) if callable(existing_lookup) else None
+        if isinstance(existing, LearningContent):
+            self._report_progress(
+                progress_callback,
+                100,
+                "completed",
+                "Existing LearningContent reused",
+            )
+            return existing
         self._report_progress(progress_callback, 8, "preparing", "Preparing source material")
         page_list = self.materials.pages(material_id)
         if not page_list:

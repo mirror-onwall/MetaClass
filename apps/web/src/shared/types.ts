@@ -538,6 +538,7 @@ export type PPTGenerationJob = {
   progress: number;
   artifact_id?: string;
   error?: string;
+  updated_at?: string;
 };
 
 export type PPTSlideImage = {
