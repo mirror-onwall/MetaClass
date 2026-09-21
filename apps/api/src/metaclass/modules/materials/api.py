@@ -1,3 +1,6 @@
+from pathlib import Path
+from typing import Annotated
+
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
@@ -18,7 +21,7 @@ def create_router(materials: MaterialService) -> APIRouter:
     router = APIRouter(prefix="/api/v1/materials", tags=["materials"])
 
     @router.post("", response_model=Material, status_code=201)
-    async def upload_material(file: UploadFile = File(...)) -> Material:
+    async def upload_material(file: Annotated[UploadFile, File()]) -> Material:
         return await materials.create(file)
 
     @router.get("", response_model=list[Material])
@@ -26,14 +29,16 @@ def create_router(materials: MaterialService) -> APIRouter:
         return materials.list_materials()
 
     @router.post("/process", response_model=ProcessedMaterial, status_code=201)
-    async def upload_and_parse_material(file: UploadFile = File(...)) -> ProcessedMaterial:
+    async def upload_and_parse_material(
+        file: Annotated[UploadFile, File()],
+    ) -> ProcessedMaterial:
         material = await materials.create(file)
         pages = materials.parse(material.id)
         return ProcessedMaterial(material=materials.get(material.id), pages=pages)
 
     @router.post("/batch-process", response_model=ProcessedMaterials, status_code=201)
     async def upload_and_parse_materials(
-        files: list[UploadFile] = File(...),
+        files: Annotated[list[UploadFile], File()],
     ) -> ProcessedMaterials:
         processed: list[ProcessedMaterial] = []
         for file in files:
@@ -49,7 +54,7 @@ def create_router(materials: MaterialService) -> APIRouter:
     @router.post("/processing-jobs", response_model=MaterialProcessingJob, status_code=202)
     async def create_processing_job(
         background_tasks: BackgroundTasks,
-        files: list[UploadFile] = File(...),
+        files: Annotated[list[UploadFile], File()],
     ) -> MaterialProcessingJob:
         job = await materials.create_processing_job(files)
         background_tasks.add_task(materials.run_processing_job, job.id)
@@ -104,6 +109,19 @@ def create_router(materials: MaterialService) -> APIRouter:
     async def get_material(material_id: str) -> Material:
         return materials.get(material_id)
 
+    @router.get("/{material_id}/download")
+    async def download_material(material_id: str) -> FileResponse:
+        material = materials.get(material_id)
+        path = Path(material.storage_path)
+        if not path.is_file():
+            raise HTTPException(404, "Material file not found")
+        media_type = (
+            "application/pdf"
+            if material.file_type.value == "pdf"
+            else "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+        )
+        return FileResponse(path, media_type=media_type, filename=material.filename)
+
     @router.delete("/{material_id}", response_model=MaterialDeletionResult)
     async def delete_material_project(material_id: str) -> MaterialDeletionResult:
         materials.delete_project(material_id)
@@ -125,6 +143,10 @@ def create_router(materials: MaterialService) -> APIRouter:
         )
         if not page:
             raise HTTPException(404, "Page not found")
-        return FileResponse(page.image_path, media_type="image/png")
+        return FileResponse(
+            page.image_path,
+            media_type="image/png",
+            headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        )
 
     return router

@@ -51,6 +51,7 @@ class TeacherCheckBlueprint(SchemaModel):
     slide_id: str = Field(min_length=1)
     question: str = Field(min_length=1)
     target_knowledge_point: str = Field(min_length=1)
+    prepared_student_answer: str = Field(min_length=1)
 
 
 class ClassroomPlanGenerator:
@@ -317,6 +318,7 @@ class ClassroomPlanGenerator:
                             payload=ProbePayload(
                                 question=check.question,
                                 target_knowledge_point=check.target_knowledge_point,
+                                prepared_student_answer=check.prepared_student_answer,
                                 source_refs=explain.payload.source_refs,
                             ),
                         ),
@@ -337,6 +339,11 @@ class ClassroomPlanGenerator:
                     f"{(slide.key_points or [slide.title])[0].rstrip('。')}”为什么成立？"
                 ),
                 target_knowledge_point=(slide.key_points or [slide.title])[0],
+                prepared_student_answer=(
+                    "我理解这里的关键是："
+                    + "；".join((slide.key_points or [slide.title])[:2])
+                    + "。"
+                ),
             )
             for slide in slides
         ]
@@ -348,8 +355,9 @@ class ClassroomPlanGenerator:
 每页只生成一个具体、可简短作答的问题；不要问“听懂了吗”，不要重复讲稿原句，不要出冷知识。
 不要按固定页数或固定间隔机械安排。只有问题能暴露关键误解、检查重要推理或连接核心知识时才安排。
 整节课至少安排一次检查；高价值检查点可以安排多次，但不要为了数量打断课堂。
-问题会在该页讲解完成后由老师说出。只输出 JSON：
-{"checks":[{"slide_id":"...","question":"...","target_knowledge_point":"..."}]}"""
+问题会在该页讲解完成后由老师说出。请同时给出学生在听完当前页后可以直接说出的简短自然回答，回答只能使用截至当前页已经讲过的内容。
+只输出 JSON：
+{"checks":[{"slide_id":"...","question":"...","target_knowledge_point":"...","prepared_student_answer":"..."}]}"""
         user = {
             "checkpoints": [
                 {
@@ -560,6 +568,9 @@ class ClassroomPlanGenerator:
                                 target_knowledge_point=section.knowledge_points[0]
                                 if section.knowledge_points
                                 else section.title,
+                                prepared_student_answer=(
+                                    f"我理解{section.title}的核心是：{section.summary}"
+                                ),
                                 source_refs=section.source_refs,
                             ),
                         ),
