@@ -15,7 +15,6 @@ import type {
   PresentationPlanLibrarySummary,
   PresentationPlanJob,
   PPTGenerationJob,
-  PaperWorkflowJob,
   MaterialProcessingJob,
   StudentAgentType,
   ClassroomQA,
@@ -32,7 +31,6 @@ type LibraryPageProps = {
     presentationPlan?: PresentationPlan;
     presentationArtifact?: PPTArtifact;
     session?: ClassroomSession;
-    preferFreshClassroomPlan?: boolean;
   }) => void;
 };
 
@@ -92,7 +90,6 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
   const [contentJobs, setContentJobs] = useState<ContentGenerationJob[]>([]);
   const [planJobs, setPlanJobs] = useState<PresentationPlanJob[]>([]);
   const [pptJobs, setPptJobs] = useState<PPTGenerationJob[]>([]);
-  const [paperWorkflowJobs, setPaperWorkflowJobs] = useState<PaperWorkflowJob[]>([]);
   const [selected, setSelected] = useState<Material | null>(null);
   const [pages, setPages] = useState<PageMetadata[]>([]);
   const [query, setQuery] = useState("");
@@ -131,9 +128,8 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
       api.listContentGenerationJobs(),
       api.listPresentationPlanJobs(),
       api.listPptJobs(),
-      api.listPaperWorkflows(),
     ])
-      .then(([materialItems, collectionItems, summaryItems, planItems, classroomItems, materialJobItems, contentJobItems, planJobItems, pptJobItems, workflowItems]) => {
+      .then(([materialItems, collectionItems, summaryItems, planItems, classroomItems, materialJobItems, contentJobItems, planJobItems, pptJobItems]) => {
         if (!active) return;
         setMaterials(materialItems);
         setCollections(collectionItems);
@@ -144,7 +140,6 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
         setContentJobs(contentJobItems);
         setPlanJobs(planJobItems);
         setPptJobs(pptJobItems);
-        setPaperWorkflowJobs(workflowItems);
       })
       .catch((reason: Error) => active && setError(reason.message))
       .finally(() => active && setLoading(false));
@@ -182,45 +177,10 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
     return result;
   }, [contentSummaries]);
 
-  const parentByMaterialId = useMemo(() => {
-    const result = new Map<string, string>();
-    materials.forEach((material) => {
-      if (material.parent_material_id) result.set(material.id, material.parent_material_id);
-    });
-    // Workflows created before parent_material_id was introduced still contain
-    // the authoritative source/derived relationship.
-    paperWorkflowJobs.forEach((job) => {
-      if (job.derived_material_id && !result.has(job.derived_material_id)) {
-        result.set(job.derived_material_id, job.source_material_id);
-      }
-    });
-    return result;
-  }, [materials, paperWorkflowJobs]);
-
-  const derivedMaterialsByParent = useMemo(() => {
-    const result = new Map<string, Material[]>();
-    materials.forEach((material) => {
-      const parentId = parentByMaterialId.get(material.id);
-      if (!parentId) return;
-      result.set(parentId, [...(result.get(parentId) ?? []), material]);
-    });
-    return result;
-  }, [materials, parentByMaterialId]);
-
-  const projectSummaryByMaterialId = useMemo(() => {
-    const result = new Map(contentSummaryByMaterialId);
-    derivedMaterialsByParent.forEach((children, parentId) => {
-      const summary = children.map((child) => contentSummaryByMaterialId.get(child.id)).find(Boolean);
-      if (summary && !result.has(parentId)) result.set(parentId, summary);
-    });
-    return result;
-  }, [contentSummaryByMaterialId, derivedMaterialsByParent]);
-
   const visibleMaterials = useMemo(() => {
     const keyword = query.trim().toLocaleLowerCase();
     return materials.filter((item) => {
-      if (parentByMaterialId.has(item.id)) return false;
-      const summary = projectSummaryByMaterialId.get(item.id);
+      const summary = contentSummaryByMaterialId.get(item.id);
       const contentPlans = summary
         ? presentationPlans.filter((plan) => plan.content_id === summary.content_id)
         : [];
@@ -242,29 +202,17 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
               : hasClassroom;
       return matchesType && matchesQuery && matchesView;
     });
-  }, [activeView, classroomPlans, filter, materials, parentByMaterialId, presentationPlans, projectSummaryByMaterialId, query]);
+  }, [activeView, classroomPlans, contentSummaryByMaterialId, filter, materials, presentationPlans, query]);
 
-  const rootMaterials = materials.filter((item) => !parentByMaterialId.has(item.id));
-  const parsedCount = rootMaterials.filter((item) => item.status === "parsed").length;
+  const parsedCount = materials.filter((item) => item.status === "parsed").length;
   const viewCounts: Record<LibraryView, number> = {
-    projects: rootMaterials.length,
-    raw: rootMaterials.length,
+    projects: materials.length,
+    raw: materials.length,
     parsed: parsedCount,
-    content: rootMaterials.filter((item) => projectSummaryByMaterialId.has(item.id)).length,
+    content: contentSummaryByMaterialId.size,
     presentation: new Set(presentationPlans.map((plan) => plan.content_id)).size,
     classroom: new Set(classroomPlans.map((plan) => plan.content_id)).size,
   };
-
-  function projectMaterialIds(materialId: string) {
-    const parentId = parentByMaterialId.get(materialId) ?? materialId;
-    return [parentId, ...(derivedMaterialsByParent.get(parentId) ?? []).map((item) => item.id)];
-  }
-
-  function projectAssetMaterial(material: Material) {
-    const summary = projectSummaryByMaterialId.get(material.id);
-    if (!summary) return material;
-    return materials.find((item) => summary.material_ids.includes(item.id)) ?? material;
-  }
 
   async function inspect(material: Material) {
     setSelected(material);
@@ -282,27 +230,22 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
   }
 
   async function deleteProject(material: Material) {
-    const rootId = parentByMaterialId.get(material.id) ?? material.id;
-    const rootMaterial = materials.find((item) => item.id === rootId) ?? material;
     const confirmed = window.confirm(
-      `确定删除“${projectSummaryByMaterialId.get(rootId)?.title ?? rootMaterial.filename}”吗？\n\n原文件、解析页面、LearningContent、演示稿和课堂记录都会一并删除，此操作无法撤销。`,
+      `确定删除“${contentSummaryByMaterialId.get(material.id)?.title ?? material.filename}”吗？\n\n原文件、解析页面、LearningContent、演示稿和课堂记录都会一并删除，此操作无法撤销。`,
     );
     if (!confirmed) return;
     setAssetBusy("正在删除资料项目");
     setError(null);
     try {
-      const contentId = projectSummaryByMaterialId.get(rootId)?.content_id;
-      const projectIds = projectMaterialIds(rootId);
-      const derivedIds = projectIds.filter((id) => id !== rootId);
-      for (const derivedId of derivedIds) await api.deleteMaterial(derivedId);
-      await api.deleteMaterial(rootId);
-      setMaterials((current) => current.filter((item) => !projectIds.includes(item.id)));
+      const contentId = contentSummaryByMaterialId.get(material.id)?.content_id;
+      await api.deleteMaterial(material.id);
+      setMaterials((current) => current.filter((item) => item.id !== material.id));
       setCollections((current) => current
         .map((collection) => ({
           ...collection,
-          material_ids: collection.material_ids.filter((id) => !projectIds.includes(id)),
-          primary_material_id: collection.primary_material_id && projectIds.includes(collection.primary_material_id)
-            ? collection.material_ids.find((id) => !projectIds.includes(id))
+          material_ids: collection.material_ids.filter((id) => id !== material.id),
+          primary_material_id: collection.primary_material_id === material.id
+            ? collection.material_ids.find((id) => id !== material.id)
             : collection.primary_material_id,
         }))
         .filter((collection) => collection.material_ids.length > 0));
@@ -352,54 +295,6 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
     } finally {
       setAssetBusy(null);
     }
-  }
-
-  async function loadPresentationPlanAsset(
-    material: Material,
-    contentId: string,
-    planSummary: PresentationPlanLibrarySummary,
-    preferFreshClassroomPlan = true,
-  ) {
-    setAssetBusy("正在载入 PresentationPlan 与上游内容");
-    setError(null);
-    try {
-      const [content, plan, artifact] = await Promise.all([
-        api.getLearningContent(contentId),
-        api.getPresentationPlan(planSummary.id),
-        planSummary.artifact_id
-          ? api.getPptArtifact(planSummary.artifact_id)
-          : Promise.resolve(undefined),
-      ]);
-      onOpenAsset({
-        material,
-        pages,
-        content,
-        presentationPlan: plan,
-        presentationArtifact: artifact,
-        preferFreshClassroomPlan,
-      });
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "PresentationPlan 载入失败");
-    } finally {
-      setAssetBusy(null);
-    }
-  }
-
-  async function loadProjectWorkspace(material: Material) {
-    const summary = projectSummaryByMaterialId.get(material.id);
-    if (!summary) {
-      onUseMaterial(material, pages);
-      return;
-    }
-    const assetMaterial = projectAssetMaterial(material);
-    const plans = presentationPlans
-      .filter((plan) => plan.content_id === summary.content_id)
-      .sort((left, right) => Date.parse(right.created_at) - Date.parse(left.created_at));
-    if (plans[0]) {
-      await loadPresentationPlanAsset(assetMaterial, summary.content_id, plans[0]);
-      return;
-    }
-    await loadContentAsset(assetMaterial, summary.content_id);
   }
 
   async function createStoredPresentationPlan(material: Material, contentId: string) {
@@ -667,7 +562,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
           ) : visibleMaterials.length ? (
             <div className="library-grid">
               {visibleMaterials.map((item, index) => {
-                const summary = projectSummaryByMaterialId.get(item.id);
+                const summary = contentSummaryByMaterialId.get(item.id);
                 const sourceName = item.filename.replace(/\.(pdf|pptx)$/i, "");
                 const plans = summary
                   ? presentationPlans.filter((plan) => plan.content_id === summary.content_id)
@@ -721,9 +616,9 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
           {selected ? <>
             <header>
               <div>
-                <small>{projectSummaryByMaterialId.has(selected.id) ? "ORGANIZED TOPIC" : "FILE INSPECTOR"}</small>
-                <h2>{projectSummaryByMaterialId.get(selected.id)?.title ?? selected.filename}</h2>
-                {projectSummaryByMaterialId.has(selected.id) && <p>原文件：{selected.filename}</p>}
+                <small>{contentSummaryByMaterialId.has(selected.id) ? "ORGANIZED TOPIC" : "FILE INSPECTOR"}</small>
+                <h2>{contentSummaryByMaterialId.get(selected.id)?.title ?? selected.filename}</h2>
+                {contentSummaryByMaterialId.has(selected.id) && <p>原文件：{selected.filename}</p>}
               </div>
               <button type="button" aria-label="关闭详情" onClick={() => setSelected(null)}>×</button>
             </header>
@@ -732,24 +627,9 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
               <span><small>页数</small><b>{selected.page_count}</b></span>
               <span><small>状态</small><b>{statusCopy[selected.status]}</b></span>
             </div>
-            <button className="use-library-material" disabled={detailLoading || selected.status !== "parsed" || !!assetBusy} onClick={() => loadProjectWorkspace(selected)}>
-              <span>{projectSummaryByMaterialId.has(selected.id) ? "载入已保存备课链" : "载入当前备课"}</span><b>→</b>
+            <button className="use-library-material" disabled={detailLoading || selected.status !== "parsed"} onClick={() => onUseMaterial(selected, pages)}>
+              <span>载入当前备课</span><b>→</b>
             </button>
-            {(derivedMaterialsByParent.get(selected.id) ?? []).length > 0 && (
-              <div className="library-derived-assets">
-                <div className="library-section-title"><span>生成的演示稿</span><small>DERIVED ARTIFACTS</small></div>
-                {(derivedMaterialsByParent.get(selected.id) ?? []).map((artifact) => (
-                  <article key={artifact.id}>
-                    <span>{artifact.file_type.toUpperCase()}</span>
-                    <div><b>{artifact.filename}</b><small>{artifact.page_count} 页 · 由原论文生成</small></div>
-                    <div className="library-derived-actions">
-                      <button type="button" onClick={() => inspect(artifact)}>查看</button>
-                      <a href={api.materialDownload(artifact.id)} download>下载 {artifact.file_type.toUpperCase()}</a>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
             <button
               className="delete-library-project"
               disabled={!!assetBusy}
@@ -761,9 +641,9 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
             <div className="library-asset-pipeline">
               <div className="library-section-title"><span>可复用备课资产</span><small>ASSET PIPELINE</small></div>
               {(() => {
-                const summary = projectSummaryByMaterialId.get(selected.id);
+                const summary = contentSummaryByMaterialId.get(selected.id);
                 const relatedPlanIds = new Set(presentationPlans.filter((plan) => plan.content_id === summary?.content_id).map((plan) => plan.id));
-                const relevantContentJobs = contentJobs.filter((job) => job.material_id && projectMaterialIds(selected.id).includes(job.material_id));
+                const relevantContentJobs = contentJobs.filter((job) => job.material_id === selected.id);
                 const latestFailedByMode = new Map<string, string>();
                 relevantContentJobs
                   .filter((job) => job.status === "failed")
@@ -773,7 +653,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                     if (!latestFailedByMode.has(mode)) latestFailedByMode.set(mode, job.id);
                   });
                 const active = [
-                  ...materialJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.material_ids.some((id) => projectMaterialIds(selected.id).includes(id))).map((job) => ({ kind: "material" as const, id: job.id, status: job.status, title: "材料解析", detail: `${job.message} · ${job.progress}%`, historicalFailure: false })),
+                  ...materialJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.material_ids.includes(selected.id)).map((job) => ({ kind: "material" as const, id: job.id, status: job.status, title: "材料解析", detail: `${job.message} · ${job.progress}%`, historicalFailure: false })),
                   ...relevantContentJobs.filter((job) => ["queued", "running", "paused", "failed"].includes(job.status)).map((job) => {
                     const mode = job.organization_mode ?? "knowledge";
                     const latestFailure = job.status === "failed" && latestFailedByMode.get(mode) === job.id;
@@ -804,8 +684,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                 </div>;
               })()}
               {(() => {
-                const contentSummary = projectSummaryByMaterialId.get(selected.id);
-                const assetMaterial = projectAssetMaterial(selected);
+                const contentSummary = contentSummaryByMaterialId.get(selected.id);
                 if (!contentSummary) return (
                   <div className="asset-stage pending">
                     <span>01</span><div><b>LearningContent</b><p>原资料已解析，可以直接整理整篇主题与知识结构。</p></div>
@@ -816,7 +695,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                 return <>
                   <div className="asset-stage ready">
                     <span>01</span><div><b>{contentSummary.title}</b><p>LearningContent · 已保存</p></div>
-                    <button disabled={!!assetBusy} onClick={() => loadContentAsset(assetMaterial, contentSummary.content_id)}>载入</button>
+                    <button disabled={!!assetBusy} onClick={() => loadContentAsset(selected, contentSummary.content_id)}>载入</button>
                   </div>
                   <div className={`asset-stage ${plans.length ? "ready" : "pending"}`}>
                     <span>02</span><div><b>PresentationPlan</b><p>{plans.length ? `${plans.length} 个演示规划可复用` : "尚未生成演示结构"}</p></div>
@@ -830,10 +709,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                     return <div className="asset-plan-group" key={plan.id}>
                       <div className="asset-plan-heading"><span>PLAN</span><b>{plan.title}</b><small>{plan.slide_count} 页{plan.artifact_id ? " · PPT 已就绪" : ""}</small></div>
                       <div className="asset-plan-actions">
-                        <button className="asset-plan-load" disabled={!!assetBusy} onClick={() => loadPresentationPlanAsset(assetMaterial, contentSummary.content_id, plan, true)}>
-                          <span>载入后手动创建课堂</span><small>含内容 / 讲稿 / PPT</small>
-                        </button>
-                        <button className="asset-primary-action" disabled={!!assetBusy} onClick={() => prepareNewClassroom(assetMaterial, contentSummary.content_id, plan)}>资料库内创建课堂</button>
+                        <button className="asset-primary-action" disabled={!!assetBusy} onClick={() => prepareNewClassroom(selected, contentSummary.content_id, plan)}>创建互动课堂</button>
                         <button className="asset-qa-action" disabled={!!assetBusy} onClick={() => viewQuestionBank(plan)}>
                           <span>查看 QA 问答对</span><small>Q / A</small>
                         </button>
@@ -841,7 +717,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                           <span>生成新版互动课堂</span><small>新增 QA + 新课堂 · 保留历史</small>
                         </button>
                       </div>
-                      {scripts.map((script) => <button className="asset-script-action" disabled={!!assetBusy} key={script.id} onClick={() => openClassroomAsset(assetMaterial, contentSummary.content_id, plan, script.id)}>
+                      {scripts.map((script) => <button className="asset-script-action" disabled={!!assetBusy} key={script.id} onClick={() => openClassroomAsset(selected, contentSummary.content_id, plan, script.id)}>
                         <span>▶ 播放已保存剧本</span><small>{script.scene_count} 场景 · {script.action_count} 动作</small>
                       </button>)}
                     </div>;

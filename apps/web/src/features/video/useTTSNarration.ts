@@ -21,8 +21,8 @@ type PreparedNarration = {
   audioBuffer: AudioBuffer;
 };
 
-const TTS_REQUEST_TIMEOUT_MS = 20_000;
-const TTS_AUDIO_TIMEOUT_MS = 10_000;
+const TTS_REQUEST_TIMEOUT_MS = 5_000;
+const TTS_AUDIO_TIMEOUT_MS = 5_000;
 
 function narrationCacheKey(cue: NarrationCue) {
   return [cue.scope, cue.refId, cue.voice, cue.text.trim()].join("::");
