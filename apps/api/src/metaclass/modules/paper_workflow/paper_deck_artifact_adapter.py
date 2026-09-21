@@ -10,10 +10,6 @@ from PIL import Image, UnidentifiedImageError
 
 from metaclass.core.schemas import SchemaModel
 from metaclass.modules.paper_workflow.schemas import PaperPresentationArtifact
-from metaclass.modules.paper_workflow.source_visual_validator import (
-    SourceVisualValidationError,
-    SourceVisualValidator,
-)
 
 
 class PaperDeckArtifactError(ValueError):
@@ -82,47 +78,24 @@ class PaperDeckArtifactAdapter:
         root = workspace.resolve()
         pdf = self._resolve(root, artifact.presentation_pdf_path, file=True)
         images_dir = self._resolve(root, artifact.source_images_dir, directory=True)
-        backgrounds_dir = self._resolve(
-            root, str(Path(artifact.presentation_pdf_path).parent / "images"), directory=True
-        )
         analysis = self._resolve(root, artifact.analysis_path, file=True)
         deck_brief = self._resolve(root, artifact.deck_brief_path, file=True)
         outline = self._resolve(root, artifact.outline_path, file=True)
         prompts_dir = self._resolve(root, artifact.prompts_dir, directory=True)
         generation_log = self._resolve(root, artifact.generation_log_path, file=True)
-        source_visual_manifest = self._resolve(
-            root, artifact.source_visual_manifest_path, file=True
-        )
-        for path in (
-            pdf,
-            analysis,
-            deck_brief,
-            outline,
-            generation_log,
-            source_visual_manifest,
-        ):
+        for path in (pdf, analysis, deck_brief, outline, generation_log):
             if path.stat().st_size == 0:
                 raise PaperDeckArtifactError(f"required artifact is empty: {path.name}")
-        try:
-            SourceVisualValidator().validate(artifact, workspace=root)
-        except SourceVisualValidationError as exc:
-            raise PaperDeckArtifactError(str(exc)) from exc
 
         prompt_files = self._numbered_files(prompts_dir, {".md"})
         image_files = self._numbered_files(
             images_dir,
             {".png", ".jpg", ".jpeg", ".webp"},
         )
-        background_files = self._numbered_files(
-            backgrounds_dir,
-            {".png", ".jpg", ".jpeg", ".webp"},
-        )
         if not prompt_files or not image_files:
             raise PaperDeckArtifactError("prompts/ and images/ must both be non-empty")
         if len(prompt_files) != len(image_files):
             raise PaperDeckArtifactError("outline, prompt, image, and PDF page counts must match")
-        if len(background_files) != len(image_files):
-            raise PaperDeckArtifactError("background and rendered page counts must match")
         expected = list(range(1, len(image_files) + 1))
         if [number for number, _ in prompt_files] != expected:
             raise PaperDeckArtifactError("prompt numbering must be continuous from 1")
@@ -135,7 +108,7 @@ class PaperDeckArtifactAdapter:
         if len(outline_slides) != len(image_files):
             raise PaperDeckArtifactError("outline, prompt, and image counts must match")
 
-        self._validate_generation_log(generation_log, [path for _, path in background_files])
+        self._validate_generation_log(generation_log, [path for _, path in image_files])
         self._validate_pdf(pdf, expected_pages=len(image_files))
         image_hashes = [self._validate_image(path) for _, path in image_files]
         if len(set(image_hashes)) != len(image_hashes):

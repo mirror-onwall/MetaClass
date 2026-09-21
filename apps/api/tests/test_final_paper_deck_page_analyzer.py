@@ -128,35 +128,6 @@ def test_observes_final_slide_without_promoting_observations_to_facts(tmp_path: 
     assert "not factual evidence" in vision.prompts[0]
 
 
-def test_warning_filter_ignores_figure_and_identifier_numbers(tmp_path: Path) -> None:
-    manifest = _manifest(tmp_path)
-    paper_content = tmp_path / "paper_content.md"
-    paper_content.write_text("paper", encoding="utf-8")
-    vision = FakeVision(
-        {
-            "visible_title": "SKILL0",
-            "visible_text": ["Figure 6"],
-            "visual_summary": "A title and a source figure.",
-            "figure_labels": ["Figure 6"],
-            "quantitative_mentions": ["Figure 6", "SKILL0 名称中的数字 “0”", "、"],
-            "formula_mentions": [],
-            "page_type": "title",
-            "detected_warnings": [],
-        }
-    )
-
-    observation = FinalPaperDeckPageAnalyzer(vision=vision, ocr=FakeOCR()).analyze(
-        manifest,
-        workspace=tmp_path,
-        paper_content_path=paper_content,
-    )[0]
-
-    assert not any(
-        item.startswith("unverified_quantitative_mention:")
-        for item in observation.detected_warnings
-    )
-
-
 def test_rejects_non_json_vision_observation(tmp_path: Path) -> None:
     manifest = _manifest(tmp_path)
     paper_content = tmp_path / "paper_content.md"

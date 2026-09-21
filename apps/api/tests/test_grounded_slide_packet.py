@@ -269,43 +269,6 @@ def test_builds_grounded_packet_and_scopes_numeric_repair() -> None:
     assert packet.next_slide_id is None
 
 
-def test_ignores_figure_labels_and_identifier_digits_as_numeric_claims() -> None:
-    source, analysis, manifest, observation = _inputs()
-    observation.quantitative_mentions = ["Figure 6", "SKILL0 名称中的数字 “0”", "、"]
-
-    packet = GroundedSlidePacketBuilder(MappingLLM()).build(
-        source_bundle=source,
-        paper_content="paper text",
-        analysis=analysis,
-        manifest=manifest,
-        observations=[observation],
-        knowledge_units=[],
-    )[0]
-
-    assert packet.numeric_verifications == []
-    assert packet.repair_directive is None
-
-
-def test_numbers_in_selected_verified_figure_are_figure_verified() -> None:
-    source, analysis, manifest, observation = _inputs()
-    observation.quantitative_mentions = [
-        "Accuracy axis ticks: 0.0, 0.2, 0.4, 0.6, 0.8, 1.0",
-    ]
-
-    packet = GroundedSlidePacketBuilder(MappingLLM()).build(
-        source_bundle=source,
-        paper_content="paper text without extracted figure ticks",
-        analysis=analysis,
-        manifest=manifest,
-        observations=[observation],
-        knowledge_units=[],
-    )[0]
-
-    assert [item.status for item in packet.numeric_verifications] == ["figure_verified"]
-    assert all(item.source_refs[0].asset_id == "fig_2" for item in packet.numeric_verifications)
-    assert packet.repair_directive is None
-
-
 def test_repairs_invalid_semantic_mapping_response_once() -> None:
     source, analysis, manifest, observation = _inputs()
     llm = RepairingMappingLLM()
@@ -471,82 +434,7 @@ def test_grounded_narration_canonicalizes_authorized_ref_without_quote() -> None
     assert validated.validation_status == "validated"
 
 
-def test_grounded_narration_fills_missing_transition_deterministically() -> None:
-    source, analysis, manifest, observation = _inputs()
-    packet = GroundedSlidePacketBuilder(MappingLLM()).build(
-        source_bundle=source,
-        paper_content="The paper reports 81.4%.",
-        analysis=analysis,
-        manifest=manifest,
-        observations=[observation],
-        knowledge_units=[],
-    )[0]
-    narration_packet = GroundedNarrationPacketBuilder().build(
-        packets=[packet],
-        knowledge_units=[],
-        analysis=analysis,
-        source_bundle=source,
-        paper_deck_analysis="PaperDeck analysis.",
-    )[0].model_copy(update={"next_message": "检查下一项论文证据"})
-    narration = SlideNarration(
-        slide_id=packet.slide_id,
-        speaker_script=(
-            "This sufficiently detailed narration explains the authorized method claim and its "
-            "reported 81.4% result while keeping interpretation within the supplied evidence."
-        ),
-        transition="",
-        used_claim_ids=["claim_method"],
-        used_source_refs=packet.source_refs,
-        used_asset_ids=["fig_2"],
-    )
-
-    validated = LLMPaperClassroomComposer._validate_grounded_narration(
-        narration_packet, narration
-    )
-
-    assert validated.transition == "接下来转向下一页：检查下一项论文证据"
-    assert validated.validation_status == "validated"
-
-
-def test_grounded_narration_replaces_unauthorized_source_ref_with_authority() -> None:
-    source, analysis, manifest, observation = _inputs()
-    packet = GroundedSlidePacketBuilder(MappingLLM()).build(
-        source_bundle=source,
-        paper_content="The paper reports 81.4%.",
-        analysis=analysis,
-        manifest=manifest,
-        observations=[observation],
-        knowledge_units=[],
-    )[0]
-    narration_packet = GroundedNarrationPacketBuilder().build(
-        packets=[packet],
-        knowledge_units=[],
-        analysis=analysis,
-        source_bundle=source,
-        paper_deck_analysis="PaperDeck analysis.",
-    )[0]
-    narration = SlideNarration(
-        slide_id=packet.slide_id,
-        speaker_script=(
-            "This sufficiently detailed narration explains the authorized method claim and its "
-            "reported 81.4% result while keeping interpretation within the supplied evidence."
-        ),
-        used_claim_ids=["claim_method"],
-        used_source_refs=[SourceReference(page_no=99, block_id="invented")],
-        used_asset_ids=["fig_2"],
-    )
-
-    validated = LLMPaperClassroomComposer._validate_grounded_narration(
-        narration_packet, narration
-    )
-
-    assert validated.validation_status == "validated"
-    assert validated.used_source_refs
-    assert all(ref in packet.source_refs for ref in validated.used_source_refs)
-    assert all(ref.page_no != 99 for ref in validated.used_source_refs)
-
-
-def test_llm_composer_falls_back_without_unverified_number_in_script() -> None:
+def test_llm_composer_rejects_unverified_number_in_script() -> None:
     source, analysis, manifest, observation = _inputs()
     packets = GroundedSlidePacketBuilder(MappingLLM()).build(
         source_bundle=source,
@@ -571,17 +459,14 @@ def test_llm_composer_falls_back_without_unverified_number_in_script() -> None:
         paper_deck_analysis="PaperDeck analysis of the full paper.",
     )
 
-    narrations = LLMPaperClassroomComposer(
-        NarrationLLM(unsupported_number=True)
-    ).compose_grounded(
-        narration_packets,
-        audience="graduate students",
-        language="zh-CN",
-    )
-
-    assert narrations[0].validation_status == "validated"
-    assert "99.9%" not in narrations[0].speaker_script
-    assert narrations[0].used_claim_ids == []
+    with pytest.raises(ValueError, match="unverified numbers"):
+        LLMPaperClassroomComposer(
+            NarrationLLM(unsupported_number=True)
+        ).compose_grounded(
+            narration_packets,
+            audience="graduate students",
+            language="zh-CN",
+        )
 
 
 def test_builds_pdf_backed_playback_plan_without_generated_slides(tmp_path) -> None:

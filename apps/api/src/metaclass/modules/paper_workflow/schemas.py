@@ -534,7 +534,6 @@ class PaperPresentationArtifact(SchemaModel):
     outline_path: str = Field(min_length=1)
     prompts_dir: str = Field(min_length=1)
     generation_log_path: str = Field(min_length=1)
-    source_visual_manifest_path: str = Field(min_length=1)
     debug_pptx_path: str | None = None
 
 

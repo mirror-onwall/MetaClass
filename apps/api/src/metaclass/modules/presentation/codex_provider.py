@@ -65,7 +65,7 @@ class CodexPPTProvider:
     PAPER_CRAFT_COMMIT = "3be47a2a53cc35a411c587bca5231a08de57287a"
     PAPER_CRAFT_SKILLS = ("paper-deck", "paper-comic")
     PAPER_CRAFT_EXPECTED_SHA256: ClassVar[dict[str, str]] = {
-        "paper-deck": "a9e911705593d83fc8f284ebd1143351b7c0d428d19b1aac25d148d126f06134",
+        "paper-deck": "3ca4baef8071e41939c7672d4dfe284b55091e9a094c871eba35fd78f1e6efdb",
         "paper-comic": "56d605c5d5fc005086c1574fc640554752580fc2d6b523be30e7739c0abe2fcb",
     }
     PAPER_CRAFT_MAX_FILE_BYTES = 20 * 1024 * 1024

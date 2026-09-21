@@ -4,7 +4,6 @@ from pathlib import Path
 import fitz
 from fastapi.testclient import TestClient
 from PIL import Image
-from pptx import Presentation
 
 from metaclass.main import create_app
 from metaclass.modules.paper_workflow.final_paper_deck_page_analyzer import TesseractOCRProvider
@@ -90,26 +89,6 @@ class RunnerLLM:
                     }
                 )
             return json.dumps({"slides": slides}, ensure_ascii=False)
-        if "SHARED_INTERACTION_QUESTION_GENERATOR_V1" in marker:
-            return json.dumps(
-                {
-                    "items": [
-                        {
-                            "id": f"llm_interaction_{index}",
-                            "blueprint_id": node["blueprint"]["id"],
-                            "slide_id": node["blueprint"]["slide_id"],
-                            "question": f"如何依据当前证据理解机制与边界？问题批次{chr(65 + index)}",
-                            "answer": "当前证据支持页面所述关系，但解释必须保留论文给出的条件与边界。",
-                            "source_refs": node["blueprint"]["source_refs"],
-                            "claim_ids": node["blueprint"]["claim_ids"],
-                            "result_ids": node["blueprint"]["result_ids"],
-                            "asset_ids": node["blueprint"]["asset_ids"],
-                        }
-                        for index, node in enumerate(payload["nodes"])
-                    ]
-                },
-                ensure_ascii=False,
-            )
         raise AssertionError(marker)
 
 
@@ -168,24 +147,10 @@ class DeckProvider:
         output = context.workspace / "provider_output"
         if (output / "presentation.pdf").is_file():
             return self._artifact()
-        provider_input = context.workspace / "provider_input"
-        provider_input.mkdir(parents=True, exist_ok=True)
-        (provider_input / "paper_source.json").write_text(
-            (context.workspace / "source" / context.source_bundle.paper_source_path).read_text(
-                encoding="utf-8"
-            ),
-            encoding="utf-8",
-        )
-        analysis_source = context.workspace / "stages/01_analysis/output/paper_analysis.json"
-        (provider_input / "paper_analysis.json").write_text(
-            analysis_source.read_text(encoding="utf-8"), encoding="utf-8"
-        )
         prompts = output / "prompts"
         images = output / "images"
-        rendered = output / "rendered"
         prompts.mkdir(parents=True, exist_ok=True)
         images.mkdir(parents=True, exist_ok=True)
-        rendered.mkdir(parents=True, exist_ok=True)
         (output / "analysis.md").write_text("# Native analysis\n", encoding="utf-8")
         (output / "deck-brief.md").write_text(
             "# Deck Brief\n\n- style_preset: `journal-minimal`\n- language: zh-CN\n",
@@ -197,43 +162,18 @@ class DeckProvider:
             (prompts / f"{name}.md").write_text("Use paper evidence.\n", encoding="utf-8")
             image = images / f"{name}.png"
             Image.new("RGB", (1600, 900), (40 * order, 80, 120)).save(image)
-            Image.new("RGB", (1600, 900), (40 * order, 80, 120)).save(
-                rendered / f"{name}.png"
-            )
             outline.append(
                 f"""## {order:02d}. Slide {order}
 - Role: method
 - Message: Explain the supported method.
-- Render mode: native-raster
 - Visual: Method diagram.
 - Text: Supported method
 - Evidence: Paper page 1
-- Source visual: None
 """
             )
         (output / "outline.md").write_text("\n".join(outline), encoding="utf-8")
         (output / "generation-log.md").write_text(
-            "images/01-slide.png: backend=imagegen render_mode=native-raster\n"
-            "images/02-slide.png: backend=imagegen render_mode=native-raster\n",
-            encoding="utf-8",
-        )
-        (output / "source-visual-manifest.json").write_text(
-            json.dumps(
-                {
-                    "schema_version": "1.0",
-                    "slides": [
-                        {
-                            "slide_id": f"slide_{index:03d}",
-                            "order": index,
-                            "render_mode": "native-raster",
-                            "background_path": f"images/{index:02d}-slide.png",
-                            "assets": [],
-                            "annotations": [],
-                        }
-                        for index in (1, 2)
-                    ],
-                }
-            ),
+            "images/01-slide.png: backend=imagegen\nimages/02-slide.png: backend=imagegen\n",
             encoding="utf-8",
         )
         self._compose_pdf(output)
@@ -244,14 +184,12 @@ class DeckProvider:
         return PaperPresentationArtifact(
             provider="native_paper_deck",
             presentation_pdf_path="provider_output/presentation.pdf",
-            source_images_dir="provider_output/rendered",
+            source_images_dir="provider_output/images",
             analysis_path="provider_output/analysis.md",
             deck_brief_path="provider_output/deck-brief.md",
             outline_path="provider_output/outline.md",
             prompts_dir="provider_output/prompts",
             generation_log_path="provider_output/generation-log.md",
-            source_visual_manifest_path="provider_output/source-visual-manifest.json",
-            debug_pptx_path="provider_output/presentation.pptx",
         )
 
     def repair_slides(self, context, *, directives):
@@ -279,23 +217,6 @@ class DeckProvider:
         document.save(temporary)
         document.close()
         temporary.replace(output / "presentation.pdf")
-        rendered = output / "rendered"
-        rendered.mkdir(exist_ok=True)
-        with fitz.open(output / "presentation.pdf") as final_pdf:
-            for order, page in enumerate(final_pdf, start=1):
-                page.get_pixmap(alpha=False).save(rendered / f"{order:02d}-slide.png")
-        presentation = Presentation()
-        for order in range(1, 3):
-            slide = presentation.slides.add_slide(presentation.slide_layouts[6])
-            picture = slide.shapes.add_picture(
-                str(output / f"images/{order:02d}-slide.png"),
-                0,
-                0,
-                width=presentation.slide_width,
-                height=presentation.slide_height,
-            )
-            picture.name = "background:native-raster"
-        presentation.save(output / "presentation.pptx")
 
 
 def _paper_bytes() -> bytes:

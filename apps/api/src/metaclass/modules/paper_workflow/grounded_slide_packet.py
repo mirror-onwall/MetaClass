@@ -332,17 +332,11 @@ class GroundedSlidePacketBuilder:
                 result_numbers.setdefault(self._normalize_number(number), []).extend(result.source_refs)
         checks = []
         for mention in observation.quantitative_mentions:
-            mention_numbers = self._quantitative_tokens(mention)
-            if not mention_numbers:
-                continue
-            if all(item in source_numbers for item in mention_numbers):
+            normalized = self._normalize_number(mention)
+            if normalized in source_numbers:
                 checks.append(NumericVerification(mention=mention, status="verified"))
                 continue
-            refs = [
-                ref
-                for number in mention_numbers
-                for ref in result_numbers.get(number, [])
-            ]
+            refs = result_numbers.get(normalized, [])
             if refs and any(ref.asset_id in selected_asset_ids or ref.page_no in selected_pages for ref in refs):
                 checks.append(
                     NumericVerification(
@@ -352,57 +346,8 @@ class GroundedSlidePacketBuilder:
                     )
                 )
                 continue
-            # A selected source asset is already identity-, path-, hash- and PPTX-blob-
-            # verified by SourceVisualValidator. Explicit axis/tick descriptions, plus
-            # compact numeric labels on multi-Figure evidence pages, therefore belong
-            # to that Figure even when PDF text extraction missed its raster content.
-            # Do not grant this status to arbitrary prose numbers merely because the
-            # slide also contains one source image.
-            figure_context = bool(
-                re.search(
-                    r"(?:axis|tick|training steps|x\s*轴|y\s*轴|横轴|纵轴|刻度)",
-                    mention,
-                    re.IGNORECASE,
-                )
-            )
-            numeric_only = not self._number.sub("", mention).strip(" +-,，")
-            if selected_asset_ids and (
-                figure_context or (len(selected_asset_ids) > 1 and numeric_only)
-            ):
-                checks.append(
-                    NumericVerification(
-                        mention=mention,
-                        status="figure_verified",
-                        source_refs=[
-                            SourceReference(page_no=assets[item].page_no, asset_id=item)
-                            for item in selected_asset_ids
-                        ],
-                    )
-                )
-                continue
             checks.append(NumericVerification(mention=mention, status="unverified"))
         return checks
-
-    @classmethod
-    def _quantitative_tokens(cls, value: str) -> list[str]:
-        text = value.strip()
-        if not text or re.fullmatch(
-            r"(?:fig(?:ure)?|table|图|表)\s*[.:：]?\s*[A-Za-z]?\d+[A-Za-z]?",
-            text,
-            re.IGNORECASE,
-        ):
-            return []
-        if "名称中的数字" in text or "digit in the name" in text.casefold():
-            return []
-        matches = cls._number.findall(text)
-        if not matches:
-            return []
-        without_numbers = cls._number.sub("", text).strip(
-            " \t\r\n:：,，;；()（）[]【】'\"“”‘’"
-        )
-        if len(matches) == 1 and without_numbers.casefold() in {"skill", "skillo"}:
-            return []
-        return [cls._normalize_number(item) for item in matches]
 
     def _safe_result_ids(self, result_ids, results, unverified_numbers) -> list[str]:
         blocked = {self._normalize_number(item) for item in unverified_numbers}

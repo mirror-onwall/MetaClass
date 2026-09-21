@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -29,7 +28,7 @@ def _write_slide(path: Path, color: str, label: str) -> None:
 
 def _fixture(tmp_path: Path) -> tuple[PaperPresentationArtifact, NativePaperDeckManifest]:
     output = tmp_path / "provider_output"
-    images = output / "rendered"
+    images = output / "images"
     prompts = output / "prompts"
     images.mkdir(parents=True)
     prompts.mkdir()
@@ -47,41 +46,21 @@ def _fixture(tmp_path: Path) -> tuple[PaperPresentationArtifact, NativePaperDeck
     pdf.close()
     for name in ("analysis.md", "deck-brief.md", "outline.md", "generation-log.md"):
         (output / name).write_text("content", encoding="utf-8")
-    (output / "source-visual-manifest.json").write_text(
-        json.dumps(
-            {
-                "schema_version": "1.0",
-                "slides": [
-                    {
-                        "slide_id": f"slide_{number:03d}",
-                        "order": number,
-                        "render_mode": "native-raster",
-                        "background_path": f"images/{number:02d}-slide.png",
-                        "assets": [],
-                        "annotations": [],
-                    }
-                    for number in (1, 2)
-                ],
-            }
-        ),
-        encoding="utf-8",
-    )
     artifact = PaperPresentationArtifact(
         provider="native_paper_deck",
         presentation_pdf_path="provider_output/presentation.pdf",
-        source_images_dir="provider_output/rendered",
+        source_images_dir="provider_output/images",
         analysis_path="provider_output/analysis.md",
         deck_brief_path="provider_output/deck-brief.md",
         outline_path="provider_output/outline.md",
         prompts_dir="provider_output/prompts",
         generation_log_path="provider_output/generation-log.md",
-        source_visual_manifest_path="provider_output/source-visual-manifest.json",
     )
     slides = [
         NativePaperDeckSlide(
             id=f"paper_deck_slide_{number:03d}",
             order=number,
-            image_path=f"provider_output/rendered/{number:02d}-slide.png",
+            image_path=f"provider_output/images/{number:02d}-slide.png",
             image_hash="a" * 64 if number == 1 else "b" * 64,
             pdf_page_no=number,
             title_hint=f"Slide {number}",
