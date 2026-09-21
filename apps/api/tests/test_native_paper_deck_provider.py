@@ -1,3 +1,4 @@
+import hashlib
 import json
 from pathlib import Path
 
@@ -73,8 +74,10 @@ def _write_native_outputs(invocation: CodexSkillInvocation, *, valid: bool = Tru
     output = invocation.output_directory
     prompts = output / "prompts"
     images = output / "images"
+    rendered = output / "rendered"
     prompts.mkdir(parents=True, exist_ok=True)
     images.mkdir(parents=True, exist_ok=True)
+    rendered.mkdir(parents=True, exist_ok=True)
     (output / "analysis.md").write_text("# Analysis\n", encoding="utf-8")
     (output / "deck-brief.md").write_text(
         "# Deck Brief\n\n- style_preset: `journal-minimal`\n- language: zh-CN\n",
@@ -88,19 +91,45 @@ def _write_native_outputs(invocation: CodexSkillInvocation, *, valid: bool = Tru
             f"""## {index:02d}. Slide {index}
 - Role: method
 - Message: Explain supported point {index}.
+- Render mode: native-raster
 - Visual: A factual method diagram.
 - Text: Point {index}; Evidence {index}
 - Evidence: Paper page {index}
-- Source visual: Figure {index}
+- Source visual: None
 """
         )
         if valid or index == 1:
             Image.new("RGB", (1600, 900), (index * 30, index * 40, index * 50)).save(
                 images / f"{index:02d}-slide.png"
             )
+            Image.new("RGB", (1600, 900), (index * 30, index * 40, index * 50)).save(
+                rendered / f"{index:02d}-slide.png"
+            )
     (output / "outline.md").write_text("\n".join(outline_parts), encoding="utf-8")
     (output / "generation-log.md").write_text(
-        "\n".join(f"images/{index:02d}-slide.png: imagegen" for index in range(1, 3)),
+        "\n".join(
+            f"images/{index:02d}-slide.png: backend=imagegen render_mode=native-raster"
+            for index in range(1, 3)
+        ),
+        encoding="utf-8",
+    )
+    (output / "source-visual-manifest.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "1.0",
+                "slides": [
+                    {
+                        "slide_id": f"slide_{index:03d}",
+                        "order": index,
+                        "render_mode": "native-raster",
+                        "background_path": f"images/{index:02d}-slide.png",
+                        "assets": [],
+                        "annotations": [],
+                    }
+                    for index in range(1, slide_count + 1)
+                ],
+            }
+        ),
         encoding="utf-8",
     )
 
@@ -111,8 +140,19 @@ def _write_native_outputs(invocation: CodexSkillInvocation, *, valid: bool = Tru
     pdf.close()
 
     pptx = Presentation()
-    for _ in range(slide_count):
-        pptx.slides.add_slide(pptx.slide_layouts[6])
+    for index in range(1, slide_count + 1):
+        image_path = images / f"{index:02d}-slide.png"
+        if not image_path.is_file():
+            continue
+        slide = pptx.slides.add_slide(pptx.slide_layouts[6])
+        picture = slide.shapes.add_picture(
+            str(image_path),
+            0,
+            0,
+            width=pptx.slide_width,
+            height=pptx.slide_height,
+        )
+        picture.name = "background:native-raster"
     pptx.save(output / "presentation.pptx")
 
 
@@ -170,13 +210,21 @@ def test_native_provider_runs_complete_skill_without_presentation_plan(tmp_path:
 
     assert artifacts.format == "pdf"
     assert artifacts.presentation_pdf_path == "provider_output/presentation.pdf"
+    assert artifacts.source_visual_manifest_path == (
+        "provider_output/source-visual-manifest.json"
+    )
     assert artifacts.debug_pptx_path == "provider_output/presentation.pptx"
     assert len(runtime.invocations) == 1
     invocation = runtime.invocations[0]
     assert invocation.skill_name == "paper-deck"
     assert invocation.output_directory == context.workspace / "provider_output"
     assert invocation.timeout_seconds == 3600
+    prompt = invocation.prompt_path.read_text(encoding="utf-8")
+    assert "最多" in prompt and "重试 2 次" in prompt
+    assert "预留 10 分钟" in prompt
+    assert "不得尝试 LibreOffice/PowerPoint/Keynote/WPS" in prompt
     assert invocation.network_enabled is False
+    assert "source-visual-manifest.json" in invocation.expected_outputs
     assert {path.name for path in invocation.input_paths} >= {
         "paper.pdf",
         "paper_content.md",
@@ -186,10 +234,11 @@ def test_native_provider_runs_complete_skill_without_presentation_plan(tmp_path:
         "figure_1.png",
     }
     prompt = invocation.prompt_path.read_text(encoding="utf-8")
-    assert "原生 raster-first" in prompt
+    assert "完整保留 paper-deck 的分析、叙事" in prompt
+    assert "source-grounded-hybrid" in prompt
     assert "不要创建或消费 MetaClass PresentationPlan" in prompt
     assert "不要调用 CodexPPTProvider" in prompt
-    assert "不要求其中的页面元素可编辑" in prompt
+    assert "保持为独立 PowerPoint 对象" in prompt
 
 
 def test_native_provider_reuses_valid_checkpoint(tmp_path: Path) -> None:
@@ -225,6 +274,12 @@ def test_native_provider_repairs_only_named_pages_and_revalidates_pdf(tmp_path: 
     context = _context(tmp_path)
     provider = NativePaperDeckProvider(runtime, skill_directory=_skill(tmp_path))
     provider.run(context)
+    analysis_before = hashlib.sha256(
+        (context.workspace / "provider_output/analysis.md").read_bytes()
+    ).hexdigest()
+    outline_before = hashlib.sha256(
+        (context.workspace / "provider_output/outline.md").read_bytes()
+    ).hexdigest()
 
     repaired = provider.repair_slides(
         context,
@@ -243,6 +298,16 @@ def test_native_provider_repairs_only_named_pages_and_revalidates_pdf(tmp_path: 
     assert len(runtime.invocations) == 2
     assert runtime.invocations[-1].prompt_version.endswith("targeted-repair-v1")
     assert runtime.invocations[-1].attempt == 2
+    assert hashlib.sha256(
+        (context.workspace / "provider_output/analysis.md").read_bytes()
+    ).hexdigest() == analysis_before
+    assert hashlib.sha256(
+        (context.workspace / "provider_output/outline.md").read_bytes()
+    ).hexdigest() == outline_before
+
+
+def test_native_analysis_and_outline_are_not_replaced(tmp_path: Path) -> None:
+    test_native_provider_repairs_only_named_pages_and_revalidates_pdf(tmp_path)
 
 
 def test_native_provider_rejects_prompt_image_page_mismatch(tmp_path: Path) -> None:
