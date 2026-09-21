@@ -118,6 +118,9 @@ export const api = {
       `/api/v1/paper-workflows/latest?material_id=${encodeURIComponent(materialId)}`,
     );
   },
+  listPaperWorkflows() {
+    return request<PaperWorkflowJob[]>("/api/v1/paper-workflows");
+  },
   runPaperWorkflow(jobId: string) {
     return request<PaperWorkflowJob>(`/api/v1/paper-workflows/${jobId}/run`, {
       method: "POST",
@@ -710,10 +713,14 @@ export const api = {
     if (/^https?:\/\//i.test(audioUrl)) return audioUrl;
     return `${API_BASE}${audioUrl}`;
   },
-  async createVideo(contentId: string, presentationArtifactId: string) {
-    const query = new URLSearchParams({
-      presentation_artifact_id: presentationArtifactId,
-    });
+  async createVideo(
+    contentId: string,
+    presentationArtifactId?: string,
+    presentationPlanId?: string,
+  ) {
+    const query = new URLSearchParams();
+    if (presentationArtifactId) query.set("presentation_artifact_id", presentationArtifactId);
+    if (presentationPlanId) query.set("presentation_plan_id", presentationPlanId);
     const job = await request<VideoJob>(
       `/api/v1/learning-contents/${contentId}/videos?${query}`,
       { method: "POST" },
@@ -727,6 +734,9 @@ export const api = {
   },
   pageImage(materialId: string, pageNumber: number) {
     return `${API_BASE}/api/v1/materials/${materialId}/pages/${pageNumber}/image`;
+  },
+  materialDownload(materialId: string) {
+    return `${API_BASE}/api/v1/materials/${materialId}/download`;
   },
   pptSlideImage(artifactId: string, slideNumber: number) {
     return `${API_BASE}/api/v1/ppt-artifacts/${artifactId}/slides/${slideNumber}/image`;
