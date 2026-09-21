@@ -30,7 +30,12 @@ export function ActionView({
   function renderSlide(slide: { src: string; pageNo: number; generated: boolean }) {
     return (
       <div className="slide-action">
-        <img src={slide.src} alt={`PPT 第 ${slide.pageNo} 页`} />
+        <img
+          src={slide.src}
+          alt={`PPT 第 ${slide.pageNo} 页`}
+          decoding="async"
+          loading="eager"
+        />
         {slideProgress ? (
           <div
             className="lesson-progress"

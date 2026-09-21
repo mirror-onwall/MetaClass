@@ -352,6 +352,7 @@ type RuntimeWorkspace = {
   presentationSlideImages: Record<number, PresentationSlideDisplay>;
   session: ClassroomSession | null;
   classroomPlanJob: ClassroomPlanJob | null;
+  freshClassroomFromLibrary: boolean;
   classroomPlanIds: Partial<Record<LearningMode, string>>;
   action: TeachingAction | null;
   currentSlide: { src: string; pageNo: number; generated: boolean } | null;
@@ -586,6 +587,9 @@ function App() {
   const [classroomPlanJob, setClassroomPlanJob] = useState<ClassroomPlanJob | null>(
     runtimeWorkspace.classroomPlanJob ?? null,
   );
+  const [freshClassroomFromLibrary, setFreshClassroomFromLibrary] = useState(
+    runtimeWorkspace.freshClassroomFromLibrary ?? false,
+  );
   const [presentationArtifact, setPresentationArtifact] = useState<PPTArtifact | null>(runtimeWorkspace.presentationArtifact ?? null);
   const [presentationSlideImages, setPresentationSlideImages] = useState<Record<number, PresentationSlideDisplay>>(
     normalizePresentationSlideImages(
@@ -644,6 +648,7 @@ function App() {
   const playbackVersionRef = useRef(0);
   const narratedStepRef = useRef<string | null>(null);
   const interruptedTeacherCueRef = useRef<NarrationCue | null>(null);
+  const preloadedSlideUrlsRef = useRef(new Set<string>());
   const narration = useTTSNarration();
 
   useEffect(() => {
@@ -859,7 +864,7 @@ function App() {
   }, [interactionIntensity, presentationPlan?.id]);
 
   useEffect(() => {
-    if (!content || !presentationPlan || session || classroomPlanJob) return;
+    if (!content || !presentationPlan || session || classroomPlanJob || freshClassroomFromLibrary) return;
     let cancelled = false;
     api.getLatestClassroomPlanJob(content.id, presentationPlan.id)
       .then((job) => {
@@ -871,7 +876,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, [classroomPlanJob, content, presentationPlan, session]);
+  }, [classroomPlanJob, content, freshClassroomFromLibrary, presentationPlan, session]);
 
   useEffect(() => {
     const snapshot: RuntimeWorkspace = {
@@ -891,6 +896,7 @@ function App() {
       presentationSlideImages,
       session,
       classroomPlanJob,
+      freshClassroomFromLibrary,
       classroomPlanIds,
       action,
       currentSlide,
@@ -931,6 +937,7 @@ function App() {
     session,
     classroomPlanIds,
     classroomPlanJob,
+    freshClassroomFromLibrary,
     studentAgentTypes,
     video,
   ]);
@@ -1175,6 +1182,32 @@ function App() {
     displayPage(action);
   }, [action, material, presentationSlideImages]);
 
+  useEffect(() => {
+    const slides = Object.entries(presentationSlideImages)
+      .map(([pageNo, image]) => ({ pageNo: Number(pageNo), src: image.src }))
+      .sort((left, right) => left.pageNo - right.pageNo);
+    if (!slides.length) return;
+
+    const preload = (src: string) => {
+      if (!src || preloadedSlideUrlsRef.current.has(src)) return;
+      preloadedSlideUrlsRef.current.add(src);
+      const image = new Image();
+      image.decoding = "async";
+      image.src = src;
+    };
+    const currentIndex = Math.max(
+      0,
+      slides.findIndex((slide) => slide.pageNo === currentSlide?.pageNo),
+    );
+    slides
+      .slice(Math.max(0, currentIndex - 2), currentIndex + 3)
+      .forEach((slide) => preload(slide.src));
+    const timer = window.setTimeout(() => {
+      slides.forEach((slide) => preload(slide.src));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [currentSlide?.pageNo, presentationSlideImages]);
+
   function displayPage(
     pageAction: Extract<TeachingAction, { type: "SHOW_PAGE" | "SHOW_SLIDE" }>,
   ) {
@@ -1264,6 +1297,7 @@ function App() {
     setInteractionPlanningJob(null);
     setPptJob(null);
     setClassroomPlanJob(null);
+    setFreshClassroomFromLibrary(false);
     setPresentationArtifact(null);
     setPresentationSlideImages({});
     setSession(null);
@@ -1297,6 +1331,7 @@ function App() {
     presentationArtifact?: PPTArtifact;
     pptJob?: PPTGenerationJob;
     session?: ClassroomSession;
+    preferFreshClassroomPlan?: boolean;
   }) {
     reset();
     setMaterial(asset.material);
@@ -1307,6 +1342,8 @@ function App() {
     setPresentationMode(asset.presentationPlan?.mode ?? "generated");
     setPresentationArtifact(asset.presentationArtifact ?? null);
     setPptJob(asset.pptJob ?? null);
+    setClassroomPlanJob(null);
+    setFreshClassroomFromLibrary(Boolean(asset.presentationPlan && !asset.session && asset.preferFreshClassroomPlan));
     if (asset.presentationPlan) {
       const resource = await api.getPresentationResource(asset.presentationPlan.id);
       const resourceImages = presentationResourceSlideImages(resource);
@@ -1331,6 +1368,10 @@ function App() {
       setAutoPlaying(true);
       autoPlayingRef.current = true;
       setFeedback("已从资料库载入课堂剧本，自动播放已开始。");
+    } else if (asset.presentationPlan) {
+      setFeedback("已从资料库载入 LearningContent、PresentationPlan 和讲稿；可以在左侧点击创建互动课堂录制这一段。");
+    } else {
+      setFeedback("已从资料库载入 LearningContent，可以继续生成演示规划或课堂。");
     }
     setActivePage("classroom");
   }
@@ -1651,18 +1692,21 @@ function App() {
     }
     narration.unlock();
     const result = await run(
-      classroomPlanJob && classroomPlanJob.status !== "failed"
+      classroomPlanJob && classroomPlanJob.status !== "failed" && !freshClassroomFromLibrary
         ? "正在接回课堂创建任务"
         : learningMode === "interactive"
           ? "正在创建互动课堂剧本"
           : "正在创建连续讲解剧本",
       async () => {
-      let reusableJob = classroomPlanJob;
+      let reusableJob = freshClassroomFromLibrary ? null : classroomPlanJob;
       if (
+        !freshClassroomFromLibrary
+        && (
         !reusableJob
         || reusableJob.status === "failed"
         || reusableJob.content_id !== content.id
         || reusableJob.presentation_plan_id !== presentationPlan.id
+        )
       ) {
         reusableJob = await api.getLatestClassroomPlanJob(
           content.id,
@@ -1698,6 +1742,7 @@ function App() {
       setAgentTurn(null);
       setAutoPlaying(true);
       setFeedback("课堂剧本已保存，自动播放已开始。你可以随时输入问题打断。");
+      setFreshClassroomFromLibrary(false);
       narratedStepRef.current = null;
     }
   }
@@ -1777,6 +1822,7 @@ function App() {
       presentationSlideImages,
       session,
       classroomPlanJob,
+      freshClassroomFromLibrary,
       classroomPlanIds,
       action,
       currentSlide,
@@ -1812,6 +1858,7 @@ function App() {
     ));
     setSession(saved.session ? { ...saved.session, version: saved.session.version ?? 0 } : null);
     setClassroomPlanJob(saved.classroomPlanJob ?? null);
+    setFreshClassroomFromLibrary(saved.freshClassroomFromLibrary ?? false);
     setClassroomPlanIds(
       saved.classroomPlanIds ?? (
         saved.session ? { [saved.session.mode]: saved.session.plan_id } : {}
@@ -2055,9 +2102,6 @@ function App() {
     setQuestion("");
     setFeedback(`你：${submittedQuestion}`);
 
-    // Start generating the teacher's answer immediately, then use that same wait
-    // to read the learner's question aloud. This keeps the exchange conversational
-    // without adding the question narration to the response latency.
     const answerRequest = run(answeringUserQuestionLabel, () =>
       api.ask(session.id, submittedQuestion, session.version),
     );
@@ -2066,17 +2110,16 @@ function App() {
       text: submittedQuestion,
       scope: "user_question",
       refId: `${session.id}:user-question:${Date.now()}`,
-      voice: "student_user",
+      voice: "student",
       speaker: "你",
       agentId: "user",
       role: "student",
     });
-    void questionNarration.then((questionNarrationResult) => {
-      if (questionNarrationResult === "failed") {
-        setError("问题已发送；语音不可用，已使用文字继续");
-      }
-    });
 
+    const questionNarrationResult = await questionNarration;
+    if (questionNarrationResult === "failed" || questionNarrationResult === "blocked") {
+      setError("问题已发送；语音不可用，已使用文字继续");
+    }
     const result = await answerRequest;
     if (!result) return;
     narration.stop();
@@ -2111,9 +2154,9 @@ function App() {
   }
 
   async function createVideo() {
-    if (!content || !presentationArtifact) return;
+    if (!content || !presentationPlan) return;
     const result = await run("正在逐页合成 PPT 讲解视频", () =>
-      api.createVideo(content.id, presentationArtifact.id),
+      api.createVideo(content.id, presentationArtifact?.id, presentationPlan.id),
     );
     if (result) setVideo(result);
   }
@@ -2126,6 +2169,21 @@ function App() {
   }
 
   const actionLabel = action?.type.replaceAll("_", " ") ?? "WAITING";
+  const canCreateVideo = Boolean(
+    content
+    && presentationPlan
+    && (presentationArtifact || presentationPlan.mode === "source_deck" || presentationPlan.mode === "paper_deck"),
+  );
+  const interactionPlanningBlocksClassroom = Boolean(
+    learningMode === "interactive"
+    && !freshClassroomFromLibrary
+    && interactionPlanningJob
+    && interactionPlanningJob.status !== "succeeded",
+  );
+  const editingSlide = presentationPlan?.slides.find((slide) => slide.id === editingSlideId) ?? null;
+  const editingSlideImage = editingSlide
+    ? presentationSlideImages[editingSlide.order]
+    : null;
   const loadingProgress = materialProcessingJob && busy === "正在上传并解析材料"
     ? materialProcessingJob.progress
     : contentJob && busy === "正在组织学习内容"
@@ -2422,8 +2480,9 @@ function App() {
               <button disabled={!!busy} onClick={reuseCurrentLearningContent}><span>↺</span><b>复用当前 LearningContent 新建课件方案</b><i>→</i></button>
             )}
             {presentationMode !== "paper_deck" && <button disabled={!presentationPlan || presentationPlan.mode === "source_deck" || !!busy} onClick={generatePresentationArtifact}><span>03</span><b>{presentationPlan?.mode === "source_deck" ? "使用原 PPT" : presentationArtifact ? "按当前 Plan 重新生成一份 PPT" : "生成 PPT（创建课堂前必需）"}</b><i>↗</i></button>}
-            <button disabled={!content || !presentationPlan || (presentationPlan.mode === "generated" && !presentationArtifact) || !!session || !!busy || (learningMode === "interactive" && !!interactionPlanningJob && interactionPlanningJob.status !== "succeeded")} onClick={startClassroom}><span>04</span><b>{session ? "课堂已创建" : classroomPlanJob && classroomPlanJob.status !== "failed" ? "继续进入已生成课堂" : learningMode === "interactive" && interactionPlanningJob && interactionPlanningJob.status !== "succeeded" ? "等待互动规划完成" : learningMode === "interactive" ? "创建互动课堂" : "创建连续课堂"}</b><i>↗</i></button>
-            <button disabled={!content || !presentationArtifact || !!video || !!busy} onClick={createVideo}><span>05</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
+            {presentationMode !== "paper_deck" && <button disabled={!presentationPlan || presentationPlan.mode === "source_deck" || !!busy} onClick={generatePresentationArtifact}><span>03</span><b>{presentationPlan?.mode === "source_deck" ? "使用原 PPT" : presentationArtifact ? "按当前 Plan 重新生成一份 PPT" : "生成 PPT（创建课堂前必需）"}</b><i>↗</i></button>}
+            <button disabled={!content || !presentationPlan || (presentationPlan.mode === "generated" && !presentationArtifact) || !!session || !!busy || interactionPlanningBlocksClassroom} onClick={startClassroom}><span>04</span><b>{session ? "课堂已创建" : classroomPlanJob && classroomPlanJob.status !== "failed" && !freshClassroomFromLibrary ? "继续进入已生成课堂" : interactionPlanningBlocksClassroom ? "等待互动规划完成" : learningMode === "interactive" ? "创建互动课堂" : "创建连续课堂"}</b><i>↗</i></button>
+            <button disabled={!canCreateVideo || !!video || !!busy} onClick={createVideo}><span>05</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
             <button disabled={!content || !presentationPlan || !!busy} onClick={completeWorkspace}><span>✓</span><b>完成当前材料</b><i>→</i></button>
             {presentationPlan && (
               <details className="speaker-script-editor">
@@ -2825,16 +2884,33 @@ function App() {
                   ))}
                 </nav>
                 <main>
-                  {presentationPlan.slides.find((slide) => slide.id === editingSlideId) ? <>
+                  {editingSlide ? <>
                     <div className="script-editor-heading">
-                      <div><small>SPEAKER SCRIPT</small><h3>{presentationPlan.slides.find((slide) => slide.id === editingSlideId)?.title}</h3></div>
+                      <div><small>SPEAKER SCRIPT · PAGE {String(editingSlide.order).padStart(2, "0")}</small><h3>{editingSlide.title}</h3></div>
                       <span>{editingScript.length} 字</span>
                     </div>
-                    <textarea
-                      value={editingScript}
-                      onChange={(event) => setEditingScript(event.target.value)}
-                      aria-label="逐页讲稿编辑区"
-                    />
+                    <div className="script-editor-content">
+                      <section className="script-slide-preview" aria-label={`对应 PPT：第 ${editingSlide.order} 页`}>
+                        <header><small>对应 PPT 页面</small><span>第 {editingSlide.order} 页</span></header>
+                        {editingSlideImage ? (
+                          <img
+                            src={editingSlideImage.src}
+                            alt={`PPT 第 ${editingSlide.order} 页：${editingSlide.title}`}
+                          />
+                        ) : (
+                          <div className="script-slide-preview-empty">该页课件预览暂不可用</div>
+                        )}
+                      </section>
+                      <div className="script-text-editor">
+                        <label htmlFor="full-page-speaker-script">本页讲稿</label>
+                        <textarea
+                          id="full-page-speaker-script"
+                          value={editingScript}
+                          onChange={(event) => setEditingScript(event.target.value)}
+                          aria-label="逐页讲稿编辑区"
+                        />
+                      </div>
+                    </div>
                     <footer>
                       <small>保存后，新创建的课堂会使用这版讲稿。</small>
                       <button disabled={!editingScript.trim() || !!busy} onClick={saveSpeakerScript}>保存本页讲稿</button>
