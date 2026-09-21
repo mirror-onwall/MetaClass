@@ -1,5 +1,5 @@
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from io import BytesIO
 from pathlib import Path
 
@@ -313,6 +313,35 @@ def test_collection_learning_content_job_uses_all_materials(client: TestClient) 
     assert diagnostics.status_code == 200
     assert diagnostics.json()["knowledge_tree"]["id"] == payload["knowledge_tree"]["id"]
     assert diagnostics.json()["quality"]["coverage_score"] == 1.0
+
+
+@pytest.mark.parametrize(
+    ("filename", "payload", "media_type"),
+    [
+        ("paper.pdf", make_pdf, "application/pdf"),
+        (
+            "paper-deck.pptx",
+            make_pptx,
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        ),
+    ],
+)
+def test_material_download_returns_registered_pdf_or_pptx(
+    client: TestClient,
+    filename: str,
+    payload: Callable[[], bytes],
+    media_type: str,
+) -> None:
+    content = payload()
+    upload = client.post(
+        "/api/v1/materials",
+        files={"file": (filename, content, media_type)},
+    )
+    response = client.get(f"/api/v1/materials/{upload.json()['id']}/download")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == media_type
+    assert response.content == content
 
 
 def test_complete_mvp_flow(client: TestClient) -> None:
@@ -693,6 +722,7 @@ def test_presentation_plan_and_ppt_skill_request_flow(client: TestClient) -> Non
     slide_image = client.get(f"/api/v1/ppt-artifacts/{artifact.json()['id']}/slides/1/image")
     assert slide_image.status_code == 200
     assert slide_image.content[:8] == b"\x89PNG\r\n\x1a\n"
+    assert "immutable" in slide_image.headers["cache-control"]
 
 
 def test_lecture_presentation_job_skips_question_bank(client: TestClient) -> None:
@@ -867,6 +897,19 @@ def test_tts_artifact_flow(client: TestClient) -> None:
     assert cached.status_code == 201
     assert cached.json()["id"] == payload["id"]
 
+    reused_for_another_session = client.post(
+        "/api/v1/tts-artifacts",
+        json={
+            "text": "欢迎来到互动课堂。",
+            "scope": "teacher_turn",
+            "ref_id": "another_session:teacher:0",
+            "voice": "teacher",
+        },
+    )
+    assert reused_for_another_session.status_code == 201
+    assert reused_for_another_session.json()["id"] == payload["id"]
+    assert reused_for_another_session.json()["ref_id"] == "another_session:teacher:0"
+
     fetched = client.get(f"/api/v1/tts-artifacts/{payload['id']}")
     assert fetched.status_code == 200
     assert fetched.json()["id"] == payload["id"]
@@ -874,6 +917,7 @@ def test_tts_artifact_flow(client: TestClient) -> None:
     audio = client.get(payload["audio_url"])
     assert audio.status_code == 200
     assert audio.content[:4] == b"RIFF"
+    assert "immutable" in audio.headers["cache-control"]
 
 
 def test_rejects_unsupported_file_type(client: TestClient) -> None:
