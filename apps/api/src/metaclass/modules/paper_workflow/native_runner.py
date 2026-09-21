@@ -22,6 +22,7 @@ from metaclass.modules.content.service import ContentService
 from metaclass.modules.interaction_planning import (
     InteractionPolicy,
     PaperDeckInteractionAdapter,
+    QuestionGenerator,
     ScriptedInteractionBank,
     TeachingNodeSelector,
     UnifiedInteractionPlanningPipeline,
@@ -391,7 +392,9 @@ class NativePaperDeckWorkflowRunner:
                 interaction_path.read_text(encoding="utf-8")
             )
         else:
-            blueprints, bank = UnifiedInteractionPlanningPipeline().plan(
+            blueprints, bank = UnifiedInteractionPlanningPipeline(
+                generator=QuestionGenerator(self.llm)
+            ).plan(
                 interaction_context,
                 policy,
             )
@@ -584,11 +587,18 @@ class NativePaperDeckWorkflowRunner:
 
     @staticmethod
     def _input_hash(store, context, stage, input_paths):
+        metadata = {
+            "request": context.request.model_dump(mode="json"),
+            "stage": stage.value,
+        }
+        if stage == NativePaperDeckStage.GROUNDING_EVIDENCE:
+            # Bump when deterministic numeric-grounding semantics change so failed
+            # jobs do not resume a previously accepted but now-invalid packet cache.
+            metadata["grounding_rules_version"] = "v2-source-figure-numbers"
+        if stage == NativePaperDeckStage.PLANNING_INTERACTIONS:
+            metadata["interaction_rules_version"] = "v2-llm-grounded-questions"
         return store.hash_inputs(
-            metadata={
-                "request": context.request.model_dump(mode="json"),
-                "stage": stage.value,
-            },
+            metadata=metadata,
             paths=input_paths,
         )
 

@@ -112,12 +112,30 @@ Paper Deck 的 V1 是 **raster-first AIGC slide image** 工作流。除非用户
 ## 01. Slide Title
 - Role: cover / context / method / mechanism / evidence / result / takeaway
 - Message: 这一页唯一要讲清楚的观点
+- Render mode: native-raster | source-grounded-hybrid
 - Visual: 画面主视觉和构图
 - Text: 页面上允许出现的短文字
 - Evidence: 引用的论文图表/公式/实验数据/代码位置
 - Source visual: 是否使用真实截图/论文图表；来源、裁剪范围和落位
 - Repair handle: 后续返修时可引用的定位描述
 ```
+
+`native-raster` 页只需增加 `Render mode`，不增加额外结构负担。`source-grounded-hybrid` 页必须追加：
+
+```yaml
+- Source assets:
+  - asset_id: asset_figure_crop_005_2
+    placement: [0.07, 0.23, 0.62, 0.66]
+    fit: contain
+    crop: full
+    preserve: [axes, legend, labels, values]
+- Generated layer: 白色 journal-minimal 背景，左侧保留证据区域
+- Overlay annotations:
+  - 未筛选：规模增加几乎无增益
+  - 高质量子集：持续提升
+```
+
+`placement` 使用相对于整页的归一化 `[x, y, w, h]` 坐标，数值范围为 0–1。`Source assets`、`Generated layer` 和 `Overlay annotations` 是 Paper Deck 对混合页的视觉导演结果，不是平台预置的模板。
 
 规则：
 - 每页只承载一个主观点。
@@ -140,12 +158,17 @@ paper-deck/{topic-slug}/
 ├── deck-brief.md
 ├── outline.md
 ├── prompts/
-│   ├── 01-slide-cover.md
-│   ├── 02-slide-context.md
-│   └── ...
+│   ├── 01-slide-cover.md
+│   ├── 02-slide-context.md
+│   └── ...
+├── source-visual-manifest.json
 ├── images/
-│   ├── 01-slide-cover.png
-│   ├── 02-slide-context.png
+│   ├── 01-slide-cover.png
+│   ├── 02-slide-context.png
+│   └── ...
+├── rendered/
+│   ├── 01-slide.png
+│   ├── 02-slide.png
 │   └── ...
 ├── {topic-slug}.pptx
 └── {topic-slug}.pdf
@@ -153,14 +176,47 @@ paper-deck/{topic-slug}/
 
 Prompt 写法读取 `references/prompt-template.md`。
 
+如果任一页使用 `source-grounded-hybrid`，在调用任何生图工具之前，必须生成 `source-visual-manifest.json`：
+
+- 完整格式和字段约束见 `references/source-visual-manifest.schema.json`。
+- 该文件是 Paper Deck 设计决策与确定性合成器之间的机器可读契约。
+- `slides` 必须覆盖 outline 的每一页，且 `slide_id`、`order` 和 `render_mode` 必须与 outline 一致。
+- `native-raster` 页不要填充无意义的 source asset 或 annotation。
+- `source-grounded-hybrid` 页必须记录生图底层、至少一个已验证源素材、归一化落位、原始页码/图号和 SHA-256。
+- 每个混合页素材的 `asset_id`、`source_path`、`source_page`、`figure_label` 和 SHA-256 必须与 `provider_input/paper_source.json` 及其对应文件严格一致；不得只借用合法 asset ID 指向另一张图。
+- 输出到 MetaClass 运行目录时，路径必须为 `provider_output/source-visual-manifest.json`；在独立 skill 目录中运行时，文件位于 deck 根目录。
+
 硬规则：
 - prompt 必须明确 16:9。
 - prompt 里要写清楚风格、构图、文字语言、文字数量限制。
 - 不要让模型生成页码、logo、水印、PPT 外壳。
 - 如果需要精准文字，尽量减少图片内文字；可以后续做混合文字层。
-- 如果本页使用真实素材，prompt 必须说明素材如何作为画面的一部分：嵌入、裁切、玻璃面板承载、旁注、放大框，而不是让模型凭空重画事实。
+- `native-raster` 页如果仅把源素材作为非保真的构图参考，prompt 必须明确不得发明新的事实。
+- `source-grounded-hybrid` 页的 prompt 只描述生图底层、空白证据区和周边构图；不得要求生图模型嵌入、裁切、重画或修改真实素材。
 
 ### Step 6: 生成图片
+
+#### 逐页渲染模式
+
+Paper Deck 在完成论文分析、deck brief、outline 和逐页 prompt 后，自主为每页选择渲染模式。平台不得在 Paper Deck 分析和规划之前预先决定哪些页使用原图。`source-grounded-hybrid` 是对前文整页 raster-first 合成方式的受限例外，不取消真实 raster image generation backend 的生图底层要求；真实源素材和可编辑标注只能在生图之后分层叠加。
+
+```yaml
+render_mode:
+  native-raster:
+    description: 原生 paper-deck 整页生图
+
+  source-grounded-hybrid:
+    description: 生图视觉底层 + 真实论文素材 + 可编辑标注
+```
+
+自动选择规则：
+
+- 封面、背景、问题、抽象机制、总结等不依赖精确源素材的页面，使用 `native-raster`。
+- 直接使用论文 Figure、Table、实验曲线、真实截图、精确数据图，或其他不允许改写标签、数值和事实关系的页面，必须使用 `source-grounded-hybrid`。
+- “按论文关系重画”的解释性机制图不等于论文原 Figure；只有页面需要保留真实源图的标签、数值、坐标轴、图例或截图内容时，才必须进入 `source-grounded-hybrid`。
+- 每页的模式选择必须记录在该页 prompt 和 `generation-log.md` 中；使用真实素材的页面还必须记录素材路径、图号/页码与预期落位。
+
+两种模式共享同一份 analysis、deck brief、outline、风格锚点和叙事节奏。渲染模式只决定最终视觉如何落版，不得反向削弱、替换或重做 Step 1–5 的分析与规划。
 
 图片后端选择：
 
@@ -176,6 +232,19 @@ Prompt 写法读取 `references/prompt-template.md`。
 - 如果使用混合文字层，`images/` 中仍必须保留每页的生图背景或生图整页来源，并在 `deck-brief.md` 记录哪些文字是后叠加的。
 - 生成后要在 `generation-log.md` 记录每页使用的后端、prompt 文件、输出文件、生成时间；没有生成记录的图片不能作为最终交付页。
 
+`native-raster` 要求：
+
+- 保持原生 raster-first 行为：逐页 prompt 生成完整 16:9 slide image。
+- 现有生图门禁、风格锚点、失败页保留和生成日志规则全部继续适用。
+
+`source-grounded-hybrid` 要求：
+
+- 生图后端只生成与整份 deck 一致的 16:9 视觉底层，并为真实素材保留明确的空白落位区域。
+- prompt 必须明确禁止生图后端绘制、模仿、重建、改写或插入论文 Figure/Table、实验曲线、截图和精确数据。
+- 真实素材必须在生图完成后从已验证的源文件确定性嵌入，不得先经过生图模型重画。
+- 生图底层与真实素材必须分别保留；标题、旁注、箭头和强调框应作为可编辑标注层，不得烧录进论文原图。
+- 源素材嵌入只用于保真落版，不改变 Paper Deck 对该页 Message、Visual、Evidence、视觉层级和叙事位置的决策。
+
 生成策略：
 - 先生成第 1 页作为风格锚点。
 - 后续页如果后端支持 reference image，就用第 1 页作为风格参考，降低漂移。
@@ -184,13 +253,43 @@ Prompt 写法读取 `references/prompt-template.md`。
 
 ### Step 7: 合成 PPTX/PDF
 
-生成完图片后运行：
+生成完图片后，按逐页渲染模式合成：
+
+- `native-raster`：保持现有行为，将完整 slide image 铺满 16:9 页面。
+- `source-grounded-hybrid`：以生图底层为视觉基础，再按 Paper Deck 规划的位置确定性嵌入真实素材和可编辑标注层。论文原图不得被拉伸、重画或压平进生图底层。
+
+两种模式都使用同一个合成器：
 
 ```bash
 python3 <SKILL_ROOT>/scripts/merge_deck.py paper-deck/{topic-slug}
 ```
 
-脚本会读取 `images/NN-*.png|jpg|webp`，输出同名 `.pptx` 和 `.pdf`。每张图片铺满一页 16:9。
+脚本行为：
+
+- 没有 `source-visual-manifest.json` 时，保持原生兼容路径：读取 `images/NN-*.png|jpg|webp`，每张图片铺满一页 16:9。
+- 存在 manifest 时，按页读取 `render_mode`。`native-raster` 页仍只有整页生成图；`source-grounded-hybrid` 页生成背景、已验证源图、文本标注、强调框和箭头均为独立 PowerPoint 对象。
+- 合成器在嵌入前校验源素材 SHA-256、安全路径、归一化边界和宽高比；校验失败时停止交付。
+- `images/` 始终表示生图后端产出的整页图或视觉底层，不得作为混合页的最终预览。同一个确定性合成器必须依据 manifest 分别生成分层 PPTX 与最终 `rendered/` 页面，再由 `rendered/` 生成 PDF；OCR、VLM 质检、课堂预览和 PDF 对比统一使用 `rendered/`。
+- PDF/预览合成不得依赖 LibreOffice、PowerPoint、Keynote 或其他 GUI/Office 运行时。它可以栅格化最终页面，但不得改变源 Figure/Table 的内容、比例或落位；PPTX 中的源素材仍必须保持为独立图片对象。
+
+MetaClass `provider_output/` 模式必须使用固定交付名：
+
+```bash
+python3 <SKILL_ROOT>/scripts/merge_deck.py provider_output --name presentation
+```
+
+#### 生成期故障自愈
+
+不要把第一次命令失败直接交给用户，也不要无限排查环境。按以下边界自动恢复：
+
+1. 在大批量生图前运行一次 `python3 <SKILL_ROOT>/scripts/merge_deck.py --help`，确认合成器能自动进入项目运行环境；失败时先解决这一项再继续生图。
+2. 启动时先清点目标输出目录。若存在上次暂停留下的合法 analysis、outline、prompts、manifest 或图片，必须从现有检查点续跑，只补缺失或损坏的文件；不得默认从第一页重新生成。
+3. 已成功生成的 `analysis.md`、outline、prompts、manifest 和 `images/` 都是检查点。后续失败不得删除、覆盖或从头重做无关页面。
+4. 合成或验证失败时，读取完整错误，定位到依赖、manifest、路径、哈希、单页素材或输出数量中的具体原因，只修最小范围，然后重跑原命令。最多自动修复并重试 2 次。
+5. 缺少 Python 依赖时优先使用合成器内置的项目运行环境切换；不得临时安装包。不得尝试 LibreOffice、PowerPoint、Keynote、WPS 或 GUI 自动化。
+6. 单页生图失败只重试该页；违规文字或虚构数据只返修对应 prompt 和图片。不得因第 N 页或最终合成失败而重做已经通过的 1…N−1 页。
+7. 为最终合成和验证预留至少 10 分钟。距离 runtime 截止不足 10 分钟时，停止非必要视觉返修，优先完成 PPTX、PDF、`rendered/` 和验证。
+8. 两次最小修复仍失败时停止尝试，在 `generation-log.md` 记录原始错误、两次修复、剩余阻塞和已保留产物；禁止重复同一失败命令直到超时。
 
 ### Step 8: 质量检查
 
@@ -200,6 +299,11 @@ python3 <SKILL_ROOT>/scripts/merge_deck.py paper-deck/{topic-slug}
 - 每页是否只有一个主观点
 - 是否有过多无意义留白；关键内容是否占据足够画面
 - 真实素材页是否明确记录来源、页码/图号和落位
+- 每页是否记录 `native-raster` 或 `source-grounded-hybrid`，且模式选择是由 Paper Deck 在分析和规划后作出
+- 引用 Figure、Table、实验曲线、真实截图或精确数据的页面是否使用 `source-grounded-hybrid`
+- 混合页中的真实素材是否来自已验证的源文件，而非生图模型的重画结果
+- 论文原图的标签、数值、坐标轴、图例、面板标记和事实关系是否保持不变，且未被拉伸或不当裁切
+- 混合页的生图底层、真实素材和可编辑标注层是否分开保留
 - 风格是否一致
 - 图片文字是否清晰、无错别字、无伪字
 - 是否存在 AI 常见问题：假 UI、假 logo、乱码标签、过度赛博、塑料 3D、无意义装饰
@@ -226,5 +330,6 @@ python3 <SKILL_ROOT>/scripts/merge_deck.py paper-deck/{topic-slug}
 - `references/style-system.md`：风格预设和选择规则
 - `references/layouts.md`：常用页面角色与构图
 - `references/source-visuals.md`：PDF 截图、论文图表、用户图片的使用策略
+- `references/source-visual-manifest.schema.json`：混合页源素材、落位和可编辑标注的机器可读契约
 - `references/prompt-template.md`：逐页生图 prompt 模板
 - `references/quality-gate.md`：交付前检查和返修标准

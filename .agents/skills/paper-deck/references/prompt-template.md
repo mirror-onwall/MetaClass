@@ -9,6 +9,7 @@
 slide: NN
 title: "Slide title"
 role: "cover | problem | method-overview | mechanism-detail | evidence | takeaway"
+render_mode: "native-raster | source-grounded-hybrid"
 style_preset: "journal-minimal"
 language: "zh"
 aspect_ratio: "16:9"
@@ -43,18 +44,22 @@ Constraints:
 - Keep enough whitespace for hierarchy, but do not leave the slide feeling empty; the main visual/evidence area should usually occupy 60-80% of the slide.
 ```
 
-## With Source Visuals
+## Source-Grounded Hybrid
 
-When using real screenshots, paper figures, tables, plots, or user-provided images, add this block:
+When `render_mode` is `source-grounded-hybrid`, the prompt generates only the visual base. Do not attach the paper Figure/Table/screenshot as an image-generation reference. Add this block:
 
 ```markdown
-Source Visual:
-- Use source image: [path or figure/table/page number]
-- Crop/focus: [exact region or semantic target]
-- Placement: [left/right/center/full-width panel]
-- Treatment: [clean frame / glass panel / figure callout / side annotation / zoom inset]
-- Fidelity: preserve the real visual content; do not invent new labels, fake UI, fake plots, or fake numbers
+Source-Grounded Composition:
+- Create the journal-minimal visual background and surrounding composition.
+- Reserve an empty evidence bay at [x, y, w, h], using normalized slide coordinates.
+- Keep the reserved bay completely empty and visually clean.
+- Do not draw, imitate, reconstruct, transform, crop, or insert the paper Figure, Table, plot, screenshot, labels, numbers, axes, legend, or panel marks.
+- Do not place text, decoration, texture, icons, connectors, or generated evidence inside the reserved bay.
+- The verified original source asset will be inserted deterministically after generation.
+- Editable titles, annotations, arrows, and callouts will be added after generation unless explicitly listed as background-only decoration.
 ```
+
+The corresponding asset path, page/figure identity, SHA-256, placement, fit, crop, preserved features, and editable annotations belong in `source-visual-manifest.json`, not in the image-generation request. The generated output for this mode is a background layer, even though it remains a complete 16:9 raster canvas.
 
 ## Chinese Slide Text
 

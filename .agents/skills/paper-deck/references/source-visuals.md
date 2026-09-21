@@ -41,16 +41,31 @@
 每页如果使用真实素材，必须在 outline 写：
 
 ```markdown
-- Source visual: Figure 2 from PDF page 5, crop center architecture, place as 70% width main panel, add three callouts
+- Render mode: source-grounded-hybrid
+- Source assets:
+  - asset_id: asset_figure_crop_005_2
+    placement: [0.07, 0.23, 0.62, 0.66]
+    fit: contain
+    crop: full
+    preserve: [axes, legend, labels, values]
+- Generated layer: white journal-minimal background with an empty evidence bay
+- Overlay annotations:
+  - High-quality subset continues to improve
 ```
+
+`native-raster` 页只写 `Render mode: native-raster`，不需要添加空的素材或标注字段。
 
 ## Prompt Requirement
 
-每页 prompt 必须写清楚：
+对 `source-grounded-hybrid` 页，prompt 必须写清楚：
 
-- 使用哪个源文件或图号。
-- 保留真实内容，不发明新数字、新标签、新 UI。
-- 只是进行裁切、边框、玻璃面板、旁注、局部放大、背景统一。
+- 只生成视觉底层和周边构图。
+- 在指定的归一化坐标保留完全空白的 evidence bay。
+- 不绘制、模仿、重建、变换、裁切或插入论文 Figure/Table、曲线、截图、标签、数值、坐标轴、图例和面板标记。
+- 不在 evidence bay 内放置文字、装饰、图标、纹理或连接线。
+- 原始素材将在生图后由确定性合成器插入。
+
+源文件、图号/页码、SHA-256、裁切、落位和标注要求写入 `source-visual-manifest.json`，不传给生图模型执行。
 
 ## When To Ask User For Files
 
