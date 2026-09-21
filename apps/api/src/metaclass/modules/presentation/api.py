@@ -208,7 +208,11 @@ def create_router(presentations: PresentationService) -> APIRouter:
     @router.get("/ppt-artifacts/{artifact_id}/slides/{slide_no}/image")
     async def get_ppt_slide_image(artifact_id: str, slide_no: int) -> FileResponse:
         slide_image = presentations.get_slide_image(artifact_id, slide_no)
-        return FileResponse(slide_image.image_path, media_type="image/png")
+        return FileResponse(
+            slide_image.image_path,
+            media_type="image/png",
+            headers={"Cache-Control": "public, max-age=31536000, immutable"},
+        )
 
     @router.get("/ppt-artifacts/{artifact_id}/skill-request")
     async def download_skill_request(artifact_id: str) -> FileResponse:

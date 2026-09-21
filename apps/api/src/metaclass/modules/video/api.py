@@ -22,9 +22,15 @@ def create_router(videos: VideoService) -> APIRouter:
         content_id: str,
         background_tasks: BackgroundTasks,
         presentation_artifact_id: str | None = None,
+        presentation_plan_id: str | None = None,
     ) -> VideoJob:
         job = videos.queue_job(content_id)
-        background_tasks.add_task(videos.run_job, job.id, presentation_artifact_id)
+        background_tasks.add_task(
+            videos.run_job,
+            job.id,
+            presentation_artifact_id,
+            presentation_plan_id,
+        )
         return job
 
     @router.get("/video-jobs/{job_id}", response_model=VideoJob)
@@ -63,6 +69,7 @@ def create_router(videos: VideoService) -> APIRouter:
             artifact.audio_path,
             media_type="audio/wav",
             filename=f"{artifact.id}.wav",
+            headers={"Cache-Control": "public, max-age=31536000, immutable"},
         )
 
     return router

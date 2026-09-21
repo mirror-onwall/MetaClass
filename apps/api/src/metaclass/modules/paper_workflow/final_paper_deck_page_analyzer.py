@@ -190,10 +190,14 @@ class FinalPaperDeckPageAnalyzer:
                 *self._figure.findall(combined_visible),
             ]
         )
+        model_quantitative_mentions = self._string_list(payload, "quantitative_mentions")
         quantitative_mentions = self._unique_strings(
-            [
-                *self._string_list(payload, "quantitative_mentions"),
-                *self._number.findall("\n".join([visible_title, *model_visible_text])),
+            model_quantitative_mentions
+            or [
+                number
+                for line in [visible_title, *model_visible_text]
+                if self._quantitative_tokens(line)
+                for number in self._number.findall(line)
             ]
         )
         formula_mentions = self._unique_strings(
@@ -327,9 +331,31 @@ Context:
             warnings.append("suspected_prompt_visual_drift")
         source_numbers = {self._normalize_number(item) for item in self._number.findall(paper_text)}
         for mention in quantitative_mentions:
-            if self._normalize_number(mention) not in source_numbers:
+            mention_numbers = self._quantitative_tokens(mention)
+            if mention_numbers and not all(item in source_numbers for item in mention_numbers):
                 warnings.append(f"unverified_quantitative_mention:{mention}")
         return self._unique_strings(warnings)
+
+    @classmethod
+    def _quantitative_tokens(cls, value: str) -> list[str]:
+        """Return numeric claims, excluding figure labels and named identifiers.
+
+        Vision models occasionally report ``Figure 6`` or the zero in ``SKILL0`` as a
+        quantitative result. Those are navigation/identity labels, not claims that a
+        targeted raster repair can or should remove.
+        """
+        text = value.strip()
+        if not text or cls._figure.fullmatch(text):
+            return []
+        if "名称中的数字" in text or "digit in the name" in text.casefold():
+            return []
+        matches = cls._number.findall(text)
+        if not matches:
+            return []
+        without_numbers = cls._number.sub("", text).strip(" \t\r\n:：,，;；()（）[]【】'\"“”‘’")
+        if len(matches) == 1 and without_numbers.casefold() in {"skill", "skillo"}:
+            return []
+        return [cls._normalize_number(item) for item in matches]
 
     @staticmethod
     def _parse_json(response: str) -> dict[str, object]:

@@ -14,6 +14,10 @@ export type Material = {
   status: "uploaded" | "parsing" | "parsed" | "failed";
   page_count: number;
   error?: string;
+  source?: string;
+  source_role?: "uploaded" | "paper_source" | "presentation_deck";
+  parent_material_id?: string;
+  derivation_key?: string;
   created_at?: string;
   updated_at?: string;
 };
