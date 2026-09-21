@@ -667,10 +667,19 @@ class PresentationService:
 
     def resume_ppt_job(self, job_id: str) -> PPTGenerationJob:
         job = self.get_ppt_job(job_id)
-        if job.status != PPTGenerationStatus.PAUSED:
-            raise HTTPException(409, "Only paused PPT jobs can be resumed")
+        partial_artifact = (
+            self.repository.get_artifact(job.artifact_id) if job.artifact_id else None
+        )
+        resumable_failure = (
+            job.status == PPTGenerationStatus.FAILED
+            and partial_artifact is not None
+            and self._is_partial_ppt_artifact(partial_artifact)
+        )
+        if job.status != PPTGenerationStatus.PAUSED and not resumable_failure:
+            raise HTTPException(409, "Only paused or partial failed PPT jobs can be resumed")
         self._ppt_pause_events[job_id] = Event()
         job.status = PPTGenerationStatus.QUEUED
+        job.error = None
         job.updated_at = utc_now()
         self.repository.save_job(job)
         return job
@@ -697,9 +706,26 @@ class PresentationService:
         job.progress = 0.2
         job.updated_at = utc_now()
         self.repository.save_job(job)
+
+        def save_partial_artifact(
+            artifact: PPTArtifact,
+            completed_slides: int,
+            total_slides: int,
+        ) -> None:
+            nonlocal job
+            self.repository.save_artifact(artifact)
+            job.artifact_id = artifact.id
+            if total_slides > 0:
+                job.progress = max(
+                    job.progress,
+                    min(0.92, 0.2 + 0.7 * completed_slides / total_slides),
+                )
+            job.updated_at = utc_now()
+            self.repository.save_job(job)
+
         try:
             saved_artifact = self.repository.get_artifact_for_job(job.id)
-            if saved_artifact:
+            if saved_artifact and not self._is_partial_ppt_artifact(saved_artifact):
                 artifact = saved_artifact
             else:
                 artifact = self.ppt_adapter.prepare_request(
@@ -707,7 +733,10 @@ class PresentationService:
                     job_id=job.id,
                     output_dir=self.data_dir / "generated" / "presentations" / job.id,
                     theme=theme,
+                    progress_callback=save_partial_artifact,
                 )
+                if job.artifact_id and artifact.id != job.artifact_id:
+                    artifact = artifact.model_copy(update={"id": job.artifact_id})
                 self.repository.save_artifact(artifact)
                 self._save_resource(plan, artifact)
             if pause_event.is_set():
@@ -722,9 +751,18 @@ class PresentationService:
         except Exception as exc:
             job.error = str(exc)
             job.status = PPTGenerationStatus.FAILED
-            job.progress = 1.0
+            if not job.artifact_id:
+                job.progress = 1.0
         job.updated_at = utc_now()
         self.repository.save_job(job)
+
+    @staticmethod
+    def _is_partial_ppt_artifact(artifact: PPTArtifact) -> bool:
+        try:
+            payload = json.loads(Path(artifact.skill_request_path).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return False
+        return isinstance(payload, dict) and payload.get("status") == "partial"
 
     def get_ppt_job(self, job_id: str) -> PPTGenerationJob:
         job = self.repository.get_job(job_id)

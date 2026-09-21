@@ -821,6 +821,21 @@ function App() {
   }, [runtimeWorkspace]);
 
   useEffect(() => {
+    if (!pptJob?.artifact_id) return;
+    let cancelled = false;
+    api.getPptArtifact(pptJob.artifact_id)
+      .then((artifact) => {
+        if (!cancelled) setPresentationArtifact(artifact);
+      })
+      .catch(() => {
+        // The first incremental artifact may still be committing; the next job poll retries.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pptJob?.artifact_id, pptJob?.updated_at]);
+
+  useEffect(() => {
     if (!presentationPlan || interactionIntensity === "none") {
       setInteractionPlanningJob(null);
       return;
@@ -1280,6 +1295,7 @@ function App() {
     content: LearningContent;
     presentationPlan?: PresentationPlan;
     presentationArtifact?: PPTArtifact;
+    pptJob?: PPTGenerationJob;
     session?: ClassroomSession;
   }) {
     reset();
@@ -1290,6 +1306,7 @@ function App() {
     setPresentationPlan(asset.presentationPlan ?? null);
     setPresentationMode(asset.presentationPlan?.mode ?? "generated");
     setPresentationArtifact(asset.presentationArtifact ?? null);
+    setPptJob(asset.pptJob ?? null);
     if (asset.presentationPlan) {
       const resource = await api.getPresentationResource(asset.presentationPlan.id);
       const resourceImages = presentationResourceSlideImages(resource);
@@ -1508,7 +1525,10 @@ function App() {
       setPresentationSlideImages(presentationResourceSlideImages(resource));
       return;
     }
-    if (pptJob?.status === "paused") {
+    if (
+      pptJob?.status === "paused"
+      || (pptJob?.status === "failed" && !!pptJob.artifact_id)
+    ) {
       const artifact = await run("正在恢复 PPT 生成", async () => {
         await api.resumePptJob(pptJob.id);
         const finished = await api.waitForPptJob(pptJob.id, setPptJob);
@@ -1588,9 +1608,8 @@ function App() {
     setFeedback("PPT 已生成并保存，可以继续创建课堂。");
   }
 
-  function chooseAnotherPresentationRoute() {
+  function reuseCurrentLearningContent() {
     if (session) return;
-    setContent(null);
     setContentJob(null);
     setPresentationPlan(null);
     setPresentationPlanJob(null);
@@ -1599,7 +1618,7 @@ function App() {
     setPptJob(null);
     setEditingSlideId(null);
     setEditingScript("");
-    setFeedback("请从 LearningContent 构建前重新选择路线；原来保存的内容和计划不会被删除。");
+    setFeedback("当前 LearningContent 已保留，可以直接新建另一份 Presentation Plan；原来的计划和 PPT 不会被删除。");
   }
 
   async function saveSpeakerScript() {
@@ -2351,12 +2370,9 @@ function App() {
                   <span>当前路线</span>
                   <small>{presentationMode === "paper_deck" ? "论文讲解课件" : presentationMode === "source_deck" ? "使用原稿讲解" : "重新生成一套 PPT"}</small>
                 </div>
-                <button className="route-reselect-button" type="button" disabled={!!busy} onClick={chooseAnotherPresentationRoute}>
-                  返回上一步重新选择路线
-                </button>
               </div>
             )}
-            {content && !presentationPlan && presentationMode !== "source_deck" && <div className="ppt-theme-selector">
+            {content && presentationMode !== "source_deck" && !session && <div className="ppt-theme-selector">
               <div className="ppt-theme-heading">
                 <span>PPT 主题</span>
                 <small>只改变视觉，不改页面内容</small>
@@ -2403,9 +2419,9 @@ function App() {
               </section>
             )}
             {presentationPlan && !session && (
-              <button disabled={!!busy} onClick={chooseAnotherPresentationRoute}><span>↺</span><b>重新选择课件使用方式</b><i>→</i></button>
+              <button disabled={!!busy} onClick={reuseCurrentLearningContent}><span>↺</span><b>复用当前 LearningContent 新建课件方案</b><i>→</i></button>
             )}
-            {presentationMode !== "paper_deck" && <button disabled={!presentationPlan || presentationPlan.mode === "source_deck" || !!presentationArtifact || !!busy} onClick={generatePresentationArtifact}><span>03</span><b>{presentationPlan?.mode === "source_deck" ? "使用原 PPT" : presentationArtifact ? "PPT 已生成" : "生成 PPT（创建课堂前必需）"}</b><i>↗</i></button>}
+            {presentationMode !== "paper_deck" && <button disabled={!presentationPlan || presentationPlan.mode === "source_deck" || !!busy} onClick={generatePresentationArtifact}><span>03</span><b>{presentationPlan?.mode === "source_deck" ? "使用原 PPT" : presentationArtifact ? "按当前 Plan 重新生成一份 PPT" : "生成 PPT（创建课堂前必需）"}</b><i>↗</i></button>}
             <button disabled={!content || !presentationPlan || (presentationPlan.mode === "generated" && !presentationArtifact) || !!session || !!busy || (learningMode === "interactive" && !!interactionPlanningJob && interactionPlanningJob.status !== "succeeded")} onClick={startClassroom}><span>04</span><b>{session ? "课堂已创建" : classroomPlanJob && classroomPlanJob.status !== "failed" ? "继续进入已生成课堂" : learningMode === "interactive" && interactionPlanningJob && interactionPlanningJob.status !== "succeeded" ? "等待互动规划完成" : learningMode === "interactive" ? "创建互动课堂" : "创建连续课堂"}</b><i>↗</i></button>
             <button disabled={!content || !presentationArtifact || !!video || !!busy} onClick={createVideo}><span>05</span><b>{video ? "视频已生成" : "合成讲解视频"}</b><i>↗</i></button>
             <button disabled={!content || !presentationPlan || !!busy} onClick={completeWorkspace}><span>✓</span><b>完成当前材料</b><i>→</i></button>
@@ -2692,10 +2708,15 @@ function App() {
               <span className="video-glyph">▣</span>
               <div>
                 <small>PRESENTATION</small>
-                <b>生成 PPT 已就绪</b>
-                <p>{presentationArtifact.slide_images.length} 页已渲染为课堂图片</p>
+                <b>{pptJob && pptJob.status !== "finished" ? "阶段性 PPT 已保存" : "生成 PPT 已就绪"}</b>
+                <p>
+                  {presentationArtifact.slide_images.length} 页已生成
+                  {pptJob && pptJob.status !== "finished" ? "，可先下载查看" : "并渲染为课堂图片"}
+                </p>
               </div>
-              <a href={api.pptDownload(presentationArtifact.id)}>下载 PPTX ↗</a>
+              <a href={api.pptDownload(presentationArtifact.id)}>
+                {pptJob && pptJob.status !== "finished" ? "下载当前进度 PPTX ↗" : "下载 PPTX ↗"}
+              </a>
             </section>
           )}
         </aside>
@@ -2826,12 +2847,12 @@ function App() {
         </div>
       )}
 
-      {(materialProcessingJob?.status === "paused" || ["paused", "failed"].includes(contentJob?.status ?? "") || presentationPlanJob?.status === "paused" || pptJob?.status === "paused") && !busy && (
+      {(materialProcessingJob?.status === "paused" || ["paused", "failed"].includes(contentJob?.status ?? "") || presentationPlanJob?.status === "paused" || pptJob?.status === "paused" || (pptJob?.status === "failed" && !!pptJob.artifact_id)) && !busy && (
         <div className="paused-job-toast" role="status">
           <span>Ⅱ</span>
-          <div><b>{contentJob?.status === "failed" ? "任务失败，进度已保留" : "进度已保存"}</b><p>{materialProcessingJob?.status === "paused" ? `${materialProcessingJob.message} · ${materialProcessingJob.progress}%` : ["paused", "failed"].includes(contentJob?.status ?? "") ? contentProgressLabel(contentJob!) : presentationPlanJob?.status === "paused" ? presentationProgressLabel(presentationPlanJob) : "PPT 生成已暂停"}</p></div>
-          <button className="resume" type="button" onClick={resumePausedContentWork}>{contentJob?.status === "failed" ? "从失败处重试" : "从中断处继续"}</button>
-          <button className="discard" type="button" onClick={discardPausedContentWork}>放弃并删除临时进度</button>
+          <div><b>{contentJob?.status === "failed" || pptJob?.status === "failed" ? "任务失败，进度已保留" : "进度已保存"}</b><p>{materialProcessingJob?.status === "paused" ? `${materialProcessingJob.message} · ${materialProcessingJob.progress}%` : ["paused", "failed"].includes(contentJob?.status ?? "") ? contentProgressLabel(contentJob!) : presentationPlanJob?.status === "paused" ? presentationProgressLabel(presentationPlanJob) : pptJob?.status === "failed" ? `PPT 生成中断，已完成页面仍可下载 · ${Math.round(pptJob.progress * 100)}%` : "PPT 生成已暂停"}</p></div>
+          <button className="resume" type="button" onClick={resumePausedContentWork}>{contentJob?.status === "failed" || pptJob?.status === "failed" ? "从失败处重试" : "从中断处继续"}</button>
+          {pptJob?.status !== "failed" && <button className="discard" type="button" onClick={discardPausedContentWork}>放弃并删除临时进度</button>}
         </div>
       )}
       {error && <div className="error-toast" role="alert"><span>!</span><div><b>流程暂停</b><p>{error}</p></div><button onClick={() => setError(null)}>×</button></div>}

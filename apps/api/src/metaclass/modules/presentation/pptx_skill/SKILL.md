@@ -13,11 +13,31 @@ description: 将 LearningContent 策划为具有内容层次和明确版式的�
 
 {
   "title": "演示文稿标题",
+  "content_contract_version": "visible_blocks_v1",
   "slides": [
     {
       "source_section_ids": ["section_xxx"],
       "title": "结论式页面标题",
-      "key_points": ["可直接放上页面的完整短句"],
+      "slide_role": "concept | method | formula | comparison | case | practice | summary | other",
+      "guiding_question": "本页回答的具体问题",
+      "core_claim": "观众看完本页必须记住的核心结论",
+      "visible_content": [
+        {
+          "id": "content_01",
+          "type": "definition | explanation | mechanism | steps | formula | comparison | evidence | example | application | limitation | takeaway",
+          "heading": "可选短标签",
+          "body": "页面上可直接阅读的完整解释",
+          "items": ["可选分项"],
+          "formula": "可选公式",
+          "source_type": "learning_content | expanded_knowledge",
+          "source_ref_ids": ["section 或 knowledge unit id"],
+          "importance": "core | supporting",
+          "visual_role": "primary | supporting | text_only"
+        }
+      ],
+      "takeaway": "本页最终结论或方法判断",
+      "knowledge_unit_ids": ["ku_xxx"],
+      "key_points": [],
       "speaker_script": "老师可自然讲述的逐字或半逐字讲稿",
       "suggested_visual": "对本页视觉表达方式的具体说明",
       "layout": "freeform",
@@ -57,11 +77,14 @@ description: 将 LearningContent 策划为具有内容层次和明确版式的�
 - 每个输入 section 应根据内容量、概念复杂度和教学职责动态决定需要多少页 slide，不设固定页数。简单内容可以与相邻内容合并，复杂内容应拆成足够多的页面；每个 section 必须至少被一页覆盖。
 - slide 顺序必须遵循 section 顺序，不能讲完后再回退到前面的 section。每页只能引用真实 section id；跨 section 的总结或过渡页可以按原顺序引用多个相邻 section。
 - 拆页应服务于教学表达，例如把“概念 + 公式 + 案例”拆成不同页面；不要仅通过改写标题或重复要点来凑页数。
-- 标题优先写成清晰的观点或结论，不要只复述章节名。
-- 每页写 3–5 条 key_points。key_points 必须是可以直接教给学生的知识、步骤、公式含义、判断条件或案例结论，不能是“本页介绍 K-means 算法”“理解核心概念”“学习三个步骤”这类关于页面安排的元话语。
-- key_points 应是可读的短句，而非孤立关键词；单条尽量不超过 35 个中文字符。算法流程可以用“分配：将样本归入最近的中心”这种“步骤名 + 实质动作”表达，而不是只写“分配步骤”。
-- 页面文字要在“有实质内容”和“不过度拥挤”之间平衡：定义、公式、流程、对比和必要条件直接放在 PPT；完整推理、补充解释、过渡和更多例子放入 speaker_script。不要把 PPT 写成讲稿，也不要只留下空泛标签。
-- speaker_script 要补足页面上不宜堆放的解释、原因、例子和衔接，不要逐字重复 key_points。讲稿必须自然流畅，像老师真实讲课：承接已有内容，解释术语和步骤，用口语化例子帮助理解，并自然引出下一页；禁止“这一页我们介绍……接下来请看……”的机械串词连续堆叠。
+- 标题优先写成清晰的观点或结论，不要只复述章节名。每页同时写清 guiding_question、core_claim 和 takeaway，使页面形成“问题—论证—结论”的闭环。
+- visible_content 是页面可见正文的唯一语义来源。每张正文页通常安排 2–5 个内容块，而且至少包含两种不同 type；其中必须有一个 type="takeaway" 的块，其 body 与页面 takeaway 完全一致。一个内容块只承担一种职责，不要把定义、流程、案例和限制混成一段。
+- 每个内容块组合后的可见文字建议 35–90 个中文字符；整张正文页通常为 80–260 个中文字符。方法页必须有 steps，公式页必须有 formula，对比页必须有 comparison，案例页必须有 example。内容超出预算时拆页，不得删减、压缩或缩小为孤立关键词。
+- body、items 和 formula 写可以直接展示的实质内容，不能写“本页介绍 K-means 算法”“理解核心概念”“学习三个步骤”这类页面安排元话语。算法流程应明确输入、动作、停止条件或输出；公式应解释变量和适用条件；案例应写清场景、方法、结果与意义。
+- source_type 用来区分原 LearningContent 内容与可靠补充知识；source_ref_ids 优先填写真实 section id 或 knowledge unit id。不得把模型补充伪装成原材料结论。
+- key_points 留空即可，由后端按照 visible_content 确定性生成，用于兼容旧渲染器和不可变文本校验；不要另写一套与 visible_content 不一致的摘要。
+- 页面文字要在“有实质内容”和“不过度拥挤”之间平衡：定义、公式、流程、对比和必要条件直接放在 visible_content；完整推理、补充解释、过渡和更多例子放入 speaker_script。不要把 PPT 写成讲稿，也不要只留下空泛标签。
+- speaker_script 要补足页面上不宜堆放的解释、原因、例子和衔接，不要逐字重复 visible_content。讲稿必须自然流畅，像老师真实讲课：承接已有内容，解释术语和步骤，用口语化例子帮助理解，并自然引出下一页；禁止“这一页我们介绍……接下来请看……”的机械串词连续堆叠。
 - speaker_script 不要写成教材章节摘要，不要反复用“本章”“本单元”“本节”“本文”开头；直接从问题、现象、概念、证据或前后知识联系切入，并变化相邻页面的开场句式。
 - visual_payload 写 3–6 个短项目，必须是可以实际显示的内容，不能写“此处放图片”一类占位词。
 

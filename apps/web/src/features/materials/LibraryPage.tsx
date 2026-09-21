@@ -30,6 +30,7 @@ type LibraryPageProps = {
     content: LearningContent;
     presentationPlan?: PresentationPlan;
     presentationArtifact?: PPTArtifact;
+    pptJob?: PPTGenerationJob;
     session?: ClassroomSession;
   }) => void;
 };
@@ -177,6 +178,25 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
     return result;
   }, [contentSummaries]);
 
+  const presentationCatalog = useMemo(() => presentationPlans.flatMap((plan) => {
+    const contentSummary = contentSummaries.find((summary) => summary.content_id === plan.content_id);
+    if (!contentSummary) return [];
+    const material = materials.find((item) => contentSummary.material_ids.includes(item.id));
+    if (!material) return [];
+    return [{ plan, contentSummary, material }];
+  }), [contentSummaries, materials, presentationPlans]);
+
+  const visiblePresentationPlans = useMemo(() => {
+    const keyword = query.trim().toLocaleLowerCase();
+    return presentationCatalog.filter(({ plan, contentSummary, material }) => {
+      const matchesType = filter === "all" || material.file_type === filter;
+      const matchesQuery = !keyword || [plan.title, contentSummary.title, contentSummary.subtitle, material.filename]
+        .filter(Boolean)
+        .some((value) => value!.toLocaleLowerCase().includes(keyword));
+      return matchesType && matchesQuery;
+    });
+  }, [filter, presentationCatalog, query]);
+
   const visibleMaterials = useMemo(() => {
     const keyword = query.trim().toLocaleLowerCase();
     return materials.filter((item) => {
@@ -210,7 +230,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
     raw: materials.length,
     parsed: parsedCount,
     content: contentSummaryByMaterialId.size,
-    presentation: new Set(presentationPlans.map((plan) => plan.content_id)).size,
+    presentation: presentationPlans.length,
     classroom: new Set(classroomPlans.map((plan) => plan.content_id)).size,
   };
 
@@ -313,6 +333,36 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
       onOpenAsset({ material, pages, content, presentationPlan: plan });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "PresentationPlan 生成失败");
+    } finally {
+      setAssetBusy(null);
+    }
+  }
+
+  async function openPresentationAsset(
+    material: Material,
+    planSummary: PresentationPlanLibrarySummary,
+  ) {
+    setAssetBusy("正在载入 Presentation Plan");
+    setError(null);
+    try {
+      const [materialPages, content, plan, artifact] = await Promise.all([
+        api.getMaterialPages(material.id),
+        api.getLearningContent(planSummary.content_id),
+        api.getPresentationPlan(planSummary.id),
+        planSummary.artifact_id
+          ? api.getPptArtifact(planSummary.artifact_id)
+          : Promise.resolve(undefined),
+      ]);
+      onOpenAsset({
+        material,
+        pages: materialPages,
+        content,
+        presentationPlan: plan,
+        presentationArtifact: artifact,
+        pptJob: pptJobs.find((job) => job.presentation_plan_id === planSummary.id),
+      });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Presentation Plan 载入失败");
     } finally {
       setAssetBusy(null);
     }
@@ -521,6 +571,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
         <div className="library-shell-summary">
           <span><small>资料项目</small><b>{materials.length}</b></span>
           <span><small>已整理内容</small><b>{contentSummaryByMaterialId.size}</b></span>
+          <span><small>演示规划</small><b>{presentationPlans.length}</b></span>
           <span><small>课堂剧本</small><b>{classroomPlans.length}</b></span>
           <i>● LOCAL ARCHIVE</i>
         </div>
@@ -556,10 +607,46 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
 
       <section className="library-content library-workbench">
         <div className="library-shelf">
-          <div className="library-section-title"><span>资料项目</span><small>{visibleMaterials.length} PROJECTS · 按最近入库排序</small></div>
+          <div className="library-section-title">
+            <span>{activeView === "presentation" ? "Presentation Plan 档案" : "资料项目"}</span>
+            <small>{activeView === "presentation" ? `${visiblePresentationPlans.length} PLANS · 可直接恢复备课` : `${visibleMaterials.length} PROJECTS · 按最近入库排序`}</small>
+          </div>
           {loading ? (
             <div className="library-empty"><i>⌛</i><b>正在整理资料架</b><span>读取历史材料记录…</span></div>
-          ) : visibleMaterials.length ? (
+          ) : activeView === "presentation" ? (visiblePresentationPlans.length ? (
+            <div className="library-plan-catalog">
+              {visiblePresentationPlans.map(({ plan, contentSummary, material }, index) => (
+                <article className="library-plan-record" key={plan.id}>
+                  <div className="library-plan-folio" aria-hidden="true">
+                    <small>SLIDES</small>
+                    <b>{String(plan.slide_count).padStart(2, "0")}</b>
+                    <i>{String(index + 1).padStart(3, "0")}</i>
+                  </div>
+                  <div className="library-plan-record-copy">
+                    <header>
+                      <span>Presentation Plan</span>
+                      <em className={plan.artifact_id ? "ready" : "plan-only"}>{plan.artifact_id ? "PPT 已生成" : "等待生成 PPT"}</em>
+                    </header>
+                    <h2>{plan.title}</h2>
+                    <p>{contentSummary.subtitle || `基于 ${material.filename} 生成的逐页教学规划`}</p>
+                    <dl>
+                      <div><dt>来源</dt><dd>{material.filename}</dd></div>
+                      <div><dt>页数</dt><dd>{plan.slide_count} 页</dd></div>
+                      <div><dt>保存时间</dt><dd>{displayDate(plan.created_at)}</dd></div>
+                    </dl>
+                    <footer>
+                      <small>{plan.artifact_id ? "原 PPT 保留；打开后可换主题，并按同一 Plan 再生成一份。" : "打开后可查看逐页内容、讲稿，并继续生成 PPT。"}</small>
+                      <button disabled={!!assetBusy} type="button" onClick={() => openPresentationAsset(material, plan)}>
+                        {plan.artifact_id ? "复用此 Plan / 重新生成 PPT" : "打开并继续使用"} <b>→</b>
+                      </button>
+                    </footer>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="library-empty"><i>▤</i><b>没有找到 Presentation Plan</b><span>更换关键词，或先从 LearningContent 生成一个演示规划。</span></div>
+          )) : visibleMaterials.length ? (
             <div className="library-grid">
               {visibleMaterials.map((item, index) => {
                 const summary = contentSummaryByMaterialId.get(item.id);
@@ -671,7 +758,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                     };
                   }),
                   ...planJobs.filter((job) => ["queued", "running", "paused"].includes(job.status) && job.content_id === summary?.content_id).map((job) => ({ kind: "plan" as const, id: job.id, status: job.status, title: job.mode === "source_deck" ? "原稿讲稿 / PresentationPlan" : "PresentationPlan / 题库", detail: `${job.message} · ${job.progress}%`, historicalFailure: false })),
-                  ...pptJobs.filter((job) => ["queued", "running", "waiting_for_skill", "paused"].includes(job.status) && relatedPlanIds.has(job.presentation_plan_id)).map((job) => ({ kind: "ppt" as const, id: job.id, status: job.status, title: "PPT 生成", detail: `PPT 产物进度 ${Math.round(job.progress * 100)}%`, historicalFailure: false })),
+                  ...pptJobs.filter((job) => (["queued", "running", "waiting_for_skill", "paused"].includes(job.status) || (job.status === "failed" && !!job.artifact_id)) && relatedPlanIds.has(job.presentation_plan_id)).map((job) => ({ kind: "ppt" as const, id: job.id, status: job.status, title: "PPT 生成", detail: job.status === "failed" ? `生成中断 · 已保存 ${Math.round(job.progress * 100)}%` : `PPT 产物进度 ${Math.round(job.progress * 100)}%`, historicalFailure: false })),
                 ].sort((left, right) => Number(Boolean(left.historicalFailure)) - Number(Boolean(right.historicalFailure)));
                 if (!active.length) return null;
                 return <div className="library-in-progress-assets">
@@ -709,6 +796,7 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
                     return <div className="asset-plan-group" key={plan.id}>
                       <div className="asset-plan-heading"><span>PLAN</span><b>{plan.title}</b><small>{plan.slide_count} 页{plan.artifact_id ? " · PPT 已就绪" : ""}</small></div>
                       <div className="asset-plan-actions">
+                        <button className="asset-open-plan-action" disabled={!!assetBusy} onClick={() => openPresentationAsset(selected, plan)}>{plan.artifact_id ? "复用此 Plan / 重新生成 PPT" : "打开并继续使用"}</button>
                         <button className="asset-primary-action" disabled={!!assetBusy} onClick={() => prepareNewClassroom(selected, contentSummary.content_id, plan)}>创建互动课堂</button>
                         <button className="asset-qa-action" disabled={!!assetBusy} onClick={() => viewQuestionBank(plan)}>
                           <span>查看 QA 问答对</span><small>Q / A</small>

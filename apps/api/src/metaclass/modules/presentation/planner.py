@@ -6,6 +6,7 @@ import math
 import re
 from collections.abc import Callable
 from pathlib import Path
+from typing import Literal
 from uuid import uuid4
 
 from pydantic import Field, ValidationError
@@ -28,12 +29,34 @@ from metaclass.modules.presentation.brand_palette import (
     BRAND_PALETTE,
     apply_brand_palette,
 )
-from metaclass.modules.presentation.schemas import PresentationPlan, SlideElement, SlidePlan
+from metaclass.modules.presentation.schemas import (
+    PresentationPlan,
+    SlideContentBlock,
+    SlideElement,
+    SlidePlan,
+)
 
 
 class SlidePlanDraft(SchemaModel):
     source_section_ids: list[str] = Field(min_length=1)
     title: str = Field(min_length=1)
+    slide_role: Literal[
+        "cover",
+        "section",
+        "concept",
+        "method",
+        "formula",
+        "comparison",
+        "case",
+        "practice",
+        "summary",
+        "other",
+    ] = "other"
+    guiding_question: str = ""
+    core_claim: str = ""
+    visible_content: list[SlideContentBlock] = Field(default_factory=list, max_length=8)
+    takeaway: str = ""
+    knowledge_unit_ids: list[str] = Field(default_factory=list, max_length=40)
     key_points: list[str] = Field(default_factory=list)
     speaker_script: str = Field(min_length=1)
     suggested_visual: str = Field(min_length=1)
@@ -45,6 +68,7 @@ class SlidePlanDraft(SchemaModel):
 
 class PresentationPlanDraft(SchemaModel):
     title: str = Field(min_length=1)
+    content_contract_version: Literal["legacy", "visible_blocks_v1"] = "legacy"
     slides: list[SlidePlanDraft] = Field(min_length=1)
 
 
@@ -392,21 +416,50 @@ class PresentationPlanGenerator:
     ) -> PresentationPlan:
         batches = self._section_batches(content.sections)
         body_slides: list[SlidePlan] = []
+        body_contract_versions: list[str] = []
         failures: list[str] = []
         for batch_index, sections in enumerate(batches, start=1):
             batch_content = content.model_copy(update={"sections": sections})
             try:
-                raw = self.llm.complete_json(
-                    self._build_content_messages(
-                        content,
-                        sections=sections,
-                        batch_index=batch_index,
-                        batch_count=len(batches),
-                    ),
-                    temperature=0.2,
+                base_messages = self._build_content_messages(
+                    content,
+                    sections=sections,
+                    batch_index=batch_index,
+                    batch_count=len(batches),
                 )
-                draft = PresentationPlanDraft.model_validate(json.loads(raw))
-                body_slides.extend(self._hydrate_draft(batch_content, draft).slides)
+                hydrated: PresentationPlan | None = None
+                first_error: Exception | None = None
+                for attempt in range(2):
+                    messages = base_messages
+                    if attempt and first_error:
+                        messages = [
+                            *base_messages,
+                            LLMMessage(
+                                role="user",
+                                content=(
+                                    "上一版 PresentationPlan 未通过可见内容校验。请重新输出本批完整 JSON，"
+                                    "保持 section 顺序和知识范围不变，不要删减内容。失败原因："
+                                    f"{first_error}。每张正文页必须使用 visible_blocks_v1，包含明确的"
+                                    " guiding_question、core_claim、至少两个不同职责的 visible_content"
+                                    " 内容块和 takeaway；放不下时拆页，不要缩写。"
+                                ),
+                            ),
+                        ]
+                    try:
+                        raw = self.llm.complete_json(messages, temperature=0.2)
+                        draft = PresentationPlanDraft.model_validate(json.loads(raw))
+                        hydrated = self._hydrate_draft(batch_content, draft)
+                        if draft.content_contract_version == "visible_blocks_v1":
+                            self._validate_visible_content_contract(hydrated.slides)
+                        break
+                    except (json.JSONDecodeError, ValidationError, RuntimeError, ValueError) as exc:
+                        first_error = exc
+                        if attempt:
+                            raise
+                if hydrated is None:
+                    raise RuntimeError("content planning returned no hydrated plan")
+                body_slides.extend(hydrated.slides)
+                body_contract_versions.append(hydrated.content_contract_version)
             except (
                 TimeoutError,
                 json.JSONDecodeError,
@@ -417,7 +470,9 @@ class PresentationPlanGenerator:
                 reason = f"batch {batch_index}/{len(batches)}: {type(exc).__name__}: {exc}"
                 logger.warning("PPT content planning batch fell back: %s", reason)
                 failures.append(reason)
-                body_slides.extend(self._fallback_plan(batch_content).slides[1:-1])
+                batch_fallback = self._fallback_plan(batch_content)
+                body_slides.extend(batch_fallback.slides[1:-1])
+                body_contract_versions.append(batch_fallback.content_contract_version)
             self._report_progress(
                 progress_callback,
                 10 + int(25 * batch_index / len(batches)),
@@ -430,11 +485,18 @@ class PresentationPlanGenerator:
             slide.model_copy(update={"id": f"slide_{index:03d}", "order": index})
             for index, slide in enumerate(merged, start=1)
         ]
+        content_contract_version = (
+            "visible_blocks_v1"
+            if body_contract_versions
+            and all(version == "visible_blocks_v1" for version in body_contract_versions)
+            else "mixed"
+        )
         return PresentationPlan(
             id=f"presentation_plan_{uuid4().hex[:12]}",
             content_id=content.id,
             title=content.title,
             slides=slides,
+            content_contract_version=content_contract_version,
             generation_source="fallback" if failures else "llm",
             generation_provider=getattr(self.llm, "name", "unknown"),
             generation_model=getattr(self.llm, "model", None),
@@ -473,12 +535,19 @@ class PresentationPlanGenerator:
             chunks = [source_points] if index == 0 else split_points_for_layout(source_points, spec)
             for part, chunk in enumerate(chunks, start=1):
                 continuation = part > 1
+                normalized_chunk = {re.sub(r"\s+", " ", point).strip() for point in chunk}
+                chunk_blocks = [
+                    block
+                    for block in slide.visible_content
+                    if re.sub(r"\s+", " ", block.display_text()).strip() in normalized_chunk
+                ]
                 expanded.append(
                     slide.model_copy(
                         update={
                             "id": slide.id if not continuation else f"{slide.id}_part_{part}",
                             "title": slide.title if not continuation else f"{slide.title}（续）",
                             "key_points": chunk,
+                            "visible_content": chunk_blocks,
                             "visual_payload": chunk or slide.visual_payload,
                             "speaker_script": (
                                 slide.speaker_script
@@ -568,13 +637,26 @@ class PresentationPlanGenerator:
         first_section = content.sections[0]
         last_section = content.sections[-1]
         cover_subtitle = content.subtitle.strip() or "课程学习与核心内容讲解"
+        cover_blocks = [
+            SlideContentBlock(
+                id="cover_subtitle",
+                type="takeaway",
+                body=cover_subtitle,
+                source_ref_ids=[first_section.id],
+                visual_role="primary",
+            )
+        ]
         slides = [
             SlidePlan(
                 id="slide_001",
                 order=1,
                 source_section_ids=[first_section.id],
                 title=content.title,
-                key_points=[cover_subtitle],
+                slide_role="cover",
+                core_claim=content.title,
+                visible_content=cover_blocks,
+                takeaway=cover_subtitle,
+                key_points=[block.display_text() for block in cover_blocks],
                 speaker_script=(
                     f"欢迎进入《{content.title}》。接下来我们将围绕课程核心内容展开学习，"
                     "逐步建立概念、方法与应用之间的联系。"
@@ -587,6 +669,8 @@ class PresentationPlanGenerator:
         ]
         for section in content.sections:
             points = self._fallback_key_points(section)
+            visible_content = self._fallback_visible_content(section, points)
+            visible_points = [block.display_text() for block in visible_content]
             script_parts = [
                 self._clean_internal_meta_text(section.teaching_script),
                 self._clean_internal_meta_text(section.teaching_narrative),
@@ -599,7 +683,17 @@ class PresentationPlanGenerator:
                     order=len(slides) + 1,
                     source_section_ids=[section.id],
                     title=section.title,
-                    key_points=points,
+                    slide_role=self._normalize_slide_role(section.role),
+                    guiding_question=(
+                        self._clean_internal_meta_text(section.content_goal)
+                        or f"{section.title}解决的核心问题是什么？"
+                    ),
+                    core_claim=visible_points[0],
+                    visible_content=visible_content,
+                    takeaway=(
+                        self._clean_internal_meta_text(section.summary) or visible_points[-1]
+                    ),
+                    key_points=visible_points,
                     speaker_script=speaker_script,
                     suggested_visual=(
                         f"Use the source page image as the main visual and highlight {points[0]}."
@@ -624,7 +718,34 @@ class PresentationPlanGenerator:
                 order=len(slides) + 1,
                 source_section_ids=[last_section.id],
                 title="课程总结",
-                key_points=summary_points,
+                slide_role="summary",
+                guiding_question="这些知识如何形成一套可迁移的方法框架？",
+                core_claim="课程中的核心概念、方法与应用共同构成完整的分析链路。",
+                visible_content=[
+                    *[
+                        SlideContentBlock(
+                            id=f"summary_{index:02d}",
+                            type="explanation" if index == 1 else "application",
+                            body=point,
+                            source_ref_ids=[last_section.id],
+                            importance="core" if index == 1 else "supporting",
+                        )
+                        for index, point in enumerate(summary_points, start=1)
+                    ],
+                    SlideContentBlock(
+                        id="takeaway",
+                        type="takeaway",
+                        heading="总结",
+                        body="根据问题条件选择合适的方法，并用证据解释结果。",
+                        source_ref_ids=[last_section.id],
+                        importance="core",
+                    ),
+                ],
+                takeaway="根据问题条件选择合适的方法，并用证据解释结果。",
+                key_points=[
+                    *summary_points,
+                    "总结：根据问题条件选择合适的方法，并用证据解释结果。",
+                ],
                 speaker_script=(
                     "最后把本次课程的核心结论串联起来，并回到学习目标检查已经建立的"
                     "关键认识，以及后续可以继续思考和迁移应用的方向。"
@@ -640,6 +761,7 @@ class PresentationPlanGenerator:
             content_id=content.id,
             title=content.title,
             slides=slides,
+            content_contract_version="visible_blocks_v1",
         )
 
     @staticmethod
@@ -664,6 +786,67 @@ class PresentationPlanGenerator:
             if len(unique) == 5:
                 break
         return unique
+
+    @classmethod
+    def _fallback_visible_content(
+        cls,
+        section: LearningSection,
+        points: list[str],
+    ) -> list[SlideContentBlock]:
+        blocks: list[SlideContentBlock] = []
+        for index, point in enumerate(points[:4], start=1):
+            block_type = "definition" if index == 1 else "explanation"
+            blocks.append(
+                SlideContentBlock(
+                    id=f"content_{index:02d}",
+                    type=block_type,
+                    body=cls._clean_internal_meta_text(point),
+                    source_ref_ids=[section.id],
+                    importance="core" if index <= 2 else "supporting",
+                    visual_role="primary" if index == 1 else "supporting",
+                )
+            )
+        takeaway = cls._clean_internal_meta_text(section.summary) or points[-1]
+        blocks.append(
+            SlideContentBlock(
+                id="takeaway",
+                type="takeaway",
+                heading="本页结论",
+                body=takeaway,
+                source_ref_ids=[section.id],
+                importance="core",
+                visual_role="supporting",
+            )
+        )
+        return blocks
+
+    @staticmethod
+    def _normalize_slide_role(role: str) -> str:
+        normalized = role.strip().lower()
+        aliases = {
+            "orientation": "concept",
+            "motivation": "concept",
+            "mechanism": "method",
+            "derivation": "formula",
+            "application": "case",
+            "example": "case",
+            "exercise": "practice",
+            "reference": "other",
+        }
+        normalized = aliases.get(normalized, normalized)
+        allowed = {
+            "cover",
+            "section",
+            "concept",
+            "method",
+            "formula",
+            "comparison",
+            "case",
+            "practice",
+            "summary",
+            "other",
+        }
+        return normalized if normalized in allowed else "other"
 
     def _hydrate_draft(
         self, content: LearningContent, draft: PresentationPlanDraft
@@ -690,15 +873,55 @@ class PresentationPlanGenerator:
                 raise ValueError("slides must not move backward through LearningContent sections")
             previous_section_index = source_indexes[-1]
             covered_section_ids.update(source_section_ids)
+            clean_key_points = [
+                self._clean_internal_meta_text(point) for point in slide.key_points[:8]
+            ]
+            visible_content = self._normalize_visible_content(
+                slide.visible_content,
+                fallback_points=clean_key_points,
+                source_section_ids=source_section_ids,
+            )
+            visible_points = [block.display_text() for block in visible_content]
+            if visible_points:
+                clean_key_points = visible_points
+            clean_core_claim = self._clean_internal_meta_text(slide.core_claim)
+            if not clean_core_claim and clean_key_points:
+                clean_core_claim = clean_key_points[0]
+            clean_takeaway = self._clean_internal_meta_text(slide.takeaway)
+            if not clean_takeaway and clean_key_points:
+                clean_takeaway = clean_key_points[-1]
+            if (
+                draft.content_contract_version == "visible_blocks_v1"
+                and clean_takeaway
+                and not any(block.type == "takeaway" for block in visible_content)
+                and len(visible_content) < 8
+            ):
+                visible_content = [
+                    *visible_content,
+                    SlideContentBlock(
+                        id="takeaway",
+                        type="takeaway",
+                        heading="本页结论",
+                        body=clean_takeaway,
+                        source_ref_ids=source_section_ids,
+                        importance="core",
+                        visual_role="supporting",
+                    ),
+                ]
+                clean_key_points = [block.display_text() for block in visible_content]
             slides.append(
                 SlidePlan(
                     id=f"slide_{index:03d}",
                     order=index,
                     source_section_ids=source_section_ids,
                     title=self._clean_internal_meta_text(slide.title),
-                    key_points=[
-                        self._clean_internal_meta_text(point) for point in slide.key_points[:6]
-                    ],
+                    slide_role=slide.slide_role,
+                    guiding_question=self._clean_internal_meta_text(slide.guiding_question),
+                    core_claim=clean_core_claim,
+                    visible_content=visible_content,
+                    takeaway=clean_takeaway,
+                    knowledge_unit_ids=list(dict.fromkeys(slide.knowledge_unit_ids)),
+                    key_points=clean_key_points,
                     speaker_script=self._clean_internal_meta_text(slide.speaker_script),
                     suggested_visual=self._clean_internal_meta_text(slide.suggested_visual),
                     layout=(
@@ -735,7 +958,100 @@ class PresentationPlanGenerator:
             content_id=content.id,
             title=draft.title,
             slides=slides,
+            content_contract_version=draft.content_contract_version,
         )
+
+    @classmethod
+    def _normalize_visible_content(
+        cls,
+        blocks: list[SlideContentBlock],
+        *,
+        fallback_points: list[str],
+        source_section_ids: list[str],
+    ) -> list[SlideContentBlock]:
+        if not blocks:
+            return [
+                SlideContentBlock(
+                    id=f"content_{index:02d}",
+                    type="definition" if index == 1 else "explanation",
+                    body=point,
+                    source_ref_ids=source_section_ids,
+                    importance="core" if index <= 2 else "supporting",
+                    visual_role="primary" if index == 1 else "supporting",
+                )
+                for index, point in enumerate(fallback_points, start=1)
+                if point
+            ]
+
+        normalized: list[SlideContentBlock] = []
+        for block in blocks:
+            normalized.append(
+                block.model_copy(
+                    update={
+                        "heading": cls._clean_visible_text(block.heading),
+                        "body": cls._clean_visible_text(block.body),
+                        "items": [
+                            cls._clean_visible_text(item)
+                            for item in block.items
+                            if cls._clean_visible_text(item)
+                        ],
+                        "formula": cls._clean_visible_text(block.formula),
+                        "source_ref_ids": list(dict.fromkeys(block.source_ref_ids)),
+                    }
+                )
+            )
+        return normalized
+
+    @classmethod
+    def _clean_visible_text(cls, value: str) -> str:
+        return re.sub(r"\s+", " ", cls._clean_internal_meta_text(value)).strip()
+
+    @staticmethod
+    def _validate_visible_content_contract(slides: list[SlidePlan]) -> None:
+        errors: list[str] = []
+        vague_markers = (
+            "本页介绍",
+            "本页讲解",
+            "了解基本",
+            "理解核心概念",
+            "概述相关",
+            "overview of",
+            "summary of",
+        )
+        for slide in slides:
+            if slide.slide_role in {"cover", "section"}:
+                continue
+            block_types = {block.type for block in slide.visible_content}
+            visible_chars = sum(len(block.display_text()) for block in slide.visible_content)
+            if not slide.guiding_question:
+                errors.append(f"{slide.title}: missing guiding_question")
+            if len(slide.core_claim) < 12:
+                errors.append(f"{slide.title}: core_claim is too short")
+            if len(slide.visible_content) < 2:
+                errors.append(f"{slide.title}: requires at least two visible_content blocks")
+            if len(block_types) < 2:
+                errors.append(f"{slide.title}: visible_content blocks need distinct duties")
+            if "takeaway" not in block_types:
+                errors.append(f"{slide.title}: visible_content requires a takeaway block")
+            if visible_chars < 80:
+                errors.append(f"{slide.title}: visible copy is too sparse ({visible_chars} chars)")
+            if len(slide.takeaway) < 10:
+                errors.append(f"{slide.title}: takeaway is too short")
+            visible_copy = " ".join(block.display_text().lower() for block in slide.visible_content)
+            if any(marker in visible_copy for marker in vague_markers):
+                errors.append(f"{slide.title}: visible copy contains planning meta-language")
+            required_type = {
+                "method": "steps",
+                "formula": "formula",
+                "comparison": "comparison",
+                "case": "example",
+            }.get(slide.slide_role)
+            if required_type and required_type not in block_types:
+                errors.append(
+                    f"{slide.title}: slide_role={slide.slide_role} requires a {required_type} block"
+                )
+        if errors:
+            raise ValueError("; ".join(errors[:8]))
 
     def _build_content_messages(
         self,
@@ -751,9 +1067,23 @@ class PresentationPlanGenerator:
             + """
 
 PPT_CONTENT_ONLY
-本次只做整套演示文稿的内容策划，不生成画布 elements。输出仍为 title/slides，
-每页只需包含 source_section_ids、title、key_points、speaker_script、
-suggested_visual、visual_payload；layout 固定写 freeform。不要输出 background 和 elements。
+本次只做整套演示文稿的内容策划，不生成画布 elements。输出必须使用以下内容合同：
+- 顶层 content_contract_version 固定写 "visible_blocks_v1"；
+- 每页包含 source_section_ids、title、slide_role、guiding_question、core_claim、
+  visible_content、takeaway、knowledge_unit_ids、speaker_script、suggested_visual、
+  visual_payload；layout 固定写 freeform；key_points 可以留空，后端会从 visible_content
+  确定性生成不可改写的页面文字。不要输出 background 和 elements。
+- visible_content 是页面上必须真实出现的内容块，每块格式为：
+  {"id":"content_01","type":"definition|explanation|mechanism|steps|formula|comparison|evidence|example|application|limitation|takeaway",
+   "heading":"可选短标签","body":"完整解释","items":["可选分项"],"formula":"可选公式",
+   "source_type":"learning_content|expanded_knowledge","source_ref_ids":["section 或 knowledge unit id"],
+   "importance":"core|supporting","visual_role":"primary|supporting|text_only"}。
+- 每个内容块必须有 body、items 或 formula；一个块只承担一种信息职责，组合后的页面文字建议
+  35–90 个中文字符。不要把整段 speaker_script 填进内容块。
+- 每张正文页必须有明确问题、核心结论、至少两个不同 type 的内容块和页面 takeaway；
+  visible_content 中必须包含一个 type="takeaway" 的块，其 body 与页面 takeaway 完全一致；
+  可见正文通常达到 80–260 个中文字符。方法、公式、对比、案例页分别必须包含 steps、
+  formula、comparison、example 类型的内容块。内容过多时拆页，不得压缩或缩写。
 先完全根据 LearningContent 的结构、已有材料以及必要的可靠扩充内容规划所有正文页；
 正文的拆分、合并和教学顺序不得受封面或总结页影响。正文规划完成后，再补充以下首尾页：
 - 在最前面补一页纯封面：title 使用课程标题，key_points 最多放一个简短副标题；
@@ -784,10 +1114,10 @@ suggested_visual、visual_payload；layout 固定写 freeform。不要输出 bac
 - 若只有标题、关键词或总结句，必须补充稳定、通用、可验证的学科基础知识，把主题真正讲清楚；
 - 概念至少说明“是什么、解决什么问题、关键特征或条件”；算法/方法至少说明“输入与目标、核心步骤、停止或输出、适用条件”，并视需要补充直观例子、局限或常见误区；
 - 扩充必须服务于现有大纲，不能另起主题；可以使用公认基础知识，但不得虚构数据、实验、论文、人物或特定事实，无法可靠确定的内容不要补。
-标题和 key_points 必须直接陈述要教给学生的知识或任务，禁止“This page introduces”、
+标题、core_claim 和 visible_content 必须直接陈述要教给学生的知识或任务，禁止“This page introduces”、
 “本页介绍”“本节将讲”“Overview of”“Summary of”之类描述页面行为的元话语。
 页面上必须出现实质性内容。例如不能只写“本页讲解 K-means 的算法”，而应写清初始化中心、按最近中心分配样本、重算簇中心、迭代至稳定等实际过程。又例如，不能只写对ndbi的分析，而不写具体的分析是什么。又例如，不能只写svm的意义，而不写具体意义是什么。
-把定义、关键公式、算法步骤、对比条件和案例结论放在页面；把完整推理、补充例子、自然过渡放进 speaker_script。页面不能像讲稿一样堆满段落，也不能只剩空泛标签。
+把定义、关键公式、算法步骤、对比条件和案例结论放进 visible_content；把完整推理、补充例子、自然过渡放进 speaker_script。页面不能像讲稿一样堆满段落，也不能只剩空泛标签。
 speaker_script 必须像真实老师连续讲课：承接上下文、解释本页核心、讲清原因或步骤、给出恰当例子或辨析、自然引向后续；不要逐字朗读 key_points，也不要反复使用机械的“这一页我们讲……”。讲稿中不要输出“本页要点：……”这种格式。
 讲稿是课堂现场口语，不是教材章节摘要。不要用“本章”“本单元”“本文”“本节”等书面化自指开头；
 直接从问题、现象、概念或与上一页的联系切入，并让相邻页面的开头句式有所变化。
@@ -1018,7 +1348,7 @@ shape 只能做背景/卡片/标记，正文必须是独立 text 元素且 z 更
 推导用公式与逐步标注，练习必须清楚展示题目和作答区域，总结用综合框架而非泛化 bullet。
 必须利用输入中的 formulas、examples、interactions、quiz_items、misconceptions、
 source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source image 时优先让图像承担证据或讲解作用。
-本页画布以 slide.title、key_points、visual_payload 和 speaker_script 中已经完成的教学内容为直接依据；source sections 用于核对结构和证据。不得把有实质内容的 key_points 再退化成“概念介绍”“算法流程”“案例分析”等空泛标签。
+本页画布以 slide.title、guiding_question、core_claim、visible_content、takeaway、key_points 和 visual_payload 中已经完成的教学内容为直接依据；source sections 用于核对结构和证据。visible_content 是语义结构，key_points 是其不可改写的页面文字投影；不得把有实质内容的页面文字再退化成“概念介绍”“算法流程”“案例分析”等空泛标签。
 页面正文应呈现足以独立理解本页的定义、步骤、变量关系、条件或案例结论，但不要把 speaker_script 整段复制到画布上。优先用流程、关系、对比、分组和逐步标注压缩信息。
 """
         )
@@ -1035,6 +1365,14 @@ source_excerpts 和带 page_no/text_span 的 source_refs；有对应 source imag
             },
             "slide": {
                 "title": slide.title,
+                "slide_role": slide.slide_role,
+                "guiding_question": slide.guiding_question,
+                "core_claim": slide.core_claim,
+                "visible_content": [
+                    block.model_dump(mode="json") for block in slide.visible_content
+                ],
+                "takeaway": slide.takeaway,
+                "knowledge_unit_ids": slide.knowledge_unit_ids,
                 "key_points": slide.key_points,
                 "suggested_visual": slide.suggested_visual,
                 "visual_payload": slide.visual_payload,

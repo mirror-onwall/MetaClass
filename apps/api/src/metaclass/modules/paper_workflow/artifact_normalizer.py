@@ -129,7 +129,7 @@ class PaperArtifactNormalizer:
             job_id=job_id,
             source_material_id=source_material_id,
             provider=raw.provider,
-            root_path=str(final.relative_to(workspace.parent.parent.parent)),
+            root_path=final.relative_to(workspace.parent.parent.parent).as_posix(),
             files=files,
             validation_status="failed" if errors else "passed",
         )

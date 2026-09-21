@@ -123,7 +123,7 @@ class PaperDeckArtifactAdapter:
                 NativePaperDeckSlide(
                     id=f"paper_deck_slide_{index + 1:03d}",
                     order=index + 1,
-                    image_path=str(image_path.relative_to(root)),
+                    image_path=image_path.relative_to(root).as_posix(),
                     image_hash=image_hashes[index],
                     pdf_page_no=index + 1,
                     title_hint=outline_slide["title"],
@@ -133,7 +133,7 @@ class PaperDeckArtifactAdapter:
                     planned_text=self._planned_text(outline_slide["text"]),
                     evidence_hint=outline_slide["evidence"],
                     source_visual_hint=outline_slide.get("source visual") or None,
-                    prompt_path=str(prompt_path.relative_to(root)),
+                    prompt_path=prompt_path.relative_to(root).as_posix(),
                 )
             )
         ids = [slide.id for slide in slides]
@@ -144,7 +144,7 @@ class PaperDeckArtifactAdapter:
             style_preset=brief["style_preset"],
             language=brief["language"],
             slide_count=len(slides),
-            pdf_path=str(pdf.relative_to(root)),
+            pdf_path=pdf.relative_to(root).as_posix(),
             slides=slides,
         )
 

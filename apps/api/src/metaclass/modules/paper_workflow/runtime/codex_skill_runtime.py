@@ -4,6 +4,7 @@ import re
 import shutil
 import signal
 import subprocess
+import sys
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -181,7 +182,7 @@ class CodexSkillRuntime:
             )
         outputs = self._output_files(output, workspace)
         present_output_names = {
-            str(path.relative_to(output)) for path in output.rglob("*") if path.is_file()
+            path.relative_to(output).as_posix() for path in output.rglob("*") if path.is_file()
         }
         missing = sorted(set(invocation.expected_outputs) - present_output_names)
         if missing:
@@ -225,8 +226,8 @@ class CodexSkillRuntime:
             outputs=outputs,
             validation_passed=succeeded,
             validation_issues=issues,
-            stdout_path=str(stdout_path.relative_to(workspace)),
-            stderr_path=str(stderr_path.relative_to(workspace)),
+            stdout_path=stdout_path.relative_to(workspace).as_posix(),
+            stderr_path=stderr_path.relative_to(workspace).as_posix(),
             skill_commit=self._git_commit(invocation.skill_directory),
             model=self.model,
         )
@@ -283,7 +284,7 @@ class CodexSkillRuntime:
         result_path: Path,
     ) -> list[str]:
         command = [
-            codex_cli,
+            *self._launch_prefix(codex_cli),
             "exec",
             "--ephemeral",
             "--sandbox",
@@ -374,7 +375,7 @@ class CodexSkillRuntime:
     def _runtime_version(codex_cli: str) -> str:
         try:
             result = subprocess.run(
-                [codex_cli, "--version"],
+                [*CodexSkillRuntime._launch_prefix(codex_cli), "--version"],
                 check=False,
                 capture_output=True,
                 text=True,
@@ -383,6 +384,18 @@ class CodexSkillRuntime:
         except (OSError, subprocess.SubprocessError):
             return "unknown"
         return (result.stdout or result.stderr).strip()[:200] or "unknown"
+
+    @staticmethod
+    def _launch_prefix(executable: str) -> list[str]:
+        """Return a Windows-safe command prefix for a CLI executable or script."""
+        path = Path(executable)
+        if os.name != "nt" or not path.is_file():
+            return [executable]
+        try:
+            is_script = path.suffix.casefold() in {".py", ".pyw"} or path.read_bytes()[:2] == b"#!"
+        except OSError:
+            is_script = False
+        return [sys.executable, executable] if is_script else [executable]
 
     @staticmethod
     def _immutable_snapshot(
@@ -405,7 +418,9 @@ class CodexSkillRuntime:
     @staticmethod
     def _output_files(output: Path, workspace: Path) -> list[str]:
         return [
-            str(path.relative_to(workspace)) for path in sorted(output.rglob("*")) if path.is_file()
+            path.relative_to(workspace).as_posix()
+            for path in sorted(output.rglob("*"))
+            if path.is_file()
         ]
 
     @staticmethod

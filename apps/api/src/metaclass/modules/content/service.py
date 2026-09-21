@@ -455,6 +455,16 @@ class ContentService:
         *,
         progress_callback: ProgressCallback | None = None,
     ) -> LearningContent:
+        existing_lookup = getattr(self.repository, "get_for_material_version", None)
+        existing = existing_lookup(material_id, 1) if callable(existing_lookup) else None
+        if isinstance(existing, LearningContent):
+            self._report_progress(
+                progress_callback,
+                100,
+                "completed",
+                "Existing LearningContent reused",
+            )
+            return existing
         self._report_progress(progress_callback, 8, "preparing", "Preparing source material")
         page_list = self.materials.pages(material_id)
         if not page_list:

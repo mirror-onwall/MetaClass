@@ -93,6 +93,59 @@ class SlideElement(SchemaModel):
         return self
 
 
+class SlideContentBlock(SchemaModel):
+    """Audience-visible semantic content before it is assigned to a layout."""
+
+    id: str = Field(
+        min_length=1,
+        max_length=64,
+        pattern=r"^[A-Za-z][A-Za-z0-9_.-]*$",
+    )
+    type: Literal[
+        "definition",
+        "explanation",
+        "mechanism",
+        "steps",
+        "formula",
+        "comparison",
+        "evidence",
+        "example",
+        "application",
+        "limitation",
+        "takeaway",
+    ] = "explanation"
+    heading: str = Field(default="", max_length=80)
+    body: str = Field(default="", max_length=1200)
+    items: list[str] = Field(default_factory=list, max_length=8)
+    formula: str = Field(default="", max_length=500)
+    source_type: Literal["learning_content", "expanded_knowledge"] = "learning_content"
+    source_ref_ids: list[str] = Field(default_factory=list, max_length=24)
+    importance: Literal["core", "supporting"] = "core"
+    visual_role: Literal["primary", "supporting", "text_only"] = "supporting"
+
+    @model_validator(mode="after")
+    def validate_visible_copy(self) -> "SlideContentBlock":
+        if not self.body and not self.items and not self.formula:
+            raise ValueError("slide content block must contain body, items, or formula")
+        if len(self.source_ref_ids) != len(set(self.source_ref_ids)):
+            raise ValueError("slide content block source_ref_ids must not contain duplicates")
+        return self
+
+    def display_text(self) -> str:
+        """Flatten one semantic block into one immutable, audience-visible text item."""
+        parts: list[str] = []
+        if self.body:
+            parts.append(self.body)
+        if self.items:
+            parts.append("；".join(self.items))
+        if self.formula:
+            parts.append(self.formula)
+        content = "；".join(part.rstrip("；。 ") for part in parts if part.strip())
+        if self.heading:
+            return f"{self.heading}：{content}"
+        return content
+
+
 class SlidePlan(SchemaModel):
     id: str = Field(min_length=1)
     order: int = Field(ge=1)
@@ -100,6 +153,23 @@ class SlidePlan(SchemaModel):
     source_page_no: int | None = Field(default=None, ge=1)
     source_kind: Literal["source", "generated"] = "generated"
     title: str = Field(min_length=1)
+    slide_role: Literal[
+        "cover",
+        "section",
+        "concept",
+        "method",
+        "formula",
+        "comparison",
+        "case",
+        "practice",
+        "summary",
+        "other",
+    ] = "other"
+    guiding_question: str = Field(default="", max_length=300)
+    core_claim: str = Field(default="", max_length=600)
+    visible_content: list[SlideContentBlock] = Field(default_factory=list, max_length=8)
+    takeaway: str = Field(default="", max_length=600)
+    knowledge_unit_ids: list[str] = Field(default_factory=list, max_length=40)
     key_points: list[str] = Field(default_factory=list)
     speaker_script: str = Field(min_length=1)
     suggested_visual: str = Field(min_length=1)
@@ -128,6 +198,15 @@ class SlidePlan(SchemaModel):
     ) = None
     paper_evidence_packet: dict[str, object] | None = None
 
+    @model_validator(mode="after")
+    def validate_semantic_content(self) -> "SlidePlan":
+        block_ids = [block.id for block in self.visible_content]
+        if len(block_ids) != len(set(block_ids)):
+            raise ValueError("slide visible_content ids must not contain duplicates")
+        if len(self.knowledge_unit_ids) != len(set(self.knowledge_unit_ids)):
+            raise ValueError("slide knowledge_unit_ids must not contain duplicates")
+        return self
+
 
 class PresentationPlan(SchemaModel):
     id: str = Field(min_length=1)
@@ -139,6 +218,7 @@ class PresentationPlan(SchemaModel):
     paper_artifact_bundle_id: str | None = None
     presentation_resource_id: str | None = None
     slides: list[SlidePlan] = Field(min_length=1)
+    content_contract_version: Literal["legacy", "visible_blocks_v1", "mixed"] = "legacy"
     generation_source: Literal["llm", "fallback", "unknown"] = "unknown"
     generation_provider: str | None = None
     generation_model: str | None = None

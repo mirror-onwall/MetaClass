@@ -76,6 +76,7 @@ from metaclass.modules.presentation.planner import (
 from metaclass.modules.presentation.schemas import (
     PPTGenerationJob,
     PresentationPlan,
+    SlideContentBlock,
     SlideElement,
     SlideElementStyle,
     SlidePlan,
@@ -808,6 +809,87 @@ def test_presentation_plan_allows_multiple_slides_for_one_section() -> None:
     ]
 
 
+def test_visible_content_contract_projects_semantic_blocks_to_key_points() -> None:
+    content = LearningContent(
+        id="content_visible_blocks",
+        material_id="mat_001",
+        title="结构化页面内容",
+        sections=[
+            LearningSection(
+                id="section_001",
+                title="聚类方法",
+                summary="聚类方法通过重复分配样本和更新簇代表形成稳定分组。",
+                source_refs=[source_ref()],
+            )
+        ],
+    )
+    draft = PresentationPlanDraft(
+        title=content.title,
+        content_contract_version="visible_blocks_v1",
+        slides=[
+            SlidePlanDraft(
+                source_section_ids=["section_001"],
+                title="迭代分配与更新使聚类结果逐步稳定",
+                slide_role="method",
+                guiding_question="聚类算法如何从初始状态得到稳定分组？",
+                core_claim="算法通过交替执行样本分配与簇代表更新，直到结果不再发生明显变化。",
+                visible_content=[
+                    SlideContentBlock(
+                        id="content_01",
+                        type="steps",
+                        heading="迭代过程",
+                        items=[
+                            "按照当前簇代表把样本分配到最匹配的组",
+                            "根据新的分组重新计算每个簇的代表",
+                            "重复上述过程，直到分配结果或目标函数趋于稳定",
+                        ],
+                        source_ref_ids=["section_001"],
+                    ),
+                    SlideContentBlock(
+                        id="content_02",
+                        type="limitation",
+                        heading="使用条件",
+                        body="初始状态和距离度量会影响最终结果，因此需要结合任务目标检查稳定性与可解释性。",
+                        source_ref_ids=["section_001"],
+                    ),
+                ],
+                takeaway="聚类结果不是一次计算得到的，而是在分配与更新的循环中逐渐收敛。",
+                speaker_script="先从初始化讲起，再解释分配、更新与停止条件之间的关系。",
+                suggested_visual="用循环流程展示分配、更新和停止判断。",
+            )
+        ],
+    )
+
+    plan = PresentationPlanGenerator()._hydrate_draft(content, draft)
+    slide = plan.slides[0]
+
+    assert plan.content_contract_version == "visible_blocks_v1"
+    assert [block.type for block in slide.visible_content] == [
+        "steps",
+        "limitation",
+        "takeaway",
+    ]
+    assert slide.key_points == [block.display_text() for block in slide.visible_content]
+    assert slide.key_points[-1].startswith("本页结论：")
+    PresentationPlanGenerator._validate_visible_content_contract(plan.slides)
+
+
+def test_legacy_slide_plan_remains_backward_compatible() -> None:
+    slide = SlidePlan(
+        id="slide_legacy",
+        order=1,
+        source_section_ids=["section_legacy"],
+        title="旧版页面",
+        key_points=["旧版正文仍然可以读取"],
+        speaker_script="旧版讲稿。",
+        suggested_visual="旧版视觉建议。",
+    )
+
+    assert slide.slide_role == "other"
+    assert slide.visible_content == []
+    assert slide.guiding_question == ""
+
+
 def test_presentation_prompt_is_loaded_from_editable_skill_file() -> None:
     generator = PresentationPlanGenerator(FakeLLMProvider())
     messages = generator._build_messages(
@@ -844,6 +926,10 @@ def test_presentation_prompt_is_loaded_from_editable_skill_file() -> None:
     assert "只允许在 LearningContent 基础上扩充" in messages[0].content
     assert "禁止把不同 section 合并成一张 slide" in messages[0].content
     assert "一个 section 内容较多时必须拆成多张连续 slide" in messages[0].content
+    assert 'content_contract_version 固定写 "visible_blocks_v1"' in messages[0].content
+    assert "visible_content 是页面上必须真实出现的内容块" in messages[0].content
+    assert 'type="takeaway"' in messages[0].content
+    assert "后端会从 visible_content" in messages[0].content
 
 
 def test_presentation_messages_only_pass_visual_opportunity_image_paths() -> None:

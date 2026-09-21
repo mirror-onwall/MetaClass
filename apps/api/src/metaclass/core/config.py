@@ -39,10 +39,10 @@ class Settings(BaseSettings):
     )
     codex_model: str | None = None
     codex_timeout_seconds: float = 900.0
-    codex_repair_attempts: int = Field(default=2, ge=0, le=2)
+    codex_repair_attempts: int = Field(default=1, ge=0, le=2)
     codex_paper_craft_enabled: bool = True
     codex_paper_craft_max_images: int = Field(default=24, ge=0, le=64)
-    codex_paper_craft_concurrency: int = Field(default=2, ge=1, le=4)
+    codex_paper_craft_concurrency: int = Field(default=1, ge=1, le=4)
     codex_paper_craft_skills_dir: Path = PROJECT_ROOT / ".agents" / "skills"
     libreoffice_bin: str | None = None
     presenton_base_url: str = Field(

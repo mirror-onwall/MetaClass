@@ -86,11 +86,7 @@ def test_skill_font_role_is_compiled_into_the_pptx_typeface(
         ),
     )
     rendered_plan = plan.model_copy(
-        update={
-            "slides": [
-                plan.slides[0].model_copy(update={"elements": [element]})
-            ]
-        }
+        update={"slides": [plan.slides[0].model_copy(update={"elements": [element]})]}
     )
     monkeypatch.setattr(
         "metaclass.modules.presentation.skill_adapter.platform.system",
@@ -173,11 +169,7 @@ def test_final_contract_allows_only_materialized_visual_placeholder_text(
         ),
     )
     materialized_plan = plan.model_copy(
-        update={
-            "slides": [
-                plan.slides[0].model_copy(update={"elements": [placeholder]})
-            ]
-        }
+        update={"slides": [plan.slides[0].model_copy(update={"elements": [placeholder]})]}
     )
     destination = tmp_path / "authorized-placeholder.pptx"
     write_deck(
@@ -270,11 +262,7 @@ def make_valid_independent_point_objects(plan: PresentationPlan) -> list[SlideEl
 def test_paper_deck_requires_an_independent_editorial_anchor_for_every_plan_point() -> None:
     plan = make_plan()
     elements = make_valid_independent_point_objects(plan)
-    elements = [
-        element
-        for element in elements
-        if element.object_id != "point-1-frame"
-    ]
+    elements = [element for element in elements if element.object_id != "point-1-frame"]
 
     with pytest.raises(ValueError, match="no independent editorial anchor for key_points.1"):
         CodexPPTProvider._validate_distributed_module_spacing(
@@ -389,6 +377,62 @@ def test_paper_deck_rejects_a_connector_crossing_plan_text() -> None:
         )
 
 
+def test_paper_deck_local_repair_moves_a_crossing_connector_to_a_safe_anchor() -> None:
+    plan = make_plan()
+    elements = make_valid_independent_point_objects(plan)
+    elements.append(
+        SlideElement(
+            type="line",
+            contract_role="visual_module",
+            object_id="crossing-rule",
+            semantic_ref="key_points.0",
+            x=0.04,
+            y=0.4,
+            w=0.44,
+            h=0,
+            z=4,
+        )
+    )
+    raw_elements = [element.model_dump(mode="json") for element in elements]
+
+    assert CodexPPTProvider._repair_paper_deck_connector(
+        raw_elements=raw_elements,
+        parsed=elements,
+        object_id="crossing-rule",
+    )
+
+    repaired = [SlideElement.model_validate(element) for element in raw_elements]
+    CodexPPTProvider._validate_distributed_module_spacing(
+        repaired,
+        slide=plan.slides[0],
+    )
+
+
+def test_paper_deck_local_repair_separates_semantic_groups_as_whole_objects() -> None:
+    plan = make_plan()
+    elements = make_valid_independent_point_objects(plan)
+    elements[2] = elements[2].model_copy(update={"x": 0.4})
+    elements[3] = elements[3].model_copy(update={"x": 0.42})
+    raw_elements = [element.model_dump(mode="json") for element in elements]
+
+    assert CodexPPTProvider._shift_paper_deck_semantic_group(
+        raw_elements=raw_elements,
+        parsed=elements,
+        moving=elements[3],
+        fixed=elements[1],
+        required_gap=CodexPPTProvider.PAPER_DECK_MIN_MODULE_GAP,
+    )
+
+    repaired = [SlideElement.model_validate(element) for element in raw_elements]
+    assert repaired[2].x - elements[2].x == pytest.approx(
+        repaired[3].x - elements[3].x
+    )
+    CodexPPTProvider._validate_distributed_module_spacing(
+        repaired,
+        slide=plan.slides[0],
+    )
+
+
 def test_declarative_preview_renders_chevron_as_a_chevron() -> None:
     plan = make_plan()
     chevron = SlideElement(
@@ -400,9 +444,7 @@ def test_declarative_preview_renders_chevron_as_a_chevron() -> None:
         shape="chevron",
         style=SlideElementStyle(fill="FF0000", line_width=0),
     )
-    slide = plan.slides[0].model_copy(
-        update={"background": "FFFFFF", "elements": [chevron]}
-    )
+    slide = plan.slides[0].model_copy(update={"background": "FFFFFF", "elements": [chevron]})
 
     preview = PPTSkillAdapter._render_scene_preview(slide)
     x0 = round(chevron.x * preview.width)
@@ -492,20 +534,21 @@ def test_paper_deck_accepts_a_dominant_right_visual_column() -> None:
 
 def test_paper_deck_rejects_a_small_visual_placeholder() -> None:
     slide, elements = make_valid_content_visual_column(make_plan())
-    elements[-1] = elements[-1].model_copy(
-        update={"x": 0.66, "w": 0.26, "h": 0.3}
-    )
+    elements[-1] = elements[-1].model_copy(update={"x": 0.66, "w": 0.26, "h": 0.3})
 
-    with pytest.raises(ValueError, match="reserved visual column is too small"):
+    with pytest.raises(ValueError, match="visual region is too small"):
         CodexPPTProvider._validate_distributed_module_spacing(elements, slide=slide)
 
 
-def test_paper_deck_rejects_a_centered_visual_placeholder() -> None:
+def test_paper_deck_accepts_a_centered_visual_placeholder() -> None:
     slide, elements = make_valid_content_visual_column(make_plan())
-    elements[-1] = elements[-1].model_copy(update={"x": 0.33})
+    elements[1] = elements[1].model_copy(update={"x": 0.08, "y": 0.22, "w": 0.84, "h": 0.1})
+    elements[2] = elements[2].model_copy(update={"x": 0.1, "y": 0.24, "w": 0.8, "h": 0.06})
+    elements[3] = elements[3].model_copy(update={"x": 0.08, "y": 0.76, "w": 0.84, "h": 0.12})
+    elements[4] = elements[4].model_copy(update={"x": 0.1, "y": 0.78, "w": 0.8, "h": 0.08})
+    elements[-1] = elements[-1].model_copy(update={"x": 0.33, "y": 0.37, "w": 0.34, "h": 0.32})
 
-    with pytest.raises(ValueError, match="must anchor to the left or right edge"):
-        CodexPPTProvider._validate_distributed_module_spacing(elements, slide=slide)
+    CodexPPTProvider._validate_distributed_module_spacing(elements, slide=slide)
 
 
 def test_paper_deck_rejects_asset_and_placeholder_on_the_same_page() -> None:
@@ -529,14 +572,14 @@ def test_paper_deck_rejects_asset_and_placeholder_on_the_same_page() -> None:
         CodexPPTProvider._validate_distributed_module_spacing(elements, slide=slide)
 
 
-def test_paper_deck_visual_column_requires_three_percent_clearance() -> None:
+def test_paper_deck_visual_region_requires_independent_object_clearance() -> None:
     slide, elements = make_valid_content_visual_column(make_plan())
-    elements[-1] = elements[-1].model_copy(update={"x": 0.545, "w": 0.355})
+    elements[-1] = elements[-1].model_copy(update={"x": 0.53, "w": 0.37})
 
-    with pytest.raises(ValueError, match="less than 0.03 clearance"):
+    with pytest.raises(ValueError, match="less than 0.015 clearance"):
         CodexPPTProvider._validate_distributed_module_spacing(elements, slide=slide)
 
-    elements[-1] = elements[-1].model_copy(update={"x": 0.55, "w": 0.35})
+    elements[-1] = elements[-1].model_copy(update={"x": 0.54, "w": 0.36})
     CodexPPTProvider._validate_distributed_module_spacing(elements, slide=slide)
 
 
@@ -839,16 +882,8 @@ def make_paper_deck_result(
     if visual_placeholders:
         image_path = None
 
-    first_frame = (
-        (0.52, 0.28, 0.41, 0.26)
-        if is_cover
-        else (0.54, 0.28, 0.39, 0.26)
-    )
-    second_frame = (
-        (0.07, 0.6, 0.48, 0.25)
-        if is_cover
-        else (0.54, 0.58, 0.39, 0.25)
-    )
+    first_frame = (0.52, 0.28, 0.41, 0.26) if is_cover else (0.54, 0.28, 0.39, 0.26)
+    second_frame = (0.07, 0.6, 0.48, 0.25) if is_cover else (0.54, 0.58, 0.39, 0.25)
     modules = [
         {
             "object_id": "title-rule",
@@ -915,11 +950,7 @@ def make_paper_deck_result(
             }
         )
 
-    visual_geometry = (
-        (0.08, 0.3, 0.36, 0.24)
-        if is_cover
-        else (0.08, 0.3, 0.38, 0.53)
-    )
+    visual_geometry = (0.08, 0.3, 0.36, 0.24) if is_cover else (0.08, 0.3, 0.38, 0.53)
     visual_assets = (
         [
             {
@@ -1179,9 +1210,7 @@ def calculate_test_skill_digests(root: Path) -> dict[str, str]:
             relative_name = source.relative_to(skill_dir).as_posix()
             digest.update(relative_name.encode("utf-8"))
             digest.update(b"\x00")
-            digest.update(
-                CodexPPTProvider._canonical_skill_guidance_bytes(source.read_bytes())
-            )
+            digest.update(CodexPPTProvider._canonical_skill_guidance_bytes(source.read_bytes()))
         result[skill_name] = digest.hexdigest()
     return result
 
@@ -1250,7 +1279,7 @@ def test_paper_craft_skill_staging_rejects_a_pinned_digest_mismatch(
     assert not (workspace / ".agents" / "skills").exists()
 
 
-def test_paper_craft_skill_digest_is_stable_across_crlf_checkouts(
+def test_paper_craft_skill_digest_is_stable_across_checkout_whitespace(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1260,6 +1289,7 @@ def test_paper_craft_skill_digest_is_stable_across_crlf_checkouts(
     for source in source_root.rglob("*"):
         if source.is_file() and source.suffix.lower() in {".md", ".txt"}:
             text = source.read_text(encoding="utf-8").replace("\r\n", "\n")
+            text = "\n".join(f"{line}  " if line else line for line in text.split("\n"))
             source.write_bytes(text.replace("\n", "\r\n").encode("utf-8"))
     monkeypatch.setattr(CodexPPTProvider, "PAPER_CRAFT_EXPECTED_SHA256", expected)
     provider = CodexPPTProvider(adapter=Mock(), paper_craft_skills_dir=source_root)
@@ -1268,10 +1298,25 @@ def test_paper_craft_skill_digest_is_stable_across_crlf_checkouts(
     manifest = provider._stage_paper_craft_skills(workspace)
 
     assert {entry["name"]: entry["sha256"] for entry in manifest} == expected
-    staged_text = (
-        workspace / ".agents" / "skills" / "paper-deck" / "SKILL.md"
-    ).read_bytes()
+    staged_text = (workspace / ".agents" / "skills" / "paper-deck" / "SKILL.md").read_bytes()
     assert b"\r\n" not in staged_text
+    assert b"  \n" not in staged_text
+
+
+def test_vendored_paper_craft_guidance_matches_the_pinned_digests(
+    tmp_path: Path,
+) -> None:
+    repository_root = Path(__file__).resolve().parents[3]
+    provider = CodexPPTProvider(
+        adapter=Mock(),
+        paper_craft_skills_dir=repository_root / ".agents" / "skills",
+    )
+
+    manifest = provider._stage_paper_craft_skills(tmp_path / "workspace")
+
+    assert {entry["name"]: entry["sha256"] for entry in manifest} == (
+        CodexPPTProvider.PAPER_CRAFT_EXPECTED_SHA256
+    )
 
 
 def test_paper_craft_prompt_and_schema_lock_the_hybrid_contract(tmp_path: Path) -> None:
@@ -1289,7 +1334,7 @@ def test_paper_craft_prompt_and_schema_lock_the_hybrid_contract(tmp_path: Path) 
         max_visual_assets=2,
         min_visual_placeholders=0,
         max_visual_placeholders=0,
-        require_dominant_visual_column=True,
+        require_dominant_visual_column=False,
     )
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     slide_schema = schema["properties"]["slides"]["items"]
@@ -1327,13 +1372,13 @@ def test_paper_craft_prompt_and_schema_lock_the_hybrid_contract(tmp_path: Path) 
     assert assets_schema["maxItems"] == 2
     assert asset_schema["properties"]["w"] == {
         "type": "number",
-        "minimum": CodexPPTProvider.PAPER_DECK_LOCAL_VISUAL_MIN_WIDTH,
-        "maximum": CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MAX_WIDTH,
+        "minimum": 0.16,
+        "maximum": CodexPPTProvider.PAPER_DECK_VISUAL_REGION_MAX_WIDTH,
     }
     assert asset_schema["properties"]["h"] == {
         "type": "number",
-        "minimum": CodexPPTProvider.PAPER_DECK_LOCAL_VISUAL_MIN_HEIGHT,
-        "maximum": CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MAX_HEIGHT,
+        "minimum": 0.12,
+        "maximum": CodexPPTProvider.PAPER_DECK_VISUAL_REGION_MAX_HEIGHT,
     }
     assert asset_schema["properties"]["content_ref"]["enum"] == [
         "suggested_visual",
@@ -1346,9 +1391,7 @@ def test_paper_craft_prompt_and_schema_lock_the_hybrid_contract(tmp_path: Path) 
         "minimum": 3,
         "maximum": 3,
     }
-    assert slide_schema["properties"]["layout_mode"]["enum"] == [
-        "editable-layered-objects"
-    ]
+    assert slide_schema["properties"]["layout_mode"]["enum"] == ["editable-layered-objects"]
     assert slide_schema["properties"]["style_signature"]["enum"] == [style_signature]
     assert slide_schema["properties"]["raster_audit"]["enum"] == [
         "inspected-local-assets-text-free"
@@ -1383,10 +1426,10 @@ def test_paper_craft_prompt_and_schema_lock_the_hybrid_contract(tmp_path: Path) 
     assert placeholders_schema["minItems"] == 0
     assert placeholders_schema["maxItems"] == 0
     assert placeholder_schema["properties"]["w"]["minimum"] == (
-        CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MIN_WIDTH
+        CodexPPTProvider.PAPER_DECK_VISUAL_REGION_MIN_WIDTH
     )
     assert placeholder_schema["properties"]["h"]["minimum"] == (
-        CodexPPTProvider.PAPER_DECK_VISUAL_COLUMN_MIN_HEIGHT
+        CodexPPTProvider.PAPER_DECK_VISUAL_REGION_MIN_HEIGHT
     )
     assert placeholder_schema["properties"]["content_ref"]["enum"] == [
         "suggested_visual",
@@ -1404,7 +1447,8 @@ def test_paper_craft_prompt_and_schema_lock_the_hybrid_contract(tmp_path: Path) 
     assert "Never generate an entire 16:9 slide image" in prompt
     assert "backend" in prompt.lower()
     assert "exact presentationplan" in prompt.lower()
-    assert "generated_visuals/<safe-name>" in prompt
+    assert "generated_visuals/<exact-generated-filename>" in prompt
+    assert "reference only the final accepted image" in prompt
     assert "must be entirely text-free" in prompt
     assert "transparent background" in prompt
     assert "inspect the local asset" in prompt
@@ -1419,14 +1463,13 @@ def test_paper_craft_prompt_and_schema_lock_the_hybrid_contract(tmp_path: Path) 
     assert "mega-card" in prompt
     assert "Do not put every point in" in prompt
     assert "independent editorial anchor" in prompt
-    assert "No connector, divider, underline, node, or partial shape" in " ".join(
-        prompt.split()
-    )
+    assert "No connector, divider, underline, node, or partial shape" in " ".join(prompt.split())
     assert style_signature in prompt
     assert "visual_assets and visual_placeholders are mutually exclusive" in prompt
-    assert "combined bounds are w=0.32-0.44" in prompt
-    assert "h=0.44-0.74" in prompt
-    assert "at least 0.03 clearance" in prompt
+    assert "PAPER_DECK_COMPOSITION_DIRECTIVE" in prompt
+    assert "layout_id=hero_minimal" in prompt
+    assert "not required to be a vertical left/right column" in prompt
+    assert "at least 0.015" in prompt
     assert "at least 0.015" in prompt
     assert "will not choose a layout, move a block, or rewrite content" in prompt
     assert "deterministically maps module style" in prompt
@@ -1439,13 +1482,17 @@ def test_paper_craft_prompt_and_schema_lock_the_hybrid_contract(tmp_path: Path) 
 
 
 def test_paper_deck_visual_requirement_forces_local_art_on_mechanism_pages() -> None:
-    slide = make_plan().slides[0].model_copy(
-        update={
-            "order": 2,
-            "title": "DBSCAN算法机制与案例",
-            "suggested_visual": "无文字的算法流程和局部放大科研插图",
-            "visual_payload": ["密度邻域机制", "案例聚类结果局部放大"],
-        }
+    slide = (
+        make_plan()
+        .slides[0]
+        .model_copy(
+            update={
+                "order": 2,
+                "title": "DBSCAN算法机制与案例",
+                "suggested_visual": "无文字的算法流程和局部放大科研插图",
+                "visual_payload": ["密度邻域机制", "案例聚类结果局部放大"],
+            }
+        )
     )
 
     requirement = CodexPPTProvider._paper_deck_visual_requirement(slide)
@@ -1457,13 +1504,17 @@ def test_paper_deck_visual_requirement_forces_local_art_on_mechanism_pages() -> 
 
 
 def test_paper_deck_visual_requirement_uses_placeholder_only_for_real_source_asset() -> None:
-    slide = make_plan().slides[0].model_copy(
-        update={
-            "order": 2,
-            "title": "软件操作案例",
-            "suggested_visual": "插入 ArcGIS 软件界面截图",
-            "visual_payload": ["参数设置面板"],
-        }
+    slide = (
+        make_plan()
+        .slides[0]
+        .model_copy(
+            update={
+                "order": 2,
+                "title": "软件操作案例",
+                "suggested_visual": "插入 ArcGIS 软件界面截图",
+                "visual_payload": ["参数设置面板"],
+            }
+        )
     )
 
     requirement = CodexPPTProvider._paper_deck_visual_requirement(slide)
@@ -1472,6 +1523,33 @@ def test_paper_deck_visual_requirement_uses_placeholder_only_for_real_source_ass
     assert requirement["max_assets"] == 0
     assert requirement["min_placeholders"] == 1
     assert requirement["max_placeholders"] == 1
+
+
+def test_paper_deck_composition_plan_varies_page_silhouettes_by_role() -> None:
+    base = make_plan().slides[0]
+    roles = ("cover", "method", "comparison", "case", "summary")
+    slides = [
+        base.model_copy(
+            update={
+                "id": f"slide_{index + 1:03d}",
+                "order": index + 1,
+                "slide_role": role,
+                "title": f"{role} research page",
+                "suggested_visual": f"{role} scientific visual",
+            }
+        )
+        for index, role in enumerate(roles)
+    ]
+    plan = make_plan().model_copy(update={"slides": slides})
+
+    compositions = CodexPPTProvider._paper_deck_composition_plan(plan)
+    layout_ids = [item["layout_id"] for item in compositions]
+    families = [item["family"] for item in compositions]
+
+    assert layout_ids[0] == "hero_minimal"
+    assert len(set(families)) >= 4
+    assert all(left != right for left, right in zip(layout_ids, layout_ids[1:]))
+    assert {"process", "comparison", "evidence", "summary"}.issubset(set(families))
 
 
 @pytest.mark.parametrize("theme", PRESENTATION_THEMES, ids=lambda theme: theme.id)
@@ -1499,9 +1577,7 @@ def test_paper_deck_keeps_journal_minimal_for_every_color_theme(theme) -> None:
 def test_paper_deck_allows_extra_lines_when_exact_copy_physically_fits(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    exact_point = (
-        "DBSCAN在地理处理中的应用，如ArcGIS Pro中的参数设置面板和流程图。"
-    )
+    exact_point = "DBSCAN在地理处理中的应用，如ArcGIS Pro中的参数设置面板和流程图。"
     slide = make_plan().slides[0].model_copy(update={"key_points": [exact_point]})
     blocks = [
         {
@@ -1521,10 +1597,10 @@ def test_paper_deck_allows_extra_lines_when_exact_copy_physically_fits(
         },
         {
             "content_ref": "key_points.0",
-            "x": 0.675,
-            "y": 0.67,
-            "w": 0.177,
-            "h": 0.187,
+            "x": 0.51,
+            "y": 0.20,
+            "w": 0.390,
+            "h": 0.595,
             "font_size": 17,
             "min_font_size": 14,
             "font_role": "sans",
@@ -1532,13 +1608,13 @@ def test_paper_deck_allows_extra_lines_when_exact_copy_physically_fits(
             "color": "17324D",
             "align": "left",
             "valign": "middle",
-            "max_lines": 3,
+            "max_lines": 10,
         },
     ]
 
     def measured_fit(text, width, font_size, *, font_role, bold):
         if text == exact_point:
-            return 4, 0.125
+            return 11, 0.361
         return 1, 0.05
 
     monkeypatch.setattr(
@@ -1609,9 +1685,7 @@ def test_layered_mode_rejects_a_full_bleed_picture(tmp_path: Path) -> None:
     for element in result["slides"][0]["elements"]:
         if element["type"] == "text":
             element["contract_role"] = "plan_copy"
-            element["style"].update(
-                {"fill": None, "line_color": None, "line_width": 0}
-            )
+            element["style"].update({"fill": None, "line_color": None, "line_width": 0})
 
     with pytest.raises(ValueError, match="forbids a full-slide merged image"):
         CodexPPTProvider._design_plan_from_result(
@@ -1734,12 +1808,8 @@ def test_paper_deck_generates_independently_movable_objects_per_slide(
                         "image_fit": "contain",
                     }
                 )
-        returned_text_blocks[single_plan.slides[0].id] = result["slides"][0][
-            "text_blocks"
-        ]
-        result["_metaclass_staged_image_count"] = len(
-            result["slides"][0]["visual_assets"]
-        )
+        returned_text_blocks[single_plan.slides[0].id] = result["slides"][0]["text_blocks"]
+        result["_metaclass_staged_image_count"] = len(result["slides"][0]["visual_assets"])
         return result
 
     monkeypatch.setattr(provider, "_execute_codex", fake_execute)
@@ -1755,9 +1825,7 @@ def test_paper_deck_generates_independently_movable_objects_per_slide(
     assert len(rendered_plan.slides) == 3
     for expected, rendered in zip(plan.slides, rendered_plan.slides, strict=True):
         visual_modules = [
-            element
-            for element in rendered.elements
-            if element.contract_role == "visual_module"
+            element for element in rendered.elements if element.contract_role == "visual_module"
         ]
         assert len(visual_modules) >= 4
         assert all(element.type in {"shape", "line"} for element in visual_modules)
@@ -1787,9 +1855,7 @@ def test_paper_deck_generates_independently_movable_objects_per_slide(
         else:
             assert placeholders == []
         local_images = [
-            element
-            for element in rendered.elements
-            if element.contract_role == "visual_asset"
+            element for element in rendered.elements if element.contract_role == "visual_asset"
         ]
         expected_image_count = {"slide_001": 1, "slide_002": 0, "slide_003": 2}
         assert len(local_images) == expected_image_count[expected.id]
@@ -1806,9 +1872,7 @@ def test_paper_deck_generates_independently_movable_objects_per_slide(
         )
         text_elements = plan_text_elements
         manifest = returned_text_blocks[expected.id]
-        assert [
-            (element.x, element.y, element.w, element.h) for element in text_elements
-        ] == [
+        assert [(element.x, element.y, element.w, element.h) for element in text_elements] == [
             (block["x"], block["y"], block["w"], block["h"]) for block in manifest
         ]
         assert [element.style.color for element in text_elements] == [
@@ -2146,17 +2210,20 @@ def test_paper_deck_retries_invalid_skill_text_block_manifests(
         output_dir=tmp_path / "output",
     )
 
-    assert workspaces == ["attempt-01", "attempt-02"]
-    assert expected_retry_reason in prompts[1]
+    if failure_kind == "low-contrast":
+        # Deterministic color repair no longer spends a second Codex call.
+        assert workspaces == ["attempt-01"]
+    else:
+        assert workspaces == ["attempt-01", "attempt-02"]
+        assert expected_retry_reason in prompts[1]
     rendered_plan = adapter.render_declarative_pptx.call_args.args[0]
     assert [
-        element.text
-        for element in rendered_plan.slides[0].elements
-        if element.type == "text"
+        element.text for element in rendered_plan.slides[0].elements if element.type == "text"
     ] == [plan.slides[0].title, *plan.slides[0].key_points]
     metadata = adapter.prepare_external_pptx.call_args.kwargs["provider_metadata"]
-    assert metadata["attempt_count"] == 2
-    assert metadata["paper_craft_attempt_count"] == 2
+    expected_attempt_count = 1 if failure_kind == "low-contrast" else 2
+    assert metadata["attempt_count"] == expected_attempt_count
+    assert metadata["paper_craft_attempt_count"] == expected_attempt_count
 
 
 def test_paper_deck_retry_prompt_accumulates_failures_and_reaudits_all_gates(
@@ -2217,13 +2284,119 @@ def test_paper_deck_retry_prompt_accumulates_failures_and_reaudits_all_gates(
         output_dir=tmp_path / "output",
     )
 
-    assert len(prompts) == 3
+    # The second result only has a contrast defect, which is repaired locally
+    # instead of triggering a third paid Codex request.
+    assert len(prompts) == 2
     assert "cannot fit exact Plan copy" in prompts[1]
-    assert "cannot fit exact Plan copy" in prompts[2]
-    assert "contrast is too low" in prompts[2]
-    assert "fixing one issue cannot create another" in prompts[2]
-    assert "calculate x+w and y+h" in prompts[2]
-    assert "never return a full-slide raster or grouped mega-panel" in prompts[2]
+    assert "fixing one issue cannot create another" in prompts[1]
+    assert "calculate x+w and y+h" in prompts[1]
+    assert "never return a full-slide raster or grouped mega-panel" in prompts[1]
+
+
+def test_paper_deck_publishes_completed_prefix_before_usage_limit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    first_plan = make_plan()
+    second_slide = first_plan.slides[0].model_copy(
+        update={
+            "id": "slide_002",
+            "order": 2,
+            "title": "空间权重决定邻域影响",
+        }
+    )
+    plan = first_plan.model_copy(update={"slides": [first_plan.slides[0], second_slide]})
+    source_root = tmp_path / "source-skills"
+    write_test_skill_tree(source_root)
+    monkeypatch.setattr(
+        CodexPPTProvider,
+        "PAPER_CRAFT_EXPECTED_SHA256",
+        calculate_test_skill_digests(source_root),
+    )
+    provider = CodexPPTProvider(
+        adapter=PPTSkillAdapter(),
+        repair_attempts=1,
+        paper_craft_enabled=True,
+        paper_craft_max_images=2,
+        paper_craft_concurrency=1,
+        paper_craft_skills_dir=source_root,
+    )
+    calls = 0
+    progress: list[tuple[PPTArtifact, int, int]] = []
+
+    def fake_execute(
+        *,
+        workspace,
+        output_dir,
+        prompt,
+        attempt,
+        sandbox_mode="read-only",
+        run_mode="structured-vector",
+        ignore_user_config=True,
+    ):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise CodexGenerationError("You've hit your usage limit")
+        single_plan = PresentationPlan.model_validate_json(
+            (workspace / "presentation_plan.json").read_text(encoding="utf-8")
+        )
+        write_test_image(
+            workspace / ".codex_image_outputs" / "01.png",
+            size=(960, 540),
+        )
+        result = make_paper_deck_result(single_plan)
+        result["_metaclass_staged_image_count"] = 1
+        return result
+
+    monkeypatch.setattr(provider, "_execute_codex", fake_execute)
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    legacy_shared_path = output_dir / "deck.pptx"
+    legacy_shared_path.write_bytes(b"an older PPTX may be open in PowerPoint")
+
+    with pytest.raises(CodexGenerationError, match="usage limit"):
+        provider.prepare_request(
+            plan=plan,
+            job_id="job_partial_usage_limit",
+            output_dir=output_dir,
+            progress_callback=lambda artifact, completed, total: progress.append(
+                (artifact, completed, total)
+            ),
+        )
+
+    assert [(completed, total) for _, completed, total in progress] == [(1, 2)]
+    partial_path = Path(progress[0][0].pptx_path)
+    assert partial_path.is_file()
+    assert partial_path.name.startswith("deck.partial.001.")
+    assert legacy_shared_path.read_bytes() == b"an older PPTX may be open in PowerPoint"
+    assert len(Presentation(partial_path).slides) == 1
+    assert (output_dir / "partial_status.json").is_file()
+    checkpoint = json.loads((output_dir / "paper_deck_checkpoint.json").read_text(encoding="utf-8"))
+    assert checkpoint["completed_slides"] == 1
+    assert checkpoint["prepared_slides"][0] is not None
+    assert checkpoint["prepared_slides"][1] is None
+
+    # A later resume restores slide 1 from disk and only calls Codex for slide 2.
+    progress.clear()
+    artifact = provider.prepare_request(
+        plan=plan,
+        job_id="job_partial_usage_limit",
+        output_dir=output_dir,
+        progress_callback=lambda current, completed, total: progress.append(
+            (current, completed, total)
+        ),
+    )
+
+    assert calls == 3
+    assert [(completed, total) for _, completed, total in progress] == [(1, 2), (2, 2)]
+    assert len(Presentation(artifact.pptx_path).slides) == 2
+    assert Path(artifact.pptx_path).name.startswith("deck.complete.")
+    assert legacy_shared_path.read_bytes() == b"an older PPTX may be open in PowerPoint"
+    completed_checkpoint = json.loads(
+        (output_dir / "paper_deck_checkpoint.json").read_text(encoding="utf-8")
+    )
+    assert completed_checkpoint["completed_slides"] == 2
 
 
 def test_paper_craft_image_is_normalized_and_persisted(tmp_path: Path) -> None:
@@ -2345,6 +2518,60 @@ def test_codex_session_image_is_staged_and_recovers_a_corrupt_workspace_copy(
     assert persisted.is_file()
     with Image.open(persisted) as image:
         assert image.size == (96, 64)
+
+
+def test_codex_image_staging_matches_the_final_generated_uuid_among_drafts(
+    tmp_path: Path,
+) -> None:
+    session_id = "019f9e90-1234-7abc-8def-123456789abc"
+    codex_home = tmp_path / "codex-home"
+    session_dir = codex_home / "generated_images" / session_id
+    write_test_image(session_dir / "exec-rejected-draft.png", size=(80, 45))
+    write_test_image(session_dir / "exec-final-audit.png", size=(160, 90))
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    provider = CodexPPTProvider(adapter=Mock(), paper_craft_max_images=2)
+
+    staged_count, error = provider._stage_codex_generated_images(
+        workspace=workspace,
+        environment={"CODEX_HOME": str(codex_home)},
+        stderr=f"session id: {session_id}",
+        reported_image_paths=("generated_visuals/exec-final-audit.png",),
+    )
+
+    assert staged_count == 1
+    assert error is None
+    with Image.open(workspace / ".codex_image_outputs" / "01.png") as image:
+        assert image.size == (160, 90)
+
+
+def test_codex_image_staging_uses_newest_trusted_source_for_a_logical_name(
+    tmp_path: Path,
+) -> None:
+    session_id = "019f9e90-1234-7abc-8def-123456789abc"
+    codex_home = tmp_path / "codex-home"
+    session_dir = codex_home / "generated_images" / session_id
+    rejected = session_dir / "exec-rejected-draft.png"
+    final = session_dir / "exec-final-audit.png"
+    write_test_image(rejected, size=(80, 45))
+    write_test_image(final, size=(160, 90))
+    os.utime(rejected, ns=(1_000_000_000, 1_000_000_000))
+    os.utime(final, ns=(2_000_000_000, 2_000_000_000))
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    provider = CodexPPTProvider(adapter=Mock(), paper_craft_max_images=2)
+
+    staged_count, error = provider._stage_codex_generated_images(
+        workspace=workspace,
+        environment={"CODEX_HOME": str(codex_home)},
+        stderr=f"session id: {session_id}",
+        reported_image_paths=("generated_visuals/academic-resource-path.png",),
+    )
+
+    assert staged_count == 1
+    assert error is None
+    with Image.open(workspace / ".codex_image_outputs" / "01.png") as image:
+        assert image.size == (160, 90)
 
 
 def test_image_link_checks_work_without_path_is_junction(

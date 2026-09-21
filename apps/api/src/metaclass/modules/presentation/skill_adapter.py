@@ -7,6 +7,7 @@ import subprocess
 import tempfile
 import textwrap
 from pathlib import Path
+from typing import Callable
 from uuid import uuid4
 
 import fitz
@@ -53,6 +54,7 @@ class PPTSkillAdapter:
         job_id: str,
         output_dir: Path,
         theme: PresentationTheme | None = None,
+        progress_callback: Callable[[PPTArtifact, int, int], None] | None = None,
     ) -> PPTArtifact:
         selected_theme = theme or get_presentation_theme()
         themed_plan = apply_presentation_theme(plan, selected_theme)
@@ -104,6 +106,39 @@ class PPTSkillAdapter:
             )
         destination.parent.mkdir(parents=True, exist_ok=True)
         self._render_basic_pptx(plan, destination)
+
+    def render_incremental_previews(
+        self,
+        plan: PresentationPlan,
+        output_dir: Path,
+        *,
+        previously_rendered: int = 0,
+    ) -> list[PPTSlideImage]:
+        """Render only newly completed declarative slides and retain earlier previews."""
+
+        output_dir.mkdir(parents=True, exist_ok=True)
+        slide_images: list[PPTSlideImage] = []
+        for index, slide_plan in enumerate(plan.slides, start=1):
+            image_path = output_dir / f"slide_{index:03d}.png"
+            if index > previously_rendered or not image_path.is_file():
+                image = self._render_scene_preview(slide_plan)
+                temporary_path = image_path.with_suffix(".tmp.png")
+                image.save(temporary_path)
+                temporary_path.replace(image_path)
+                width, height = image.size
+            else:
+                with Image.open(image_path) as image:
+                    width, height = image.size
+            slide_images.append(
+                PPTSlideImage(
+                    slide_id=slide_plan.id,
+                    slide_no=index,
+                    image_path=str(image_path),
+                    width=width,
+                    height=height,
+                )
+            )
+        return slide_images
 
     @staticmethod
     def _write_speaker_scripts(plan: PresentationPlan, destination: Path) -> None:
