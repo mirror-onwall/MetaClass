@@ -1,8 +1,8 @@
 import hashlib
 import json
 import subprocess
-from pathlib import Path
 from threading import Lock
+from pathlib import Path
 from uuid import uuid4
 
 import imageio_ffmpeg
@@ -40,14 +40,9 @@ class VideoService:
         self.presentations = presentations
         self._tts_locks = [Lock() for _ in range(32)]
 
-    def create_job(
-        self,
-        content_id: str,
-        presentation_artifact_id: str | None = None,
-        presentation_plan_id: str | None = None,
-    ) -> VideoJob:
+    def create_job(self, content_id: str, presentation_artifact_id: str | None = None) -> VideoJob:
         job = self.queue_job(content_id)
-        return self._run_job(job, presentation_artifact_id, presentation_plan_id)
+        return self._run_job(job, presentation_artifact_id)
 
     def queue_job(self, content_id: str) -> VideoJob:
         self.contents.get(content_id)
@@ -55,29 +50,19 @@ class VideoService:
         self.repository.save_job(job)
         return job
 
-    def run_job(
-        self,
-        job_id: str,
-        presentation_artifact_id: str | None = None,
-        presentation_plan_id: str | None = None,
-    ) -> VideoJob:
-        return self._run_job(
-            self.get_job(job_id),
-            presentation_artifact_id,
-            presentation_plan_id,
-        )
+    def run_job(self, job_id: str, presentation_artifact_id: str | None = None) -> VideoJob:
+        return self._run_job(self.get_job(job_id), presentation_artifact_id)
 
     def _run_job(
         self,
         job: VideoJob,
         presentation_artifact_id: str | None = None,
-        presentation_plan_id: str | None = None,
     ) -> VideoJob:
         job.status = "running"
         job.updated_at = utc_now()
         self.repository.save_job(job)
         try:
-            result = self._generate(job, presentation_artifact_id, presentation_plan_id)
+            result = self._generate(job, presentation_artifact_id)
             self.repository.save_result(result)
             job.result_id = result.id
             job.progress = 1.0
@@ -114,9 +99,7 @@ class VideoService:
         with lock:
             cached = self.repository.get_tts_artifact(artifact_id)
             if cached and Path(cached.audio_path).is_file():
-                return cached.model_copy(
-                    update={"scope": request.scope, "ref_id": request.ref_id}
-                )
+                return cached
 
             directory = self.data_dir / "generated" / "tts" / artifact_id
             audio_path = directory / "audio.wav"
@@ -146,6 +129,8 @@ class VideoService:
         payload = {
             "provider": provider_signature,
             "text": request.text.strip(),
+            "scope": request.scope,
+            "ref_id": request.ref_id,
             "voice": request.voice,
         }
         digest = hashlib.sha256(
@@ -163,14 +148,9 @@ class VideoService:
         self,
         job: VideoJob,
         presentation_artifact_id: str | None = None,
-        presentation_plan_id: str | None = None,
     ) -> VideoResult:
         content = self.contents.get(job.content_id)
-        slides = self._video_slides(
-            content.id,
-            presentation_artifact_id,
-            presentation_plan_id,
-        )
+        slides = self._video_slides(content.id, presentation_artifact_id)
         if not slides:
             raise ValueError("Cannot generate video without PPT slides")
         result_id = f"video_result_{uuid4().hex[:12]}"
@@ -276,7 +256,6 @@ class VideoService:
         self,
         content_id: str,
         presentation_artifact_id: str | None,
-        presentation_plan_id: str | None = None,
     ) -> list[tuple[str, str]]:
         if self.presentations is None:
             content = self.contents.get(content_id)
@@ -290,38 +269,17 @@ class VideoService:
             artifact = self.presentations.get_artifact(presentation_artifact_id)
             plan = self.presentations.get_plan(artifact.presentation_plan_id)
         else:
-            plan = (
-                self.presentations.get_plan(presentation_plan_id)
-                if presentation_plan_id
-                else self.presentations.get_plan_for_content(content_id)
-            )
-            resource = self.presentations.get_resource(plan.id)
-            if resource.is_stale:
-                raise ValueError(f"Presentation source is stale: {resource.stale_reason}")
-            artifact = (
-                self.presentations.get_artifact(resource.artifact_id)
-                if resource.artifact_id
-                else None
-            )
+            plan = self.presentations.get_plan_for_content(content_id)
+            artifact = self.presentations.get_artifact_for_plan(plan.id)
         if plan.content_id != content_id:
-            raise ValueError("Presentation plan does not belong to this learning content")
+            raise ValueError("PPT artifact does not belong to this learning content")
 
-        images_by_id = {image.slide_id: image.image_path for image in artifact.slide_images} if artifact else {}
-        images_by_number = {image.slide_no: image.image_path for image in artifact.slide_images} if artifact else {}
-        source_pages_by_number = {}
-        if not artifact:
-            resource = self.presentations.get_resource(plan.id)
-            if resource.source_material_id:
-                source_pages_by_number = {
-                    page.page_no: page.image_path
-                    for page in self.presentations.materials.pages(resource.source_material_id)
-                }
+        images_by_id = {image.slide_id: image.image_path for image in artifact.slide_images}
+        images_by_number = {image.slide_no: image.image_path for image in artifact.slide_images}
         slides: list[tuple[str, str]] = []
         for slide in sorted(plan.slides, key=lambda item: item.order):
             image_path = images_by_id.get(slide.id) or images_by_number.get(slide.order)
-            if not image_path and slide.source_page_no:
-                image_path = source_pages_by_number.get(slide.source_page_no)
             if not image_path:
-                raise ValueError(f"Presentation slide {slide.order} has no rendered image")
+                raise ValueError(f"PPT slide {slide.order} has no rendered image")
             slides.append((slide.speaker_script, image_path))
         return slides

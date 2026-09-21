@@ -21,10 +21,6 @@ def create_router(workflows: PaperWorkflowService) -> APIRouter:
     def create_paper_workflow(request: PaperWorkflowRequest) -> PaperWorkflowJob:
         return workflows.create(request)
 
-    @router.get("", response_model=list[PaperWorkflowJob])
-    def list_paper_workflows() -> list[PaperWorkflowJob]:
-        return workflows.list_jobs()
-
     @router.get("/latest", response_model=PaperWorkflowJob)
     def get_latest_paper_workflow(material_id: str) -> PaperWorkflowJob:
         return workflows.latest_for_material(material_id)

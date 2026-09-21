@@ -118,5 +118,3 @@ class ScriptedInteractionBank(SchemaModel):
     presentation_plan_id: str
     items: list[ScriptedInteraction] = Field(default_factory=list)
     validation_status: Literal["pending", "validated", "invalid"] = "pending"
-    generation_source: Literal["llm", "fallback", "none", "unknown"] = "unknown"
-    fallback_reason: str | None = None

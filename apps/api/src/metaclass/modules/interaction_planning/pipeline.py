@@ -104,16 +104,11 @@ class QuestionGenerator:
         blueprints: list[InteractionBlueprint],
     ) -> ScriptedInteractionBank:
         if not blueprints:
-            return ScriptedInteractionBank(
-                presentation_plan_id=context.presentation_plan_id,
-                generation_source="none",
-            )
+            return ScriptedInteractionBank(presentation_plan_id=context.presentation_plan_id)
         if self.llm is None:
             return ScriptedInteractionBank(
                 presentation_plan_id=context.presentation_plan_id,
                 items=[self._fallback(context, item) for item in blueprints],
-                generation_source="fallback",
-                fallback_reason="No LLM provider configured",
             )
         slides = {item.slide_id: item for item in context.slides}
         payload = {
@@ -163,7 +158,6 @@ class QuestionGenerator:
         return ScriptedInteractionBank(
             presentation_plan_id=context.presentation_plan_id,
             items=items,
-            generation_source="llm",
         )
 
     @staticmethod
@@ -277,10 +271,10 @@ class UnifiedInteractionPlanningPipeline:
         policy: InteractionPolicy,
     ) -> tuple[list[InteractionBlueprint], ScriptedInteractionBank]:
         blueprints = self.selector.select(context, policy)
+        pending = self.generator.generate(context, blueprints)
         try:
-            pending = self.generator.generate(context, blueprints)
             validated = self.validator.validate(context, blueprints, pending)
-        except (RuntimeError, TimeoutError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        except ValueError:
             safe_items = [
                 self._safe_fallback(context, item, variant=index)
                 for index, item in enumerate(blueprints)
@@ -291,8 +285,6 @@ class UnifiedInteractionPlanningPipeline:
                 ScriptedInteractionBank(
                     presentation_plan_id=context.presentation_plan_id,
                     items=safe_items,
-                    generation_source="fallback",
-                    fallback_reason=f"{type(exc).__name__}: {exc}",
                 ),
             )
         return blueprints, validated

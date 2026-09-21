@@ -1157,25 +1157,14 @@ class ClassroomService:
         if not student:
             return None
         probe_question = self._executed_probe_question(session)
-        prepared_answer = self._executed_probe_prepared_answer(session)
-        student_turn = (
-            AgentTurn(
-                agent_id=student.id,
-                role="student",
-                speech=prepared_answer,
-                actions=[],
-                intent="student_answer_planned_probe",
-            )
-            if prepared_answer
-            else self.student_roster.generate_turn(
-                student,
-                state,
-                (
-                    f"老师刚刚问：{probe_question}。这是回答回合，请直接回答老师的问题，"
-                    "先给出自己的判断，再用一句理由或很短的例子说明。可以不完全确定，"
-                    "但不要反问老师、不要提出新的问题，也不要转移话题。"
-                ),
-            )
+        student_turn = self.student_roster.generate_turn(
+            student,
+            state,
+            (
+                f"老师刚刚问：{probe_question}。这是回答回合，请直接回答老师的问题，"
+                "先给出自己的判断，再用一句理由或很短的例子说明。可以不完全确定，"
+                "但不要反问老师、不要提出新的问题，也不要转移话题。"
+            ),
         )
         student_turn.intent = "student_answer_planned_probe"
         directed = DirectedAgentTurn(
@@ -1204,16 +1193,6 @@ class ClassroomService:
                 if action.id == action_id and action.type == "PROBE":
                     return action.payload.question
         return "请说说你对刚才知识点的理解。"
-
-    def _executed_probe_prepared_answer(self, session: ClassroomSession) -> str | None:
-        event = session.events[-1]
-        action_id = event.payload.action_id
-        plan = self.get_plan(session.plan_id)
-        for scene in plan.scenes:
-            for action in scene.actions:
-                if action.id == action_id and isinstance(action, ProbeAction):
-                    return action.payload.prepared_student_answer
-        return None
 
     @staticmethod
     def _last_agent_turn(session: ClassroomSession) -> AgentTurn | None:

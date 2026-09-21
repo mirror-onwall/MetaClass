@@ -1,5 +1,4 @@
 import hashlib
-import json
 from pathlib import Path
 from threading import Event, RLock, Thread
 from typing import Literal, TypeVar
@@ -135,10 +134,6 @@ class PaperWorkflowService:
             raise HTTPException(404, "Paper workflow job not found for material")
         return job
 
-    def list_jobs(self) -> list[PaperWorkflowJob]:
-        """Return persisted workflows used to group generated library artifacts."""
-        return self.repository.list_jobs()
-
     def provide_input(
         self,
         job_id: str,
@@ -243,43 +238,16 @@ class PaperWorkflowService:
                 current.updated_at = utc_now()
                 self._persist(current, request, updated)
 
-            provider_result = None
-            recovery_errors: list[dict[str, object]] = []
-            for recovery_attempt in range(2):
-                try:
-                    provider_result = self.orchestrator.run(
-                        job_id=job.id,
-                        provider_name=provider_name,
-                        request=request,
-                        source_bundle=source_bundle,
-                        checkpoint=checkpoint,
-                        report_progress=report_progress,
-                        is_pause_requested=pause_event.is_set,
-                        persist_checkpoint=persist_checkpoint,
-                    )
-                    break
-                except PaperWorkflowPaused:
-                    raise
-                except Exception as exc:
-                    recovery_errors.append(
-                        {
-                            "attempt": recovery_attempt + 1,
-                            "stage": self.get(job.id).stage.value,
-                            "error_type": type(exc).__name__,
-                            "error": str(exc),
-                            "will_retry": recovery_attempt == 0,
-                            "recorded_at": utc_now().isoformat(),
-                        }
-                    )
-                    self._write_recovery_log(workspace, recovery_errors)
-                    if recovery_attempt == 1:
-                        raise
-                    current = self.get(job.id)
-                    current.error = None
-                    current.updated_at = utc_now()
-                    self._persist(current, request, checkpoint)
-            if provider_result is None:
-                raise RuntimeError("paper workflow recovery ended without a provider result")
+            provider_result = self.orchestrator.run(
+                job_id=job.id,
+                provider_name=provider_name,
+                request=request,
+                source_bundle=source_bundle,
+                checkpoint=checkpoint,
+                report_progress=report_progress,
+                is_pause_requested=pause_event.is_set,
+                persist_checkpoint=persist_checkpoint,
+            )
             if pause_event.is_set():
                 raise PaperWorkflowPaused("Paper workflow paused")
             if isinstance(provider_result, FigureCatalog):
@@ -293,21 +261,6 @@ class PaperWorkflowService:
         except Exception as exc:  # noqa: BLE001 - provider failures become durable job state
             self._mark_failed(job.id, request, checkpoint, exc)
         return self.get(job.id)
-
-    @staticmethod
-    def _write_recovery_log(workspace: Path, entries: list[dict[str, object]]) -> None:
-        path = workspace / "runtime_recovery.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_suffix(".json.tmp")
-        temporary.write_text(
-            json.dumps(
-                {"schema_version": "1.0", "attempts": entries},
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
-        temporary.replace(path)
 
     def submit(self, job_id: str) -> PaperWorkflowJob:
         """Start a workflow in the background while preserving synchronous ``run``."""

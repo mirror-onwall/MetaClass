@@ -148,9 +148,9 @@ class BlockingPaperProvider(SuccessfulPaperProvider):
 
 
 class FailOncePaperProvider(SuccessfulPaperProvider):
-    def __init__(self, *, failures: int = 1) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.failures_remaining = failures
+        self.failed_once = False
 
     def run(self, context) -> PaperArtifactBundle:
         def analyze():
@@ -174,8 +174,8 @@ class FailOncePaperProvider(SuccessfulPaperProvider):
 
         def prepare_figures():
             self.executions[ComposedStage.FIGURES] += 1
-            if self.failures_remaining:
-                self.failures_remaining -= 1
+            if not self.failed_once:
+                self.failed_once = True
                 raise RuntimeError("injected stage failure")
             relative_path = "stages/figures/figures.json"
             value = self._write_output(context, relative_path, "figures")
@@ -253,10 +253,6 @@ def test_paper_workflow_api_lifecycle_and_result(tmp_path: Path) -> None:
         fetched = client.get(f"/api/v1/paper-workflows/{job_id}")
         assert fetched.status_code == 200
         assert fetched.json()["source_material_id"] == material_id
-
-        listed = client.get("/api/v1/paper-workflows")
-        assert listed.status_code == 200
-        assert [item["id"] for item in listed.json()] == [job_id]
 
         paused = client.post(f"/api/v1/paper-workflows/{job_id}/pause")
         assert paused.json()["status"] == "paused"
@@ -701,24 +697,21 @@ def test_successful_checkpoint_stage_is_reused_after_retry(tmp_path: Path) -> No
         job_id = client.post("/api/v1/paper-workflows", json={"material_id": material_id}).json()[
             "id"
         ]
+        assert service.run(job_id).status == PaperWorkflowStatus.FAILED
+        failed_checkpoint = service.checkpoints.load(job_id)
+        assert failed_checkpoint is not None
+        assert failed_checkpoint.stages[ComposedStage.FIGURES].status.value == "failed"
+        assert failed_checkpoint.stages[ComposedStage.FIGURES].validation["passed"] is False
+        assert service.resume(job_id).status == PaperWorkflowStatus.QUEUED
+        assert service.resume(job_id).status == PaperWorkflowStatus.QUEUED
         assert service.run(job_id).status == PaperWorkflowStatus.SUCCEEDED
         assert provider.executions[ComposedStage.ANALYSIS] == 1
         assert provider.executions[ComposedStage.FIGURES] == 2
-        recovery = json.loads(
-            (
-                tmp_path
-                / "runtime"
-                / "paper_workflows"
-                / job_id
-                / "runtime_recovery.json"
-            ).read_text(encoding="utf-8")
-        )
-        assert recovery["attempts"][0]["will_retry"] is True
 
 
 def test_missing_cached_output_reruns_successful_stage(tmp_path: Path) -> None:
     app = create_app(tmp_path)
-    provider = FailOncePaperProvider(failures=2)
+    provider = FailOncePaperProvider()
     service = app.state.services.paper_workflows
     service.orchestrator = PaperWorkflowOrchestrator(tmp_path, [provider])
     with TestClient(app) as client:

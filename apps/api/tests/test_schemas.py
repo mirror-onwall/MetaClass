@@ -1242,14 +1242,12 @@ def test_teacher_check_receives_only_current_and_previous_slides() -> None:
     llm = Mock()
     llm.complete_json.return_value = (
         '{"checks":[{"slide_id":"slide_002","question":"前两页如何衔接？",'
-        '"target_knowledge_point":"知识点1与知识点2的关系",'
-        '"prepared_student_answer":"第二页是在第一页基础上继续展开。"}]}'
+        '"target_knowledge_point":"知识点1与知识点2的关系"}]}'
     )
 
     checks = ClassroomPlanGenerator(llm)._generate_teacher_checks([slides[1]], slides)
 
     assert checks[0].question == "前两页如何衔接？"
-    assert checks[0].prepared_student_answer == "第二页是在第一页基础上继续展开。"
     messages = llm.complete_json.call_args.args[0]
     assert "截至当前页已经讲过的全部 PPT" in messages[0].content
     assert "这是第1页讲稿" in messages[1].content
@@ -1950,8 +1948,6 @@ def test_auto_step_starts_student_dialog_after_planned_probe_in_interactive_mode
     assert result.directed_turn.decision.next_role == "student"
     assert result.directed_turn.turns[0].role == "student"
     assert result.directed_turn.turns[0].intent == "student_answer_planned_probe"
-    probe = plan.scenes[0].actions[probe_index]
-    assert result.directed_turn.turns[0].speech == probe.payload.prepared_student_answer
 
 
 def test_probe_names_the_same_selected_student_who_answers() -> None:

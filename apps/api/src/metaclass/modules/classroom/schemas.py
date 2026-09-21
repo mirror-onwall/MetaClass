@@ -60,7 +60,6 @@ class AskQuizPayload(SchemaModel):
 class ProbePayload(SchemaModel):
     question: str = Field(min_length=1)
     target_knowledge_point: str = Field(min_length=1)
-    prepared_student_answer: str | None = Field(default=None, min_length=1)
     source_refs: list[SourceRef] = Field(min_length=1)
 
 
