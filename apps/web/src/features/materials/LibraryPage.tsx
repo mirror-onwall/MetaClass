@@ -670,8 +670,8 @@ export function LibraryPage({ onBack, onUseMaterial, onOpenAsset }: LibraryPageP
       <header className="library-shell-header">
         <div className="library-shell-brand">
           <button className="library-back" type="button" onClick={onBack}>← 返回课堂</button>
-          <span className="brand-seal">M</span>
-          <div><b>教学资料库</b><small>METACLASS · ASSET LIBRARY</small></div>
+          <span className="brand-seal">A</span>
+          <div><b>教学资料库</b><small>AxiomEarth · ASSET LIBRARY</small></div>
         </div>
         <div className="library-shell-summary">
           <span><small>资料项目</small><b>{materials.length}</b></span>

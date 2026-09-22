@@ -57,7 +57,7 @@ async function request<T>(path: string, init?: RequestOptions): Promise<T> {
     if (error instanceof DOMException && error.name === "TimeoutError") {
       throw new Error("请求超时，请检查后端服务或缩小材料后重试");
     }
-    throw new Error("无法连接 MetaClass API，请确认前后端服务已经启动");
+    throw new Error("无法连接 AxiomEarth API，请确认前后端服务已经启动");
   }
   if (!response.ok) {
     const body = await response.json().catch(() => ({}));

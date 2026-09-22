@@ -55,6 +55,8 @@
 
 `title`、`subtitle`、`objectives`、`structure_summary`、`detected_agenda` 和 `sections`。
 
+`detected_agenda` 必须是目录标题字符串数组，例如 `["课程概述", "相似度与距离", "层次聚类"]`；没有检测到目录时返回 `[]`。每项只写标题，不要返回包含 `section_title`、`page_range` 等字段的对象。章节对应页码统一放在 `sections[].page_refs` 中。
+
 所有面向界面展示的标题、摘要、目标和说明统一使用自然简体中文；英文材料也要用中文概括，保留必要的英文术语、专有名词、变量和公式。
 
 注意：JSON 中不得输出 `flattened_page_nos`、自检结果或其他额外字段；它们仅用于你在返回前内部核对。

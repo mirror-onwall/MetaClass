@@ -1,8 +1,8 @@
 from datetime import datetime
 from enum import StrEnum
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import Field, field_validator, model_validator
+from pydantic import BeforeValidator, Field, field_validator, model_validator
 
 from metaclass.core.schemas import SchemaModel, utc_now
 from metaclass.modules.materials.schemas import SourceRef
@@ -573,12 +573,23 @@ class SourceDeckTeachingStructureDraft(SchemaModel):
     segments: list[SourceDeckTeachingSegmentDraft] = Field(min_length=1)
 
 
+def _normalize_source_deck_agenda_title(value):
+    # Some LLM responses include page ranges alongside the agenda title.
+    # Page ownership is already represented by sections[].page_refs.
+    if isinstance(value, dict) and "section_title" in value:
+        return value["section_title"]
+    return value
+
+
+SourceDeckAgendaTitle = Annotated[str, BeforeValidator(_normalize_source_deck_agenda_title)]
+
+
 class SourceDeckLearningContentDraft(SchemaModel):
     title: str = Field(min_length=1)
     subtitle: str = ""
     objectives: list[str] = Field(default_factory=list)
     structure_summary: str = ""
-    detected_agenda: list[str] = Field(default_factory=list)
+    detected_agenda: list[SourceDeckAgendaTitle] = Field(default_factory=list)
     page_flow: list[SourceDeckPageFlowDraft] = Field(min_length=1)
     sections: list[SourceDeckSectionDraft] = Field(min_length=1)
 
@@ -593,7 +604,7 @@ class SourceDeckOutlineDraft(SchemaModel):
     subtitle: str = ""
     objectives: list[str] = Field(default_factory=list)
     structure_summary: str = ""
-    detected_agenda: list[str] = Field(default_factory=list)
+    detected_agenda: list[SourceDeckAgendaTitle] = Field(default_factory=list)
     sections: list[SourceDeckSectionDraft] = Field(min_length=1)
 
     @field_validator("subtitle", "structure_summary", mode="before")
