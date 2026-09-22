@@ -1101,7 +1101,7 @@ class PPTSkillAdapter:
         presentation.slide_width = Inches(13.333)
         presentation.slide_height = Inches(7.5)
         presentation.core_properties.title = plan.title
-        presentation.core_properties.author = "MetaClass"
+        presentation.core_properties.author = "AxiomEarth"
 
         for index, slide_plan in enumerate(plan.slides):
             slide = presentation.slides.add_slide(presentation.slide_layouts[6])

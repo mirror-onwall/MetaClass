@@ -9,6 +9,7 @@ import {
 } from "react";
 import { ActionView } from "./features/classroom/ActionView";
 import { LibraryPage } from "./features/materials/LibraryPage";
+import { resolvePresentationMode } from "./shared/presentationMode";
 import { SlideNarrationPlayer } from "./features/video/SlideNarrationPlayer";
 import {
   type NarrationCue,
@@ -336,6 +337,7 @@ const completedWorkspacesKey = "metaclass-completed-workspaces-v1";
 const paperWorkflowJobsKey = "metaclass-paper-workflow-jobs-v1";
 
 type RuntimeWorkspace = {
+  presentationMode?: "generated" | "source_deck" | "paper_deck";
   material: Material | null;
   materials: Material[];
   materialCollection: MaterialCollection | null;
@@ -566,10 +568,15 @@ function App() {
   const [fullPageView, setFullPageView] = useState<"outline" | "tree" | "scripts" | null>(null);
   const [selectedKnowledgeTreeNodeId, setSelectedKnowledgeTreeNodeId] = useState<string | null>(null);
   const [presentationPlan, setPresentationPlan] = useState<PresentationPlan | null>(runtimeWorkspace.presentationPlan ?? null);
-  const [presentationMode, setPresentationMode] = useState<"generated" | "source_deck" | "paper_deck">(
-    runtimeWorkspace.presentationPlan?.mode
-      ?? (runtimeWorkspace.content ? "source_deck" : "generated"),
+  const [selectedPresentationMode, setPresentationMode] = useState<"generated" | "source_deck" | "paper_deck">(
+    resolvePresentationMode(runtimeWorkspace),
   );
+  const presentationMode = resolvePresentationMode({
+    presentationPlan,
+    content,
+    contentJob,
+    presentationMode: selectedPresentationMode,
+  });
   const [paperWorkflowJob, setPaperWorkflowJob] = useState<PaperWorkflowJob | null>(
     runtimeWorkspace.paperWorkflowJob ?? null,
   );
@@ -880,6 +887,7 @@ function App() {
 
   useEffect(() => {
     const snapshot: RuntimeWorkspace = {
+      presentationMode,
       material,
       materials,
       materialCollection,
@@ -918,6 +926,7 @@ function App() {
     agentTurn,
     content,
     contentJob,
+    presentationMode,
     paperWorkflowJob,
     currentSlide,
     feedback,
@@ -1339,7 +1348,7 @@ function App() {
     setPages(asset.pages);
     setContent(asset.content);
     setPresentationPlan(asset.presentationPlan ?? null);
-    setPresentationMode(asset.presentationPlan?.mode ?? "generated");
+    setPresentationMode(resolvePresentationMode(asset));
     setPresentationArtifact(asset.presentationArtifact ?? null);
     setPptJob(asset.pptJob ?? null);
     setClassroomPlanJob(null);
@@ -1803,6 +1812,7 @@ function App() {
   async function completeWorkspace() {
     if (!content || !presentationPlan) return;
     const completed: CompletedWorkspace = {
+      presentationMode,
       id: `${content.id}:${Date.now()}`,
       title: content.title,
       completedAt: new Date().toISOString(),
@@ -1840,6 +1850,7 @@ function App() {
 
   function restoreWorkspace(saved: CompletedWorkspace) {
     reset();
+    setPresentationMode(resolvePresentationMode(saved));
     setMaterial(saved.material);
     setMaterials(saved.materials);
     setMaterialCollection(saved.materialCollection);
@@ -2232,9 +2243,9 @@ function App() {
   return (
     <div className="classroom-app" data-theme={theme}>
       <header className="topbar">
-        <a className="brand" href="#top" aria-label="MetaClass 首页">
-          <span className="brand-seal">M</span>
-          <span><b>MetaClass</b><small>AI CLASSROOM STUDIO</small></span>
+        <a className="brand" href="#top" aria-label="AxiomEarth 首页">
+          <span className="brand-seal">A</span>
+          <span><b>AxiomEarth</b><small>AI CLASSROOM STUDIO</small></span>
         </a>
         <div className="room-title">
           <div className="room-title-copy">
@@ -2536,7 +2547,7 @@ function App() {
         </aside>
 
         <section className="teaching-studio">
-          <div className="studio-ceiling"><i /><i /><i /><span>METACLASS · SMART TEACHING WALL</span><i /><i /><i /></div>
+          <div className="studio-ceiling"><i /><i /><i /><span>AxiomEarth · SMART TEACHING WALL</span><i /><i /><i /></div>
           <div className="blackboard">
             <div className="board-meta"><span><i /> {session ? "SESSION LIVE" : "CLASSROOM STANDBY"}</span><b>{actionLabel}</b><small>{session?.id ?? "等待创建课堂"}</small></div>
             <div className={`board-stage ${captionText ? "speaking" : ""}`}>
@@ -2828,7 +2839,7 @@ function App() {
           <section className={`curriculum-workspace curriculum-workspace-${fullPageView}`} onClick={(event) => event.stopPropagation()}>
             <header>
               <div>
-                <small>METACLASS · FULL PAGE VIEW</small>
+                <small>AxiomEarth · FULL PAGE VIEW</small>
                 <h2 id="curriculum-workspace-title">
                   {fullPageView === "tree" ? "课程知识树" : fullPageView === "outline" ? "课程教学大纲" : "逐页讲稿工作台"}
                 </h2>
@@ -2935,7 +2946,7 @@ function App() {
       {interactionPlanningJob && interactionPlanningJob.intensity !== "none" && ["queued", "running"].includes(interactionPlanningJob.status) && !busy && (
         <div className="busy-overlay interaction-planning-overlay" aria-live="polite" aria-busy="true">
           <section className="loading-board interaction-planning-board" role="status">
-            <header><span>METACLASS · INTERACTION PLAN</span><b>正在规划课堂互动</b></header>
+            <header><span>AxiomEarth · INTERACTION PLAN</span><b>正在规划课堂互动</b></header>
             <div className="interaction-planning-current">
               <span className="writing-mark" aria-hidden="true" />
               <div>
@@ -2965,7 +2976,7 @@ function App() {
       {busy && busy !== answeringUserQuestionLabel && (
         <div className="busy-overlay" aria-live="polite">
           <section className="loading-board">
-            <header><span>METACLASS · LESSON PREP</span><b>正在准备这堂课</b></header>
+            <header><span>AxiomEarth · LESSON PREP</span><b>正在准备这堂课</b></header>
             <ol>
               {loadingSteps.map((step, index) => (
                 <li className={index < loadingStepIndex ? "done" : index === loadingStepIndex ? "active" : ""} key={step}>

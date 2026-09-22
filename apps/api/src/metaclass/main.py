@@ -33,7 +33,7 @@ def create_app(data_dir: Path | None = None) -> FastAPI:
             services.database.dispose()
 
     app = FastAPI(
-        title="MetaClass API",
+        title="AxiomEarth API",
         version="0.1.0",
         description="可运行的 Read → Plan → Run 极简教学闭环",
         lifespan=lifespan,
